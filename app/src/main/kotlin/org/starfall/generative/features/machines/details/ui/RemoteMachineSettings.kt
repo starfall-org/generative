@@ -138,6 +138,7 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 
 @Composable
@@ -147,6 +148,7 @@ internal fun RemoteMachineSettings(
     viewModel: RemoteMachinesViewModel,
     onBack: () -> Unit
 ) {
+    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     var sshConfig by remember(state.sshConfig) { mutableStateOf(state.sshConfig) }
     var clientEditor by remember { mutableStateOf<GCloudOAuthClient?>(null) }
     var binaryError by remember { mutableStateOf<String?>(null) }

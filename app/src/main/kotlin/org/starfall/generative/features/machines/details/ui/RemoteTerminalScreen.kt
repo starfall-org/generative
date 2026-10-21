@@ -136,6 +136,7 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 import org.starfall.generative.features.machines.shared.ui.TerminalInputMode
 
@@ -186,7 +187,7 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
         terminal = null
     }
     // Phone back button: disconnect explicitly (same as the app bar back arrow).
-    BackHandler { closeTerminal(); onBack() }
+    BackHandler(enabled = LocalScreenTransitionActive.current) { closeTerminal(); onBack() }
     DisposableEffect(machine.id) {
         onDispose {
             currentSecretRequest?.answer?.complete(null)
@@ -372,23 +373,22 @@ internal fun RemoteTerminalScreen(machine: RemoteMachine, viewModel: RemoteMachi
                         shape = RoundedCornerShape(8.dp),
                         color = Color(0xEE1B1E21)
                     ) {
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                stringResource(R.string.remote_machine_terminal_local_input_label) + ": ",
-                                color = Color(0xFF9CCC65),
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1
-                            )
-                            Text(
-                                draft,
-                                color = Color.White,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1
-                            )
-                        }
+                        val label = stringResource(R.string.remote_machine_terminal_local_input_label) + ": "
+                        val draftScroll = rememberScrollState()
+                        // Wrap long drafts; cap the height and keep the cursor line (the end) in view.
+                        LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
+                        Text(
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(color = Color(0xFF9CCC65))) { append(label) }
+                                withStyle(SpanStyle(color = Color.White)) { append(draft) }
+                            },
+                            fontFamily = FontFamily.Monospace,
+                            softWrap = true,
+                            modifier = Modifier
+                                .heightIn(max = 140.dp)
+                                .verticalScroll(draftScroll)
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                        )
                     }
                 }
                 if (connecting && secretRequest == null) {

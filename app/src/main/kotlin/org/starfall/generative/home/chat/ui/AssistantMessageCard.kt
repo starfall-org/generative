@@ -40,7 +40,6 @@ import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.RoundedDropdownMenuItem as DropdownMenuItem
 import org.starfall.generative.shared.ui.media.mediaMimeType
-import org.starfall.generative.home.chat.ui.tool.ToolActivityCards
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -432,33 +431,20 @@ private fun longJsonStrings(element: JsonElement): Sequence<String> = sequence {
 
 @Composable
 private fun StreamingProcessingPreview(version: MessageVersion) {
-    val timeline = remember(version.reasoningContent, version.toolActivity, version.content.length) {
-        buildProcessingTimeline(version)
+    val items = remember(version.reasoningContent, version.toolActivity, version.content.length) {
+        buildProcessingTimeline(version).map { it.toDropdownItem() }
     }
-    // Keep the active tool visible outside the collapsed processing history. Otherwise, once
-    // enough reasoning/tool entries accumulate, the running call can be hidden among older items
-    // and its running animation appears to have stopped even though the call is still executing.
-    val visibleItems = timeline.mapIndexedNotNull { index, item ->
-        item.takeIf { index >= timeline.size - 2 ||
-            (it is ProcessingTimelineItem.Tool && it.activity.status == "running") }
-    }
-    Column {
-        visibleItems.forEachIndexed { index, item ->
-            key(when (item) {
-                is ProcessingTimelineItem.Thinking -> "thinking:${item.reasoning.hashCode()}"
-                is ProcessingTimelineItem.Tool -> "tool:${item.activity.id}"
-            }) {
-                when (item) {
-                    is ProcessingTimelineItem.Thinking -> LiveThinkingBlock(
-                        reasoning = item.reasoning,
-                        active = index == visibleItems.lastIndex,
-                        showHeader = false
-                    )
-                    is ProcessingTimelineItem.Tool -> ToolActivityCards(listOf(item.activity))
-                }
-            }
-        }
-    }
+    // Reuse the finished-message dropdown so its expand/collapse header is available while the model
+    // is still running (before any answer text) and nothing jumps when the first text arrives.
+    // ProcessingDropdown keeps the newest items and any running tool visible while collapsed.
+    ProcessingDropdown(
+        items = items,
+        durationMillis = null,
+        startNumber = 1,
+        modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+        isStreaming = true,
+        previewCount = 2
+    )
 }
 
 @Composable

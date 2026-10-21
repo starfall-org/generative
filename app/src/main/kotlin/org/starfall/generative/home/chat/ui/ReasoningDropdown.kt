@@ -190,7 +190,11 @@ internal fun ProcessingDropdown(
                         is ProcessingDropdownItem.Tool -> item.activity.id
                     }
                     key(itemKey) {
-                        val shown = expanded || index >= visibleItems.size - previewCount
+                        // A running tool stays visible while collapsed; otherwise, once enough entries
+                        // pile up, it hides among older items and looks as if it stopped executing.
+                        val runningTool = previewCount > 0 && item is ProcessingDropdownItem.Tool &&
+                            item.activity.status == "running"
+                        val shown = expanded || index >= visibleItems.size - previewCount || runningTool
                         // Items added while streaming start hidden so they animate in.
                         val visibility = remember { MutableTransitionState(previewCount == 0) }
                         visibility.targetState = shown

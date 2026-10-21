@@ -1,8 +1,20 @@
-val gitCommitHash = providers.exec {
-    commandLine("git", "rev-parse", "--short=8", "HEAD")
+// Needs full git history: shallow CI checkouts must be unshallowed first (see codemagic.yaml).
+val gitCommitNumber = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
 }.standardOutput.asText.get().trim()
 
-val gitCommitNumber = gitCommitHash.filter { it.isDigit() }
+// CI checkouts are often detached, so prefer the branch name the CI exposes.
+val gitBranch = listOf("CM_BRANCH", "GITHUB_REF_NAME", "BRANCH_NAME").firstNotNullOfOrNull { System.getenv(it)?.takeIf(String::isNotBlank) }
+    ?: providers.exec {
+        commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim()
+
+// main keeps the plain version; any other branch puts its (sanitized) name in the middle.
+val versionSuffix = gitBranch
+    .takeIf { it.isNotBlank() && it != "main" && it != "HEAD" }
+    ?.let { "-" + it.replace(Regex("[^A-Za-z0-9]+"), "-").trim('-').take(4).trim('-') }
+    .orEmpty()
 
 
 plugins {
@@ -21,8 +33,8 @@ android {
         applicationId = "org.starfall.generative"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0_$gitCommitNumber"
+        versionCode = gitCommitNumber.toInt()
+        versionName = "1.0.1" + "$versionSuffix-$gitCommitNumber"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
 
