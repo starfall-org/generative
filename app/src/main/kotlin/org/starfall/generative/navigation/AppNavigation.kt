@@ -742,8 +742,6 @@ fun AppNavigation(
                     }
                     composable(AppDestination.STORAGE.route) { StorageScreen(toolFiles) { navController.popBackStack() } }
                     composable(AppDestination.REMOTE_MACHINES.route) {
-                        // Sub-pages are transient: never restore an editor/settings/terminal page on re-entry.
-                        DisposableEffect(Unit) { onDispose { remoteMachinePage = null } }
                         SlideScreenContent(
                             editor = remoteMachinePage,
                             label = stringResource(R.string.remote_machines_title)

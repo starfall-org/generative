@@ -26,8 +26,6 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.dialogs.FaviconDialog
-import org.starfall.generative.shared.ui.dialogs.FaviconFetchState
-import org.starfall.generative.shared.ui.dialogs.rememberFaviconFetchState
 
 internal fun providerInitials(name: String): String = name.trim()
     .split(Regex("\\s+"))
@@ -113,14 +111,13 @@ fun IconPickerRow(
     fallbackMatchName: String? = null,
     model: Boolean = false,
     faviconBaseUrl: String = "",
-    defaultImage: String? = null,
-    /** Hoist this to keep a running logo fetch alive across the row leaving composition (e.g. pager tabs). */
-    fetchState: FaviconFetchState = rememberFaviconFetchState()
+    defaultImage: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember(context) { IconStore(context) }
     val revision by IconStore.lookupRevision.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val currentBusy by rememberUpdatedState(onBusyChange)
@@ -142,18 +139,17 @@ fun IconPickerRow(
             }
         }
     }
-    val busy = importing || fetchState.saving
-    LaunchedEffect(busy) { currentBusy(busy) }
     DisposableEffect(Unit) { onDispose { currentBusy(false) } }
-    if (fetchState.dialogOpen) FaviconDialog(
-        state = fetchState,
+    if (showDialog) FaviconDialog(
         baseUrl = faviconBaseUrl,
-        onSave = { currentChange(it) }
+        onSave = { onChange(it) },
+        onBusyChange = { importing = it; onBusyChange(it) },
+        onDismiss = { showDialog = false }
     )
     val fileName = remember(image, revision) { store.fileName(image) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Tapping the logo uploads an image from the device.
-        Box(Modifier.size(56.dp).clickable(enabled = !busy) {
+        Box(Modifier.size(56.dp).clickable(enabled = !importing) {
             imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }) {
             EntityIcon(
@@ -179,7 +175,7 @@ fun IconPickerRow(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            OutlinedButton(enabled = !busy, onClick = { fetchState.dialogOpen = true }) {
+            OutlinedButton(enabled = !importing, onClick = { showDialog = true }) {
                 Text(context.getString(R.string.favicon_get_logo))
             }
             if (image != null && fileName != null) {
@@ -197,7 +193,7 @@ fun IconPickerRow(
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
         if (image != null) {
-            IconButton(enabled = !busy, onClick = { error = null; onChange(null) }) {
+            IconButton(enabled = !importing, onClick = { error = null; onChange(null) }) {
                 FluentIcon(Icons.Outlined.Close, contentDescription = context.getString(R.string.common_remove))
             }
         }

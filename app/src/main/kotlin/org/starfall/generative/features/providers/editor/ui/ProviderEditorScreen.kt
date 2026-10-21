@@ -86,8 +86,6 @@ fun ProviderEditorScreen(
     var name by remember { mutableStateOf(initialProvider.name) }
     var providerIcon by remember { mutableStateOf(initialProvider.icon) }
     var iconImporting by remember { mutableStateOf(false) }
-    // Lives with the screen, not the pager page, so a logo fetch survives tab switches and stops when the screen closes.
-    val faviconFetch = org.starfall.generative.shared.ui.dialogs.rememberFaviconFetchState()
     var type by remember { mutableStateOf(initialProvider.type) }
     var baseUrl by remember { mutableStateOf(initialProvider.baseUrl) }
     var authMethod by remember { mutableStateOf(if (initialProvider.type.isAccountProvider) AuthMethod.OAUTH else initialProvider.auth.editMethod()) }
@@ -242,7 +240,7 @@ fun ProviderEditorScreen(
                     }
                     HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                         if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
+                            IconPickerRow(providerIcon, { providerIcon = it }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl)
                             ExposedDropdownMenuBox(typeExpanded, { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
                                 SelectableOutlinedTextField(type.displayName, {}, readOnly = true, label = { Text(stringResource(R.string.common_type)) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }, modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true).fillMaxWidth())

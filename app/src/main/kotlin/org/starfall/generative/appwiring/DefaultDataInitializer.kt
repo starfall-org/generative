@@ -70,14 +70,11 @@ class DefaultDataInitializer(
             }
         }
 
-        pruneUnusedIcons(prefs.featuresLogoImage)
+        pruneUnusedIcons()
     }
 
-    private suspend fun pruneUnusedIcons(featuresLogoImage: String?) {
+    private suspend fun pruneUnusedIcons() {
         val entityImages = buildList {
-            // The Features logo is stored in app preferences rather than a provider/model entity.
-            // Keep its app-owned file during startup pruning so it survives process restarts.
-            add(featuresLogoImage)
             modelRepo.allProviders.first().forEach { provider ->
                 add(provider.icon)
                 provider.config.modelConfigs.values.forEach { add(it.icon) }

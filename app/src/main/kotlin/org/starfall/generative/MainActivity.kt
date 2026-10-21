@@ -229,8 +229,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data ?: return
-        // `generative://` is the canonical scheme; accept `mg://` for older shared links.
-        if ((data.scheme.equals("generative", true) || data.scheme.equals("mg", true)) &&
+        if ((data.scheme.equals("mg", true) || data.scheme.equals("generative", true)) &&
             data.host.equals("provider", true)) {
             // Consume the launch URI before saving; Activity recreation must not import it again.
             intent.data = null

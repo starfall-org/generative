@@ -65,7 +65,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="generative" android:host="provider" />
             </intent-filter>
-            <!-- Backward compatibility for provider links shared before the generative:// scheme. -->
             <intent-filter android:label="Add provider">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

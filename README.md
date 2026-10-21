@@ -60,13 +60,13 @@ Generative can accept a link from a browser or another app to save a new provide
 URI format (replace placeholders with percent-encoded values):
 
 ```text
-generative://provider?name={name}&url={url}&key={key}&auth_type={auth_type}&provider_type={provider_type}&icon_url={icon_url}
+mg://provider?name={name}&url={url}&key={key}&auth_type={auth_type}&provider_type={provider_type}&icon_url={icon_url}
 ```
 
 Example:
 
 ```text
-generative://provider?name=My%20Gateway&url=https%3A%2F%2Fapi.example.com%2Fv1&key=YOUR_API_KEY&auth_type=platform&provider_type=chat-completions&icon_url=https%3A%2F%2Fexample.com%2Ficon.png
+mg://provider?name=My%20Gateway&url=https%3A%2F%2Fapi.example.com%2Fv1&key=YOUR_API_KEY&auth_type=platform&provider_type=chat-completions&icon_url=https%3A%2F%2Fexample.com%2Ficon.png
 ```
 
 - `provider_type` defaults to `chat-completions`. Other supported values include `responses`, `anthropic`, `gemini`, `ollama`, `antigravity`, `github-copilot`, `openai-codex`, and `claude-code`.
@@ -74,7 +74,7 @@ generative://provider?name=My%20Gateway&url=https%3A%2F%2Fapi.example.com%2Fv1&k
 - `key` is a credential value. The editor lets you adjust authentication details; OAuth providers use the editor's sign-in flow.
 - `icon_url` is optional and must be an HTTP(S) image URL.
 - Percent-encode parameter values, especially URLs or keys containing `&`, `+`, `=`, or `%`.
-- The legacy `mg://` scheme remains accepted for backward compatibility. The older `type`/`auth` parameter names are also accepted.
+- The legacy `generative://` scheme and `type`/`auth` parameter names are also accepted.
 
 Each deliberate opening creates a new provider rather than overwriting one with the same name or URL. Provider details are saved before the editor opens. Treat quick-add links containing credentials as sensitive and do not share them publicly.
 

@@ -144,7 +144,6 @@ import org.starfall.generative.shared.ui.dialogs.AppAlertDialog
 import org.starfall.generative.shared.ui.icons.FluentIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.SelectableOutlinedTextField
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SlideScreenContent
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,7 +159,6 @@ internal fun MachineDetailsScreen(
     onAuthorizeOAuth: suspend (GCloudOAuthClient) -> Result<Unit>,
     onStoreAndroidOAuthToken: suspend (GCloudOAuthClient, String) -> Result<Unit>
 ) {
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var type by remember(initial.id) { mutableStateOf(initial.type) }
     var host by remember(initial.id) { mutableStateOf(initial.host) }

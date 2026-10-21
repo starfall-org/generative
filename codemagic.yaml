@@ -6,12 +6,6 @@ workflows:
     environment:
       java: 21
     scripts:
-      - name: Fetch full git history
-        script: |
-          set -euo pipefail
-          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
-            git fetch --unshallow
-          fi
       - name: Set up Android SDK 37
         script: |
           set -euo pipefail
@@ -43,12 +37,6 @@ workflows:
       android_signing:
         - Generative
     scripts:
-      - name: Fetch full git history
-        script: |
-          set -euo pipefail
-          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
-            git fetch --unshallow
-          fi
       - name: Set up Android SDK 37
         ignore_failure: false
         script: |
