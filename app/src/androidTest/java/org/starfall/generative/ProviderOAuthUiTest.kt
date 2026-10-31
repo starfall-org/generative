@@ -68,7 +68,7 @@ class ProviderOAuthUiTest {
         var selected: ProviderOAuthAccount? = null
         var open by mutableStateOf(true)
         compose.setContent { MaterialTheme { if (open) {
-            ProviderOAuthAccountsDialog(accounts, "second", false, false, onSelect = { selected = it; open = false },
+            ProviderOAuthAccountsDialog(providerType = ModelApiType.OPENAI, accounts = accounts, selectedId = "second", canAuthorize = false, canDelete = false, onSelect = { selected = it; open = false },
                 onSaveLabel = { _, _ -> }, onAuthorize = { _, _ -> error("unused") },
                 onCancelAuthorization = {}, onDelete = { error("unused") }, onDismiss = { open = false })
         } } }

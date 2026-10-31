@@ -18,13 +18,28 @@ data class DiscoveredModel(
                     (it[key] as? JsonPrimitive)?.longOrNull?.let { budget -> budget > 0 } == true
                 }
         }
+        // Some account providers (Gemini CLI / Devin) expose flat capability fields rather
+        // than the nested capabilities.supports shape. Preserve both representations.
+        fun stringSet(key: String): Set<String>? = (metadata[key] as? JsonArray)?.mapNotNull {
+            (it as? JsonPrimitive)?.contentOrNull
+        }?.toSet()
+        val modalities = stringSet("supportedInputModalities")
+        val parameters = stringSet("supportedParameters")
+        val methods = stringSet("supportedGenerationMethods")
+        val modelThinking = metadata["thinking"] as? JsonObject
+        val levels = (modelThinking?.get("levels") as? JsonArray).orEmpty().mapNotNull {
+            (it as? JsonPrimitive)?.contentOrNull?.takeIf(SELECTABLE_REASONING_EFFORTS::contains)
+        }
         return ModelConfiguration(displayName = displayName,
             contextWindowTokens = contextWindowTokens ?: DEFAULT_CONTEXT_WINDOW_TOKENS,
-            supportsVision = supported("vision") ?: true,
+            supportsVision = supported("vision") ?: (modalities?.contains("image") ?: true),
+            supportsVideoInput = modalities?.contains("video") ?: false,
+            supportsAudioInput = modalities?.contains("audio") ?: false,
             supportsThinking = thinking ?: true,
-            supportsToolCalls = supported("tool_calls") ?: true,
+            reasoningEfforts = levels.ifEmpty { DEFAULT_REASONING_EFFORTS },
+            supportsToolCalls = supported("tool_calls") ?: (parameters?.contains("tools") ?: true),
             modelTools = modelToolsFromMetadata(metadata),
-            supportStream = supported("streaming"),
+            supportStream = supported("streaming") ?: methods?.contains("streamGenerateContent"),
             modelJson = metadata)
     }
 }

@@ -28,6 +28,8 @@ data class ProviderConfiguration(
     val antigravityChangelist: String? = null,
     // Optional per-credential project overrides; blank/absent entries use discovery/onboarding.
     val antigravityProjectIds: Map<String, String> = emptyMap(),
+    /** Optional project ID override per Gemini CLI OAuth credential. */
+    val geminiCliProjectIds: Map<String, String> = emptyMap(),
     // Only used by Anthropic Messages providers; on by default.
     val anthropicPromptCache: AnthropicPromptCache = AnthropicPromptCache()
 )

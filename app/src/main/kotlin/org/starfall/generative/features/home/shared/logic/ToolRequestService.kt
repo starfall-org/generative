@@ -66,6 +66,10 @@ internal class ToolRequestService(
         onUsage: suspend (TokenUsage) -> Unit = {},
         sessionKey: String? = null
     ): JsonObject {
+        if (p.type == ModelApiType.DEVIN) {
+            aiService.accountToolTurn(p, model, history, tools, prompt, sendThinking,
+                onText, onReasoning, onUsage, sessionKey)?.let { return it }
+        }
         val defs = JsonArray(tools.map { obj("type" to str("function"),"function" to obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema)) })
         val wireProvider = aiService.prepareAccountProvider(p, model)
         val base = providerBase(wireProvider)
@@ -74,7 +78,9 @@ internal class ToolRequestService(
             stream: Boolean, text: suspend (String) -> Unit, reasoning: suspend (String) -> Unit = {}): JsonObject {
             val scopedBody = if (p.type == ModelApiType.OPENAI_CODEX && !sessionKey.isNullOrBlank())
                 JsonObject(body + (CODEX_SESSION_SCOPE to str(sessionKey))) else body
-            val requestBody = if (p.type == ModelApiType.ANTIGRAVITY)
+            // Cloud Code's account envelopes place model outside the native Gemini request;
+            // the ordinary Gemini tool path omits it, so attach the selected model here.
+            val requestBody = if (p.type in setOf(ModelApiType.ANTIGRAVITY, ModelApiType.GEMINI_CLI))
                 JsonObject(scopedBody + ("model" to str(model))) else scopedBody
             val requestProvider = aiService.prepareAccountRequest(p, provider, requestBody)
             val upstreamStream = aiService.accountShouldStreamUpstream(p, requestProvider, model, stream)

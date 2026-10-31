@@ -6,7 +6,9 @@ fun ModelApiType.defaultAuthorization(): Authorization = when (this) {
     ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES, ModelApiType.ANTHROPIC, ModelApiType.GOOGLE ->
         Authorization(method = AuthMethod.PLATFORM_DEFAULT, value = "")
 
-    ModelApiType.OPENAI_CODEX, ModelApiType.CLAUDE_CODE, ModelApiType.ANTIGRAVITY, ModelApiType.GITHUB_COPILOT ->
+    ModelApiType.OPENAI_CODEX, ModelApiType.CLAUDE_CODE, ModelApiType.ANTIGRAVITY, ModelApiType.GITHUB_COPILOT,
+    ModelApiType.GROK_BUILD, ModelApiType.META_MUSE,
+    ModelApiType.GEMINI_CLI, ModelApiType.DEVIN ->
         Authorization(method = AuthMethod.OAUTH, value = "")
 
     ModelApiType.OLLAMA ->

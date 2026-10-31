@@ -215,8 +215,45 @@ fun ConversationSideDrawer(
                         )
                     }
             ) {
+            // Keep Remote/Media shortcuts mounted in both normal and selection modes.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DrawerQuickShortcuts(
+                    onOpenMediaStorage = {
+                        unfocusSearch()
+                        onOpenMediaStorage()
+                    },
+                    onOpenRemoteMachines = {
+                        unfocusSearch()
+                        onOpenRemoteMachines()
+                    },
+                    onEditRemoteMachine = { machine ->
+                        unfocusSearch()
+                        onEditRemoteMachine(machine)
+                    },
+                    onOpenTerminal = { machine ->
+                        unfocusSearch()
+                        onOpenTerminal(machine)
+                    },
+                    onSaveMachineTools = onSaveMachineTools,
+                    modifier = Modifier.testTag("conversation_drawer_quick_shortcuts"),
+                    maxExpandedHeight = halfDrawerHeight
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
             if (selecting) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                        .testTag("conversation_drawer_selection_bar"),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = ::stopSelecting) { SharedIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
                     Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
@@ -230,38 +267,6 @@ fun ConversationSideDrawer(
                     IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    DrawerQuickShortcuts(
-                        onOpenMediaStorage = {
-                            unfocusSearch()
-                            onOpenMediaStorage()
-                        },
-                        onOpenRemoteMachines = {
-                            unfocusSearch()
-                            onOpenRemoteMachines()
-                        },
-                        onEditRemoteMachine = { machine ->
-                            unfocusSearch()
-                            onEditRemoteMachine(machine)
-                        },
-                        onOpenTerminal = { machine ->
-                            unfocusSearch()
-                            onOpenTerminal(machine)
-                        },
-                        onSaveMachineTools = onSaveMachineTools,
-                        maxExpandedHeight = halfDrawerHeight
-                    )
-                }
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                )
             }
             with(Launcher) {
                 Host(folderDrag, modifier = Modifier.weight(1f).fillMaxWidth(), preview = { drag ->

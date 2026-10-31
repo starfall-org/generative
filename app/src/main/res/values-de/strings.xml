@@ -391,6 +391,7 @@
     <string name="model_id_required">Die Modell-ID ist erforderlich.</string>
     <string name="model_id_no_whitespace">Die Modell-ID darf keine Leerzeichen enthalten.</string>
     <string name="model_id_duplicate">Dieser Modellanbieter hat bereits ein Modell mit dieser ID.</string>
+    <string name="model_options_empty">Für dieses Modell sind keine weiteren Optionen verfügbar.</string>
     <string name="model_options_title">Modelloptionen</string>
     <string name="model_tools_hint">Integrierte Tools, die dieses Sprachmodell unterstützt, werden in der Modell-API-Anfrage mitgesendet.</string>
     <string name="send_thinking_content_back_hint">Automatisch sendet früheres Denken nur in Chats mit Tool-Aufrufen zurück. An sendet es immer zurück. Aus niemals.</string>

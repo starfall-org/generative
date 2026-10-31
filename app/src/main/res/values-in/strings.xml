@@ -391,6 +391,7 @@
     <string name="model_id_required">ID model wajib diisi.</string>
     <string name="model_id_no_whitespace">ID model tidak boleh memuat spasi.</string>
     <string name="model_id_duplicate">Penyedia model ini sudah memiliki model dengan ID tersebut.</string>
+    <string name="model_options_empty">Tidak ada opsi tambahan untuk model ini.</string>
     <string name="model_options_title">Opsi Model</string>
     <string name="model_tools_hint">Bawaan yang didukung model bahasa ini, dikirim dalam permintaan API model.</string>
     <string name="send_thinking_content_back_hint">Otomatis hanya mengirim kembali berpikir sebelumnya pada obrolan dengan pemanggilan alat. Aktif selalu mengirimkannya. Nonaktif tidak pernah.</string>

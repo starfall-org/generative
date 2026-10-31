@@ -391,6 +391,7 @@
     <string name="model_id_required">ID mô hình là bắt buộc.</string>
     <string name="model_id_no_whitespace">ID mô hình không được chứa khoảng trắng.</string>
     <string name="model_id_duplicate">Nhà cung cấp mô hình này đã có mô hình trùng ID.</string>
+    <string name="model_options_empty">Mô hình này không có tùy chọn bổ sung.</string>
     <string name="model_options_title">Tùy chọn mô hình</string>
     <string name="model_tools_hint">Các công cụ tích hợp mà mô hình ngôn ngữ này hỗ trợ sẽ được gửi kèm yêu cầu API của mô hình.</string>
     <string name="send_thinking_content_back_hint">Tự động chỉ gửi lại suy luận trước đó ở những chat có lệnh gọi công cụ. Luôn luôn gửi lại. Không bao giờ thì không bao giờ gửi lại.</string>
@@ -1122,4 +1123,7 @@
     <string name="media_profile_require_model">Yêu cầu có model</string>
     <string name="media_chain_test_no_model_note">Chạy thử có thể phát sinh phí. Không hỗ trợ tệp đầu vào ở đây.</string>
     <string name="shared_attachment_failed">Không thể đính kèm một hoặc nhiều tệp được chia sẻ</string>
+    <string name="device_code_login_hint">Nhập mã này trong trình duyệt tại:</string>
+    <string name="device_code_clip_label">Mã đăng nhập thiết bị</string>
+    <string name="provider_gemini_cli_project_id">ID dự án Gemini CLI (tùy chọn)</string>
 </resources>

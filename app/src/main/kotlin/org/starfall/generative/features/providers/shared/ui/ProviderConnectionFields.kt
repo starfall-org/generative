@@ -132,6 +132,17 @@ internal fun AntigravityProjectIdField(value: String, onChange: (String) -> Unit
 }
 
 @Composable
+internal fun GeminiCliProjectIdField(value: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange,
+        label = { Text(stringResource(R.string.provider_gemini_cli_project_id)) },
+        keyboardOptions = literalInputKeyboardOptions,
+        visualTransformation = VisualTransformation.None,
+        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("gemini-cli-project-id")
+    )
+}
+
+@Composable
 internal fun ProviderAuthField(
     method: AuthMethod,
     value: String,

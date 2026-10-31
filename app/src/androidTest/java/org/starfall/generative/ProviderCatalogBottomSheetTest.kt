@@ -70,12 +70,12 @@ class ProviderCatalogBottomSheetTest {
             )
         } }
         compose.onNodeWithTag("bottom-sheet-window").assertIsDisplayed()
-        val loadingHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        val loadingTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
         fetched.complete(listOf(DiscoveredModel("one", displayName = "Only model")))
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Only model").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
-        val loadedHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("Short results must shrink the sheet from its initial 78%", loadedHeight < loadingHeight - 20f)
+        val loadedTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Short results must shrink the sheet from its initial 78%", loadedTop > loadingTop + 20f)
         compose.onNodeWithText("Only model").assertIsDisplayed()
         compose.onNodeWithTag("provider_model_catalog_search_button").assertIsDisplayed()
     }
@@ -91,12 +91,12 @@ class ProviderCatalogBottomSheetTest {
             )
         } }
         compose.onNodeWithTag("bottom-sheet-window").assertIsDisplayed()
-        val loadingHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        val loadingTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
         fetched.complete((0 until 80).map { DiscoveredModel("model-$it", displayName = "Model $it") })
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Model 0").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
-        val loadedHeight = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("Long results must grow the sheet above its initial 78%", loadedHeight > loadingHeight + 20f)
+        val loadedTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Long results must grow the sheet above its initial 78%", loadedTop < loadingTop - 20f)
         val list = compose.onNodeWithTag("provider-model-catalog-list").assertIsDisplayed()
         list.performScrollToIndex(79)
         list.performTouchInput { swipeUp(durationMillis = 400) }
@@ -144,9 +144,9 @@ class ProviderCatalogBottomSheetTest {
         assertTrue("Catalog toolbar must be above the model list", toolbar.bottom <= list.top)
         compose.onNodeWithTag("provider_model_catalog_search_button").assertIsDisplayed()
         compose.onNodeWithTag("provider_model_catalog_search").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Select all visible models").performClick()
+        compose.onNodeWithContentDescription(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.select_all_visible_models)).performClick()
         compose.runOnIdle { assertEquals(setOf("alpha", "beta"), selected) }
-        compose.onNodeWithContentDescription("Deselect all visible models").performClick()
+        compose.onNodeWithContentDescription(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.provider_deselect_visible_models)).performClick()
         compose.runOnIdle { assertEquals(emptySet<String>(), selected) }
 
         compose.onNodeWithTag("provider_model_catalog_search_button").performClick()
@@ -156,6 +156,7 @@ class ProviderCatalogBottomSheetTest {
         compose.onNodeWithText("Beta model").assertDoesNotExist()
         // Dismissing the IME must collapse the editor, not reset the search filter.
         compose.onNodeWithTag("provider_model_catalog_search").performImeAction()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("provider_model_catalog_search_button").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("provider_model_catalog_search_button").assertIsDisplayed()
         compose.onNodeWithText("Alpha model").assertIsDisplayed()
         compose.onNodeWithText("Beta model").assertDoesNotExist()
@@ -164,7 +165,7 @@ class ProviderCatalogBottomSheetTest {
         compose.onNodeWithText("Beta model").assertDoesNotExist()
         compose.onNodeWithTag("provider_model_catalog_search").performTextClearance()
         compose.onNodeWithText("Beta model").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Refresh models").performClick()
+        compose.onNodeWithContentDescription(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.refresh_models)).performClick()
         compose.waitUntil(5_000) { refreshes >= 2 }
     }
 }

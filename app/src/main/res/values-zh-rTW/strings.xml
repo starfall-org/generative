@@ -391,6 +391,7 @@
     <string name="model_id_required">模型 ID 為必填。</string>
     <string name="model_id_no_whitespace">模型 ID 不得包含空格。</string>
     <string name="model_id_duplicate">此模型供應商已有相同 ID 的模型。</string>
+    <string name="model_options_empty">此模型沒有可用的其他選項。</string>
     <string name="model_options_title">模型選項</string>
     <string name="model_tools_hint">該語言模型支援的內建工具會隨模型 API 請求一併送出。</string>
     <string name="send_thinking_content_back_hint">「自動」只在含有工具呼叫的聊天中回傳先前的推理；「一律」永遠回傳；「永不」則永不回傳。</string>

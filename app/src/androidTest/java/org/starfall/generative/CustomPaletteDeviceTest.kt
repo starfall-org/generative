@@ -27,6 +27,21 @@ import org.starfall.generative.shared.storage.preferences.UserProfile
 class CustomPaletteDeviceTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun colorsAndInputAreaHaveAlignedLeadingIcons() {
+        compose.setContent { MaterialTheme {
+            CustomizationScreen(profile = UserProfile(), onChange = {}, onBack = {})
+        } }
+        val list = compose.onNodeWithTag("customization-list")
+        list.performScrollToKey("colors")
+        val colorIcon = compose.onNodeWithTag("customization-colors-setting-icon", useUnmergedTree = true)
+            .assertExists().fetchSemanticsNode().boundsInRoot
+        list.performScrollToKey("input-area")
+        val inputIcon = compose.onNodeWithTag("customization-input-setting-icon", useUnmergedTree = true)
+            .assertExists().fetchSemanticsNode().boundsInRoot
+        assertEquals(colorIcon.left, inputIcon.left, 1f)
+        assertEquals(colorIcon.width, inputIcon.width, 1f)
+    }
+
     @Test fun opacityAndColorsAreOwnedByCustomizationNotAppearance() {
         var preferences by mutableStateOf(AppPreferences(useDynamicColor = false))
         compose.setContent { MaterialTheme {

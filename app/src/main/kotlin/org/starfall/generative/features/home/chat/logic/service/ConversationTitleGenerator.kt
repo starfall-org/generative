@@ -62,7 +62,7 @@ internal class ConversationTitleGenerator(
                 if (error is CancellationException) throw error
             }.getOrNull().orEmpty()
             val title = raw.lineSequence().firstOrNull().orEmpty()
-                .trim().trim('"', '\'', '`').take(80)
+                .trim().trim('"', '\'', '`')
             if (title.isBlank() || isRestoreInProgress()) return@launch
 
             if (existingGeneration(conversationId)?.snapshot?.id == conversationId) {

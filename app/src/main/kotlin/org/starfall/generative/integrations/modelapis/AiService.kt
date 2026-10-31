@@ -17,10 +17,12 @@ import org.starfall.generative.shared.logging.DebugLogKtorPlugin
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.withoutEmptyModelMessages
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.CredentialLoadState
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.shared.model.generation.hasToolCalls
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -129,6 +131,18 @@ class AiService(
             if (modelName == null) adapter.prepareAuthenticatedProvider(resolved) else adapter.prepareModelProvider(resolved, modelName)
         }
             ?: resolved
+    }
+
+    suspend fun accountToolTurn(
+        provider: ModelProvider, modelName: String, history: List<JsonObject>,
+        tools: List<ToolDefinition>, systemPrompt: String, sendThinking: Boolean,
+        onText: suspend (String) -> Unit, onReasoning: suspend (String) -> Unit,
+        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?
+    ): JsonObject? {
+        val resolved = resolveProvider(provider)
+        return accountAdapters.get(resolved.type)?.requestToolTurn(
+            resolved, modelName, history, tools, systemPrompt, sendThinking,
+            onText, onReasoning, onUsage, sessionKey)
     }
 
     fun normalizeAccountToolRequest(

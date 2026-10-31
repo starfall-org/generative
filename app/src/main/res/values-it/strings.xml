@@ -391,6 +391,7 @@
     <string name="model_id_required">L\'ID del modello è obbligatorio.</string>
     <string name="model_id_no_whitespace">L\'ID del modello non può contenere spazi.</string>
     <string name="model_id_duplicate">Questo provider di modelli ha già un modello con questo ID.</string>
+    <string name="model_options_empty">Non sono disponibili altre opzioni per questo modello.</string>
     <string name="model_options_title">Opzioni del modello</string>
     <string name="model_tools_hint">Strumenti integrati supportati da questo modello di lingua, inviati nella richiesta API del modello.</string>
     <string name="send_thinking_content_back_hint">Auto reinvia il ragionamento precedente solo nelle chat con chiamate di strumenti. On lo reinvia sempre. Off mai.</string>

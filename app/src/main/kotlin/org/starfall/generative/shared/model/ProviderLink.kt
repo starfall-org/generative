@@ -35,6 +35,10 @@ fun parseProviderLink(uri: Uri): ModelProvider {
         "github-copilot" -> ModelApiType.GITHUB_COPILOT
         "openai-codex" -> ModelApiType.OPENAI_CODEX
         "claude-code" -> ModelApiType.CLAUDE_CODE
+        "grok-build" -> ModelApiType.GROK_BUILD
+        "meta-muse" -> ModelApiType.META_MUSE
+        "gemini-cli" -> ModelApiType.GEMINI_CLI
+        "devin" -> ModelApiType.DEVIN
         else -> throw IllegalArgumentException("Unsupported provider type in link.")
     }
     val method = when (option("auth_type", "auth", "platform")) {

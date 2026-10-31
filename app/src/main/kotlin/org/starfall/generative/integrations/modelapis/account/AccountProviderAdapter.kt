@@ -7,6 +7,8 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolDefinition
+import org.starfall.generative.shared.model.generation.TokenUsage
 
 /**
  * Boundary for account-backed providers that do not use a normal API key.
@@ -64,6 +66,14 @@ internal interface AccountProviderAdapter {
     fun requestUrl(sourceProvider: ModelProvider, wireProvider: ModelProvider, defaultUrl: String): String = defaultUrl
 
     fun unwrapResponse(response: JsonObject): JsonObject = response
+
+    /** Non-HTTP/JSON transports (e.g. Devin Connect-RPC) own a complete tool turn. */
+    suspend fun requestToolTurn(
+        provider: ModelProvider, modelName: String, history: List<JsonObject>,
+        tools: List<ToolDefinition>, systemPrompt: String, sendThinking: Boolean,
+        onText: suspend (String) -> Unit, onReasoning: suspend (String) -> Unit,
+        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?
+    ): JsonObject? = null
 
     fun clearCredentials(providerId: String)
 

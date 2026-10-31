@@ -1,11 +1,16 @@
 package org.starfall.generative
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.test.espresso.Espresso
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
@@ -25,7 +30,7 @@ class BottomSheetResizeBehaviorTest {
 
     private var fullHeight = 0f
 
-    @Test fun shortSheetOpensAtOneThirdAndKeepsTheLastItemVisible() {
+    @Test fun shortSheetOpensAtContentHeightAndKeepsTheLastItemVisible() {
         compose.activityRule.scenario.onActivity { WindowCompat.setDecorFitsSystemWindows(it.window, false) }
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
@@ -34,12 +39,13 @@ class BottomSheetResizeBehaviorTest {
                 Text("Last item", Modifier.fillMaxWidth().padding(16.dp))
             }
         } }
-        val sheet = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
-        assertEquals(fullHeight / 3f, sheet.height, 2f)
+        compose.waitForIdle()
+        val sheetTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Short content should not default to a half-screen sheet", sheetTop > fullHeight * 0.55f)
         compose.onNodeWithText("Last item").assertIsDisplayed()
     }
 
-    @Test fun aFewLazyItemsUseContentHeightAndManyItemsUseTheMaximum() {
+    @Test fun lazyItemsUseMeasuredPeekAndCanExpandToMaximum() {
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
@@ -52,40 +58,90 @@ class BottomSheetResizeBehaviorTest {
                 }
             }
         } }
-        val height = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
-        assertTrue(height >= fullHeight / 3f - 2)
-        assertTrue(height < fullHeight - 24)
+        compose.waitForIdle()
+        val defaultTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Measured list height should not be forced full-screen", defaultTop > 25f)
         compose.onNodeWithText("Item 6").assertIsDisplayed()
+        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        val expandedTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Maximum must still be reachable", expandedTop < defaultTop)
     }
 
-    @Test fun draggingKeepsTwoDifferentIntermediateHeightsAndClampsAtOneThird() {
+    @Test fun linkedSheetBackNavigatesWithinDialogBeforeRootDismissal() {
+        var subpage by mutableStateOf(true)
+        var dismissed = false
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = { dismissed = true }, dismissOnBack = !subpage) {
+                    if (subpage) BackHandler { subpage = false }
+                    Text(if (subpage) "Nested sheet" else "Root sheet", Modifier.padding(16.dp))
+                }
+            }
+        }
+        compose.onNodeWithText("Nested sheet").assertIsDisplayed()
+        Espresso.pressBack()
+        compose.waitForIdle()
+        compose.onNodeWithText("Root sheet").assertIsDisplayed()
+        assertFalse(dismissed)
+        Espresso.pressBack()
+        compose.waitForIdle()
+        assertTrue(dismissed)
+    }
+
+    @Test fun modalScrimDismissesTheNativeSheet() {
+        var dismissed = false
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = { dismissed = true }) {
+                    Text("Short sheet", Modifier.padding(16.dp))
+                }
+            }
+        }
+        compose.onNodeWithTag("bottom-sheet-scrim").performClick()
+        compose.runOnIdle { assertTrue(dismissed) }
+    }
+
+    @Test fun longContentOpensAtMaximumWithoutHalfHeightStop() {
         var dismissed = false
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
-            BottomSheet(onDismissRequest = { dismissed = true }) {
-                Box(Modifier.fillMaxWidth().fillMaxHeight())
+                BottomSheet(onDismissRequest = { dismissed = true }) {
+                    Box(Modifier.fillMaxSize())
+                }
             }
-        } }
+        }
+        compose.waitForIdle()
         val sheet = compose.onNodeWithTag("bottom-sheet-window")
         val handle = compose.onNodeWithTag("bottom-sheet-drag-handle")
-        val window = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot
-        val initial = sheet.fetchSemanticsNode().boundsInRoot.height
-        handle.performTouchInput { swipe(center, center + Offset(0f, fullHeight * 0.16f), durationMillis = 400) }
+        val initialTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Long content should open at maximum height", initialTop < fullHeight * 0.12f)
+        handle.performTouchInput { swipeUp() }
         compose.waitForIdle()
-        val first = sheet.fetchSemanticsNode().boundsInRoot.height
-        assertTrue(first < initial - fullHeight * 0.1f)
-        assertTrue(first > fullHeight / 3f + 20)
-        handle.performTouchInput { swipe(center, center + Offset(0f, fullHeight * 0.1f), durationMillis = 400) }
-        compose.waitForIdle()
-        val second = sheet.fetchSemanticsNode().boundsInRoot.height
-        assertTrue(second < first - fullHeight * 0.06f)
-        compose.mainClock.advanceTimeBy(1000)
-        assertEquals(second, sheet.fetchSemanticsNode().boundsInRoot.height, 1f)
-        val start = handle.fetchSemanticsNode().boundsInRoot.center.y
-        handle.performTouchInput { swipe(center, center + Offset(0f, window.bottom - start - 2f), durationMillis = 400) }
-        compose.waitForIdle()
-        assertEquals(fullHeight / 3f, sheet.fetchSemanticsNode().boundsInRoot.height, 2f)
+        val afterSwipe = sheet.fetchSemanticsNode().boundsInRoot.top
+        assertEquals("Long sheets have a single visible height", initialTop, afterSwipe, 5f)
         assertFalse(dismissed)
+    }
+
+    @Test fun contentHeightChangesRepositionTheNativePeek() {
+        var taller by mutableStateOf(false)
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = {}) {
+                    Column {
+                        Text("Short sheet", Modifier.padding(16.dp))
+                        if (taller) Spacer(Modifier.height(180.dp))
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        val sheet = compose.onNodeWithTag("bottom-sheet-window")
+        val shortTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        compose.runOnIdle { taller = true }
+        compose.waitForIdle()
+        val tallerTop = sheet.fetchSemanticsNode().boundsInRoot.top
+        assertTrue("The peek must track measured content without fixed percentages", tallerTop < shortTop)
     }
 }

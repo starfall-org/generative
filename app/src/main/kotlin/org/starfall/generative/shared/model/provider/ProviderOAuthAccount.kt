@@ -39,5 +39,6 @@ internal fun ModelProvider.removeOAuthAccount(accountId: String): ModelProvider 
         accounts.firstOrNull()?.authorization() ?: Authorization(AuthMethod.OAUTH)
     } else auth
     return copy(auth = nextAuth, config = config.copy(
-        oauthAccounts = accounts, antigravityProjectIds = config.antigravityProjectIds - accountId))
+        oauthAccounts = accounts, antigravityProjectIds = config.antigravityProjectIds - accountId,
+        geminiCliProjectIds = config.geminiCliProjectIds - accountId))
 }

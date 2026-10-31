@@ -391,6 +391,7 @@
     <string name="model_id_required">모델 ID는 필수입니다.</string>
     <string name="model_id_no_whitespace">모델 ID에는 공백을 넣을 수 없습니다.</string>
     <string name="model_id_duplicate">이 모델 제공업체에는 같은 ID의 모델이 이미 있습니다.</string>
+    <string name="model_options_empty">이 모델에 사용할 수 있는 추가 옵션이 없습니다.</string>
     <string name="model_options_title">모델 옵션</string>
     <string name="model_tools_hint">이 언어 모델이 지원하는 기본 도구는 모델 API 요청과 함께 전송됩니다.</string>
     <string name="send_thinking_content_back_hint">자동으로는 도구 호출이 있는 채팅에서만 이전 추론을 다시 보냅니다. 항상는 항상 보내고, 안 함은 전혀 보내지 않습니다.</string>

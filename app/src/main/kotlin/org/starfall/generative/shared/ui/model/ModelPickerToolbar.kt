@@ -2,8 +2,8 @@ package org.starfall.generative.shared.ui.model
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Box
@@ -28,7 +28,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +40,6 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -50,7 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.first
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.ui.icons.EntityIcon
@@ -76,28 +73,25 @@ internal fun ModelPickerToolbar(
     // and must survive collapsing this editor on focus or IME loss.
     var searchExpanded by remember { mutableStateOf(false) }
     var searchWasFocused by remember { mutableStateOf(false) }
-    var collapseAfterIme by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val imeInsets = WindowInsets.ime
-    val density = LocalDensity.current
     val imeVisible = WindowInsets.isImeVisible
-    // Keep the search field in the layout throughout the IME exit animation. Removing it
-    // mid-animation changes the sheet's content height while Material is moving the sheet.
-    LaunchedEffect(collapseAfterIme) {
-        if (collapseAfterIme) {
-            snapshotFlow { imeInsets.getBottom(density) }.first { it == 0 }
-            searchExpanded = false
-            collapseAfterIme = false
-        }
+    // The width animation retains the editor until the icon is ready. Do not await
+    // an IME-inset value here: some devices keep a stale inset after focus loss.
+    fun collapseSearch() {
+        keyboard?.hide()
+        searchExpanded = false
     }
     var imeWasVisible by remember { mutableStateOf(false) }
     LaunchedEffect(imeVisible) {
         if (imeVisible) imeWasVisible = true
         else if (imeWasVisible) {
             imeWasVisible = false
-            if (searchExpanded) focusManager.clearFocus(force = true)
+            if (searchExpanded) {
+                focusManager.clearFocus(force = true)
+                collapseSearch()
+            }
         }
     }
     LaunchedEffect(searchExpanded) {
@@ -137,7 +131,7 @@ internal fun ModelPickerToolbar(
             }
             // Keep the field mounted until its collapse animation finishes.
             Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
-                if (searchExpanded || searchWidth > 40.dp) {
+                if (searchExpanded || searchWidth > 41.dp) {
                     LaunchedEffect(Unit) { searchFocus.requestFocus() }
                     OutlinedTextField(
                         value = query,
@@ -156,7 +150,10 @@ internal fun ModelPickerToolbar(
                             capitalization = KeyboardCapitalization.Sentences,
                             imeAction = ImeAction.Search
                         ),
-                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus(); keyboard?.hide() }),
+                        keyboardActions = KeyboardActions(onSearch = {
+                            focusManager.clearFocus(force = true)
+                            collapseSearch()
+                        }),
                         shape = RoundedCornerShape(28.dp),
                         modifier = Modifier.fillMaxWidth()
                             .focusRequester(searchFocus)
@@ -164,14 +161,9 @@ internal fun ModelPickerToolbar(
                             .onFocusChanged { focus ->
                                 if (focus.isFocused) {
                                     searchWasFocused = true
-                                    collapseAfterIme = false
                                 } else if (searchWasFocused) {
                                     searchWasFocused = false
-                                    if (imeInsets.getBottom(density) > 0) {
-                                        collapseAfterIme = true
-                                    } else {
-                                        searchExpanded = false
-                                    }
+                                    collapseSearch()
                                 }
                             }
                             .testTag("model-picker-search")

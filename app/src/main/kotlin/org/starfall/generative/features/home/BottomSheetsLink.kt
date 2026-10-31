@@ -43,6 +43,7 @@ import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.features.home.shared.ui.McpConnectorsSheetContent
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
 import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewContent
+import org.starfall.generative.features.home.shared.ui.SelectedModelOptionsSheetContent
 import org.starfall.generative.features.home.shared.ui.rememberPreviewTier
 import org.starfall.generative.features.home.shared.ui.selectedModelSheetStyle
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
@@ -60,13 +61,14 @@ internal enum class QuickActionsPage {
 
 internal enum class ModelSheetPage {
     SELECTED_MODEL,
+    MODEL_OPTIONS,
     MODEL_PICKER,
     MODEL_PICKER_FROM_OVERVIEW,
     SUMMARY,
 }
 
 internal class BottomSheetsLinkState {
-    /** The selected-model overview, model picker, and summarization share one sheet. */
+    /** Model overview, options, model picker, and summarization share one sheet. */
     var modelSheetPage by mutableStateOf<ModelSheetPage?>(null)
         private set
     val renderedModelSheetPage: ModelSheetPage?
@@ -82,6 +84,7 @@ internal class BottomSheetsLinkState {
     fun openAddMenu() { quickActionsPage = QuickActionsPage.ROOT }
     fun openModelPicker() { modelSheetPage = ModelSheetPage.MODEL_PICKER }
     fun openSelectedModelOverview() { modelSheetPage = ModelSheetPage.SELECTED_MODEL }
+    fun openModelOptions() { modelSheetPage = ModelSheetPage.MODEL_OPTIONS }
     /** Moves the open sheet from the overview to the picker in place. */
     fun switchToModelPicker() { modelSheetPage = ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW }
     fun openSummary() { modelSheetPage = ModelSheetPage.SUMMARY }
@@ -352,7 +355,8 @@ internal fun BottomSheetsLink(
                 SlideSheetContent(
                     page = modelSheetPage.takeUnless { it == ModelSheetPage.SELECTED_MODEL },
                     onBack = {
-                        if (sheets.modelSheetPage == ModelSheetPage.SUMMARY) sheets.openSelectedModelOverview()
+                        if (sheets.modelSheetPage == ModelSheetPage.SUMMARY ||
+                            sheets.modelSheetPage == ModelSheetPage.MODEL_OPTIONS) sheets.openSelectedModelOverview()
                         else sheets.backFromModelPicker()
                     },
                     label = "Model sheet"
@@ -389,6 +393,22 @@ internal fun BottomSheetsLink(
                             // Allow the picker to wrap short results; its scrollable list handles long results.
                             onDismiss = { sheets.dismissModelSheet() }
                         )
+                    } else if (target == ModelSheetPage.MODEL_OPTIONS) {
+                        val providerId = selectedProvider?.id
+                        val configKey = selectedConfigEntry?.key ?: selectedModelName
+                        SelectedModelOptionsSheetContent(
+                            modelId = selectedModelName.ifBlank { selectedConfig.displayName },
+                            config = selectedConfig,
+                            providerName = selectedProvider?.name,
+                            onBack = { if (pageActive) sheets.openSelectedModelOverview() },
+                            onSetThinkingPassback = if (providerId != null && configKey.isNotBlank()) {
+                                { mode -> onSetThinkingPassback(providerId, configKey, mode) }
+                            } else null,
+                            onSetModelTools = if (providerId != null && configKey.isNotBlank() &&
+                                selectedConfig.supportedModelTools.isNotEmpty()) {
+                                { tools -> onSetModelTools(providerId, configKey, tools) }
+                            } else null
+                        )
                     } else if (target == ModelSheetPage.SUMMARY) {
                         if (onStartSummary != null) {
                             ConversationSummarySheetContent(
@@ -412,23 +432,8 @@ internal fun BottomSheetsLink(
                                     onSetModelReasoningEffort(selectedProvider.id, selectedConfigEntry.key, effort)
                                 }
                             },
-                            // Available as soon as the sheet opens; a model without a saved configuration gets one
-                            // created when the choice is stored.
-                            onSetModelTools = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
-                                selectedProvider != null && it.isNotBlank() && selectedConfig.supportedModelTools.isNotEmpty()
-                            }?.let { configKey ->
-                                val providerId = selectedProvider!!.id
-                                val setTools: (List<String>) -> Unit = { tools -> onSetModelTools(providerId, configKey, tools) }
-                                setTools
-                            },
-                            onSetThinkingPassback = (selectedConfigEntry?.key ?: selectedModelName).takeIf {
-                                selectedProvider != null && it.isNotBlank()
-                            }?.let { configKey ->
-                                val providerId = selectedProvider!!.id
-                                val setPassback: (ThinkingPassback) -> Unit = { mode -> onSetThinkingPassback(providerId, configKey, mode) }
-                                setPassback
-                            },
                             onOpenModelPicker = { if (pageActive) sheets.switchToModelPicker() },
+                            onOpenModelOptions = { if (pageActive) sheets.openModelOptions() },
                             contextWindowContent = contextWindowContent,
                             onSummarize = onStartSummary?.let {
                                 { if (pageActive) sheets.openSummary() }

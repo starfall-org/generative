@@ -5,6 +5,10 @@ import org.starfall.generative.integrations.modelapis.openaicodex.OpenAICodexAda
 import org.starfall.generative.integrations.modelapis.claudecode.ClaudeCodeAdapter
 import org.starfall.generative.integrations.modelapis.antigravity.AntigravityAdapter
 import org.starfall.generative.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
+import org.starfall.generative.integrations.modelapis.grokbuild.GrokBuildAdapter
+import org.starfall.generative.integrations.modelapis.metamuse.MetaMuseAdapter
+import org.starfall.generative.integrations.modelapis.geminicli.GeminiCliAdapter
+import org.starfall.generative.integrations.modelapis.devin.DevinAdapter
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.files.AttachmentResolver
 import kotlinx.serialization.json.JsonObject
@@ -18,7 +22,11 @@ internal class AccountProviderAdapterRegistry(
         OpenAICodexAdapter(context, attachments),
         ClaudeCodeAdapter(context, attachments),
         AntigravityAdapter(context, attachments),
-        GitHubCopilotAdapter(context, attachments)
+        GitHubCopilotAdapter(context, attachments),
+        GrokBuildAdapter(context, attachments),
+        MetaMuseAdapter(context, attachments),
+        GeminiCliAdapter(context, attachments),
+        DevinAdapter(context, attachments)
     ).associateBy { it.providerType }
 
     fun get(type: ModelApiType): AccountProviderAdapter? = adapters[type]

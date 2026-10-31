@@ -148,8 +148,7 @@ internal class ChatMessageActions(
                 listOf(generatedVersion(baseProvider, modelId, now.toString()))
             )
             val firstMessage = existing == null || existing.messages.isEmpty()
-            val fallbackSource = userText.ifBlank { "Attachment" }
-            val fallbackTitle = fallbackSource.take(30) + if (fallbackSource.length > 30) "..." else ""
+            val fallbackTitle = conversationFallbackTitle(userText)
             val conv = (existing ?: Conversation(
                 id = UUID.randomUUID().toString(),
                 title = fallbackTitle,
@@ -206,10 +205,9 @@ internal class ChatMessageActions(
                     minimumWords = titleSettings?.titleGenerationMinWords ?: DEFAULT_TITLE_GENERATION_MIN_WORDS,
                     minimumMessages = titleSettings?.titleGenerationMinMessages ?: DEFAULT_TITLE_GENERATION_MIN_MESSAGES
                 )) {
-                val originalUserText = conv.messages.firstOrNull { it.role == ChatRole.USER }?.content
-                    .orEmpty().ifBlank { "Attachment" }
-                val expectedFallbackTitle = originalUserText.take(30) +
-                    if (originalUserText.length > 30) "..." else ""
+                val expectedFallbackTitle = conversationFallbackTitle(
+                    conv.messages.firstOrNull { it.role == ChatRole.USER }?.content.orEmpty()
+                )
                 conversationTitleGenerator.generate(conv, expectedFallbackTitle)
             }
             started
@@ -233,10 +231,10 @@ internal class ChatMessageActions(
         val existing = _currentConversation.value
         val isFirstMessage = existing == null || existing.messages.isEmpty()
         val conversation = (existing ?: Conversation(
-            id = UUID.randomUUID().toString(), title = request.prompt.take(30),
+            id = UUID.randomUUID().toString(), title = conversationFallbackTitle(request.prompt),
             createdAt = now, updatedAt = now
         )).copy(
-            title = if (isFirstMessage) request.prompt.take(30) else existing.title,
+            title = if (isFirstMessage) conversationFallbackTitle(request.prompt) else existing.title,
             messages = existing?.messages.orEmpty() + user + assistant,
             updatedAt = now,
             structuralRevision = (existing?.structuralRevision ?: 0L) + 1L
@@ -565,3 +563,6 @@ internal fun editedMessageVersion(
             modelDisplayName = previous.modelDisplayName)
     }
 }
+
+/** Keep the full fallback title; the drawer ellipsizes only at render time. */
+internal fun conversationFallbackTitle(text: String): String = text.ifBlank { "Attachment" }

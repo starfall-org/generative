@@ -81,7 +81,7 @@ internal fun QuickActionsSheetContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AddActionTile(
-                icon = Icons.Outlined.Image,
+                icon = Icons.Outlined.FolderOpen,
                 label = stringResource(R.string.quick_action_photos),
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -99,7 +99,7 @@ internal fun QuickActionsSheetContent(
                 }
             )
             AddActionTile(
-                icon = Icons.Outlined.Description,
+                icon = Icons.Outlined.UploadFile,
                 label = stringResource(R.string.common_files),
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -111,18 +111,24 @@ internal fun QuickActionsSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        AddActionRow(
-            icon = Icons.Outlined.Image,
-            title = stringResource(R.string.common_image),
-            subtitle = stringResource(R.string.quick_action_image_description),
-            onClick = { onCreateImage(); onDismiss() }
-        )
-        AddActionRow(
-            icon = Icons.Outlined.Videocam,
-            title = stringResource(R.string.common_video),
-            subtitle = stringResource(R.string.quick_action_video_description),
-            onClick = { onCreateVideo(); onDismiss() }
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().testTag("quick-actions-generation-row"),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AddGenerationCard(
+                icon = Icons.Outlined.Image,
+                label = stringResource(R.string.common_image),
+                modifier = Modifier.weight(1f).testTag("quick-actions-create-image"),
+                onClick = { onCreateImage(); onDismiss() }
+            )
+            AddGenerationCard(
+                icon = Icons.Outlined.Videocam,
+                label = stringResource(R.string.common_video),
+                modifier = Modifier.weight(1f).testTag("quick-actions-create-video"),
+                onClick = { onCreateVideo(); onDismiss() }
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         AddActionRow(
             icon = Icons.Outlined.Lightbulb,
             title = stringResource(R.string.common_skills),
@@ -221,6 +227,32 @@ private fun AddActionTile(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+/** Compact, horizontally oriented generation actions; the photo/document pickers remain separate. */
+@Composable
+private fun AddGenerationCard(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 58.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SharedIcon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
     }
 }

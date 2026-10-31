@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -86,6 +87,52 @@ class ConversationDrawerFocusTest {
         compose.onNodeWithTag("conversation_drawer_search").assertTextContains("Alpha")
         compose.onNodeWithTag("conversation_drawer_search").performTextClearance()
         compose.onNodeWithText("Beta chat").assertIsDisplayed()
+    }
+
+    @Test
+    fun selectionModeKeepsQuickShortcutsVisibleAboveSelectionToolbar() {
+        val chat = ConversationListItem(
+            id = "selected-chat", title = "A conversation whose full title is retained",
+            createdAt = 1L, updatedAt = 1L, tokenCount = null,
+            providerId = "", modelId = "", profileId = null,
+            reasoningEffort = null, hasMessages = true, hasSummary = false
+        )
+
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ConversationSideDrawer(
+                    conversations = listOf(chat),
+                    currentConversationId = null,
+                    isOpen = true,
+                    organization = SidebarOrganization(),
+                    onUpdateOrganization = {},
+                    onDeleteConversations = {},
+                    onSelectConversation = {},
+                    onNewChat = {},
+                    onRenameConversation = { _, _ -> },
+                    onDeleteConversation = {},
+                    onNavigateToSettings = {},
+                    onCloseDrawer = {}
+                )
+            }
+        }
+
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_drawer_selection_bar").assertDoesNotExist()
+
+        // Tapping a chat's leading icon opens the same selection menu as long-press.
+        compose.onNodeWithTag("conversation_icon_selected-chat").performClick()
+        compose.onNodeWithText("Select").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_drawer_selection_bar").assertIsDisplayed()
+        compose.onNodeWithText("A conversation whose full title is retained").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Exit selection").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("conversation_drawer_selection_bar").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
     }
 
     @Test

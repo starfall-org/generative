@@ -92,7 +92,7 @@ class HelixLiveTest {
             val prompt = "My project is Cedar. Launch is Friday. The theme is blue. Remember these facts. Reply with only HELIX_CHAT_OK."
             send(prompt)
             compose.waitUntil(120_000) { !chat.isGenerating.value && chat.currentConversation.value?.messages?.lastOrNull()?.content?.contains("HELIX_CHAT_OK") == true }
-            val fallback = prompt.take(30) + "..."
+            val fallback = prompt
             compose.waitUntil(120_000) { chat.currentConversation.value?.title?.let { it != fallback && it != "New Chat" } == true }
             assertNull(chat.chatError.value)
 

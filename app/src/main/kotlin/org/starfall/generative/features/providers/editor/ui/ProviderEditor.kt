@@ -39,6 +39,7 @@ import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
 import org.starfall.generative.features.providers.shared.ui.AnthropicPromptCacheSettings
 import org.starfall.generative.features.providers.shared.ui.AntigravityVersionFields
 import org.starfall.generative.features.providers.shared.ui.AntigravityProjectIdField
+import org.starfall.generative.features.providers.shared.ui.GeminiCliProjectIdField
 import org.starfall.generative.features.providers.shared.ui.CodexClientVersionField
 import org.starfall.generative.features.providers.shared.ui.ProviderApiKeysDialog
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
@@ -144,6 +145,7 @@ fun ProviderEditor(
     var oauthAccounts by remember(initialProvider.id) { mutableStateOf(initialProvider.oauthAccountsWithCurrent()) }
     var oauthAccountId by remember(initialProvider.id) { mutableStateOf(initialProvider.auth.oauthAccountId) }
     var showOAuthAccounts by remember { mutableStateOf(false) }
+    var geminiCliProjectIds by remember(initialProvider.id) { mutableStateOf(initialProvider.config.geminiCliProjectIds) }
     var oauthAuthorized by remember(initialProvider.id) { mutableStateOf(initialProvider.auth.method == AuthMethod.OAUTH && initialProvider.auth.value?.isNotBlank() == true) }
     var oauthIdentity by remember(initialProvider.id) { mutableStateOf(initialProvider.auth.key?.takeIf { oauthAuthorized }) }
     var oauthMarker by remember(initialProvider.id) { mutableStateOf(initialProvider.auth.value.orEmpty().takeIf { oauthAuthorized }.orEmpty()) }
@@ -219,6 +221,7 @@ fun ProviderEditor(
         antigravityVersion = if (type == ModelApiType.ANTIGRAVITY) antigravityVersion.trim().ifEmpty { null } else null,
         antigravityChangelist = if (type == ModelApiType.ANTIGRAVITY) antigravityChangelist.trim().ifEmpty { null } else null,
         antigravityProjectIds = if (type == ModelApiType.ANTIGRAVITY) antigravityProjectIds else emptyMap(),
+        geminiCliProjectIds = if (type == ModelApiType.GEMINI_CLI) geminiCliProjectIds else emptyMap(),
         modelConfigs = modelOrder.associateWith { modelValues.getValue(it) }, modelIds = modelOrder)
     fun draft(
         modelOrder: List<String> = order,
@@ -252,6 +255,7 @@ fun ProviderEditor(
                 oauthMarker = authorized.auth.value.orEmpty(); oauthAccountId = authorized.auth.oauthAccountId
                 oauthAccounts = authorized.config.oauthAccounts; baseUrl = authorized.baseUrl
                 if (authorized.type == ModelApiType.ANTIGRAVITY) antigravityProjectIds = authorized.config.antigravityProjectIds
+                if (authorized.type == ModelApiType.GEMINI_CLI) geminiCliProjectIds = authorized.config.geminiCliProjectIds
             }.onFailure { oauthAuthError = it.message ?: localizedResources.getString(R.string.provider_oauth_failed) }
             return result
         } catch (e: CancellationException) {
@@ -270,6 +274,7 @@ fun ProviderEditor(
             result.onSuccess { cleared ->
                 oauthAccounts = cleared.config.oauthAccounts
                 antigravityProjectIds = cleared.config.antigravityProjectIds
+                geminiCliProjectIds = cleared.config.geminiCliProjectIds
                 val auth = if ((originalAuth.oauthAccountId ?: initialProvider.id) != accountId) originalAuth else cleared.auth
                 oauthAccountId = auth.oauthAccountId; oauthIdentity = auth.key; oauthMarker = auth.value.orEmpty()
                 oauthAuthorized = !auth.value.isNullOrBlank()
@@ -380,6 +385,7 @@ fun ProviderEditor(
                                     oauthAccountId = null
                                     oauthAccounts = emptyList()
                                     antigravityProjectIds = emptyMap()
+                                    geminiCliProjectIds = emptyMap()
                                     oauthAuthError = null
                                 }
                             }
@@ -415,7 +421,7 @@ fun ProviderEditor(
                                     apiKeys.ensureCurrent(::keyIdentity); showApiKeys = true
                                 }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.provider_manage_api_keys)) }
                             }
-                            if (authMethod == AuthMethod.OAUTH) OAuthAccountCard(signedIn = oauthAuthorized, identity = oauthIdentity,
+                            if (authMethod == AuthMethod.OAUTH) OAuthAccountCard(providerType = type, signedIn = oauthAuthorized, identity = oauthIdentity,
                                 signingIn = oauthAuthorizing && !oauthClearing, signingOut = oauthClearing, canSignIn = onAuthorizeProvider != null,
                                 canSignOut = onClearOAuthCredentials != null, canCancelSignIn = onCancelProviderAuthorization != null, error = oauthAuthError,
                                 onSignIn = rememberOAuthStart { scope.launch {
@@ -428,6 +434,13 @@ fun ProviderEditor(
                                 AntigravityProjectIdField(antigravityProjectIds[projectAccountId].orEmpty()) { value ->
                                     antigravityProjectIds = if (value.isBlank()) antigravityProjectIds - projectAccountId
                                     else antigravityProjectIds + (projectAccountId to value)
+                                }
+                            }
+                            if (type == ModelApiType.GEMINI_CLI && authMethod == AuthMethod.OAUTH) {
+                                val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
+                                GeminiCliProjectIdField(geminiCliProjectIds[projectAccountId].orEmpty()) { value ->
+                                    geminiCliProjectIds = if (value.isBlank()) geminiCliProjectIds - projectAccountId
+                                    else geminiCliProjectIds + (projectAccountId to value.trim())
                                 }
                             }
                             if (authMethod == AuthMethod.OAUTH) {
@@ -470,7 +483,7 @@ fun ProviderEditor(
                 }
             }
             if (showOAuthAccounts) ProviderOAuthAccountsDialog(
-                accounts = oauthAccounts, selectedId = (oauthAccountId ?: initialProvider.id).takeIf { oauthAuthorized },
+                providerType = type, accounts = oauthAccounts, selectedId = (oauthAccountId ?: initialProvider.id).takeIf { oauthAuthorized },
                 canAuthorize = onAuthorizeProvider != null, canDelete = onClearOAuthCredentials != null,
                 onSelect = { selectOAuthAccount(it); showOAuthAccounts = false },
                 onSaveLabel = { id, label -> oauthAccounts = oauthAccounts.map { if (it.id == id) it.copy(label = label.trim()) else it } },

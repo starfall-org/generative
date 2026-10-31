@@ -391,6 +391,7 @@
     <string name="model_id_required">ต้องระบุ ID ของโมเดล</string>
     <string name="model_id_no_whitespace">ID ของโมเดลห้ามมีช่องว่าง</string>
     <string name="model_id_duplicate">ผู้ให้บริการโมเดลนี้มีโมเดลที่ใช้ ID นี้อยู่แล้ว</string>
+    <string name="model_options_empty">โมเดลนี้ไม่มีตัวเลือกเพิ่มเติม</string>
     <string name="model_options_title">ตัวเลือกของโมเดล</string>
     <string name="model_tools_hint">เครื่องมือในตัวที่โมเดลภาษานี้รองรับ ส่งไปในคำขอ API ของโมเดล</string>
     <string name="send_thinking_content_back_hint">อัตโนมัติจะส่งเนื้อหาการคิดก่อนหน้ากลับไปเฉพาะในแชทที่มีการเรียกเครื่องมือ เปิดจะส่งเสมอ ปิดจะไม่ส่งเลย</string>

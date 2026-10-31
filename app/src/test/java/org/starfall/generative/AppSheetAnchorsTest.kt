@@ -1,6 +1,10 @@
 package org.starfall.generative
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBars
@@ -8,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -29,7 +34,7 @@ class AppSheetAnchorsTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun nativePartialAndExpandedStopsKeepTheExpandedSheetBelowStatusBar() {
+    fun longContentOpensFullyBelowStatusBarWithoutHalfScreenStop() {
         var statusInset = 0f
         compose.setContent {
             val inset = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
@@ -42,17 +47,17 @@ class AppSheetAnchorsTest {
         }
         compose.waitForIdle()
 
-        val collapsedTop = compose.onNodeWithTag("bottom-sheet-window")
+        val initialTop = compose.onNodeWithTag("bottom-sheet-window")
             .getUnclippedBoundsInRoot().top
         compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
         compose.waitForIdle()
-
-        val expandedTop = compose.onNodeWithTag("bottom-sheet-window")
+        val afterSwipeTop = compose.onNodeWithTag("bottom-sheet-window")
             .getUnclippedBoundsInRoot().top
-        val collapsedPx = with(compose.density) { collapsedTop.toPx() }
-        val expandedPx = with(compose.density) { expandedTop.toPx() }
-        assertTrue("Swiping up should settle on the second (expanded) stop", expandedPx < collapsedPx - 40f)
-        assertTrue("Expanded content should remain below the status bar", expandedPx >= statusInset - 2f)
+        val initialPx = with(compose.density) { initialTop.toPx() }
+        val afterPx = with(compose.density) { afterSwipeTop.toPx() }
+        assertTrue("Long content should start at the maximum sheet height", initialPx <= statusInset + 8f)
+        assertTrue("The expanded stop remains below the status bar", afterPx >= statusInset - 2f)
+        assertTrue("No separate 50% stop for long content", kotlin.math.abs(afterPx - initialPx) < 12f)
     }
 
     @Test
@@ -69,7 +74,33 @@ class AppSheetAnchorsTest {
         compose.waitForIdle()
         val expandedTop = compose.onNodeWithTag("bottom-sheet-window")
             .getUnclippedBoundsInRoot().top
-        assertTrue("Short content must still have a second sheet stop", expandedTop < partialTop)
+        assertTrue("Short content should start below half screen rather than at 50%",
+            with(compose.density) { partialTop.toPx() } > 450f)
+        assertTrue("Short content must still have a second full-height stop", expandedTop < partialTop)
+    }
+
+    @Test
+    fun mediumContentOpensAboveHalfAtItsMeasuredHeight() {
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = {}) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Spacer(Modifier.height(490.dp))
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        val defaultTop = compose.onNodeWithTag("bottom-sheet-window")
+            .getUnclippedBoundsInRoot().top
+        val topPx = with(compose.density) { defaultTop.toPx() }
+        assertTrue("490dp of content must not be clipped to a 50% peek", topPx < 390f)
+        assertTrue("Medium content should still leave room for full-height expansion", topPx > 100f)
+        compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        val fullTop = compose.onNodeWithTag("bottom-sheet-window")
+            .getUnclippedBoundsInRoot().top
+        assertTrue(fullTop < defaultTop)
     }
 
     @Test
@@ -95,7 +126,8 @@ class AppSheetAnchorsTest {
     fun automaticExpansionStillAllowsNativePartialStopByDraggingDown() {
         compose.setContent {
             MaterialTheme {
-                BottomSheet(onDismissRequest = {}, expandOnOpen = true) {
+                BottomSheet(onDismissRequest = {}, expandOnOpen = true,
+                    fixedHeightFraction = 0.7f) {
                     Box(Modifier.fillMaxSize())
                 }
             }

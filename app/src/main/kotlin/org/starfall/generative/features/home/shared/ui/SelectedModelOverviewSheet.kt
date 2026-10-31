@@ -28,7 +28,6 @@ import org.starfall.generative.shared.ui.model.reasoningEffortTier
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ThinkingPassback
-import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -36,6 +35,8 @@ import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.model.modelInitial
 import org.starfall.generative.shared.ui.model.ModelPickerCard
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.sheets.SlideSheetContent
+import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
 
 /** Sheet background that follows the reasoning tier: the maximum effort tier gets a red brush. */
@@ -86,14 +87,15 @@ internal fun SelectedModelOverviewSheet(
 ) {
     val previewTier = rememberPreviewTier(config, conversationReasoningEffort)
     val screenBurst = LocalThinkingScreenBurst.current
+    var showOptions by remember { mutableStateOf(false) }
     val style = selectedModelSheetStyle(
-        previewTier.intValue == 6 && config.supportsThinking,
-        screenBurst?.isRetracting == true
+        !showOptions && previewTier.intValue == 6 && config.supportsThinking,
+        !showOptions && screenBurst?.isRetracting == true
     )
     BottomSheet(onDismissRequest = {
         screenBurst?.hide()
         onDismiss()
-    }, containerColor = style.color, containerBrush = style.brush,
+    }, dismissOnBack = !showOptions, containerColor = style.color, containerBrush = style.brush,
         navigationBarColor = style.navigationBarColor,
         // Read in the draw phase: the reveal animates every frame and must not recompose the sheet.
         containerBrushRevealOrigin = { screenBurst?.origin?.takeIf { it != Offset.Zero } },
@@ -104,19 +106,36 @@ internal fun SelectedModelOverviewSheet(
         // The sheet is its own window, so the screen-owned star overlay must also be attached to it;
         // otherwise the stars are only drawn on the activity window, underneath the sheet and cards.
         screenBurst?.let { ThinkingScreenBurstLayer(it) }
-        SelectedModelOverviewContent(
-            provider = provider,
-            folderName = folderName,
-            modelId = modelId,
-            config = config,
-            conversationReasoningEffort = conversationReasoningEffort,
-            previewTier = previewTier.intValue,
-            onPreviewTierChange = { previewTier.intValue = it },
-            onSetReasoningEffort = onSetReasoningEffort,
-            onSetThinkingPassback = onSetThinkingPassback,
-            onSetModelTools = onSetModelTools,
-            onOpenModelPicker = onOpenModelPicker
-        )
+        SlideSheetContent(
+            page = if (showOptions) true else null,
+            onBack = { showOptions = false },
+            label = "Selected model options"
+        ) { optionsPage ->
+            val pageActive = LocalScreenTransitionActive.current
+            if (optionsPage == true) {
+                SelectedModelOptionsSheetContent(
+                    modelId = modelId,
+                    config = config,
+                    providerName = provider?.name,
+                    onBack = { if (pageActive) showOptions = false },
+                    onSetThinkingPassback = onSetThinkingPassback,
+                    onSetModelTools = onSetModelTools
+                )
+            } else {
+                SelectedModelOverviewContent(
+                    provider = provider,
+                    folderName = folderName,
+                    modelId = modelId,
+                    config = config,
+                    conversationReasoningEffort = conversationReasoningEffort,
+                    previewTier = previewTier.intValue,
+                    onPreviewTierChange = { previewTier.intValue = it },
+                    onSetReasoningEffort = onSetReasoningEffort,
+                    onOpenModelPicker = onOpenModelPicker,
+                    onOpenModelOptions = { if (pageActive) { screenBurst?.hide(); showOptions = true } }
+                )
+            }
+        }
     }
 }
 
@@ -130,15 +149,11 @@ internal fun SelectedModelOverviewContent(
     previewTier: Int,
     onPreviewTierChange: (Int) -> Unit,
     onSetReasoningEffort: (String?) -> Unit,
-    onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
-    onSetModelTools: ((List<String>) -> Unit)? = null,
     onOpenModelPicker: () -> Unit,
+    onOpenModelOptions: () -> Unit = {},
     contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
     onSummarize: (() -> Unit)? = null
 ) {
-    val visibleModelTools = remember(config.supportedModelTools) {
-        config.supportedModelTools.distinct()
-    }
     val screenBurst = LocalThinkingScreenBurst.current
     val reasoningLabels = localizedReasoningEffortLabels()
     val effortOptions = remember(config.supportedReasoningEfforts, reasoningLabels) {
@@ -252,68 +267,18 @@ internal fun SelectedModelOverviewContent(
                     onSetReasoningEffort = onSetReasoningEffort,
                     showReasoningEffort = false,
                     embedded = true,
-                    drawBackground = false
+                    drawBackground = false,
+                    onClick = {
+                        screenBurst?.hide()
+                        onOpenModelOptions()
+                    },
+                    trailingContent = {
+                        SharedIcon(Icons.Outlined.ChevronRight, contentDescription = null,
+                            modifier = Modifier.size(20.dp))
+                    },
+                    modifier = Modifier.testTag("selected-model-card-action")
                 )
-            }
-
-            if (config.supportsThinking) {
-                Text(stringResource(R.string.send_thinking_content_back), style = MaterialTheme.typography.titleSmall)
-                val modes = listOf(ThinkingPassback.AUTO, ThinkingPassback.ON, ThinkingPassback.OFF)
-                val labels = listOf(
-                    stringResource(R.string.common_auto),
-                    stringResource(R.string.common_on),
-                    stringResource(R.string.common_off)
-                )
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("passback-thinking-mode")) {
-                    modes.forEachIndexed { index, mode ->
-                        SegmentedButton(
-                            selected = config.passbackMode == mode,
-                            onClick = { onSetThinkingPassback?.invoke(mode) },
-                            enabled = onSetThinkingPassback != null,
-                            shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-                            modifier = Modifier.testTag("passback-thinking-${mode.name.lowercase()}")
-                        ) {
-                            Text(labels[index], maxLines = 1)
-                        }
-                    }
-                }
-            }
-
-            if (visibleModelTools.isNotEmpty()) {
-                Text(stringResource(R.string.model_tools_title), style = MaterialTheme.typography.titleSmall)
-                visibleModelTools.forEach { tool ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("model-tool-$tool"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(modelToolDisplayName(tool),
-                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = tool in config.enabledModelTools,
-                            onCheckedChange = { enabled ->
-                                val current = config.enabledModelTools.filter { it in visibleModelTools }.toSet()
-                                onSetModelTools?.invoke((if (enabled) current + tool else current - tool).toList())
-                            },
-                            enabled = onSetModelTools != null,
-                            modifier = Modifier.testTag("model-tool-switch-$tool")
-                        )
-                    }
-                }
             }
         }
     }
-}
-
-@Composable
-private fun modelToolDisplayName(tool: String): String = when (tool.lowercase()) {
-    "google_search", "web_search" -> stringResource(R.string.model_tool_web_search)
-    "google_maps" -> stringResource(R.string.model_tool_google_maps)
-    "url_context", "web_fetch" -> stringResource(R.string.model_tool_url_context)
-    "code_execution", "code_interpreter" -> stringResource(R.string.model_tool_code_execution)
-    "file_search" -> stringResource(R.string.model_tool_file_search)
-    "image_generation" -> stringResource(R.string.tool_image_generation_title)
-    "computer_use", "computer" -> stringResource(R.string.model_tool_computer_use)
-    else -> tool.split('_', '-', '.').filter { it.isNotBlank() }
-        .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
 }

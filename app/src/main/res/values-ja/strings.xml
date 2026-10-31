@@ -391,6 +391,7 @@
     <string name="model_id_required">モデル ID は必須です。</string>
     <string name="model_id_no_whitespace">モデル ID に空白を含めることはできません。</string>
     <string name="model_id_duplicate">このモデルプロバイダーには同じ ID のモデルがすでにあります。</string>
+    <string name="model_options_empty">このモデルで設定できる追加オプションはありません。</string>
     <string name="model_options_title">モデルオプション</string>
     <string name="model_tools_hint">この言語モデルが対応する組み込みツールは、モデルの API リクエストとともに送信されます。</string>
     <string name="send_thinking_content_back_hint">自動では、ツール呼び出しのあるチャットでのみ以前の推論を返します。常には常に返し、なしは決して返しません。</string>

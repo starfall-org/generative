@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-/** Fluent Compose icon geometry, rendered as a soft dashed outline for temporary chat. */
+/** A dashed speech bubble distinguishing temporary chat from the regular compose action. */
 @Composable
 fun TemporaryChatIcon(
     contentDescription: String?,
@@ -26,32 +26,30 @@ fun TemporaryChatIcon(
         }
     ) {
         val scale = size.minDimension / 24f
-        // Follow the same open top-right document outline as Icons.Outlined.Compose.
-        val document = Path().apply {
-            moveTo(13.25f * scale, 4.75f * scale)
-            lineTo(6.25f * scale, 4.75f * scale)
-            cubicTo(4.87f * scale, 4.75f * scale, 3.75f * scale, 5.87f * scale, 3.75f * scale, 7.25f * scale)
-            lineTo(3.75f * scale, 17.75f * scale)
-            cubicTo(3.75f * scale, 19.13f * scale, 4.87f * scale, 20.25f * scale, 6.25f * scale, 20.25f * scale)
-            lineTo(16.75f * scale, 20.25f * scale)
-            cubicTo(18.13f * scale, 20.25f * scale, 19.25f * scale, 19.13f * scale, 19.25f * scale, 17.75f * scale)
-            lineTo(19.25f * scale, 10.75f * scale)
+        // A single continuous outline keeps the dashes flowing through the speech tail.
+        val bubble = Path().apply {
+            moveTo(7.25f * scale, 4.5f * scale)
+            lineTo(16.75f * scale, 4.5f * scale)
+            cubicTo(19.4f * scale, 4.5f * scale, 21f * scale, 6.2f * scale, 21f * scale, 8.65f * scale)
+            lineTo(21f * scale, 14.1f * scale)
+            cubicTo(21f * scale, 16.7f * scale, 19.25f * scale, 18.5f * scale, 16.75f * scale, 18.5f * scale)
+            lineTo(9f * scale, 18.5f * scale)
+            lineTo(4.25f * scale, 21f * scale)
+            lineTo(5.45f * scale, 17.45f * scale)
+            cubicTo(3.95f * scale, 16.55f * scale, 3f * scale, 15.2f * scale, 3f * scale, 13.45f * scale)
+            lineTo(3f * scale, 8.65f * scale)
+            cubicTo(3f * scale, 6.2f * scale, 4.6f * scale, 4.5f * scale, 7.25f * scale, 4.5f * scale)
+            close()
         }
-        // Match the diagonal pen and tapered tip of the regular Fluent Compose icon.
-        val pen = Path().apply {
-            moveTo(20.25f * scale, 3.75f * scale)
-            lineTo(10.06f * scale, 13.94f * scale)
-            lineTo(9f * scale, 15f * scale)
-            lineTo(10.59f * scale, 14.47f * scale)
-        }
-        val dashedStroke = Stroke(
-            width = 1.5f * scale,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.4f * scale, 2f * scale)),
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
+        drawPath(
+            path = bubble,
+            color = tint,
+            style = Stroke(
+                width = 1.55f * scale,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.6f * scale, 2.8f * scale)),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
         )
-        val color = tint.copy(alpha = tint.alpha * 0.6f)
-        drawPath(document, color, style = dashedStroke)
-        drawPath(pen, color, style = dashedStroke)
     }
 }

@@ -12,7 +12,9 @@ internal fun providerTokenUsage(type: ModelApiType, response: JsonObject): Token
     val usage = response["usage"] as? JsonObject
     val result = when (type) {
         ModelApiType.OPENAI, ModelApiType.GITHUB_COPILOT -> usage?.counts("prompt_tokens", "completion_tokens")
-        ModelApiType.OPENAI_RESPONSES, ModelApiType.OPENAI_CODEX -> usage?.counts("input_tokens", "output_tokens")
+        ModelApiType.OPENAI_RESPONSES, ModelApiType.OPENAI_CODEX,
+        ModelApiType.GROK_BUILD, ModelApiType.META_MUSE,
+        ModelApiType.DEVIN -> usage?.counts("input_tokens", "output_tokens")
         ModelApiType.ANTHROPIC, ModelApiType.CLAUDE_CODE -> usage?.let {
             val input = it.count("input_tokens") ?: return null
             val cached = it.optionalCount("cache_read_input_tokens") ?: return null
@@ -22,7 +24,7 @@ internal fun providerTokenUsage(type: ModelApiType, response: JsonObject): Token
             if (it.hasCount("output_tokens") && output == null) return null
             TokenUsage(totalInput, output)
         }
-        ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY -> (response["usageMetadata"] as? JsonObject)?.let {
+        ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY, ModelApiType.GEMINI_CLI -> (response["usageMetadata"] as? JsonObject)?.let {
             // promptTokenCount includes cachedContentTokenCount. Do not add it a second time.
             val prompt = it.count("promptTokenCount") ?: return null
             val toolInput = it.optionalCount("toolUsePromptTokenCount") ?: return null

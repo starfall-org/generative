@@ -13,6 +13,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
+import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.ui.auth.DeviceCodeChallengeText
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
@@ -21,6 +23,7 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @Composable
 internal fun OAuthAccountCard(
+    providerType: ModelApiType,
     signedIn: Boolean,
     identity: String?,
     signingIn: Boolean,
@@ -119,6 +122,7 @@ internal fun OAuthAccountCard(
                 }
             }
             if (signingIn) {
+                DeviceCodeChallengeText(providerType)
                 OutlinedButton(onClick = onCancelSignIn, enabled = canCancelSignIn, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.common_cancel))
                 }

@@ -391,6 +391,7 @@
     <string name="model_id_required">ID модели обязателен.</string>
     <string name="model_id_no_whitespace">ID модели не может содержать пробелы.</string>
     <string name="model_id_duplicate">У этого провайдера моделей уже есть модель с таким ID.</string>
+    <string name="model_options_empty">Для этой модели нет дополнительных параметров.</string>
     <string name="model_options_title">Параметры модели</string>
     <string name="model_tools_hint">Встроенные инструменты, поддерживаемые этой языковой моделью, отправляются вместе с запросом к API модели.</string>
     <string name="send_thinking_content_back_hint">Авто отправляет прежнее рассуждение только в чатах с вызовами инструментов. Всегда отправляет его всегда. Никогда не отправляет никогда.</string>

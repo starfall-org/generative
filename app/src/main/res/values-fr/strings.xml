@@ -391,6 +391,7 @@
     <string name="model_id_required">L’identifiant du modèle est obligatoire.</string>
     <string name="model_id_no_whitespace">L’identifiant du modèle ne peut pas contenir d’espaces.</string>
     <string name="model_id_duplicate">Ce fournisseur de modèles possède déjà un modèle avec cet identifiant.</string>
+    <string name="model_options_empty">Aucune option supplémentaire n’est disponible pour ce modèle.</string>
     <string name="model_options_title">Options du modèle</string>
     <string name="model_tools_hint">Les outils intégrés pris en charge par ce modèle de langue sont envoyés avec la requête API du modèle.</string>
     <string name="send_thinking_content_back_hint">Automatique ne renvoie le raisonnement antérieur que dans les discussions avec appels d’outils. Toujours le renvoie systématiquement. Jamais ne le renvoie jamais.</string>

@@ -106,6 +106,7 @@ class McpToolLoopTest {
                         ModelApiType.OLLAMA->buildJsonObject{put("message",message)}
                         ModelApiType.ANTHROPIC, ModelApiType.CLAUDE_CODE->buildJsonObject{put("content",buildJsonArray{add(if(first)buildJsonObject{put("type","tool_use");put("id","c1");put("name",name);put("input",buildJsonObject{})}else buildJsonObject{put("type","text");put("text","done")})})}
                         ModelApiType.GOOGLE, ModelApiType.ANTIGRAVITY->buildJsonObject{put("candidates",buildJsonArray{add(buildJsonObject{put("content",buildJsonObject{put("parts",buildJsonArray{add(if(first)buildJsonObject{put("functionCall",buildJsonObject{put("name",name);put("args",buildJsonObject{})});put("thoughtSignature","sig")}else buildJsonObject{put("text","done")})})})})})}
+                        else -> error("Unsupported fixture provider: $type")
                     }
                     return json(if (type == ModelApiType.ANTIGRAVITY) obj("response" to response) else response)
                 }

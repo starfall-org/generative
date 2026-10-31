@@ -34,6 +34,11 @@ class BottomSheetsLinkStateTest {
         assertNull(state.modelSheetPage)
 
         state.openSelectedModelOverview()
+        state.openModelOptions()
+        assertEquals(ModelSheetPage.MODEL_OPTIONS, state.modelSheetPage)
+        assertEquals(ModelSheetPage.MODEL_OPTIONS, state.renderedModelSheetPage)
+        state.openSelectedModelOverview()
+        assertEquals(ModelSheetPage.SELECTED_MODEL, state.modelSheetPage)
         state.switchToModelPicker()
         assertEquals(ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW, state.modelSheetPage)
         assertEquals(ModelSheetPage.MODEL_PICKER, state.renderedModelSheetPage)

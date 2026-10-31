@@ -238,9 +238,9 @@ class ModelPickerToggleTest {
             }
         }
         compose.waitForIdle()
-        val sheetHeight = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
+        val sheetTop = compose.onNodeWithTag("bottom-sheet-window").getUnclippedBoundsInRoot().top.value
         val screenHeight = compose.activity.resources.configuration.screenHeightDp.toFloat()
-        assertTrue("Short model lists must not force the sheet to full height", sheetHeight < screenHeight * 0.85f)
+        assertTrue("Short model lists must not force the sheet to full height", sheetTop > screenHeight * 0.15f)
         compose.onNodeWithTag("model-picker-toolbar").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
     }
@@ -260,11 +260,17 @@ class ModelPickerToggleTest {
 
         compose.onNodeWithTag("model-picker-search-button").performClick()
         compose.onNodeWithTag("model-picker-search").assertIsFocused().performTextInput("alpha")
-        compose.onNodeWithTag("model-picker-provider_p").performClick()
+        // Tap the unoccupied toolbar area: the provider card toggles the section,
+        // which would hide its models and confound the focus assertion.
+        compose.onNodeWithTag("model-picker-toolbar").performTouchInput {
+            click(androidx.compose.ui.geometry.Offset(width - 4f, height / 2f))
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("model-picker-search-button").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
 
         compose.onNodeWithTag("model-picker-search-button").performClick()
         compose.onNodeWithTag("model-picker-search").assertIsFocused().performImeAction()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("model-picker-search-button").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("model-picker-search-button").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_p_alpha").assertIsDisplayed()
         compose.onNodeWithTag("model-picker-model_p_beta").assertDoesNotExist()

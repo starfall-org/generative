@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,18 +40,17 @@ class SelectedModelSheetUiTest {
         compose.runOnIdle { assertEquals(1, opened) }
     }
 
-    @Test fun modelCardFollowsEffortAndPrecedesInlineSettings() {
-        var configuration by mutableStateOf(
-            ModelConfiguration(supportsThinking = true, modelTools = listOf("web_search", "file_search"))
-        )
+    @Test fun modelCardFollowsEffortAndOpensOptionsRatherThanShowingInlineSettings() {
+        val configuration = ModelConfiguration(supportsThinking = true,
+            displayName = "Alpha", modelTools = listOf("web_search", "file_search"))
+        var optionsOpen = 0
         compose.setContent {
             MaterialTheme {
                 SelectedModelOverviewContent(
                     modelId = "alpha",
                     config = configuration, conversationReasoningEffort = null,
                     previewTier = 0, onPreviewTierChange = {}, onSetReasoningEffort = {},
-                    onSetModelTools = { configuration = configuration.copy(enabledModelTools = it) },
-                    onOpenModelPicker = {},
+                    onOpenModelPicker = {}, onOpenModelOptions = { optionsOpen++ },
                     contextWindowContent = { androidx.compose.material3.Text("Context window", Modifier.testTag("context-window-indicator")) }
                 )
             }
@@ -62,14 +62,14 @@ class SelectedModelSheetUiTest {
         val contextBottom = compose.onNodeWithTag("context-window-indicator").fetchSemanticsNode().boundsInRoot.bottom
         val effortBounds = compose.onNodeWithTag("reasoning-slider").fetchSemanticsNode().boundsInRoot
         val cardBounds = compose.onNodeWithTag("selected-model-card").fetchSemanticsNode().boundsInRoot
-        val passbackTop = compose.onNodeWithTag("passback-thinking-mode").fetchSemanticsNode().boundsInRoot.top
+        compose.onNodeWithTag("passback-thinking-mode").assertDoesNotExist()
+        compose.onNodeWithTag("model-tool-switch-web_search").assertDoesNotExist()
         compose.runOnIdle {
             org.junit.Assert.assertTrue("Reasoning Effort must follow context", effortBounds.top > contextBottom)
             org.junit.Assert.assertTrue("Model card must follow Reasoning Effort", cardBounds.top >= effortBounds.bottom)
-            org.junit.Assert.assertTrue("Thinking settings must follow the model card", passbackTop >= cardBounds.bottom)
         }
-        compose.onNodeWithTag("model-tool-switch-web_search").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(listOf("web_search"), configuration.enabledModelTools) }
+        compose.onNodeWithText("Alpha").performClick()
+        compose.runOnIdle { assertEquals(1, optionsOpen) }
     }
 
     @Test fun originalHeaderButtonOrderAndCompactChangeModelWidthArePreserved() {

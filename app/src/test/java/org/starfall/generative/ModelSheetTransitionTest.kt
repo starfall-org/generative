@@ -153,12 +153,12 @@ class ModelSheetTransitionTest {
             }
         }
         compose.waitForIdle()
-        val before = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        val beforeTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
         compose.runOnIdle { contentHeight.intValue = 400 }
         compose.waitForIdle()
-        val grown = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.height
+        val grownTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
         val growth = with(compose.density) { 100.dp.toPx() }
-        assertEquals(growth, grown - before, 2f)
+        assertEquals(growth, beforeTop - grownTop, 2f)
         // Material's handle is present; its native anchors now own drags and scroll flings.
         compose.onNodeWithTag("bottom-sheet-drag-handle", useUnmergedTree = true).assertExists()
     }

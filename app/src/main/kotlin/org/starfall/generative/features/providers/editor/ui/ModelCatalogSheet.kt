@@ -168,7 +168,7 @@ internal fun ModelCatalogSheet(
                 ) {
                     // Keep the field mounted until its collapse animation finishes.
                     Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
-                        if (searchExpanded || searchWidth > 40.dp) {
+                        if (searchExpanded || searchWidth > 41.dp) {
                             OutlinedTextField(
                                 value = query,
                                 onValueChange = { query = it },
@@ -190,8 +190,7 @@ internal fun ModelCatalogSheet(
                                     imeAction = ImeAction.Search
                                 ),
                                 keyboardActions = KeyboardActions(onSearch = {
-                                    focusManager.clearFocus()
-                                    keyboard?.hide()
+                                    collapseSearch()
                                 }),
                                 shape = RoundedCornerShape(28.dp),
                                 modifier = Modifier.fillMaxWidth()

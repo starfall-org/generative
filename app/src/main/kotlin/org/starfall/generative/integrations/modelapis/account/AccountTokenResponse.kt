@@ -23,6 +23,10 @@ internal fun accountTokenFromResponse(
         email = account?.text("email_address")?.takeIf(String::isNotBlank)
             ?: payload.text("email").takeIf(String::isNotBlank) ?: previous?.email,
         projectId = previous?.projectId,
-        codeAssistBaseUrl = previous?.codeAssistBaseUrl
+        codeAssistBaseUrl = previous?.codeAssistBaseUrl,
+        deviceToken = previous?.deviceToken,
+        deviceTokenExpiresAt = previous?.deviceTokenExpiresAt,
+        tokenEndpoint = previous?.tokenEndpoint,
+        apiBaseUrl = previous?.apiBaseUrl
     )
 }

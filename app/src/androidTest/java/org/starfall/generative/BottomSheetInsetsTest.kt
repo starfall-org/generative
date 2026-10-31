@@ -130,7 +130,11 @@ class BottomSheetInsetsTest {
         val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()!!
         try {
             val pixel = screenshot.getPixel(screenshot.width / 10, sheetBottom - 2)
-            assertEquals("Bottom edge must show the sheet background", 0xFF285A78.toInt(), pixel)
+            // Material's tonal elevation can shift a surface color by one RGB step.
+            val expected = 0xFF285A78.toInt()
+            fun channel(color: Int, shift: Int) = (color ushr shift) and 0xFF
+            assertTrue("Bottom edge must show the sheet color, expected=${Integer.toHexString(expected)}, actual=${Integer.toHexString(pixel)}",
+                listOf(16, 8, 0).all { kotlin.math.abs(channel(expected, it) - channel(pixel, it)) <= 2 })
         } finally {
             screenshot.recycle()
         }

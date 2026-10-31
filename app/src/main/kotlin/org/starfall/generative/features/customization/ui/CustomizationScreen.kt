@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -41,6 +42,7 @@ import org.starfall.generative.shared.storage.preferences.UserProfileImageSlot
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
@@ -227,7 +229,8 @@ fun CustomizationScreen(
                             else if (appearance.colorSchemeName == "CUSTOM") stringResource(R.string.settings_customize_palette)
                             else appearance.colorSchemeName.lowercase().replaceFirstChar { it.uppercase() },
                         tag = "customization-colors-setting",
-                        onClick = { if (customizationEnabled) colorsDialog = true }
+                        onClick = { if (customizationEnabled) colorsDialog = true },
+                        icon = FluentUi.Regular.Circle
                     )
                 }
             }
@@ -237,7 +240,8 @@ fun CustomizationScreen(
                         title = stringResource(R.string.customization_input_title),
                         summary = "${(appearance.inputAreaTransparency * 100).toInt()}% · ${appearance.inputAreaBlur.toInt()} dp",
                         tag = "customization-input-setting",
-                        onClick = { if (customizationEnabled) inputDialog = true }
+                        onClick = { if (customizationEnabled) inputDialog = true },
+                        icon = Icons.Outlined.Keyboard
                     )
                 }
             }
@@ -400,7 +404,8 @@ private fun CustomizationActionRow(
     summary: String,
     tag: String,
     onClick: () -> Unit,
-    leading: (@Composable () -> Unit)? = null
+    leading: (@Composable () -> Unit)? = null,
+    icon: ImageVector? = null
 ) {
     Surface(onClick = onClick, shape = RoundedCornerShape(18.dp),
         color = prominentContainerColor(),
@@ -408,7 +413,15 @@ private fun CustomizationActionRow(
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            leading?.invoke()
+            if (leading != null) leading()
+            else if (icon != null) {
+                Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .testTag("$tag-icon"), contentAlignment = Alignment.Center) {
+                    SharedIcon(icon, null, Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary)
+                }
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 Text(summary, style = MaterialTheme.typography.bodySmall,

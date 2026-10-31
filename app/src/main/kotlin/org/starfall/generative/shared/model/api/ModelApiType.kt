@@ -20,9 +20,17 @@ enum class ModelApiType(val displayName: String, val defaultName: String, val de
     @SerialName("openai_codex")
     OPENAI_CODEX("OpenAI Codex", "OpenAI Codex", "https://chatgpt.com/backend-api/codex/responses"),
     @SerialName("claude_code")
-    CLAUDE_CODE("Claude Code", "Claude Code", "https://api.anthropic.com/v1");
+    CLAUDE_CODE("Claude Code", "Claude Code", "https://api.anthropic.com/v1"),
+    @SerialName("grok_build")
+    GROK_BUILD("Grok Build", "Grok Build", "https://cli-chat-proxy.grok.com/v1"),
+    @SerialName("meta_muse")
+    META_MUSE("Meta Muse", "Meta Muse", "https://api.meta.ai/v1"),
+    @SerialName("gemini_cli")
+    GEMINI_CLI("Gemini CLI", "Gemini CLI", "https://cloudcode-pa.googleapis.com/v1internal"),
+    @SerialName("devin")
+    DEVIN("Devin", "Devin", "https://server.codeium.com");
 
-    val isAccountProvider: Boolean get() = this in setOf(OPENAI_CODEX, CLAUDE_CODE, ANTIGRAVITY, GITHUB_COPILOT)
+    val isAccountProvider: Boolean get() = this in setOf(OPENAI_CODEX, CLAUDE_CODE, ANTIGRAVITY, GITHUB_COPILOT, GROK_BUILD, META_MUSE, GEMINI_CLI, DEVIN)
 
     val isOpenAi: Boolean get() = this == OPENAI || this == OPENAI_RESPONSES
 }
