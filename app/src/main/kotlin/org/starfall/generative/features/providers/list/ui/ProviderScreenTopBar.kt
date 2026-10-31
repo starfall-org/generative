@@ -148,7 +148,7 @@ internal fun ProviderScreenTopBar(
                         tint = if (searchQuery.isNotBlank()) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
+                ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
                 IconButton(onClick = onCreateGroup, modifier = Modifier.testTag("add_provider_group")) {
                     SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
                 }

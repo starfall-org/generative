@@ -5,9 +5,9 @@ import android.net.Uri
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.OutputStream
-import org.starfall.generative.extensions.explorer.logic.ExplorerItem
-import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
-import org.starfall.generative.extensions.explorer.logic.ExplorerRepository
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteSftpExplorer
 

@@ -1,4 +1,4 @@
-package org.starfall.generative.extensions.explorer
+package org.starfall.generative.shared.subfeatures.explorer
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalFocusManager
@@ -24,10 +24,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.extensions.explorer.logic.ExplorerItem
-import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
-import org.starfall.generative.extensions.explorer.logic.ExplorerRepository
-import org.starfall.generative.extensions.explorer.ui.ExplorerScreen
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
+import org.starfall.generative.shared.subfeatures.explorer.ui.ExplorerScreen
 
 /**
  * Real-device Compose tests with a deterministic backend.

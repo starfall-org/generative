@@ -12,10 +12,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.extensions.explorer.logic.ExplorerItem
-import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
-import org.starfall.generative.extensions.explorer.logic.ExplorerRepository
-import org.starfall.generative.extensions.explorer.ui.ExplorerScreen
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
+import org.starfall.generative.shared.subfeatures.explorer.ui.ExplorerScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

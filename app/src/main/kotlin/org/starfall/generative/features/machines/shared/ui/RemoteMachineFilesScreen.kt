@@ -10,8 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import org.starfall.generative.extensions.explorer.logic.ExplorerItem
-import org.starfall.generative.extensions.explorer.ui.ExplorerScreen
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
+import org.starfall.generative.shared.subfeatures.explorer.ui.ExplorerScreen
 import org.starfall.generative.features.machines.shared.logic.RemoteMachineExplorerRepository
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.shared.files.explorerImport

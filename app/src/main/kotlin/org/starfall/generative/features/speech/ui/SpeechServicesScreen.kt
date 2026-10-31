@@ -105,7 +105,7 @@ fun SpeechServicesScreen(
                             }
                         },
                         actions = {
-                            ListViewToggle(isGridView) { onToggleGridView?.invoke(!isGridView) }
+                            ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
                             IconButton(
                                 onClick = {
                                     editor = SpeechEditorPage(SpeechService(

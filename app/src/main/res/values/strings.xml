@@ -103,6 +103,21 @@
     <string name="common_description">Description</string>
     <string name="common_parameters">Parameters</string>
 
+    <string name="explorer_title">Files</string>
+    <string name="explorer_folder">Folder</string>
+    <string name="explorer_new_folder">New folder</string>
+    <string name="explorer_upload">Upload</string>
+    <string name="explorer_download">Download</string>
+    <string name="explorer_rename">Rename</string>
+    <string name="explorer_search">Search files</string>
+    <string name="explorer_close_search">Close search</string>
+    <string name="explorer_operation_failed">File operation failed</string>
+    <string name="explorer_empty">No files</string>
+    <string name="explorer_no_matches">No matching files</string>
+    <string name="explorer_more_actions">More actions for %1$s</string>
+    <string name="explorer_delete_folder_title">Delete folder?</string>
+    <string name="explorer_delete_confirm">Delete %1$s?</string>
+
     <string name="providers_title">Model Providers</string>
     <string name="provider_search_filter">Search filters</string>
     <string name="provider_search_name">Model provider name</string>

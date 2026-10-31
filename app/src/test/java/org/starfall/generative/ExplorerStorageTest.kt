@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.extensions.explorer.logic.ExplorerLocation
+import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
 import org.starfall.generative.features.storage.logic.MediaStorageExplorerRepository
 import org.starfall.generative.shared.files.ToolFiles
 
