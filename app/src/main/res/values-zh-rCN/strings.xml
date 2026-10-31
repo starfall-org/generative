@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">重新登录</string>
     <string name="oauth_sign_out">退出登录</string>
     <string name="oauth_account_actions">账户操作</string>
-    <string name="oauth_browser_pending">请在浏览器窗口中完成登录。完成后窗口会自动关闭。</string>
+    <string name="oauth_browser_pending">请在浏览器中完成登录，然后返回 Generative。</string>
     <string name="oauth_browser_hint">请在浏览器中使用你的账户登录。</string>
     <string name="oauth_account_connected">账户已连接</string>
     <string name="oauth_removing_account">正在删除已保存的凭据…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">长代码块的显示方式也适用于未标注语言的代码块。</string>
     <string name="code_block_extend">展开</string>
     <string name="code_block_close">关闭代码块</string>
-    <string name="oauth_opening_browser">正在打开登录…</string>
-    <string name="oauth_browser_unavailable">请安装 Chrome 或支持自定义标签页的浏览器后再登录。</string>
     <string name="provider_multiple_accounts">多个账户</string>
     <string name="provider_manage_accounts">管理账户</string>
     <string name="provider_add_account">添加账户</string>

@@ -94,7 +94,7 @@ class OAuthCallbackService : Service() {
 
         internal suspend fun <T> keepAlive(context: Context, block: suspend () -> T): T {
             start(context)
-            return try { OAuthBrowser.withSession(context, block) } finally { stop(context) }
+            return try { OAuthBrowser.withSession(block) } finally { stop(context) }
         }
     }
 }

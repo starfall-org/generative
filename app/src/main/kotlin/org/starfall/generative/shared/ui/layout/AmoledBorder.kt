@@ -1,7 +1,5 @@
 package org.starfall.generative.shared.ui.layout
 
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SheetState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
@@ -49,27 +47,9 @@ private fun DrawScope.drawAmoledEdgeBorder(shape: Shape, color: Color, strokePx:
     }
 }
 
-/**
- * ModalBottomSheet applies the caller's modifier *before* its own `offset { sheetState.requireOffset() }`,
- * so a plain `Modifier.border` is drawn at the container's top edge instead of on the sheet.
- * Draw the border ourselves, translated by the sheet offset so it follows show/hide and drag,
- * and keep only the top edge: the sides and bottom sit against the screen edge.
+/** Border for an already-positioned edge surface (scaffold sheet or side drawer).
+ * Keeps only its content-facing edge and rounded corners, not the screen-edge sides.
  */
-@OptIn(ExperimentalMaterial3Api::class)
-internal fun Modifier.amoledSheetBorder(
-    sheetState: SheetState,
-    shape: Shape,
-    color: Color,
-    width: Dp
-): Modifier = drawWithContent {
-    drawContent()
-    val offsetY = try { sheetState.requireOffset() } catch (_: IllegalStateException) { return@drawWithContent }
-    // A sheet touching the top of the screen has no content-facing edge left to draw.
-    if (offsetY < 1f) return@drawWithContent
-    translate(top = offsetY) { drawAmoledEdgeBorder(shape, color, width.toPx(), AmoledBorderEdge.Top) }
-}
-
-/** Border for a side drawer: only the edge (and corners) facing the content, not the screen-edge sides. */
 internal fun Modifier.amoledEdgeBorder(
     shape: Shape,
     color: Color,

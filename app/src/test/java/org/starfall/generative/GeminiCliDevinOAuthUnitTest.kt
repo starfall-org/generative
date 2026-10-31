@@ -20,7 +20,7 @@ class GeminiCliDevinOAuthUnitTest {
         val second = DevinOAuthProtocol.begin()
         assertNotEquals(first.state, second.state)
         assertNotEquals(first.verifier, second.verifier)
-        assertEquals(43, first.verifier.length)
+        assertEquals(86, first.verifier.length)
         assertEquals(43, first.challenge.length)
         val derived = Base64.getUrlEncoder().withoutPadding().encodeToString(
             MessageDigest.getInstance("SHA-256").digest(first.verifier.toByteArray(Charsets.US_ASCII)))

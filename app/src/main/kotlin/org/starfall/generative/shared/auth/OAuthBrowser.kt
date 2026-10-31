@@ -2,54 +2,42 @@ package org.starfall.generative.shared.auth
 
 import android.content.Context
 import android.content.Intent
-import kotlinx.coroutines.*
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
-import org.starfall.generative.shared.ui.auth.OAuthBrowserActivity
 
-/** A browser window belongs to one cancellable authorization, including device-code polling. */
+/**
+ * Opens the user's browser directly. The OAuth callback listener and foreground service own
+ * the pending login; there is no intermediary Activity or browser task to close afterwards.
+ */
 internal object OAuthBrowser {
-    private class Session(val id: String, val job: Job) : AbstractCoroutineContextElement(Key) {
-        var opened = false
+    private class Session : AbstractCoroutineContextElement(Key) {
         companion object Key : CoroutineContext.Key<Session>
     }
-    private val browserLock = Mutex()
-    private val sessions = ConcurrentHashMap<String, Session>()
 
-    suspend fun <T> withSession(context: Context, block: suspend () -> T): T {
+    private val browserLock = Mutex()
+
+    suspend fun <T> withSession(block: suspend () -> T): T {
         if (currentCoroutineContext()[Session] != null) return block()
-        return browserLock.withLock {
-            coroutineScope {
-                val session = Session(UUID.randomUUID().toString(), currentCoroutineContext().job)
-                sessions[session.id] = session
-                try { withContext(session) { block() } }
-                finally {
-                    sessions.remove(session.id)
-                    if (session.opened) withContext(NonCancellable + Dispatchers.Main) {
-                        runCatching {
-                            context.startActivity(Intent(context, OAuthBrowserActivity::class.java)
-                                .putExtra(OAuthBrowserActivity.SESSION, session.id)
-                                .putExtra(OAuthBrowserActivity.COMPLETE, true)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-                        }
-                    }
-                }
-            }
-        }
+        return browserLock.withLock { withContext(Session()) { block() } }
     }
 
     suspend fun open(context: Context, url: String) = withContext(Dispatchers.Main) {
-        val session = currentCoroutineContext()[Session] ?: error("OAuth browser requires an authorization session")
-        context.startActivity(Intent(context, OAuthBrowserActivity::class.java)
-            .putExtra(OAuthBrowserActivity.SESSION, session.id).putExtra(OAuthBrowserActivity.URL, url)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        session.opened = true
+        check(currentCoroutineContext()[Session] != null) { "OAuth browser requires an authorization session" }
+        context.startActivity(externalIntent(url))
     }
 
-    fun isActive(id: String) = sessions.containsKey(id)
-    fun cancel(id: String) { sessions[id]?.job?.cancel(CancellationException("Sign-in window closed")) }
+    /** Only HTTPS OAuth URLs may be opened; callback endpoints are handled by their listeners. */
+    internal fun externalIntent(url: String): Intent {
+        val uri = Uri.parse(url)
+        require(uri.scheme == "https" && !uri.host.isNullOrBlank()) { "OAuth URL must be HTTPS" }
+        return Intent(Intent.ACTION_VIEW, uri)
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
 }

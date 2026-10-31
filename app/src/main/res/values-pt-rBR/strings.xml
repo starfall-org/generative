@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Entrar novamente</string>
     <string name="oauth_sign_out">Sair</string>
     <string name="oauth_account_actions">Ações da conta</string>
-    <string name="oauth_browser_pending">Conclua o login na janela do navegador. Ela fecha automaticamente quando você terminar.</string>
+    <string name="oauth_browser_pending">Conclua o login no navegador e volte para o Generative.</string>
     <string name="oauth_browser_hint">Entre com sua conta no navegador.</string>
     <string name="oauth_account_connected">Conta conectada</string>
     <string name="oauth_removing_account">Removendo as credenciais salvas…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">O modo de exibição dos blocos longos também vale para blocos de código sem indicação de linguagem.</string>
     <string name="code_block_extend">Expandir</string>
     <string name="code_block_close">Fechar o bloco de código</string>
-    <string name="oauth_opening_browser">Abrindo o login…</string>
-    <string name="oauth_browser_unavailable">Instale o Chrome ou um navegador com suporte a abas personalizadas para entrar.</string>
     <string name="provider_multiple_accounts">Várias contas</string>
     <string name="provider_manage_accounts">Gerenciar as contas</string>
     <string name="provider_add_account">Adicionar conta</string>

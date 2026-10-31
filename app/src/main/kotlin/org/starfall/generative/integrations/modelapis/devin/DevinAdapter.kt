@@ -44,7 +44,12 @@ import org.starfall.generative.shared.networking.str
 import org.starfall.generative.shared.networking.text
 
 /** Devin CLI account against native Cognition Connect-RPC, not a fictitious OpenAI endpoint. */
-internal class DevinAdapter(context: Context, private val attachments: AttachmentResolver) : AccountProviderAdapter {
+internal class DevinAdapter(
+    context: Context,
+    private val attachments: AttachmentResolver,
+    private val loginApiBaseUrl: String = "https://api.devin.ai",
+    private val openAuthorizationBrowser: suspend (Context, String) -> Unit = OAuthBrowser::open
+) : AccountProviderAdapter {
     override val providerType = ModelApiType.DEVIN
     private val appContext = context.applicationContext
     private val http = ToolHttp()
@@ -69,13 +74,13 @@ internal class DevinAdapter(context: Context, private val attachments: Attachmen
             val challenge = DevinOAuthProtocol.begin()
             val code = awaitLoopbackAuthorizationCode(
                 DevinOAuthProtocol.REDIRECT_URI, challenge.authorizationUrl, challenge.state
-            ) { OAuthBrowser.open(appContext, it) }
-            val response = http.post(DevinOAuthProtocol.TOKEN_URL, buildJsonObject {
+            ) { openAuthorizationBrowser(appContext, it) }
+            val response = http.post(loginApiBaseUrl.trimEnd('/') + "/auth/cli/token", buildJsonObject {
                 put("code", code); put("code_verifier", challenge.verifier)
             })
             val token = DevinOAuthProtocol.sessionToken(response.text("token"))
             val profile = try {
-                http.json(http.request("https://api.devin.ai/v3/self",
+                http.json(http.request(loginApiBaseUrl.trimEnd('/') + "/v3/self",
                     extraHeaders = mapOf("Authorization" to "Bearer $token")).get().build())
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
@@ -103,7 +108,7 @@ internal class DevinAdapter(context: Context, private val attachments: Attachmen
 
     override suspend fun testConnection(provider: ModelProvider): Result<String> = try {
         val token = credential(provider)
-        val profile = http.json(http.request("https://api.devin.ai/v3/self",
+        val profile = http.json(http.request(loginApiBaseUrl.trimEnd('/') + "/v3/self",
             extraHeaders = mapOf("Authorization" to "Bearer ${token.accessToken}")).get().build())
         Result.success("Devin account ready: " + profile.text("user_name").ifBlank {
             profile.text("user_id").ifBlank { "authenticated" }

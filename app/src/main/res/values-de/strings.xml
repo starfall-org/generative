@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Erneut anmelden</string>
     <string name="oauth_sign_out">Abmelden</string>
     <string name="oauth_account_actions">Kontoaktionen</string>
-    <string name="oauth_browser_pending">Schließe die Anmeldung im Anmeldefenster ab. Es schließt sich automatisch, wenn du fertig bist.</string>
+    <string name="oauth_browser_pending">Schließe die Anmeldung im Browser ab und kehre zu Generative zurück.</string>
     <string name="oauth_browser_hint">Melde dich im Browser mit deinem Konto an.</string>
     <string name="oauth_account_connected">Konto verbunden</string>
     <string name="oauth_removing_account">Gespeicherte Zugangsdaten werden entfernt…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">Der gewählte Anzeigemodus für lange Blöcke gilt auch für Codeblöcke ohne Sprachkennzeichnung.</string>
     <string name="code_block_extend">Ausklappen</string>
     <string name="code_block_close">Codeblock schließen</string>
-    <string name="oauth_opening_browser">Anmeldung wird geöffnet…</string>
-    <string name="oauth_browser_unavailable">Installiere Chrome oder einen Browser mit Custom-Tabs-Unterstützung, um dich anzumelden.</string>
     <string name="provider_multiple_accounts">Mehrere Konten</string>
     <string name="provider_manage_accounts">Konten verwalten</string>
     <string name="provider_add_account">Konto hinzufügen</string>

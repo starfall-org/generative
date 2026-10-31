@@ -13,19 +13,49 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
 import org.starfall.generative.shared.auth.OAuthBrowser
-import org.starfall.generative.shared.ui.auth.OAuthBrowserActivity
-import org.starfall.generative.shared.model.auth.Authorization
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 @LooperMode(LooperMode.Mode.PAUSED)
 class OAuthBrowserSessionTest {
-    @Test fun completingNestedAuthorizationClosesItsWindowAndReturnsToAppTask() {
-        exerciseSession(cancel = false)
+    @Test fun completingNestedAuthorizationDoesNotStartAnIntermediateActivity() = exerciseSession(cancel = false)
+
+    @Test fun cancellingNestedAuthorizationDoesNotStartAnIntermediateActivity() = exerciseSession(cancel = true)
+
+    @Test fun allOAuthProvidersUseExternalBrowserWithoutActivityBackStack() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val application = shadowOf(app)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val opened = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val request = scope.async {
+            OAuthBrowser.withSession {
+                OAuthBrowser.open(app, "https://app.devin.ai/auth/cli/continue?state=test")
+                opened.complete(Unit)
+                release.await()
+            }
+        }
+        try {
+            awaitMain { opened.isCompleted }
+            val intent = application.nextStartedActivity
+            assertBrowserIntent(intent, "app.devin.ai")
+            assertNull(application.nextStartedActivity)
+            assertFalse(request.isCompleted)
+            release.complete(Unit)
+            awaitMain { request.isCompleted }
+            assertFalse(request.isCancelled)
+            // Completion doesn't relaunch the app or produce an empty Activity.
+            assertNull(application.nextStartedActivity)
+        } finally { scope.cancel(); shadowOf(Looper.getMainLooper()).idle() }
     }
 
-    @Test fun closingSignInCancelsAuthorizationAndClosesItsWindow() {
-        exerciseSession(cancel = true)
+    @Test fun externalBrowserRejectsUntrustedOrNonHttpsUrls() {
+        for (url in listOf("javascript:alert(1)", "http://app.devin.ai/auth/cli/continue", "https:///missing")) {
+            try {
+                OAuthBrowser.externalIntent(url)
+                fail("Must reject invalid external OAuth URL: $url")
+            } catch (_: IllegalArgumentException) { }
+        }
     }
 
     private fun exerciseSession(cancel: Boolean) {
@@ -35,10 +65,10 @@ class OAuthBrowserSessionTest {
         val opened = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         val request = scope.async {
-            OAuthBrowser.withSession(app) {
-                // Repository and adapter keep-alive scopes must own the same browser session.
-                OAuthBrowser.withSession(app) {
-                    OAuthBrowser.open(app, "https://example.test/sign-in")
+            OAuthBrowser.withSession {
+                // Nested repository/adapter scopes share one session without deadlocking.
+                OAuthBrowser.withSession {
+                    OAuthBrowser.open(app, "https://accounts.google.com/o/oauth2/v2/auth")
                     opened.complete(Unit)
                     release.await()
                 }
@@ -46,22 +76,23 @@ class OAuthBrowserSessionTest {
         }
         try {
             awaitMain { opened.isCompleted }
-            val open = application.nextStartedActivity
-            assertEquals(OAuthBrowserActivity::class.java.name, open.component!!.className)
-            assertEquals("https://example.test/sign-in", open.getStringExtra(OAuthBrowserActivity.URL))
-            val id = open.getStringExtra(OAuthBrowserActivity.SESSION)!!
-            assertTrue(OAuthBrowser.isActive(id))
-            if (cancel) OAuthBrowser.cancel(id) else release.complete(Unit)
+            assertBrowserIntent(application.nextStartedActivity, "accounts.google.com")
+            assertNull(application.nextStartedActivity)
+            if (cancel) request.cancel() else release.complete(Unit)
             awaitMain { request.isCompleted }
             assertEquals(cancel, request.isCancelled)
-            assertFalse(OAuthBrowser.isActive(id))
-            val close = application.nextStartedActivity
-            assertTrue(close.getBooleanExtra(OAuthBrowserActivity.COMPLETE, false))
-            assertEquals(id, close.getStringExtra(OAuthBrowserActivity.SESSION))
-            assertTrue(close.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
-            assertTrue(close.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+            // No intermediate Activity needs to be closed or resumed after cancellation.
             assertNull(application.nextStartedActivity)
         } finally { scope.cancel(); shadowOf(Looper.getMainLooper()).idle() }
+    }
+
+    private fun assertBrowserIntent(intent: Intent, host: String) {
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals("https", intent.data?.scheme)
+        assertEquals(host, intent.data?.host)
+        assertTrue(intent.hasCategory(Intent.CATEGORY_BROWSABLE))
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertNull(intent.component)
     }
 
     private fun awaitMain(condition: () -> Boolean) {

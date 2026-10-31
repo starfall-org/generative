@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Sign in again</string>
     <string name="oauth_sign_out">Sign out</string>
     <string name="oauth_account_actions">Account actions</string>
-    <string name="oauth_browser_pending">Complete sign-in in the sign-in window. It closes automatically when finished.</string>
+    <string name="oauth_browser_pending">Complete sign-in in your browser, then return to Generative.</string>
     <string name="oauth_browser_hint">Sign in with your account in the browser.</string>
     <string name="oauth_account_connected">Account connected</string>
     <string name="oauth_removing_account">Removing saved credentials…</string>
@@ -623,8 +623,6 @@
     <string name="code_block_include_undefined_hint">Apply the selected long-block display mode even when a code block has no language label.</string>
     <string name="code_block_extend">Extend</string>
     <string name="code_block_close">Close code block</string>
-    <string name="oauth_opening_browser">Opening sign-in…</string>
-    <string name="oauth_browser_unavailable">Install Chrome or a browser with Custom Tabs support to sign in.</string>
     <string name="provider_multiple_accounts">Multiple Accounts</string>
     <string name="provider_manage_accounts">Manage Accounts</string>
     <string name="provider_add_account">Add account</string>

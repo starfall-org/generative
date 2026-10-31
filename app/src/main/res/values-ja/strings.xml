@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">もう一度サインイン</string>
     <string name="oauth_sign_out">サインアウト</string>
     <string name="oauth_account_actions">アカウント操作</string>
-    <string name="oauth_browser_pending">ブラウザーのウィンドウでサインインを完了してください。完了すると自動的に閉じます。</string>
+    <string name="oauth_browser_pending">ブラウザーでサインインを完了し、Generative に戻ってください。</string>
     <string name="oauth_browser_hint">ブラウザーでアカウントにサインインしてください。</string>
     <string name="oauth_account_connected">アカウントを接続しました</string>
     <string name="oauth_removing_account">保存した認証情報を削除しています…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">長いブロックの表示モードは、言語の指定がないコードブロックにも適用されます。</string>
     <string name="code_block_extend">展開</string>
     <string name="code_block_close">コードブロックを閉じる</string>
-    <string name="oauth_opening_browser">サインインを開いています...</string>
-    <string name="oauth_browser_unavailable">サインインするには Chrome またはカスタムタブに対応したブラウザーをインストールしてください。</string>
     <string name="provider_multiple_accounts">複数のアカウント</string>
     <string name="provider_manage_accounts">アカウントを管理</string>
     <string name="provider_add_account">アカウントを追加</string>

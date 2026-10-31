@@ -15,7 +15,8 @@ internal object DevinOAuthProtocol {
     data class Challenge(val state: String, val verifier: String, val challenge: String, val authorizationUrl: String)
 
     fun begin(redirectUri: String = REDIRECT_URI, random: SecureRandom = SecureRandom()): Challenge {
-        val bytes = ByteArray(32).also(random::nextBytes)
+        // CLIProxyAPI/internal/auth/devin/pkce.go uses 64 random bytes (86 chars after base64url).
+        val bytes = ByteArray(64).also(random::nextBytes)
         val verifier = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
         val challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(digest)

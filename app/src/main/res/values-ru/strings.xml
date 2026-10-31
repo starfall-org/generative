@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Войти снова</string>
     <string name="oauth_sign_out">Выйти</string>
     <string name="oauth_account_actions">Действия с аккаунтом</string>
-    <string name="oauth_browser_pending">Завершите вход в окне браузера. Оно закроется автоматически, когда вы закончите.</string>
+    <string name="oauth_browser_pending">Завершите вход в браузере, затем вернитесь в Generative.</string>
     <string name="oauth_browser_hint">Войдите в аккаунт в браузере.</string>
     <string name="oauth_account_connected">Аккаунт подключён</string>
     <string name="oauth_removing_account">Удаление сохранённых учётных данных…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">Режим отображения длинных блоков применяется и к блокам кода без указания языка.</string>
     <string name="code_block_extend">Развернуть</string>
     <string name="code_block_close">Закрыть блок кода</string>
-    <string name="oauth_opening_browser">Открывается вход…</string>
-    <string name="oauth_browser_unavailable">Установите Chrome или браузер с поддержкой пользовательских вкладок, чтобы войти.</string>
     <string name="provider_multiple_accounts">Несколько аккаунтов</string>
     <string name="provider_manage_accounts">Управление аккаунтами</string>
     <string name="provider_add_account">Добавить аккаунт</string>

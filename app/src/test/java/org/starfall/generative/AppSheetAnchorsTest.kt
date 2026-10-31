@@ -94,7 +94,8 @@ class AppSheetAnchorsTest {
         val defaultTop = compose.onNodeWithTag("bottom-sheet-window")
             .getUnclippedBoundsInRoot().top
         val topPx = with(compose.density) { defaultTop.toPx() }
-        assertTrue("490dp of content must not be clipped to a 50% peek", topPx < 390f)
+        assertTrue("490dp of content must not be clipped to a 50% peek (top=$topPx)",
+            topPx < with(compose.density) { 390.dp.toPx() })
         assertTrue("Medium content should still leave room for full-height expansion", topPx > 100f)
         compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
         compose.waitForIdle()

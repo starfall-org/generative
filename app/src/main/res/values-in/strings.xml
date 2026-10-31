@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Masuk lagi</string>
     <string name="oauth_sign_out">Keluar</string>
     <string name="oauth_account_actions">Tindakan akun</string>
-    <string name="oauth_browser_pending">Selesaikan masuk di jendela masuk. Jendela ini tertutup otomatis setelah selesai.</string>
+    <string name="oauth_browser_pending">Selesaikan proses masuk di peramban, lalu kembali ke Generative.</string>
     <string name="oauth_browser_hint">Masuk dengan akun Anda di peramban.</string>
     <string name="oauth_account_connected">Akun terhubung</string>
     <string name="oauth_removing_account">Menghapus kredensial tersimpan…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">Terapkan mode blok panjang yang dipilih bahkan pada blok kode tanpa label bahasa.</string>
     <string name="code_block_extend">Perluas</string>
     <string name="code_block_close">Tutup blok kode</string>
-    <string name="oauth_opening_browser">Membuka halaman masuk…</string>
-    <string name="oauth_browser_unavailable">Pasang Chrome atau peramban dengan dukungan Custom Tabs untuk masuk.</string>
     <string name="provider_multiple_accounts">Beberapa Akun</string>
     <string name="provider_manage_accounts">Kelola Akun</string>
     <string name="provider_add_account">Tambahkan akun</string>

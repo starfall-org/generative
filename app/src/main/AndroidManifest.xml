@@ -62,10 +62,6 @@
         <activity android:name=".navigation.ExplorerActivity"
             android:exported="false" />
         <activity android:name=".shared.ui.auth.AppAuthResultActivity" android:exported="false" />
-        <activity android:name=".shared.ui.auth.OAuthBrowserActivity"
-            android:exported="false" android:theme="@style/Theme.Generative" />
-        <service android:name=".shared.auth.OAuthBrowserKeepAliveService"
-            android:exported="true" />
         <activity
             android:name=".shared.preview.CodePreviewActivity"
             android:exported="false"

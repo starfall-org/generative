@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Se reconnecter</string>
     <string name="oauth_sign_out">Se déconnecter</string>
     <string name="oauth_account_actions">Actions du compte</string>
-    <string name="oauth_browser_pending">Terminez la connexion dans la fenêtre de connexion. Elle se ferme automatiquement une fois terminé.</string>
+    <string name="oauth_browser_pending">Terminez la connexion dans le navigateur, puis revenez dans Generative.</string>
     <string name="oauth_browser_hint">Connectez-vous avec votre compte dans le navigateur.</string>
     <string name="oauth_account_connected">Compte connecté</string>
     <string name="oauth_removing_account">Suppression des identifiants enregistrés…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">Le mode d\'affichage des longs blocs s’applique aussi aux blocs de code sans indication de langage.</string>
     <string name="code_block_extend">Développer</string>
     <string name="code_block_close">Fermer le bloc de code</string>
-    <string name="oauth_opening_browser">Ouverture de la connexion…</string>
-    <string name="oauth_browser_unavailable">Installez Chrome ou un navigateur prenant en charge les onglets personnalisés pour vous connecter.</string>
     <string name="provider_multiple_accounts">Plusieurs comptes</string>
     <string name="provider_manage_accounts">Gérer les comptes</string>
     <string name="provider_add_account">Ajouter un compte</string>

@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Accedi di nuovo</string>
     <string name="oauth_sign_out">Esci</string>
     <string name="oauth_account_actions">Azioni dell’account</string>
-    <string name="oauth_browser_pending">Completa l\'accesso nella finestra di accesso. Si chiude automaticamente al termine.</string>
+    <string name="oauth_browser_pending">Completa l\'accesso nel browser, poi torna a Generative.</string>
     <string name="oauth_browser_hint">Accedi con il tuo account nel browser.</string>
     <string name="oauth_account_connected">Account collegato</string>
     <string name="oauth_removing_account">Rimozione delle credenziali salvate…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">Applica la modalità scelta anche ai blocchi di codice senza etichetta di linguaggio.</string>
     <string name="code_block_extend">Estendi</string>
     <string name="code_block_close">Chiudi il blocco di codice</string>
-    <string name="oauth_opening_browser">Apertura dell\'accesso…</string>
-    <string name="oauth_browser_unavailable">Installa Chrome o un browser con supporto per Custom Tabs per accedere.</string>
     <string name="provider_multiple_accounts">Più account</string>
     <string name="provider_manage_accounts">Gestisci gli account</string>
     <string name="provider_add_account">Aggiungi account</string>

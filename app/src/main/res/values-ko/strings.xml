@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">다시 로그인</string>
     <string name="oauth_sign_out">로그아웃</string>
     <string name="oauth_account_actions">계정 작업</string>
-    <string name="oauth_browser_pending">브라우저 창에서 로그인을 완료하세요. 완료하면 자동으로 닫힙니다.</string>
+    <string name="oauth_browser_pending">브라우저에서 로그인을 완료한 다음 Generative로 돌아오세요.</string>
     <string name="oauth_browser_hint">브라우저에서 계정으로 로그인하세요.</string>
     <string name="oauth_account_connected">계정 연결됨</string>
     <string name="oauth_removing_account">저장된 자격 증명을 삭제하는 중…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">긴 블록 표시 모드는 언어가 지정되지 않은 코드 블록에도 적용됩니다.</string>
     <string name="code_block_extend">펼치기</string>
     <string name="code_block_close">코드 블록 닫기</string>
-    <string name="oauth_opening_browser">로그인을 여는 중...</string>
-    <string name="oauth_browser_unavailable">로그인하려면 Chrome 또는 사용자 지정 탭을 지원하는 브라우저를 설치하세요.</string>
     <string name="provider_multiple_accounts">여러 계정</string>
     <string name="provider_manage_accounts">계정 관리</string>
     <string name="provider_add_account">계정 추가</string>

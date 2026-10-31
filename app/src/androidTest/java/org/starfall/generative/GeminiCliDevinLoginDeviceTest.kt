@@ -1,6 +1,8 @@
 package org.starfall.generative
 
 import android.app.Instrumentation
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -9,10 +11,11 @@ import java.net.ServerSocket
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -26,11 +29,11 @@ import org.starfall.generative.shared.files.AttachmentResolver
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.defaultAuthorization
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.auth.OAuthBrowserActivity
 
 /**
- * Tests real Android OAuth browser handoff on a connected device. These smoke checks open the
- * *actual provider* authorization URL, verify PKCE/redirect and then CANCEL the pending login.
+ * Tests Android OAuth browser handoff on a connected device. Browser ACTION_VIEW is intercepted
+ * for both providers to verify the launch intent without opening the external sign-in site.
+ * Both validate PKCE/redirect and then CANCEL the pending login.
  * No Google/Devin password or third-party consent is entered by instrumentation.
  *
  * Explicit opt-in: adb shell am instrument -w -e liveOAuth true \
@@ -64,7 +67,7 @@ class GeminiCliDevinLoginDeviceTest {
 
     @Test fun geminiCliOpensRealGoogleOAuthWithS256AndBoundLocalCallback() = runBlocking {
         requireLiveDevice()
-        val uri = launchAndCancel(ModelApiType.GEMINI_CLI, GeminiCliOAuthProtocol.CALLBACK_PORT)
+        val uri = launchAndCancel(ModelApiType.GEMINI_CLI, GeminiCliOAuthProtocol.CALLBACK_PORT, "accounts.google.com")
         assertEquals("https", uri.scheme)
         assertEquals("accounts.google.com", uri.host)
         assertEquals("offline", uri.getQueryParameter("access_type"))
@@ -80,7 +83,7 @@ class GeminiCliDevinLoginDeviceTest {
 
     @Test fun devinOpensRealCognitionOAuthWithS256AndBoundLocalCallback() = runBlocking {
         requireLiveDevice()
-        val uri = launchAndCancel(ModelApiType.DEVIN, 53389)
+        val uri = launchAndCancel(ModelApiType.DEVIN, 53389, "app.devin.ai")
         assertEquals("https", uri.scheme)
         assertEquals("app.devin.ai", uri.host)
         assertEquals("/auth/cli/continue", uri.path)
@@ -92,25 +95,32 @@ class GeminiCliDevinLoginDeviceTest {
         assertNull(uri.getQueryParameter("code_verifier"))
     }
 
-    private suspend fun launchAndCancel(type: ModelApiType, port: Int): Uri {
+    private suspend fun launchAndCancel(type: ModelApiType, port: Int, expectedHost: String): Uri {
         val loginAdapter = adapter(type)
         val testProvider = provider(type)
-        val monitor = instrumentation.addMonitor(OAuthBrowserActivity::class.java.name, null, false)
+        val browserIntent = CompletableDeferred<Intent>()
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.action != Intent.ACTION_VIEW || intent.data?.host != expectedHost) return null
+                browserIntent.complete(intent)
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        instrumentation.addMonitor(monitor)
         val pending = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).async { loginAdapter.authorize(testProvider) }
         return try {
-            val activity = withContext(Dispatchers.IO) {
-                instrumentation.waitForMonitorWithTimeout(monitor, 20_000)
-            }
-            assertNotNull("OAuth browser activity did not open on the actual device", activity)
-            val value = activity!!.intent.getStringExtra(OAuthBrowserActivity.URL)
-            assertTrue("Authorization must go to HTTPS", value?.startsWith("https://") == true)
-            assertFalse("OAuth is expected to remain pending without user consent", pending.isCompleted)
-            Uri.parse(value)
+            val intent = withTimeout(20_000) { browserIntent.await() }
+            assertEquals(Intent.ACTION_VIEW, intent.action)
+            assertTrue(intent.hasCategory(Intent.CATEGORY_BROWSABLE))
+            assertNull("No intermediate OAuth activity should be created", intent.component)
+            assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+            assertFalse("Authorization remains pending until callback or cancel", pending.isCompleted)
+            requireNotNull(intent.data)
         } finally {
             pending.cancelAndJoin()
             loginAdapter.clearCredentials(testProvider.id)
             instrumentation.removeMonitor(monitor)
-            // Real loopback listener must be unbound after cancellation, not leaked to other sessions.
+            // Listener should be released even if the external browser never returns.
             ServerSocket().use { socket ->
                 socket.reuseAddress = true
                 socket.bind(InetSocketAddress("127.0.0.1", port))

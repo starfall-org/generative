@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">Volver a iniciar sesión</string>
     <string name="oauth_sign_out">Cerrar sesión</string>
     <string name="oauth_account_actions">Acciones de la cuenta</string>
-    <string name="oauth_browser_pending">Termina de iniciar sesión en la ventana del navegador. Se cerrará automáticamente cuando termines.</string>
+    <string name="oauth_browser_pending">Completa el inicio de sesión en el navegador y vuelve a Generative.</string>
     <string name="oauth_browser_hint">Inicia sesión con tu cuenta en el navegador.</string>
     <string name="oauth_account_connected">Cuenta conectada</string>
     <string name="oauth_removing_account">Eliminando las credenciales guardadas…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">El modo de visualización de los bloques largos también se aplica a los bloques de código sin indicación de lenguaje.</string>
     <string name="code_block_extend">Desplegar</string>
     <string name="code_block_close">Cerrar el bloque de código</string>
-    <string name="oauth_opening_browser">Abriendo el inicio de sesión…</string>
-    <string name="oauth_browser_unavailable">Instala Chrome o un navegador con soporte de pestañas personalizadas para iniciar sesión.</string>
     <string name="provider_multiple_accounts">Varias cuentas</string>
     <string name="provider_manage_accounts">Gestionar las cuentas</string>
     <string name="provider_add_account">Añadir una cuenta</string>

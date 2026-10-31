@@ -43,7 +43,7 @@
     <string name="oauth_sign_in_again">เข้าสู่ระบบอีกครั้ง</string>
     <string name="oauth_sign_out">ออกจากระบบ</string>
     <string name="oauth_account_actions">การดำเนินการบัญชี</string>
-    <string name="oauth_browser_pending">กรอกการเข้าสู่ระบบในหน้าต่างเข้าสู่ระบบ หน้าต่างจะปิดอัตโนมัติเมื่อเสร็จสิ้น</string>
+    <string name="oauth_browser_pending">เข้าสู่ระบบให้เสร็จในเบราว์เซอร์ แล้วกลับไปที่ Generative</string>
     <string name="oauth_browser_hint">เข้าสู่ระบบด้วยบัญชีของคุณในเบราว์เซอร์</string>
     <string name="oauth_account_connected">เชื่อมต่อบัญชีแล้ว</string>
     <string name="oauth_removing_account">กำลังลบข้อมูลรับรองที่บันทึกไว้…</string>
@@ -523,8 +523,6 @@
     <string name="code_block_include_undefined_hint">ใช้โหมดการแสดงบล็อกยาวที่เลือกไว้ แม้บล็อกโค้ดนั้นไม่มีป้ายระบุภาษา</string>
     <string name="code_block_extend">ขยาย</string>
     <string name="code_block_close">ปิดบล็อกโค้ด</string>
-    <string name="oauth_opening_browser">กำลังเปิดหน้าเข้าสู่ระบบ…</string>
-    <string name="oauth_browser_unavailable">ติดตั้ง Chrome หรือเบราว์เซอร์ที่รองรับ Custom Tabs เพื่อเข้าสู่ระบบ</string>
     <string name="provider_multiple_accounts">บัญชีหลายรายการ</string>
     <string name="provider_manage_accounts">จัดการบัญชี</string>
     <string name="provider_add_account">เพิ่มบัญชี</string>

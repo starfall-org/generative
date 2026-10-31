@@ -39,7 +39,8 @@ import org.starfall.generative.shared.ui.background.LocalProfileModalImages
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.theme.modalScrimColor
-import org.starfall.generative.shared.ui.layout.amoledSheetBorder
+import org.starfall.generative.shared.ui.layout.AmoledBorderEdge
+import org.starfall.generative.shared.ui.layout.amoledEdgeBorder
 import org.starfall.generative.shared.ui.layout.modalContainerColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
@@ -74,24 +75,68 @@ fun BottomSheet(
     // Never force a half-screen initial anchor. A native scaffold peek anchor follows
     // the content height, and Expanded retains the full area below the status bar.
     val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.PartiallyExpanded,
-        // Hidden is only for swipe-to-dismiss, not a third visible resting height.
+        // Start off screen, as ModalBottomSheet did, so Material animates the entrance.
+        initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded)
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
     val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
     LaunchedEffect(sheetState) {
+        var hasBeenVisible = false
         snapshotFlow { sheetState.currentValue }.collect { value ->
-            if (value == SheetValue.Hidden) latestOnDismissRequest()
+            when {
+                value != SheetValue.Hidden -> hasBeenVisible = true
+                // The initial Hidden state is not a dismissal.
+                hasBeenVisible -> latestOnDismissRequest()
+            }
         }
     }
     val density = LocalDensity.current
     var measuredContentHeight by remember { mutableIntStateOf(0) }
-    val peekHeight = with(density) { measuredContentHeight.coerceAtLeast(1).toDp() }
+    var availableSheetHeight by remember { mutableIntStateOf(0) }
+    // Keep the native partial anchor valid even when content fills the whole screen.
+    // Material 3 can read an uninitialized offset if anchors disappear during its first layout.
+    // The <=1px difference is indistinguishable from the sole full-height stop.
+    val peekHeight = with(density) {
+        measuredContentHeight.coerceAtLeast(1)
+            .coerceAtMost((availableSheetHeight - 1).coerceAtLeast(1)).toDp()
+    }
+    val latestExpandOnOpen by rememberUpdatedState(expandOnOpen)
+    LaunchedEffect(sheetState) {
+        // Do not mistake the temporary 1px peek for the final anchor. A short
+        // sheet must begin PartiallyExpanded, while full-height content has
+        // only the Expanded anchor.
+        snapshotFlow {
+            measuredContentHeight > 0 && availableSheetHeight > 0 &&
+                (sheetState.hasPartiallyExpandedState ||
+                    (measuredContentHeight >= availableSheetHeight - 1 &&
+                        sheetState.hasExpandedState))
+        }.first { it }
+        sheetState.show()
+    }
     LaunchedEffect(expandOnOpen, sheetState) {
         if (expandOnOpen) {
-            snapshotFlow { sheetState.hasExpandedState }.first { it }
+            snapshotFlow { sheetState.isVisible && sheetState.hasExpandedState }.first { it }
             sheetState.expand()
+        }
+    }
+    LaunchedEffect(sheetState) {
+        var previousContentHeight = 0
+        var shouldCollapse = false
+        snapshotFlow {
+            Triple(measuredContentHeight, sheetState.currentValue, sheetState.hasPartiallyExpandedState)
+        }.collect { (height, currentValue, hasPartialAnchor) ->
+            // The content animation can remeasure before the scaffold updates
+            // its native anchors. Remember the shrink until the new peek exists.
+            if (height > 0 && previousContentHeight > height) shouldCollapse = true
+            else if (height > previousContentHeight) shouldCollapse = false
+            previousContentHeight = height
+            if (shouldCollapse && !latestExpandOnOpen &&
+                currentValue == SheetValue.Expanded && hasPartialAnchor
+            ) {
+                shouldCollapse = false
+                sheetState.partialExpand()
+            }
         }
     }
     val amoled = LocalAmoledMode.current
@@ -115,8 +160,10 @@ fun BottomSheet(
                 sheetContent = {
                     Box(
                         Modifier.fillMaxSize().testTag("bottom-sheet-window")
-                            .then(if (amoled) Modifier.amoledSheetBorder(
-                                sheetState, shape, MaterialTheme.colorScheme.outlineVariant, 1.dp
+                            // Scaffold already positions the sheet at its anchor. Draw the
+                            // AMOLED outline at this local top edge, not at a second offset.
+                            .then(if (amoled) Modifier.amoledEdgeBorder(
+                                shape, MaterialTheme.colorScheme.outlineVariant, 1.dp, AmoledBorderEdge.Top
                             ) else Modifier)
                     ) {
                         // Material translates the full-height surface between native peek/expanded anchors.
@@ -196,6 +243,7 @@ fun BottomSheet(
                 scaffoldState = scaffoldState,
                 modifier = modifier.fillMaxSize()
                     .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                    .onSizeChanged { availableSheetHeight = it.height }
                     .testTag("app-bottom-sheet"),
                 sheetPeekHeight = peekHeight,
                 sheetShape = shape,

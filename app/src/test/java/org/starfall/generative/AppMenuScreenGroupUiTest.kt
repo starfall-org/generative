@@ -40,7 +40,7 @@ import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.menu.ui.GroupBottomShape
 import org.starfall.generative.features.menu.ui.GroupInnerCorner
 import org.starfall.generative.features.menu.ui.GroupMiddleShape
-import org.starfall.generative.features.menu.ui.GroupOuterCorner
+import org.starfall.generative.features.menu.ui.GroupSingleShape
 import org.starfall.generative.features.menu.ui.GroupTopShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -67,7 +67,7 @@ class AppMenuScreenGroupUiTest {
     fun groupShapesUseLargeOuterCornersAndSlightInnerAdjacentCorners() {
         val density = Density(2f)
         val size = Size(600f, 160f)
-        val outerPx = with(density) { GroupOuterCorner.toPx() }
+        val outerPx = minOf(size.width, size.height) / 2f
         val innerPx = with(density) { GroupInnerCorner.toPx() }
         assertTrue(innerPx > 0f && innerPx < outerPx)
 
@@ -82,6 +82,15 @@ class AppMenuScreenGroupUiTest {
         assertEquals(innerPx, middle.topRightCornerRadius.x, 0.01f)
         assertEquals(innerPx, middle.bottomLeftCornerRadius.x, 0.01f)
         assertEquals(innerPx, middle.bottomRightCornerRadius.x, 0.01f)
+
+        val single = (GroupSingleShape.createOutline(size, LayoutDirection.Ltr, density) as Outline.Rounded).roundRect
+        assertEquals(outerPx, single.topLeftCornerRadius.x, 0.01f)
+        assertEquals(outerPx, single.topRightCornerRadius.x, 0.01f)
+        assertEquals(outerPx, single.bottomLeftCornerRadius.x, 0.01f)
+        assertEquals(outerPx, single.bottomRightCornerRadius.x, 0.01f)
+        val taller = Size(600f, 240f)
+        val tallerSingle = (GroupSingleShape.createOutline(taller, LayoutDirection.Ltr, density) as Outline.Rounded).roundRect
+        assertEquals(120f, tallerSingle.topLeftCornerRadius.x, 0.01f)
 
         val bottom = (GroupBottomShape.createOutline(size, LayoutDirection.Ltr, density) as Outline.Rounded).roundRect
         assertEquals(innerPx, bottom.topLeftCornerRadius.x, 0.01f)
@@ -118,9 +127,9 @@ class AppMenuScreenGroupUiTest {
         tapAt(Offset(last.left + 4f, last.bottom - 4f))
         tapAt(Offset(last.right - 4f, last.bottom - 4f))
         assertEquals(emptyList<String>(), clicked)
-        tapAt(Offset(first.left + 24f, first.top + 24f))
+        tapAt(Offset(first.left + 40f, first.top + 40f))
         tapAt(Offset(middle.left + 24f, middle.top + 24f))
-        tapAt(Offset(last.left + 24f, last.bottom - 24f))
+        tapAt(Offset(last.left + 40f, last.bottom - 40f))
 
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Built-in tools"))
         compose.waitForIdle()
@@ -128,15 +137,15 @@ class AppMenuScreenGroupUiTest {
         val mcp = compose.onNodeWithTag("app-menu-mcp").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(tools.left + 4f, tools.top + 4f))
         tapAt(Offset(mcp.left + 4f, mcp.bottom - 4f))
-        tapAt(Offset(tools.left + 24f, tools.top + 24f))
-        tapAt(Offset(mcp.left + 24f, mcp.bottom - 24f))
+        tapAt(Offset(tools.left + 40f, tools.top + 40f))
+        tapAt(Offset(mcp.left + 40f, mcp.bottom - 40f))
 
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Remote services"))
         compose.waitForIdle()
         val remote = compose.onNodeWithTag("app-menu-remote").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(remote.left + 4f, remote.top + 4f))
         tapAt(Offset(remote.right - 4f, remote.bottom - 4f))
-        tapAt(Offset(remote.left + 24f, remote.top + 24f))
+        tapAt(Offset(remote.left + 40f, remote.top + 40f))
         assertEquals(listOf("Configuration", "Providers", "Speech", "Tools", "MCP", "Remote"), clicked)
     }
 

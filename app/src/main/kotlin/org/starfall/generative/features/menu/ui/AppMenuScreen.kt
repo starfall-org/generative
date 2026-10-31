@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import androidx.compose.material3.IconButton
@@ -65,21 +66,23 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 
-internal val GroupOuterCorner = 24.dp
+// A 50% corner tracks each row's height: single-item groups become full capsules.
+internal val GroupOuterCorner = CornerSize(50)
 internal val GroupInnerCorner = 6.dp
 
 internal val GroupTopShape = RoundedCornerShape(
     topStart = GroupOuterCorner,
     topEnd = GroupOuterCorner,
-    bottomStart = GroupInnerCorner,
-    bottomEnd = GroupInnerCorner
+    bottomStart = CornerSize(GroupInnerCorner),
+    bottomEnd = CornerSize(GroupInnerCorner)
 )
 
 internal val GroupMiddleShape = RoundedCornerShape(GroupInnerCorner)
+internal val GroupSingleShape = RoundedCornerShape(GroupOuterCorner)
 
 internal val GroupBottomShape = RoundedCornerShape(
-    topStart = GroupInnerCorner,
-    topEnd = GroupInnerCorner,
+    topStart = CornerSize(GroupInnerCorner),
+    topEnd = CornerSize(GroupInnerCorner),
     bottomStart = GroupOuterCorner,
     bottomEnd = GroupOuterCorner
 )
@@ -147,7 +150,7 @@ fun AppMenuScreen(
             },
             bottom = 24.dp + safeDrawing.calculateBottomPadding()
         ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item(key = "app-logo") {
             Box(
@@ -216,7 +219,7 @@ fun AppMenuScreen(
                     stringResource(R.string.app_menu_remote_servers),
                     FluentUi.Regular.Desktop,
                     onNavigateToRemoteMachines,
-                    shape = RoundedCornerShape(GroupOuterCorner),
+                    shape = GroupSingleShape,
                     tag = "remote"
                 )
             }
@@ -245,7 +248,7 @@ fun AppMenuScreen(
                     stringResource(R.string.app_menu_settings),
                     FluentUi.Regular.Settings,
                     onNavigateToAppSettings,
-                    shape = RoundedCornerShape(GroupOuterCorner),
+                    shape = GroupSingleShape,
                     tag = "settings"
                 )
             }
