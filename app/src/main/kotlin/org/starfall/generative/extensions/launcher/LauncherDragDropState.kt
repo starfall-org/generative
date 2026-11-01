@@ -1,5 +1,8 @@
 package org.starfall.generative.extensions.launcher
 
+import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,7 +92,37 @@ class LauncherDragDropState<T : Any> {
     private var sourceReturnBounds: (() -> Rect?)? = null
     private var geometryVersion by mutableIntStateOf(0)
     private var scrollingContainers by mutableStateOf(emptySet<Any>())
+    private val scrollViewports = mutableMapOf<Any, Pair<ScrollableState, Rect>>()
     val isAutoScrolling: Boolean get() = scrollingContainers.isNotEmpty()
+
+    internal fun registerScrollViewport(token: Any, scrollState: ScrollableState, bounds: Rect) {
+        scrollViewports[token] = scrollState to bounds
+    }
+
+    internal fun removeScrollViewport(token: Any) {
+        scrollViewports.remove(token)
+    }
+
+    /**
+     * Lazy lists maintain the first visible key across dataset changes. If a drag
+     * reorder moves that key, the entire viewport can jump to the moved item.
+     * Anchor by index/offset for the next measure before invoking the hover
+     * callback that may reorder items. Only the viewport under the pointer is
+     * affected; ordinary scrolling and non-drag content updates remain untouched.
+     */
+    internal fun preserveScrollViewportDuringReorder(pointer: Offset) {
+        scrollViewports.values.forEach { (scrollState, bounds) ->
+            if (!bounds.contains(pointer)) return@forEach
+            when (scrollState) {
+                is LazyGridState -> scrollState.requestScrollToItem(
+                    scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset
+                )
+                is LazyListState -> scrollState.requestScrollToItem(
+                    scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset
+                )
+            }
+        }
+    }
 
     internal fun setAutoScrolling(token: Any, scrolling: Boolean) {
         scrollingContainers = if (scrolling) scrollingContainers + token else scrollingContainers - token
@@ -284,6 +317,7 @@ class LauncherDragDropState<T : Any> {
                     if (next != null && targets[next.token] === next && next.enabled) {
                         hoveredToken = next.token
                         hoveredTargetKey = next.key
+                        preserveScrollViewportDuringReorder(drag.pointer)
                         next.onEnter(drag)
                     }
                 }
@@ -302,6 +336,8 @@ class LauncherDragDropState<T : Any> {
         refreshTarget()
         val target = hoveredToken?.let { targets[it] }
         return try {
+            // Drop callbacks can also change the data without a preceding hover.
+            preserveScrollViewportDuringReorder(drag.pointer)
             val accepted = target?.takeIf { it.enabled && it.accepts(drag.item) }?.onDrop?.invoke(drag) == true
             if (session !== drag) return LauncherDragOutcome(false, null)
             finish(LauncherDragOutcome(accepted, target?.key?.takeIf { accepted }),
@@ -327,6 +363,9 @@ class LauncherDragDropState<T : Any> {
         hoveredTargetKey = null
         sourceCompletion = null
         scrollingContainers = emptySet()
+        // Completion can commit or roll back the preview while the dragged key
+        // still occupies the first visible row.
+        preserveScrollViewportDuringReorder(drag.pointer)
         try { exitTarget?.onExit?.invoke(drag) } finally { completion?.invoke(outcome) }
         return outcome
     }

@@ -529,7 +529,7 @@ fun ProvidersScreen(
                                         } else false
                                     }
                                 )
-                                .autoScroll(dndState, gridState)
+                                .autoScroll(dndState, gridState, enabled = openGroupId == null)
                                 .onGloballyPositioned {
                                     if (gridMode == isGridView) rootGridWindowBounds = it.boundsInWindow()
                                 }

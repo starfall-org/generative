@@ -164,6 +164,60 @@ class ProviderLauncherMigrationDeviceTest {
         assertTrue(found("provider_folder_screen_group-a"))
     }
 
+    @Test fun listFolderAutoScrollStaysAtTopAfterSmallDownwardCorrection() =
+        folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid = false)
+
+    @Test fun gridFolderAutoScrollStaysAtTopAfterSmallDownwardCorrection() =
+        folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid = true)
+
+    private fun folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid: Boolean) {
+        val longFolder = (0 until 48).map { provider("m$it", "group-a", it) }
+        show(longFolder, listOf(group), grid = grid)
+        compose.onNodeWithTag("provider_group_group-a", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        val folderGrid = compose.onNodeWithTag("provider_folder_grid_group-a", useUnmergedTree = true)
+        folderGrid.performScrollToIndex(40)
+        compose.waitForIdle()
+        val gridBounds = folderGrid.fetchSemanticsNode().boundsInRoot
+        val rootOrigin = compose.onRoot().fetchSemanticsNode().boundsInRoot.topLeft
+        // The first quarter is inside the first column in both grid and list.
+        val nearTop = Offset(gridBounds.left + gridBounds.width * 0.25f, gridBounds.top +
+            10f * compose.activity.resources.displayMetrics.density) - rootOrigin
+
+        compose.mainClock.autoAdvance = false
+        try {
+            start("provider_folder_provider_m41")
+            compose.onRoot().performTouchInput { moveTo(nearTop) }
+            var reachedTop = false
+            for (frame in 0 until 200) {
+                compose.mainClock.advanceTimeBy(80)
+                compose.waitForIdle()
+                if (found("provider_folder_provider_m0")) {
+                    reachedTop = true
+                    break
+                }
+            }
+            assertTrue("Holding the drag near the folder's top must scroll up to the first item", reachedTop)
+
+            // A small downward finger correction remains in the TOP edge zone.
+            // Reordering the newly visible first row must not move the viewport
+            // back towards the original dragged item's index near the end.
+            val correction = Offset(0f, 8f * compose.activity.resources.displayMetrics.density)
+            compose.onRoot().performTouchInput { moveTo(nearTop + correction) }
+            compose.mainClock.advanceTimeBy(2_000)
+            compose.waitForIdle()
+            assertTrue("A tiny downward correction must not jump to the folder's end",
+                found("provider_folder_provider_m0"))
+            assertTrue("The active drag must survive the scroll and correction", found("dragged_provider"))
+            assertTrue("Preview reorders must not write to storage", writes.isEmpty())
+            compose.onRoot().performTouchInput { cancel() }
+            compose.mainClock.advanceTimeByFrame()
+            assertTrue("Cancelling the drag must not persist reorders", writes.isEmpty())
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
+
     @Test fun exitingFolderDuringDragPreservesTheShadowAndCanDropOntoRoot() {
         show(rootProviders + members, listOf(group))
         compose.onNodeWithTag("provider_group_group-a", useUnmergedTree = true).performClick()

@@ -978,4 +978,6 @@
     <string name="duration_minutes_seconds">%1$d phút %2$d giây</string>
     <string name="duration_seconds">%1$d giây</string>
     <string name="quick_action_camera">Máy ảnh</string>
+    <string name="providers_demo_title">Bản demo ProvidersScreen</string>
+        <string name="providers_demo_editor_title">Provider mẫu</string>
 </resources>

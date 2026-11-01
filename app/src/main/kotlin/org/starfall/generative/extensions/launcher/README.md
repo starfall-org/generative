@@ -23,7 +23,7 @@ Hosts provide previews, application adapters and persistence callbacks. Run
 The facade **delegates to the existing implementation** and does not create a
 second drag state or replace the session/transaction contracts. Inside a
 `with(Launcher) { ... }` scope, use `.dragSource`, `.dropTarget`,
-`.itemDropTarget` and `.autoScroll` as normal Modifier extensions.
+`.itemDropTarget`, `.folderMember` and `.autoScroll` as normal Modifier extensions.
 
 Minimal transfer without a join region:
 
@@ -63,13 +63,51 @@ fun MoveTile(id: String, destinationLabel: String, onMoved: (String) -> Unit) = 
 `Launcher.Reorder` (OnEntry, CrossCenter, Before, After, Custom),
 `Launcher.ActivationMode` (LongPress, AfterSlop), `Launcher.defaults`,
 `Launcher.geometry`, `Launcher.Hover`, `Launcher.HoverAction`,
-and `Launcher.FolderExit`.
+`Launcher.folderGeometry`, `Launcher.FolderExit` and `.folderMember`.
 
 Existing top-level Kotlin APIs remain valid for old callers and tests.
 Keep one `Launcher.Host` above all removable folders/workspaces. For ordered
 lists/grids, use `Launcher.Layout` with a hover effect and persist only an
 accepted commit. The host owns storage, folder membership and capacity;
 the extension only implements interactions.
+
+## Reusable folder behavior
+
+The Developer Options demo and the Providers folder both use the **same**
+`Modifier.folderMember` interaction logic, `Launcher.folderGeometry` for
+logical drop slots and `Launcher.autoScroll` for edge scrolling. Launcher does
+**not** supply folder UI, item rendering, list/grid composables, or styling.
+The optional `shared/ui/lists/LauncherCollection.kt` is a separate UI adapter
+used by both consumers; other clients may render completely different layouts.
+The demo uses a small Card, while Providers retains its full-screen animated
+overlay, header, icons, cards, insets, AMOLED appearance and navigation. The
+extension never imports application features or persists data.
+
+A folder integration uses four cooperating primitives:
+
+1. Keep one stable `Launcher.Host` above the workspace and removable folders.
+2. Render any host-owned list/grid with independently measured logical
+   slots via `Launcher.folderGeometry` and apply `.autoScroll` to its viewport.
+   The app offers an optional `shared/ui/lists/LauncherCollection.kt` adapter
+   for ordinary lazy lists/grids, with configurable columns, padding, spacing,
+   animation and scrolling. It is intentionally outside Launcher.
+3. Apply `.folderMember` to each rendered tile, passing the **logical slot**
+   returned by the collection as `hitBounds`. The API combines drag source,
+   reorder target, optional centered folder-join target and optional higher-
+   priority self-drop target. The caller chooses collision rules, target
+   priorities, acceptance policies, hover timing and drag callbacks. Optional
+   source handles, drag artwork regions and return destinations remain supported.
+4. Use `Launcher.FolderExit` on the stable owner for delayed folder exit and
+   custom escape regions. The original drag continues into the workspace.
+   On release, commit the host's in-memory order once; cancel restores its
+   snapshot. Backend writes and error rollback are host responsibilities.
+
+A screen can use `Launcher.Layout` for generic container membership and
+ordering, or adapt its richer domain model to `onReorderEnter` /
+`onReorderDrop` without placing database logic in Launcher. In particular,
+Providers keeps its existing persistence/rollback model and its 5dp side-exit
+policy. While a folder is open, disable workspace auto-scroll to prevent two
+stacked scroll containers from reacting to the same pointer.
 
 ## Components
 
@@ -92,7 +130,12 @@ the extension only implements interactions.
   for host-defined escape areas (such as the left/right display edges). The
   drag session survives closing the folder; a cancelled drop restores its
   original membership.
-- `.autoScroll`: viewport-measured, frame-driven lazy list/grid scroll.
+- `.autoScroll`: viewport-measured, frame-driven lazy list/grid scroll; can be
+  disabled while a folder overlays its workspace.
+- `Launcher.folderGeometry`: pure measured slot calculations, independent of UI.
+  `shared/ui/lists/LauncherCollection.kt` is an optional host-owned renderer.
+- `.folderMember`: unified source/reorder/join/self-drop registration, with
+  item-specific callbacks and hit-testing policies.
 
 ## Integration contract
 
@@ -114,8 +157,9 @@ the extension only implements interactions.
 6. For leaving an open folder, register its *content region* as a target and use
    `LauncherFolderExitEffect`. Only remove the folder UI, **not** the host or
    drag state. Workspace targets then continue receiving the same drag session.
-7. Apply `Modifier.autoScroll(state, lazyGridState)` inside the facade scope
-   to the list/grid viewport when necessary. Drag targets should be registered on the actual tiles.
+7. Use the optional host-side `LauncherCollection` adapter, or render any
+   custom lazy layout and apply `Modifier.autoScroll(state, lazyGridState)`.
+   Register targets against logical slots rather than animated tiles.
 8. Keep mutually exclusive surfaces' `enabled` flags synchronized with
    visibility; a visually covered workspace must not intercept a folder drag.
 
@@ -336,8 +380,13 @@ transaction callbacks; the controller does not assume a particular item type.
 cascades. Turning off the movement guard permits continuous dwell-driven reorder;
 use that only when the consumer deliberately handles successive layout changes.
 `.autoScroll` retains independent edge width, speed, direction and
-reverse-layout controls. Placement animation remains native `animateItem`, chosen
-by each consumer; host `style` controls pickup scale/duration, landing duration and
+reverse-layout controls. While a drag is active, Launcher anchors the visible
+LazyList/LazyGrid index and offset before an entry, hover, drop or completion
+callback changes the item order. This prevents Lazy layouts from following the
+previous first-visible item's key to a distant row. Consumers do not need
+screen-specific scroll anchoring for drag reorders. The optional host-side
+`LauncherCollection` uses native `animateItem`; custom layouts can animate
+however needed. Host `style` controls pickup scale/duration, landing duration and
 shadow elevation.
 
 The demo's **List / Grid** and **Interaction settings** controls are session-only.
@@ -391,7 +440,9 @@ actual supported devices before claiming animation performance parity.
 
 ### Flexible layouts
 
-The controller does not own a layout manager. `LazyColumn`, `LazyRow`, fixed or
+The controller is layout-agnostic and provides no UI. The optional adapter
+`shared/ui/lists/LauncherCollection.kt` can render a list or vertical grid;
+other layouts register the same drag sources and targets. `LazyColumn`, `LazyRow`, fixed or
 adaptive `LazyVerticalGrid`/`LazyHorizontalGrid`, and custom measured containers
 can all register sources/targets. Use `horizontal = true` for horizontal
 geometry/scroll helpers, and `rtl = true` for horizontal insertion reading order.
