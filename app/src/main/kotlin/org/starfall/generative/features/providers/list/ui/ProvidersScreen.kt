@@ -125,7 +125,7 @@ fun ProvidersScreen(
     var containerOrigin by remember { mutableStateOf(Offset.Zero) }
     var containerWindowBounds by remember { mutableStateOf(Rect.Zero) }
     var rootGridWindowBounds by remember { mutableStateOf(Rect.Zero) }
-    val folderEscapeEdgePx = with(LocalDensity.current) { 72.dp.toPx() }
+    val folderEscapeEdgePx = with(LocalDensity.current) { 5.dp.toPx() }
     val rootScrollEdgePx = with(LocalDensity.current) { 48.dp.toPx() }
 
     val sortedGroups = remember(providerGroups) {
