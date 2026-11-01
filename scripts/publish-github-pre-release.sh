@@ -87,105 +87,13 @@ else
     --title "v$tag" --generate-notes --prerelease --latest=false
 fi
 
-# Prefer concise, user-facing changes from AI; retain legacy notes as a fallback.
-release_body="$(gh release view "$tag" --repo "$repo" --json body --jq '.body // ""')"
-release_marker='<!-- generative-release-info -->'
-ai_notes=""
-ai_base="${RELEASE_NOTES_API_BASE_URL:-${AI_BASE_URL:-}}"
-ai_key="${RELEASE_NOTES_API_KEY:-${AI_API_KEY:-}}"
-ai_model="${RELEASE_NOTES_MODEL:-${AI_MODEL:-gpt-4o-mini}}"
-
-# Keep a previously generated note as a fallback, but always retry AI generation
-# on every publish. Older versions skipped this whole block once the marker existed.
-if [[ "$release_body" == *"$release_marker"* ]]; then
-  previous_notes="$(printf '%s\n' "$release_body" | sed -n '/^### What/,$p' | tail -n +3)"
-  if [[ -n "$previous_notes" ]]; then
-    release_body="$previous_notes"
-  else
-    release_body=""
-  fi
-fi
-
-if [[ -n "$ai_base" ]]; then
-  echo "Generating AI release notes (model: $ai_model)."
-  ai_tmp="$(mktemp -d)"
-  previous_tag="$(git describe --tags --abbrev=0 "$commit^" 2>/dev/null || true)"
-  if [[ -n "$previous_tag" ]]; then
-    commit_messages="$(git log --no-merges --format='%s' "$previous_tag..$commit" 2>/dev/null || true)"
-  else
-    commit_messages="$(git log -20 --no-merges --format='%s' "$commit" 2>/dev/null || true)"
-  fi
-  printf '%s' "$commit_messages" > "$ai_tmp/commit-messages.txt"
-  python3 - "$ai_model" "$ai_tmp/commit-messages.txt" "$ai_tmp/request.json" <<'PY_REQUEST'
-import json, sys
-model, messages_path, request_path = sys.argv[1:]
-commit_messages = open(messages_path, encoding="utf-8").read().strip()
-payload = {"model": model, "temperature": 0.2, "messages": [
-    {"role": "system", "content": "Write concise English release notes for end users of the Generative Android app using only the supplied commit messages. Describe likely user-visible features, usability improvements, and fixes. Do not mention internal code, refactoring, tests, CI, commit history, or developer tasks. Do not invent details not supported by the messages. Return 2-6 short Markdown bullets only."},
-    {"role": "user", "content": "Commit messages for this release:\n" + (commit_messages or "No commit messages available; provide one conservative general maintenance note.")},
-]}
-with open(request_path, "w", encoding="utf-8") as stream:
-    json.dump(payload, stream)
-PY_REQUEST
-  ai_base="${ai_base%/}"
-  [[ "$ai_base" == */chat/completions ]] || ai_base="$ai_base/chat/completions"
-  curl_args=(--silent --show-error --connect-timeout "${RELEASE_NOTES_CONNECT_TIMEOUT_SECONDS:-5}" --max-time "${RELEASE_NOTES_TIMEOUT_SECONDS:-20}" -H 'Content-Type: application/json' --data-binary "@$ai_tmp/request.json" -o "$ai_tmp/response.json" -w '%{http_code}')
-  [[ -z "$ai_key" ]] || curl_args+=(-H "Authorization: Bearer $ai_key")
-  printf "AI release-note endpoint: %s\n" "$(printf '%s' "$ai_base" | sed 's/[?#].*$//')"
-  if http_status="$(curl "${curl_args[@]}" "$ai_base")"; then
-    if [[ "$http_status" =~ ^2[0-9][0-9]$ ]]; then
-      if ! ai_notes="$(python3 - "$ai_tmp/response.json" <<'PY_RESPONSE'
-import json, sys
-try:
-    with open(sys.argv[1], encoding="utf-8") as stream:
-        data = json.load(stream)
-    content = data["choices"][0]["message"]["content"]
-    if not isinstance(content, str) or len(content.strip()) < 20:
-        raise ValueError("response choices[0].message.content is missing or too short")
-    print(content.strip())
-except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
-    print(f"Could not parse AI response: {exc}", file=sys.stderr)
-    sys.exit(1)
-PY_RESPONSE
-      )"; then
-        echo 'Warning: AI API returned HTTP success but no usable chat-completion content; using fallback notes.' >&2
-      else
-        echo 'AI release notes generated successfully.'
-      fi
-    else
-      echo "Warning: AI release-note API returned HTTP ${http_status:-unknown}; response body follows (secrets/authorization headers are not printed):" >&2
-      python3 - "$ai_tmp/response.json" <<'PY_ERROR'
-import sys
-try:
-    body = open(sys.argv[1], encoding="utf-8").read().strip()
-    print(body[:4000] if body else "<empty response body>", file=sys.stderr)
-except OSError as exc:
-    print(f"Could not read response body: {exc}", file=sys.stderr)
-PY_ERROR
-    fi
-  else
-    curl_status=$?
-    echo "Warning: AI release-note request failed (curl exit ${curl_status}, HTTP ${http_status:-unknown}); continuing with fallback notes." >&2
-    if [[ -s "$ai_tmp/response.json" ]]; then
-      head -c 4000 "$ai_tmp/response.json" >&2
-      printf '\n' >&2
-    fi
-  fi
-  rm -rf "$ai_tmp"
-else
-  echo 'Warning: AI_BASE_URL/RELEASE_NOTES_API_BASE_URL is empty; skipping AI release notes and using fallback.' >&2
-fi
-
-if [[ -z "$ai_notes" ]]; then
-  echo 'Warning: AI release notes were not generated; falling back to previous release notes or GitHub-generated notes.' >&2
-  ai_notes="${release_body:-'- Includes general improvements and fixes for a smoother, more reliable app experience.'}"
-fi
+# Use the same end-user release-note editor for stable and pre-release builds.
+# It considers the actual release range and falls back to concrete git changes;
+# RELEASE_NOTES_FILE can override AI notes with a reviewed Markdown document.
 notes_file="$(mktemp)"
 trap 'rm -f "$notes_file"' EXIT
-
-# Release assets and tag already expose the version, APK, and checksum. Keep the
-# description focused on actual user-facing changes instead of repeating metadata.
-printf '%s\n' "$ai_notes" > "$notes_file"
+python3 "$PWD/scripts/generate-release-notes.py" \
+  --tag "$tag" --repo "$repo" --output "$notes_file"
 
 gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 
