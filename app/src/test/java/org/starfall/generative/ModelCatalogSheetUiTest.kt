@@ -63,6 +63,7 @@ class ModelCatalogSheetUiTest {
         } }
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("provider-model-catalog-error").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Catalog unavailable").assertIsDisplayed()
+        compose.onNodeWithText("Unable to load models").assertDoesNotExist()
         compose.runOnIdle { fail = false }
         compose.onNodeWithText("Retry").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Alpha model").fetchSemanticsNodes().isNotEmpty() }

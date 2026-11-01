@@ -48,6 +48,7 @@ import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIc
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsImage as ImageFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsImageAdd as ImageAddFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsImageOff as ImageOffFluentVector
+import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsImageSparkle as ImageSparkleFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsInfo as InfoFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsKey as KeyFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsKeyboard as KeyboardFluentVector
@@ -134,6 +135,7 @@ object FluentUi {
         val Image: ImageVector get() = ImageFluentVector
         val ImageAdd: ImageVector get() = ImageAddFluentVector
         val ImageOff: ImageVector get() = ImageOffFluentVector
+        val ImageSparkle: ImageVector get() = ImageSparkleFluentVector
         val Info: ImageVector get() = InfoFluentVector
         val Key: ImageVector get() = KeyFluentVector
         val Keyboard: ImageVector get() = KeyboardFluentVector

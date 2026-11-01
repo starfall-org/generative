@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -81,7 +82,7 @@ internal fun QuickActionsSheetContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AddActionTile(
-                icon = Icons.Outlined.FolderOpen,
+                icon = FluentUi.Regular.ImageAdd,
                 label = stringResource(R.string.quick_action_photos),
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -99,7 +100,7 @@ internal fun QuickActionsSheetContent(
                 }
             )
             AddActionTile(
-                icon = Icons.Outlined.UploadFile,
+                icon = FluentUi.Regular.Attach,
                 label = stringResource(R.string.common_files),
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -116,7 +117,7 @@ internal fun QuickActionsSheetContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AddGenerationCard(
-                icon = Icons.Outlined.Image,
+                icon = FluentUi.Regular.ImageSparkle,
                 label = stringResource(R.string.common_image),
                 modifier = Modifier.weight(1f).testTag("quick-actions-create-image"),
                 onClick = { onCreateImage(); onDismiss() }

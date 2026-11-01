@@ -35,4 +35,28 @@ class ModelCatalogEndpointTest {
             }
         }
     }
+
+    @Test fun failedCatalogRequestsExposeStatusAndApiMessages() = runBlocking {
+        MockWebServer().use { server ->
+            HttpClient(OkHttp).use { client ->
+                val adapter = ModelCatalogAdapter(client, Json)
+                val provider = ModelProvider(id = "test", name = "Test", type = ModelApiType.OPENAI,
+                    baseUrl = server.url("/v1").toString())
+                val cases = listOf(
+                    Triple(401, """{"error":{"message":"Invalid API key","type":"authentication_error"}}""", "HTTP 401\nInvalid API key"),
+                    Triple(429, """{"error":"Rate limit exceeded"}""", "HTTP 429\nRate limit exceeded"),
+                    Triple(422, """{"message":"Unsupported endpoint"}""", "HTTP 422\nUnsupported endpoint"),
+                    Triple(502, "Proxy is unavailable", "HTTP 502\nProxy is unavailable"),
+                    Triple(400, """{"error":{"code":"bad_request"}}""", "HTTP 400\n" + """{"error":{"code":"bad_request"}}"""),
+                    Triple(503, "", "HTTP 503\nUnable to load models")
+                )
+                cases.forEach { (status, body, expected) ->
+                    server.enqueue(MockResponse().setResponseCode(status).setBody(body))
+                    val failure = runCatching { adapter.fetch(provider) }.exceptionOrNull()
+                    assertEquals(expected, failure?.message)
+                    assertEquals("/v1/models", server.takeRequest(5, TimeUnit.SECONDS)!!.path)
+                }
+            }
+        }
+    }
 }

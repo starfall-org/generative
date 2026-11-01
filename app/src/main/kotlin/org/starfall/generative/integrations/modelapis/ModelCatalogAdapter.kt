@@ -40,8 +40,11 @@ internal class ModelCatalogAdapter(private val httpClient: HttpClient, private v
                 provider.config.headers.forEach { (name, value) -> headers.remove(name); header(name, value) }
                 cursor?.let { parameter(if (provider.type == ModelApiType.GOOGLE) "pageToken" else "after_id", it) }
             }
-            check(response.status.isSuccess()) { "Unable to load models: HTTP ${response.status.value}" }
-            val body = json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val responseText = response.bodyAsText()
+            check(response.status.isSuccess()) {
+                modelCatalogHttpError(response.status.value, responseText, json)
+            }
+            val body = json.parseToJsonElement(responseText).jsonObject
             val entries = (body["data"] ?: body["models"]) as? JsonArray
                 ?: error("The models endpoint returned an unsupported response.")
             entries.forEach { entry ->
@@ -62,4 +65,21 @@ internal class ModelCatalogAdapter(private val httpClient: HttpClient, private v
         } while (cursor != null)
         return models.values.toList()
     }
+}
+
+/** Show the HTTP code and the actual API error, without masking it with a generic prefix. */
+internal fun modelCatalogHttpError(statusCode: Int, responseText: String, json: Json): String {
+    val raw = responseText.trim()
+    val payload = runCatching { json.parseToJsonElement(raw) }.getOrNull() as? JsonObject
+    val error = payload?.get("error")
+    val detail = when (error) {
+        is JsonObject -> (error["message"] as? JsonPrimitive)?.contentOrNull
+            ?: (error["detail"] as? JsonPrimitive)?.contentOrNull
+        is JsonPrimitive -> error.contentOrNull
+        else -> null
+    }?.takeIf { it.isNotBlank() }
+        ?: (payload?.get("message") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+        ?: (payload?.get("detail") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+        ?: raw.ifBlank { "Unable to load models" }
+    return "HTTP $statusCode\n$detail"
 }

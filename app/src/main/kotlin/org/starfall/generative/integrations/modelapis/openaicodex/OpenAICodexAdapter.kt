@@ -31,6 +31,7 @@ import org.starfall.generative.shared.auth.OAuthCallbackService
 import org.starfall.generative.shared.auth.awaitLoopbackAuthorizationCode
 import org.starfall.generative.integrations.modelapis.account.AccountProviderAdapter
 import org.starfall.generative.integrations.modelapis.discoveredModel
+import org.starfall.generative.integrations.modelapis.modelCatalogHttpError
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
 import org.starfall.generative.integrations.modelapis.openairesponses.OpenAIResponsesAdapter
 import org.starfall.generative.integrations.modelapis.sdk.OfficialProviderSdk
@@ -107,10 +108,11 @@ internal class OpenAICodexAdapter(
             header("User-Agent", codexUserAgent(clientVersion))
             header("Accept", "application/json")
         }
+        val responseText = response.bodyAsText()
         check(response.status.isSuccess()) {
-            "Codex model catalog returned HTTP ${response.status.value}"
+            modelCatalogHttpError(response.status.value, responseText, json)
         }
-        return parseCodexModelCatalog(json.parseToJsonElement(response.bodyAsText()).jsonObject)
+        return parseCodexModelCatalog(json.parseToJsonElement(responseText).jsonObject)
     }
 
     override suspend fun testConnection(provider: ModelProvider): Result<String> = runCatching {

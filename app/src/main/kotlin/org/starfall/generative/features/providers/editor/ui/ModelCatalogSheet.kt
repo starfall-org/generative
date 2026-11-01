@@ -121,7 +121,8 @@ internal fun ModelCatalogSheet(
             onCatalogLoaded(discovered)
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            loadError = e.localizedMessage ?: localizedResources.getString(R.string.unable_to_load_models)
+            loadError = e.localizedMessage?.takeIf { it.isNotBlank() }
+                ?: localizedResources.getString(R.string.unable_to_load_models)
         } finally { loading = false }
     }
     val modelsById = remember(models) { models.associateBy { it.id } }
@@ -238,7 +239,6 @@ internal fun ModelCatalogSheet(
             loadError?.let { error ->
                 ErrorContainer(
                     message = error,
-                    title = stringResource(R.string.unable_to_load_models),
                     onRetry = { refresh++ },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         .testTag("provider-model-catalog-error"),
