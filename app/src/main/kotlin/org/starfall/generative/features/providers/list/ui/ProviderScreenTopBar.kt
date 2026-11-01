@@ -71,7 +71,7 @@ internal fun ProviderScreenTopBar(
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 AnimatedVisibility(visible = !searching, enter = fadeIn(tween(180)),
                     exit = fadeOut(tween(90))) {
-                    FixedAppBarTitle(stringResource(R.string.app_menu_language_providers))
+                    FixedAppBarTitle(stringResource(R.string.model_providers))
                 }
                 AnimatedVisibility(visible = searching,
                     enter = expandHorizontally(expandFrom = Alignment.End, animationSpec = tween(220)) + fadeIn(tween(160)),
@@ -103,9 +103,9 @@ internal fun ProviderScreenTopBar(
                                     onCloseSearch()
                                 }) {
                                     listOf(
-                                        ProviderSearchField.PROVIDER_NAME to R.string.provider_search_name,
+                                        ProviderSearchField.PROVIDER_NAME to R.string.provider_search_provider_name,
                                         ProviderSearchField.FOLDER_NAME to R.string.common_folder_name,
-                                        ProviderSearchField.MODEL_NAME to R.string.provider_search_model
+                                        ProviderSearchField.MODEL_NAME to R.string.provider_search_model_name
                                     ).forEach { (field, label) ->
                                         val selected = field in searchFields
                                         DropdownMenuItem(

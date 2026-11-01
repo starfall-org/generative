@@ -3,7 +3,6 @@
     <string name="common_error">Kesalahan</string>
     <string name="chat_open_app_menu">Buka menu aplikasi</string>
     <string name="settings_customize_palette">Sesuaikan</string>
-    <string name="settings_customize_palette_help">Buat palet warna sendiri. Pilih peran warna, geser pada bidang warna, atau sesuaikan HSV dan HEX. Warna diatur agar kontras dalam mode Terang dan Gelap.</string>
     <string name="settings_palette_primary">Utama</string>
     <string name="settings_palette_secondary">Sekunder</string>
     <string name="settings_palette_accent">Aksen</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">Ukuran video</string>
     <string name="video_option_resolution">Resolusi video</string>
     <string name="speech_platform_picker_title">Platform suara</string>
-    <string name="speech_engine_android_description">Menggunakan fitur teks ke ucapan Android</string>
     <string name="speech_engine_direct_description">API suara khusus</string>
     <string name="speech_engine_provider_description">Menggunakan penyedia model yang telah dikonfigurasi</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">Penyesuaian</string>
     <string name="customization_enable">Aktifkan</string>
-    <string name="customization_description">Warna, transparansi komponen, foto profil, dan latar belakang</string>
     <string name="customization_backgrounds_title">Gambar latar belakang</string>
-    <string name="user_profile_background_preview_sample">Contoh konten dengan gambar latar belakang</string>
     <string name="provider_custom">Kustom</string>
     <string name="provider_custom_endpoints">Endpoint kustom</string>
     <string name="provider_custom_endpoints_hint">Masukkan URL lengkap. Kosongkan untuk menggunakan nilai default. URL pembuatan Gemini dapat menggunakan {model} dan {method}.</string>
@@ -60,8 +56,6 @@
     <string name="launcher_drag_test_status">Sumber: %1$s · Target: %2$s</string>
     <string name="launcher_drag_test_none">tidak ada</string>
     <string name="launcher_drag_test_folder_alpha">Folder Alfa</string>
-    <string name="launcher_drag_test_folder_beta">Folder Beta</string>
-    <string name="launcher_drag_test_folder">Folder</string>
     <string name="launcher_drag_test_close">Tutup</string>
     <string name="launcher_drag_test_grid">Kisi</string>
     <string name="launcher_drag_test_list">Daftar</string>

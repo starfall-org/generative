@@ -3,7 +3,6 @@
     <string name="common_error">Erro</string>
     <string name="chat_open_app_menu">Abrir menu do aplicativo</string>
     <string name="settings_customize_palette">Personalizar</string>
-    <string name="settings_customize_palette_help">Crie sua própria paleta. Escolha uma função, arraste no campo de cores ou ajuste HSV e HEX. As cores são otimizadas para contraste nos modos claro e escuro.</string>
     <string name="settings_palette_primary">Primária</string>
     <string name="settings_palette_secondary">Secundária</string>
     <string name="settings_palette_accent">Destaque</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">Tamanho do vídeo</string>
     <string name="video_option_resolution">Resolução do vídeo</string>
     <string name="speech_platform_picker_title">Plataforma de voz</string>
-    <string name="speech_engine_android_description">Usa a conversão de texto em fala do Android</string>
     <string name="speech_engine_direct_description">API de voz dedicada</string>
     <string name="speech_engine_provider_description">Usa um provedor de modelos configurado</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">Personalização</string>
     <string name="customization_enable">Ativar</string>
-    <string name="customization_description">Cores, transparência dos componentes, foto de perfil e planos de fundo</string>
     <string name="customization_backgrounds_title">Imagens de fundo</string>
-    <string name="user_profile_background_preview_sample">Conteúdo de exemplo com imagem de fundo</string>
     <string name="provider_custom">Personalizado</string>
     <string name="provider_custom_endpoints">Endpoints personalizados</string>
     <string name="provider_custom_endpoints_hint">Digite URLs completas. Deixe em branco para usar o padrão. URLs de geração do Gemini podem usar {model} e {method}.</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">nenhum</string>
     <string name="launcher_drag_test_folder_alpha">Pasta Alfa</string>
     <string name="launcher_drag_test_folder_beta">Pasta Beta</string>
-    <string name="launcher_drag_test_folder">Pasta</string>
     <string name="launcher_drag_test_close">Fechar</string>
     <string name="launcher_drag_test_grid">Grade</string>
     <string name="launcher_drag_test_list">Lista</string>

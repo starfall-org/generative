@@ -16,6 +16,8 @@ import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
 import org.starfall.generative.integrations.modelapis.sdk.useClient
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.requireStreamCompleted
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
@@ -95,14 +97,21 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
             sdk.sdkCall { client.chat().completions().createStreaming(params.build()) }.use { response ->
                 val iterator = response.stream().iterator()
                 var usage: TokenUsage? = null
+                var completed = false
                 while (sdk.sdkCall { iterator.hasNext() }) {
                     val chunk = iterator.next()
                     // The final usage chunk has no choices, so inspect it before the content early exit.
                     chunk._usage().asKnown().orElse(null)?.tokenUsage()?.let { usage = it }
-                    val delta = chunk._choices().asKnown().orElse(emptyList()).firstOrNull()?.delta() ?: continue
+                    val choice = chunk._choices().asKnown().orElse(emptyList()).firstOrNull() ?: continue
+                    choice.finishReason().orElse(null)?.let { reason ->
+                        completed = true
+                        if (reason.asString() == "length") error(OUTPUT_TOKEN_LIMIT_REACHED)
+                    }
+                    val delta = choice.delta()
                     reasoningFrom(delta._additionalProperties())?.let { emit(GenerationEvent.Reasoning(it)) }
                     delta.content().orElse(null)?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                requireStreamCompleted(completed)
                 usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }

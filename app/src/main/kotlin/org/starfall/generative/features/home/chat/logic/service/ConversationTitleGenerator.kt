@@ -37,32 +37,57 @@ internal class ConversationTitleGenerator(
     private val jobsLock = Any()
     private val activeJobs = linkedMapOf<Job, String>()
 
+    /** Generate a suggestion for the rename dialog without modifying the conversation. */
+    suspend fun suggest(conversationId: String): Result<String> {
+        if (isRestoreInProgress()) return Result.failure(IllegalStateException("Restore in progress"))
+        val configured = configuredTextModel("title_generation")
+            ?: return Result.failure(IllegalStateException("Title Generation model not configured"))
+        val conversation = existingGeneration(conversationId)?.snapshot?.takeIf { it.id == conversationId }
+            ?: currentConversation.value?.takeIf { it.id == conversationId }
+            ?: conversationRepo.loadById(conversationId)
+            ?: return Result.failure(IllegalArgumentException("Conversation not found"))
+        if (conversation.isTemporary || conversation.messages.none {
+                (it.role == ChatRole.USER || it.role == ChatRole.MODEL) && it.content.isNotBlank()
+            }) return Result.failure(IllegalArgumentException("Conversation has no messages"))
+        return try {
+            val title = requestTitle(conversation, configured.first, configured.second)
+            if (title.isBlank() || isRestoreInProgress()) {
+                Result.failure(IllegalStateException("No title generated"))
+            } else Result.success(title)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
+    }
+
+    private suspend fun requestTitle(conversation: Conversation, provider: ModelProvider, config: SystemToolConfig): String {
+        val titleMessages = conversation.messages
+            .filter { it.role == ChatRole.USER || it.role == ChatRole.MODEL }
+            .map { message -> StoredMessage(
+                id = message.id,
+                role = message.role,
+                versions = listOf(MessageVersion(content = message.content))
+            ) }
+            .filter { it.content.isNotBlank() }
+        val raw = toolChat.completeText(
+            provider,
+            config.modelId,
+            titleMessages,
+            config.prompt.ifBlank { DEFAULT_TITLE_GENERATION_PROMPT }
+        )
+        return raw.lineSequence().firstOrNull().orEmpty().trim().trim('"', '\'', '`')
+    }
+
     fun generate(conversation: Conversation, expectedFallbackTitle: String) {
         if (isRestoreInProgress() || conversation.isTemporary) return
         val configured = configuredTextModel("title_generation") ?: return
         val (provider, config) = configured
         val conversationId = conversation.id
         val job = scope.launch(start = CoroutineStart.LAZY) {
-            val titleMessages = conversation.messages
-                .filter { it.role == ChatRole.USER || it.role == ChatRole.MODEL }
-                .map { message -> StoredMessage(
-                    id = message.id,
-                    role = message.role,
-                    versions = listOf(MessageVersion(content = message.content))
-                ) }
-                .filter { it.content.isNotBlank() }
-            val raw = runCatching {
-                toolChat.completeText(
-                    provider,
-                    config.modelId,
-                    titleMessages,
-                    config.prompt.ifBlank { DEFAULT_TITLE_GENERATION_PROMPT }
-                )
-            }.onFailure { error ->
-                if (error is CancellationException) throw error
-            }.getOrNull().orEmpty()
-            val title = raw.lineSequence().firstOrNull().orEmpty()
-                .trim().trim('"', '\'', '`')
+            val title = runCatching { requestTitle(conversation, provider, config) }
+                .onFailure { if (it is CancellationException) throw it }
+                .getOrNull().orEmpty()
             if (title.isBlank() || isRestoreInProgress()) return@launch
 
             if (existingGeneration(conversationId)?.snapshot?.id == conversationId) {

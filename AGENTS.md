@@ -33,9 +33,12 @@ Treat these as mandatory constraints; `app/docs/architecture.md` contains suppor
 
 ## Language and localization
 
-- English is the canonical source language. Keep its user-facing text and documentation complete and up to date; adding or updating English alone is always allowed.
-- For non-English translations, either add or update **all supported non-English locales** consistently in the same change, or add/update **none** of them. Never add or update only some non-English languages, even if several are changed together. Do not let AI arbitrarily select a subset of languages for translation. If all supported locales cannot be handled in the same change, leave non-English translations untouched and defer them to a coordinated localization change.
-- This policy does not rank non-English languages by importance. When localization is undertaken, all supported non-English languages must receive equal consideration, comparable completeness, and feature parity. Translations should be natural and accurate for each locale, not literal word-for-word copies.
+- Follow the language maintenance tiers defined in [README.md](README.md#localization):
+  - **Tier 1 — English:** Canonical source language. Keep all user-facing strings complete and up to date.
+  - **Tier 2 — Vietnamese, Japanese, Chinese (Simplified):** Required translations for new or changed user-facing strings. Update all three together when changing localized UI text; preserve their existing translations and use natural wording that matches actual behavior rather than translating English literally.
+  - **Tier 3 — Korean, Chinese (Traditional), German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil):** Best-effort, not required for routine changes. Keep existing resources intact; update these locales when explicitly requested or during a dedicated localization pass. Otherwise, allow Android to fall back to English for new strings.
+- Apply the translation requirement by tier, **not to every supported locale**. Do not silently omit a Tier 2 language; if a required translation cannot be completed, report that gap. Do not translate stable software/protocol terms, product names, or identifiers solely to fill locales: use a shared English resource with `translatable="false"` when appropriate. Keep placeholders, resource keys, and Android string formatting valid.
+- Treat **Model Providers** and **MCP** as fixed English feature names in every locale. Do not translate their standalone menu titles or screen headings; translate surrounding descriptions and actions naturally.
 - Keep source identifiers, technical documentation, code comments, and maintainer-facing project text in clear, consistent English unless a file or task explicitly requires another language.
 
 ## Text input and IME behavior

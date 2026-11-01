@@ -26,7 +26,7 @@ internal fun ProviderEmptyState(hasSearchQuery: Boolean, backdropBlur: Dp) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = stringResource(if (hasSearchQuery) R.string.no_provider_search_results else R.string.no_providers_added),
+                text = stringResource(if (hasSearchQuery) R.string.no_provider_search_results else R.string.provider_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.outline
             )

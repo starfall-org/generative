@@ -3,7 +3,6 @@
     <string name="common_error">Lỗi</string>
     <string name="chat_open_app_menu">Mở menu ứng dụng</string>
     <string name="settings_customize_palette">Tùy chỉnh</string>
-    <string name="settings_customize_palette_help">Tạo bảng màu theo ý bạn. Chọn vai trò màu, kéo trong vùng chọn màu hoặc điều chỉnh HSV và HEX. Màu sắc được tối ưu độ tương phản ở chế độ sáng và tối.</string>
     <string name="settings_palette_primary">Chính</string>
     <string name="settings_palette_secondary">Phụ</string>
     <string name="settings_palette_accent">Điểm nhấn</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">Kích thước video</string>
     <string name="video_option_resolution">Độ phân giải video</string>
     <string name="speech_platform_picker_title">Nền tảng giọng nói</string>
-    <string name="speech_engine_android_description">Sử dụng tính năng chuyển văn bản thành giọng nói của Android</string>
     <string name="speech_engine_direct_description">API giọng nói chuyên dụng</string>
     <string name="speech_engine_provider_description">Sử dụng nhà cung cấp mô hình đã cấu hình</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">Tùy chỉnh giao diện</string>
     <string name="customization_enable">Bật</string>
-    <string name="customization_description">Màu sắc, độ trong suốt thành phần, ảnh đại diện và ảnh nền</string>
     <string name="customization_backgrounds_title">Ảnh nền</string>
-    <string name="user_profile_background_preview_sample">Nội dung mẫu có ảnh nền</string>
     <string name="provider_custom">Tùy chỉnh</string>
     <string name="provider_custom_endpoints">Endpoint tùy chỉnh</string>
     <string name="provider_custom_endpoints_hint">Nhập URL đầy đủ. Để trống để dùng mặc định. URL tạo nội dung Gemini có thể sử dụng {model} và {method}.</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">không có</string>
     <string name="launcher_drag_test_folder_alpha">Thư mục Alpha</string>
     <string name="launcher_drag_test_folder_beta">Thư mục Beta</string>
-    <string name="launcher_drag_test_folder">Thư mục</string>
     <string name="launcher_drag_test_close">Đóng</string>
     <string name="launcher_drag_test_grid">Lưới</string>
     <string name="launcher_drag_test_list">Danh sách</string>

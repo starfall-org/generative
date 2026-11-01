@@ -73,7 +73,7 @@ internal fun FeatureToolsSheetContent(
                             maxLines = 1
                         )
                         Text(
-                            webSearchProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
+                            webSearchProvider?.name ?: stringResource(R.string.web_search_service_none),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

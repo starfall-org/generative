@@ -86,18 +86,20 @@ internal class DevinAdapter(
             catch (_: Exception) { null }
             val identity = profile?.text("user_name")?.takeIf(String::isNotBlank)
                 ?: profile?.text("user_id")?.takeIf(String::isNotBlank)
-            store.save(provider.oauthCredentialId, AccountTokenState(token, "", accountId = identity,
-                email = profile?.text("email")?.takeIf(String::isNotBlank)))
+            withContext(Dispatchers.IO) {
+                store.save(provider.oauthCredentialId, AccountTokenState(token, "", accountId = identity,
+                    email = profile?.text("email")?.takeIf(String::isNotBlank)))
+            }
             provider.copy(auth = Authorization(AuthMethod.OAUTH, identity, marker, provider.auth.oauthAccountId))
         })
     } catch (e: CancellationException) { throw e }
     catch (e: Exception) { Result.failure(e) }
 
-    private fun credential(provider: ModelProvider): AccountTokenState {
+    private suspend fun credential(provider: ModelProvider): AccountTokenState {
         require(provider.type == providerType && provider.auth.method == AuthMethod.OAUTH && provider.auth.value == marker) {
             "Devin is not authorized. Sign in from Provider settings."
         }
-        return store.load(provider.oauthCredentialId)
+        return withContext(Dispatchers.IO) { store.load(provider.oauthCredentialId) }
             ?: error("Devin credentials are missing. Sign in again.")
     }
 

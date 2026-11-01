@@ -3,11 +3,9 @@
     <string name="common_error">Fehler</string>
     <string name="chat_open_app_menu">App-Menü öffnen</string>
     <string name="settings_customize_palette">Anpassen</string>
-    <string name="settings_customize_palette_help">Erstelle deine eigene Farbpalette. Wähle eine Rolle, ziehe im Farbfeld oder passe HSV und HEX an. Die Farben sind für guten Kontrast im hellen und dunklen Modus abgestimmt.</string>
     <string name="settings_palette_primary">Primär</string>
     <string name="settings_palette_secondary">Sekundär</string>
     <string name="settings_palette_accent">Akzent</string>
-    <string name="settings_palette_neutral">Neutral</string>
     <string name="settings_palette_hue">Farbton</string>
     <string name="settings_palette_saturation">Sättigung</string>
     <string name="settings_palette_brightness">Helligkeit</string>
@@ -20,7 +18,6 @@
     <string name="media_chain_advanced_request_help">Optionale Einstellungen für Dateiübertragung und MIME-Typen.</string>
     <string name="media_chain_provider_auth_note">Die Anbieter-Authentifizierung wird automatisch hinzugefügt. Füge nur zusätzliche Header hinzu.</string>
     <string name="media_chain_add_header">Header hinzufügen</string>
-    <string name="media_chain_header_name">Name</string>
     <string name="media_chain_header_value">Wert</string>
     <string name="media_chain_header_empty">Keine zusätzlichen Header. Tippe auf +, um einen hinzuzufügen.</string>
     <string name="media_chain_header_invalid">Verwende einen eindeutigen, gültigen HTTP-Header-Namen und einen einzeiligen Wert.</string>
@@ -31,7 +28,6 @@
     <string name="video_option_size">Videogröße</string>
     <string name="video_option_resolution">Videoauflösung</string>
     <string name="speech_platform_picker_title">Sprachplattform</string>
-    <string name="speech_engine_android_description">Verwendet die Android-Sprachausgabe</string>
     <string name="speech_engine_direct_description">Dedizierte Sprach-API</string>
     <string name="speech_engine_provider_description">Verwendet einen konfigurierten Modellanbieter</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +36,7 @@
     </plurals>
     <string name="customization_title">Anpassung</string>
     <string name="customization_enable">Aktivieren</string>
-    <string name="customization_description">Farben, Transparenz der Elemente, Profilfoto und Hintergründe</string>
     <string name="customization_backgrounds_title">Hintergrundbilder</string>
-    <string name="user_profile_background_preview_sample">Beispielinhalt mit Hintergrundbild</string>
     <string name="provider_custom">Benutzerdefiniert</string>
     <string name="provider_custom_endpoints">Benutzerdefinierte Endpunkte</string>
     <string name="provider_custom_endpoints_hint">Gib vollständige URLs ein. Leer lassen, um den Standard zu verwenden. Gemini-Generierungs-URLs können {model} und {method} enthalten.</string>
@@ -61,7 +55,6 @@
     <string name="launcher_drag_test_none">keine</string>
     <string name="launcher_drag_test_folder_alpha">Ordner Alpha</string>
     <string name="launcher_drag_test_folder_beta">Ordner Beta</string>
-    <string name="launcher_drag_test_folder">Ordner</string>
     <string name="launcher_drag_test_close">Schließen</string>
     <string name="launcher_drag_test_grid">Raster</string>
     <string name="launcher_drag_test_list">Liste</string>

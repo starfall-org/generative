@@ -20,6 +20,8 @@ import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 
 private const val MAX_GENERATION_TEXT_CHARS = 512_000
 private const val MAX_GENERATION_SIGNATURE_CHARS = 64_000
+// A broken Room transaction must not indefinitely retain an IO worker or block later saves.
+private const val FINAL_SAVE_TIMEOUT_MS = 30_000L
 
 /** Marks a persistence failure so the chat screen can show it inline in the user's language. */
 internal const val SAVE_CONVERSATION_ERROR_PREFIX = "Could not save conversation:"
@@ -43,11 +45,16 @@ internal class ChatGeneration(
     val error = _error.asStateFlow()
     private val _conversationId = MutableStateFlow<String?>(null)
     val conversationId = _conversationId.asStateFlow()
-    var snapshot: Conversation? = null
+    @Volatile var snapshot: Conversation? = null
         private set
     private var snapshotMutationRevision = 0L
     private var job: Job? = null
-    private var nextGenerationId = 0L
+    @Volatile private var nextGenerationId = 0L
+    // Final saves are independent of the UI generation lifecycle, ordered per conversation.
+    // A stalled Room transaction must not keep the Stop button or generation state alive.
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val persistenceLock = Any()
+    private var persistenceTail: Job? = null
     @Volatile private var activeStopSession: GenerationStopSession? = null
 
     init {
@@ -88,14 +95,12 @@ internal class ChatGeneration(
             // Install finalization even if the owner is cancelled before the first dispatch.
             start = CoroutineStart.ATOMIC
         ) {
-            suspend fun persist(
-                conversation: Conversation,
-                allowStoppedSnapshot: Boolean = false
-            ) {
-                // Only completed or interrupted assistant blocks reach storage. A Stop that
-                // races with a block boundary is saved by the finalization path instead.
-                if (conversation.isTemporary || (stopSession.isRequested() && !allowStoppedSnapshot)) return
-                withContext(Dispatchers.IO) { save(conversation.pruningEmptyResponses()) }
+            fun persist(completedBlock: Conversation) {
+                // A completed block may be saved, but a broken database cannot suspend the
+                // stream collector or delay cancellation of a later response.
+                if (!completedBlock.isTemporary && !stopSession.isRequested()) {
+                    queuePersistence(completedBlock, generationId, terminal = false)
+                }
             }
 
             val initialVersion = snapshot?.messages?.firstOrNull { it.id == messageId }?.activeVersion
@@ -353,9 +358,10 @@ internal class ChatGeneration(
                 _error.value = generationErrorMessage
                 streamDisplay.finish(ChatStreamStatus.FAILED)
             } finally {
-                var savedSuccessfully = false
+                var saveQueued = false
                 try {
-                    // A stopped stream must retain its partial response before allowing another send.
+                    // Snapshot assembly and UI publication must survive stop/owner cancellation.
+                    // They only use RAM; never wait for Room inside NonCancellable finalization.
                     withContext(NonCancellable) {
                         val stoppedAtClick = stopSession.isRequested()
                         if (stoppedAtClick) {
@@ -378,9 +384,6 @@ internal class ChatGeneration(
                                 ?.activeVersion?.toolActivity
                                 ?.any { !it.name.endsWith(": connect") } == true
                         snapshot = if (generationInterrupted && rollbackConversation != null && !hasGeneratedResponse) {
-                            // Regeneration created a provisional version. If the user stops before
-                            // any response exists, restore the original conversation instead of
-                            // persisting an empty extra version.
                             rollbackConversation
                         } else {
                             val completed = responseSnapshot(generationErrorMessage)
@@ -396,38 +399,93 @@ internal class ChatGeneration(
                                 })
                             })
                         }
-                        publish(snapshot!!)
-                        // Stop may arrive while responseSnapshot() is suspended. Once finalizing,
-                        // its only durable save must never be vetoed by that late Stop.
-                        persist(snapshot!!, allowStoppedSnapshot = true)
-                        savedSuccessfully = true
+                        val finalized = requireNotNull(snapshot)
+                        publish(finalized)
+                        // Register the ordered write before releasing busy, so a subsequent send
+                        // cannot overtake this final snapshot on disk.
+                        queueFinalSave(finalized, generationId)
+                        saveQueued = true
                     }
                 } catch (e: Exception) {
                     generationFailure = e
-                    _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
+                    if (generationId == nextGenerationId) {
+                        _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${e.localizedMessage}"
+                    }
                 } finally {
                     if (!stopSession.isRequested()) publishStream(conversation.id, null)
-                    if (activeStopSession === stopSession) activeStopSession = null
-                    // Keep failed terminal saves in RAM even if durable staging itself failed.
-                    // A successfully staged journal also survives an interrupted Room commit.
-                    if (savedSuccessfully) snapshot = null
-                    _conversationId.value = null
-                    _waitingForTool.value = false
-                    _busy.value = false
+                    // Do not clobber a newer session if it started after RAM finalization.
+                    if (activeStopSession === stopSession) {
+                        activeStopSession = null
+                        _conversationId.value = null
+                        _waitingForTool.value = false
+                        _busy.value = false
+                    }
                     DebugLog.finishOperation(generationLogId,
                         when {
-                            !savedSuccessfully -> "Generation finalization failed"
+                            !saveQueued -> "Generation finalization failed"
                             generationErrorMessage != null -> "Generation failed"
                             generationInterrupted -> "Generation stopped"
                             else -> "Generation completed"
-                        }, failed = !savedSuccessfully || generationErrorMessage != null,
+                        }, failed = !saveQueued || generationErrorMessage != null,
                         details = "elapsed=${System.currentTimeMillis() - startedAtMs}ms, " +
                             "textCharacters=${output.length}, reasoningCharacters=${reasoningOutput.length}, " +
-                            "persisted=$savedSuccessfully", error = generationFailure)
+                            "saveQueued=$saveQueued", error = generationFailure)
                 }
             }
         }
         return true
+    }
+
+    /**
+     * Persistence follows generation completion without holding its busy state. Each immutable
+     * snapshot is written in order, so a delayed old save cannot overwrite a newer answer.
+     * Errors stay visible (and the latest failed snapshot remains in RAM for recovery).
+     */
+    private fun queueFinalSave(completed: Conversation, generationId: Long) {
+        queuePersistence(completed, generationId, terminal = true)
+    }
+
+    /** Ordered IO-only writes for completed tool blocks and the final generation snapshot. */
+    private fun queuePersistence(completed: Conversation, generationId: Long, terminal: Boolean) {
+        if (completed.isTemporary) {
+            if (terminal && snapshot === completed) snapshot = null
+            return
+        }
+        synchronized(persistenceLock) {
+            val previous = persistenceTail
+            val saveJob = persistenceScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    // A stalled earlier save cannot keep the stream running on the UI dispatcher.
+                    // It remains ordered: no later snapshot may overtake an in-flight write.
+                    previous?.join()
+                    withTimeout(FINAL_SAVE_TIMEOUT_MS) { save(completed.pruningEmptyResponses()) }
+                    if (terminal && generationId == nextGenerationId && snapshot === completed) snapshot = null
+                } catch (error: CancellationException) {
+                    // A timed-out write is a persistence failure, not a generation failure.
+                    if (error is TimeoutCancellationException) {
+                        DebugLog.error(DebugLogCategory.SYSTEM, "Conversation save",
+                            "Conversation save timed out for ${completed.id}", error)
+                        if (generationId == nextGenerationId) {
+                            _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${error.localizedMessage}"
+                        }
+                    } else throw error
+                } catch (error: Exception) {
+                    DebugLog.error(DebugLogCategory.SYSTEM, "Conversation save",
+                        "Background save failed for ${completed.id}", error)
+                    if (generationId == nextGenerationId) {
+                        if (terminal) snapshot = completed
+                        _error.value = "$SAVE_CONVERSATION_ERROR_PREFIX ${error.localizedMessage}"
+                    }
+                }
+            }
+            persistenceTail = saveJob
+            saveJob.start()
+        }
+    }
+
+    /** For explicit destruction/deletion and tests; never called by chat UI rendering. */
+    suspend fun awaitPersistence() {
+        synchronized(persistenceLock) { persistenceTail }?.join()
     }
 
     fun updateConversation(transform: (Conversation) -> Conversation) {
@@ -457,6 +515,8 @@ internal class ChatGeneration(
 
     suspend fun stopAndJoin() {
         job?.cancelAndJoin()
+        // Callers about to delete/restore data must not race a pending final write.
+        awaitPersistence()
     }
 }
 private fun logToolActivity(activity: org.starfall.generative.shared.model.ToolActivity) {

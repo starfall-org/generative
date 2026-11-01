@@ -26,7 +26,7 @@ internal fun MachineDialogTitle(
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
+            machine.name.ifBlank { stringResource(R.string.remote_server_unnamed) },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

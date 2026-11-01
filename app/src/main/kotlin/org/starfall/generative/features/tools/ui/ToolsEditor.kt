@@ -153,7 +153,7 @@ fun ToolsEditor(
                                         onValueChange = {},
                                         readOnly = true,
                                         enabled = canPickProfile,
-                                        label = { Text(stringResource(R.string.media_api_type)) },
+                                        label = { Text(stringResource(R.string.media_gen_profile)) },
                                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
                                         modifier = Modifier.menuAnchor(
                                             ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = canPickProfile

@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
@@ -79,6 +81,7 @@ import org.starfall.generative.shared.ui.layout.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
+import org.starfall.generative.shared.auth.oauthErrorDetails
 
 // Chat Completions remains endpoint-agnostic in the shared API model and provider links.
 // Only the editor offers OpenAI starter values, as it already does for Responses.
@@ -108,6 +111,7 @@ fun ProviderEditor(
     onTestConnection: (suspend (ModelProvider, String) -> Result<String>)? = null,
     onFetchModels: (suspend (ModelProvider) -> List<DiscoveredModel>)? = null,
     onSaveModels: (String, Map<String, ModelConfiguration>) -> Unit, onReorderModels: (String, List<String>) -> Unit,
+    onReorderModelsTracked: ((String, List<String>, (Result<Unit>) -> Unit) -> Unit)? = null,
     onDismiss: () -> Unit, onSave: (ModelProvider) -> Unit,
     customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
@@ -165,7 +169,13 @@ fun ProviderEditor(
         currentTest?.invoke(provider, id) ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.connection_testing_unavailable)))
     } }
     val memory = remember(context) { ModelConfigurationMemory(context) }
-    LaunchedEffect(initialProvider.id) { initialProvider.config.modelConfigs.forEach { (id, config) -> memory.remember(id, config, onlyIfMissing = true) } }
+    LaunchedEffect(initialProvider.id) {
+        withContext(Dispatchers.IO) {
+            initialProvider.config.modelConfigs.forEach { (id, config) ->
+                memory.remember(id, config, onlyIfMissing = true)
+            }
+        }
+    }
     var supportStream by remember { mutableStateOf(initialProvider.config.supportStream) }
     var anthropicPromptCache by remember(initialProvider.id) { mutableStateOf(initialProvider.config.anthropicPromptCache) }
     var codexClientVersion by remember(initialProvider.id) {
@@ -195,6 +205,14 @@ fun ProviderEditor(
     var editingModel by remember(initialProvider.id, initialEditingModelId) { mutableStateOf(initialEditingModelId) }
     var showCatalog by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<Map<String, DiscoveredModel>>(emptyMap()) }
+    // Model templates are read/decoded on IO once per catalog refresh, never on the UI callback.
+    var catalogTemplates by remember(initialProvider.id) { mutableStateOf<Map<String, ModelConfiguration>>(emptyMap()) }
+    LaunchedEffect(catalog) {
+        val snapshot = catalog
+        catalogTemplates = withContext(Dispatchers.IO) {
+            snapshot.mapValues { (_, discovered) -> memory.configurationFor(discovered) }
+        }
+    }
     // Probes belong to this screen rather than the dialog, so the top-bar action can keep showing
     // running state while the dialog is closed and testing still stops when the editor is left.
     val testScope = order.filter { models[it]?.modelType == ModelType.TEXT_GENERATION }
@@ -238,15 +256,17 @@ fun ProviderEditor(
     }
     suspend fun authorizeOAuth(accountId: String? = oauthAccountId, label: String? = null): Result<ModelProvider> {
         oauthAuthorizing = true; oauthAuthError = null
-        var request = draft().copy(auth = Authorization(AuthMethod.OAUTH, oauthIdentity, oauthMarker, accountId))
-        if (label != null) {
-            // Carry the draft label into the successful sign-in write alongside the token reference.
-            val entry = ProviderOAuthAccount(request.oauthCredentialId, label.trim(), oauthIdentity, oauthMarker)
-            request = request.copy(config = request.config.copy(oauthAccounts =
-                request.config.oauthAccounts.filterNot { it.id == entry.id } + entry))
-        }
-        activeOAuthRequest = request
         try {
+            // Include draft creation in the guarded section: exceptions while preparing the
+            // provider must be reported in the UI, not crash its Compose coroutine.
+            var request = draft().copy(auth = Authorization(AuthMethod.OAUTH, oauthIdentity, oauthMarker, accountId))
+            if (label != null) {
+                // Carry the draft label into the successful sign-in write alongside the token reference.
+                val entry = ProviderOAuthAccount(request.oauthCredentialId, label.trim(), oauthIdentity, oauthMarker)
+                request = request.copy(config = request.config.copy(oauthAccounts =
+                    request.config.oauthAccounts.filterNot { it.id == entry.id } + entry))
+            }
+            activeOAuthRequest = request
             val result = onAuthorizeProvider?.invoke(request)
                 ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.provider_oauth_unavailable)))
             result.onSuccess { signedIn ->
@@ -256,18 +276,21 @@ fun ProviderEditor(
                 oauthAccounts = authorized.config.oauthAccounts; baseUrl = authorized.baseUrl
                 if (authorized.type == ModelApiType.ANTIGRAVITY) antigravityProjectIds = authorized.config.antigravityProjectIds
                 if (authorized.type == ModelApiType.GEMINI_CLI) geminiCliProjectIds = authorized.config.geminiCliProjectIds
-            }.onFailure { oauthAuthError = it.message ?: localizedResources.getString(R.string.provider_oauth_failed) }
+            }.onFailure { oauthAuthError = oauthErrorDetails(it) }
             return result
         } catch (e: CancellationException) {
             oauthAuthError = localizedResources.getString(R.string.oauth_sign_in_cancelled)
             throw e
+        } catch (e: Exception) {
+            oauthAuthError = oauthErrorDetails(e)
+            return Result.failure(e)
         } finally { activeOAuthRequest = null; oauthAuthorizing = false }
     }
     suspend fun removeOAuthAccount(accountId: String): Result<ModelProvider> {
-        val originalAuth = authorization()
-        val account = oauthAccounts.firstOrNull { it.id == accountId }
         oauthAuthorizing = true; oauthClearing = true; oauthAuthError = null
         try {
+            val originalAuth = authorization()
+            val account = oauthAccounts.firstOrNull { it.id == accountId }
             val request = draft().copy(auth = account?.authorization() ?: originalAuth)
             val result = onClearOAuthCredentials?.invoke(request)
                 ?: Result.failure(IllegalStateException(localizedResources.getString(R.string.provider_oauth_removal_unavailable)))
@@ -278,16 +301,23 @@ fun ProviderEditor(
                 val auth = if ((originalAuth.oauthAccountId ?: initialProvider.id) != accountId) originalAuth else cleared.auth
                 oauthAccountId = auth.oauthAccountId; oauthIdentity = auth.key; oauthMarker = auth.value.orEmpty()
                 oauthAuthorized = !auth.value.isNullOrBlank()
-            }.onFailure { oauthAuthError = it.message ?: localizedResources.getString(R.string.provider_oauth_remove_failed) }
+            }.onFailure { oauthAuthError = oauthErrorDetails(it) }
             return result
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            oauthAuthError = oauthErrorDetails(e)
+            return Result.failure(e)
         } finally { oauthClearing = false; oauthAuthorizing = false }
     }
     fun updateModels(updated: Map<String, ModelConfiguration>) {
         val existing = order.toSet()
         val nextOrder = order.filter { it in updated } + updated.keys.filterNot { it in existing }
+        // Opening or refreshing a catalog must not redundantly write unchanged models.
+        if (updated == models && nextOrder == order) return
         order = nextOrder
         models = updated
-        val savedModels = nextOrder.associateWith { updated.getValue(it) }
+        val savedModels = if (updated.keys.toList() == nextOrder) updated else nextOrder.associateWith { updated.getValue(it) }
         if (providerPersisted) {
             onSaveModels(initialProvider.id, savedModels)
         } else if (updated.isNotEmpty()) {
@@ -305,7 +335,7 @@ fun ProviderEditor(
                 customImageMediaProfiles = customImageMediaProfiles,
                 customVideoMediaProfiles = customVideoMediaProfiles,
                 onSave = { id, config ->
-                    memory.remember(id, config)
+                    // ModelEditor already queued this template persist; do not write twice.
                     updateModels((models - modelId - setOfNotNull(iconCreatedModelId)) + (id to config))
                     editingModel = null
                 },
@@ -476,8 +506,16 @@ fun ProviderEditor(
                             }
                             if (!endpointsValid && !showEndpoints) Text(stringResource(R.string.provider_endpoints_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                             if (!headersValid && !showHeaders) Text(stringResource(R.string.provider_headers_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        } else ProviderModelsPane(order, models, modelList, onMove = { from, to -> order = order.moved(from, to) },
-                            onDrop = { if (providerPersisted) onReorderModels(initialProvider.id, order) }, onEdit = { editingModel = it },
+                        } else ProviderModelsPane(order, models, modelList, onOrderChange = { order = it },
+                            onDrop = { before, ordered ->
+                                if (providerPersisted) {
+                                    if (onReorderModelsTracked != null) {
+                                        onReorderModelsTracked(initialProvider.id, ordered) { result ->
+                                            if (result.isFailure && order == ordered) order = before
+                                        }
+                                    } else onReorderModels(initialProvider.id, ordered)
+                                }
+                            }, onEdit = { editingModel = it },
                             onDelete = { updateModels(models - it) }, onOpenCatalog = { showCatalog = true })
                     }
                 }
@@ -494,7 +532,7 @@ fun ProviderEditor(
             if (showEndpoints) ProviderEndpointsDialog(type, baseUrl, endpoints, { endpoints = it }, onDismiss = { showEndpoints = false })
             if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
             if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
-            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { localizedResources.getString(R.string.provider_fallback_name) }), tests, onTestConnection != null,
+            if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { localizedResources.getString(R.string.provider_default_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
             if (showCatalog) ModelCatalogSheet(
                 provider = initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(),
@@ -512,11 +550,11 @@ fun ProviderEditor(
                 },
                 onToggle = { id ->
                     updateModels(if (id in models) models - id
-                        else models + (id to memory.configurationFor(catalog[id] ?: DiscoveredModel(id))))
+                        else models + (id to (catalogTemplates[id] ?: (catalog[id] ?: DiscoveredModel(id)).configuration())))
                 },
                 onSetSelection = { ids, selected ->
                     updateModels(if (selected) models + ids.associateWith {
-                        models[it] ?: memory.configurationFor(catalog[it] ?: DiscoveredModel(it))
+                        models[it] ?: catalogTemplates[it] ?: (catalog[it] ?: DiscoveredModel(it)).configuration()
                     } else models - ids.toSet())
                 },
                 onDismiss = { showCatalog = false }

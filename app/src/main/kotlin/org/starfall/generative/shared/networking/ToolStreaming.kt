@@ -6,6 +6,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.generation.requireStreamCompleted
+import org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 
 /** Accumulate bounded tool arguments while delivering answer/reasoning streams incrementally. */
 internal suspend fun ToolHttp.modelResponse(
@@ -36,6 +39,7 @@ internal suspend fun ToolHttp.modelResponse(
         withResponse(request(target, provider).post(payload.toString().toRequestBody("application/json".toMediaType())).build()) { response ->
             requireSuccess(response)
             var received = false
+            var completed = false
             val text = StringBuilder()
             val reasoning = StringBuilder()
             val calls = linkedMapOf<Int, JsonObject>()
@@ -95,10 +99,22 @@ internal suspend fun ToolHttp.modelResponse(
                         "response.output_text.delta" -> emitText(value.text("delta"))
                         "response.reasoning_text.delta", "response.reasoning_summary_text.delta" ->
                             emitReasoning(value.text("delta"))
-                        "response.completed", "response.incomplete" -> finalResponse = value.requireObject("response")
+                        "response.completed" -> {
+                            completed = true
+                            finalResponse = value.requireObject("response")
+                        }
+                        "response.incomplete" -> {
+                            if ((value.requireObject("response")["incomplete_details"] as? JsonObject)
+                                    ?.text("reason") == "max_output_tokens")
+                                error(OUTPUT_TOKEN_LIMIT_REACHED)
+                            error(UNEXPECTED_STREAM_END)
+                        }
                         "response.failed" -> error("OpenAI Responses stream failed: " + safeError(value.requireObject("response")["error"], requestSecrets(response.request)))
                     }
                     google -> {
+                        if ((value["candidates"] as? JsonArray).orEmpty().any {
+                            (it as? JsonObject)?.text("finishReason") == "MAX_TOKENS"
+                        }) error(OUTPUT_TOKEN_LIMIT_REACHED)
                         if ((value["candidates"] != null && value["candidates"] != JsonNull) ||
                             value["usageMetadata"] !is JsonObject) value.requireArray("candidates")
                         (value["candidates"] as? JsonArray).orEmpty().firstOrNull()?.jsonObject
@@ -110,6 +126,10 @@ internal suspend fun ToolHttp.modelResponse(
                             }
                     }
                     anthropic -> {
+                        if (value.text("type") == "message_delta" &&
+                            (value["delta"] as? JsonObject)?.text("stop_reason") == "max_tokens")
+                            error(OUTPUT_TOKEN_LIMIT_REACHED)
+                        if (value.text("type") == "message_stop") completed = true
                         val index = (value["index"] as? JsonPrimitive)?.intOrNull ?: 0
                         if (value.text("type") == "content_block_start") {
                             val block = value.requireObject("content_block")
@@ -130,6 +150,16 @@ internal suspend fun ToolHttp.modelResponse(
                         }
                     }
                     else -> {
+                        if (ollama) {
+                            if (value.text("done_reason") == "length") error(OUTPUT_TOKEN_LIMIT_REACHED)
+                            if ((value["done"] as? JsonPrimitive)?.booleanOrNull == true) completed = true
+                        } else {
+                            val reasons = (value["choices"] as? JsonArray).orEmpty().mapNotNull { choice ->
+                                (choice as? JsonObject)?.text("finish_reason")?.takeUnless(String::isBlank)
+                            }
+                            if ("length" in reasons) error(OUTPUT_TOKEN_LIMIT_REACHED)
+                            if (reasons.isNotEmpty()) completed = true
+                        }
                         if (!ollama) {
                             if ((value["choices"] != null && value["choices"] != JsonNull) ||
                                 value["usage"] !is JsonObject) value.requireArray("choices")
@@ -185,12 +215,18 @@ internal suspend fun ToolHttp.modelResponse(
                     if ((line.isEmpty() || eof) && event.isNotEmpty()) {
                         val data = event.toString().trim()
                         event.setLength(0)
-                        if (data == "[DONE]") break
+                        if (data == "[DONE]") {
+                            completed = true
+                            break
+                        }
                         consume(Json.parseToJsonElement(data).jsonObject)
                     }
                 }
                 if (eof) break
             }
+            // Some Gemini-compatible account endpoints return one complete candidate without
+            // a finishReason or SSE sentinel. They are not covered by the strict EOF contract.
+            if (!google) requireStreamCompleted(completed)
             check(received) { "Provider stream ended without a response" }
 
             val result = when {

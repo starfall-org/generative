@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -37,6 +38,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.auth.oauthErrorDetails
+import org.starfall.generative.database.ProviderRepairResult
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -52,12 +57,19 @@ fun AppDataScreen(
     onImportZip: () -> Unit = {},
     exportInProgress: Boolean = false,
     importInProgress: Boolean = false,
+    onRepairProviders: (suspend () -> Result<ProviderRepairResult>)? = null,
     onBack: () -> Unit
 ) {
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
     var showSensitiveActions by rememberSaveable { mutableStateOf(false) }
     var showExportWarning by rememberSaveable { mutableStateOf(false) }
+    var showRepairConfirm by rememberSaveable { mutableStateOf(false) }
+    var repairing by rememberSaveable { mutableStateOf(false) }
+    var repairCount by rememberSaveable { mutableStateOf<Int?>(null) }
+    var repairError by rememberSaveable { mutableStateOf<String?>(null) }
+    var repairFailedIds by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    val scope = rememberCoroutineScope()
     val transferBusy = exportInProgress || importInProgress
     // Transfers belong to the application scope, not this screen. Navigation never waits for them.
     BackHandler(onBack = onBack)
@@ -68,7 +80,7 @@ fun AppDataScreen(
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(stringResource(R.string.settings_category_app_data)) },
+                title = { Text(stringResource(R.string.settings_data_controls)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
@@ -89,7 +101,7 @@ fun AppDataScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         DataStatItem(stringResource(R.string.settings_chats), conversationCount.toString())
-                        DataStatItem(stringResource(R.string.providers_title), providerCount.toString())
+                        DataStatItem(stringResource(R.string.model_providers), providerCount.toString())
                     }
                 }
             }
@@ -132,6 +144,28 @@ fun AppDataScreen(
                     }
                 }
             }
+            if (onRepairProviders != null) item {
+                DataSection(title = stringResource(R.string.settings_repair_provider_title)) {
+                    Text(stringResource(R.string.settings_repair_provider_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    DataActionButton(
+                        title = stringResource(R.string.settings_repair_provider_action),
+                        enabled = !transferBusy && !repairing,
+                        modifier = Modifier.testTag("app-data-repair-providers")
+                    ) { showRepairConfirm = true }
+                    if (repairing) Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.settings_repair_provider_running))
+                    }
+                    repairCount?.let { Text(stringResource(R.string.settings_repair_provider_result, it)) }
+                    repairError?.let { ErrorContainer(it) }
+                    if (repairFailedIds.isNotEmpty()) ErrorContainer(
+                        stringResource(R.string.settings_repair_provider_failed, repairFailedIds.joinToString(", "))
+                    )
+                }
+            }
             item {
                 DataActionButton(
                     title = stringResource(R.string.settings_manage_data),
@@ -140,6 +174,37 @@ fun AppDataScreen(
                 ) { showSensitiveActions = true }
             }
         }
+    }
+
+    if (showRepairConfirm && !transferBusy) {
+        AlertDialog(
+            onDismissRequest = { showRepairConfirm = false },
+            title = { Text(stringResource(R.string.settings_repair_provider_title)) },
+            text = { Text(stringResource(R.string.settings_repair_provider_warning)) },
+            confirmButton = {
+                Button(onClick = {
+                    showRepairConfirm = false
+                    repairing = true
+                    repairCount = null
+                    repairError = null
+                    repairFailedIds = emptyList()
+                    scope.launch {
+                        try {
+                            val result = onRepairProviders?.invoke()
+                            result?.onSuccess {
+                                repairCount = it.repaired
+                                repairFailedIds = it.failedIds
+                            }?.onFailure { repairError = oauthErrorDetails(it) }
+                        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (e: Exception) { repairError = oauthErrorDetails(e) }
+                        finally { repairing = false }
+                    }
+                }) { Text(stringResource(R.string.settings_repair_provider_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRepairConfirm = false }) { Text(stringResource(R.string.common_close)) }
+            }
+        )
     }
 
     if (showSensitiveActions && !transferBusy) {

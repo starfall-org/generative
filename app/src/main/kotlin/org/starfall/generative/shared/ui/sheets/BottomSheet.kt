@@ -27,6 +27,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
@@ -145,6 +148,9 @@ fun BottomSheet(
     val scrimColor = modalScrimColor(BottomSheetDefaults.ScrimColor)
     val settledBrush = remember { SettledBrush() }
     var containerOriginOnScreen by remember { mutableStateOf(Offset.Zero) }
+    val hostContext = LocalContext.current
+    val hostConfiguration = LocalConfiguration.current
+    val hostResources = LocalResources.current
 
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -154,6 +160,13 @@ fun BottomSheet(
             dismissOnBackPress = dismissOnBack
         )
     ) {
+        // Dialog owns a separate window and may restore the device locale. Carry over the
+        // runtime language used by the parent screen without recreating the Activity.
+        CompositionLocalProvider(
+            LocalContext provides hostContext,
+            LocalConfiguration provides hostConfiguration,
+            LocalResources provides hostResources
+        ) {
         ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
         Box(Modifier.fillMaxSize().background(scrimColor)) {
             BottomSheetScaffold(
@@ -257,6 +270,7 @@ fun BottomSheet(
                     .semantics { contentDescription = dismissLabel }
                     .clickable(onClick = onDismissRequest))
             }
+        }
         }
     }
 }

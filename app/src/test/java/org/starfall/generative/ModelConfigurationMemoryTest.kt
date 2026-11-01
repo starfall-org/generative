@@ -2,6 +2,8 @@ package org.starfall.generative
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.*
@@ -43,6 +45,16 @@ class ModelConfigurationMemoryTest {
         assertEquals(discovered.metadata, restored.modelJson)
         assertEquals("API voice model", restored.displayName)
         assertEquals(0.3, restored.temperature!!, 0.0)
+    }
+
+    @Test fun backgroundEditorWritesFinishInOrderBeforeBackupSnapshot() = runBlocking {
+        val memory = ModelConfigurationMemory(context)
+        memory.rememberInBackground("provider/background-memory-test",
+            ModelConfiguration(modelType = ModelType.TEXT_GENERATION, contextWindowTokens = 2048))
+        memory.rememberInBackground("provider/background-memory-test",
+            ModelConfiguration(modelType = ModelType.TEXT_GENERATION, contextWindowTokens = 4096))
+        withTimeout(5_000) { memory.awaitBackgroundWrites() }
+        assertEquals(4096, ModelConfigurationMemory(context).get("background-memory-test")!!.contextWindowTokens)
     }
 
     @Test fun portableMemoryDoesNotCopyRawJsonFromAnotherProvider() {

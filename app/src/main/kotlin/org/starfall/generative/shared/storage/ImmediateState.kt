@@ -14,7 +14,7 @@ internal class ImmediateState<T : Any>(
     private val source: Flow<T>,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler),
 ) {
-    private class Write<T>(val transform: (T) -> T, val persist: suspend () -> Unit) {
+    private class Write<T>(val transform: (T) -> T, val persist: suspend () -> Unit, val reportFailure: Boolean) {
         val result = CompletableDeferred<Unit>()
     }
     private val guard = Any()
@@ -61,7 +61,10 @@ internal class ImmediateState<T : Any>(
                     }
                     result.fold(
                         onSuccess = { write.result.complete(Unit) },
-                        onFailure = { write.result.completeExceptionally(it) }
+                        onFailure = {
+                            write.result.completeExceptionally(it)
+                            if (write.reportFailure) LocalWriteErrors.report()
+                        }
                     )
                 }
             }
@@ -72,22 +75,34 @@ internal class ImmediateState<T : Any>(
         committed?.let { base -> visible.value = pending.fold(base) { value, write -> write.transform(value) } }
     }
 
+    /** Use from a drop callback: publish to RAM synchronously, never await Room on the UI path. */
+    fun enqueue(transform: (T) -> T, persist: suspend () -> Unit): Deferred<Unit> {
+        val write = Write(transform, persist, reportFailure = true)
+        submit(write)
+        return write.result
+    }
+
     suspend fun mutate(transform: (T) -> T, persist: suspend () -> Unit) {
-        val write = Write(transform, persist)
+        val write = Write(transform, persist, reportFailure = false)
+        submit(write)
+        // Cancellation of a caller never cancels a write already accepted by the repository.
+        write.result.await()
+    }
+
+    private fun submit(write: Write<T>) {
         synchronized(guard) {
             pending.add(write)
             publish()
             check(writes.trySend(write).isSuccess)
         }
-        // Cancellation of a screen must not cancel a write already accepted by the repository.
-        write.result.await()
     }
 }
 
 object LocalWriteErrors {
     private val events = Channel<Unit>(Channel.CONFLATED)
     val errors = events.receiveAsFlow()
-    val handler = CoroutineExceptionHandler { _, _ -> events.trySend(Unit) }
+    fun report() { events.trySend(Unit) }
+    val handler = CoroutineExceptionHandler { _, _ -> report() }
 }
 
 internal fun <T> List<T>.upsert(item: T, id: (T) -> String): List<T> =

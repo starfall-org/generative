@@ -19,7 +19,6 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.ui.lists.moved
 
 /** Reordering outside ProvidersScreen must use the same DND gesture and persist on release. */
 @RunWith(RobolectricTestRunner::class)
@@ -48,8 +47,8 @@ class UnifiedReorderRobolectricTest {
                 ProviderModelsPane(
                     models = order.value, configurations = models,
                     listState = rememberLazyListState(),
-                    onMove = { from, to -> order.value = order.value.moved(from, to) },
-                    onDrop = { saved += order.value },
+                    onOrderChange = { order.value = it },
+                    onDrop = { _, reordered -> saved += reordered },
                     onEdit = {}, onDelete = {}, onOpenCatalog = {}
                 )
             }

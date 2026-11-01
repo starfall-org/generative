@@ -3,7 +3,6 @@
     <string name="common_error">エラー</string>
     <string name="chat_open_app_menu">アプリメニューを開く</string>
     <string name="settings_customize_palette">カスタマイズ</string>
-    <string name="settings_customize_palette_help">独自の配色を作成します。役割を選び、カラーフィールドをドラッグするか、HSV と HEX を調整してください。ライトモードとダークモードで見やすいコントラストになるよう色を調整しています。</string>
     <string name="settings_palette_primary">プライマリ</string>
     <string name="settings_palette_secondary">セカンダリ</string>
     <string name="settings_palette_accent">アクセント</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">動画サイズ</string>
     <string name="video_option_resolution">動画の解像度</string>
     <string name="speech_platform_picker_title">音声プラットフォーム</string>
-    <string name="speech_engine_android_description">Android のテキスト読み上げを使用</string>
     <string name="speech_engine_direct_description">専用の音声 API</string>
     <string name="speech_engine_provider_description">設定済みのモデルプロバイダーを使用</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">カスタマイズ</string>
     <string name="customization_enable">有効にする</string>
-    <string name="customization_description">色、コンポーネントの透明度、プロフィール写真、背景</string>
     <string name="customization_backgrounds_title">背景画像</string>
-    <string name="user_profile_background_preview_sample">背景画像付きのサンプルコンテンツ</string>
     <string name="provider_custom">カスタム</string>
     <string name="provider_custom_endpoints">カスタムエンドポイント</string>
     <string name="provider_custom_endpoints_hint">完全な URL を入力してください。空欄の場合は既定値を使用します。Gemini の生成 URL では {model} と {method} を使用できます。</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">なし</string>
     <string name="launcher_drag_test_folder_alpha">フォルダー Alpha</string>
     <string name="launcher_drag_test_folder_beta">フォルダー Beta</string>
-    <string name="launcher_drag_test_folder">フォルダー</string>
     <string name="launcher_drag_test_close">閉じる</string>
     <string name="launcher_drag_test_grid">グリッド</string>
     <string name="launcher_drag_test_list">リスト</string>

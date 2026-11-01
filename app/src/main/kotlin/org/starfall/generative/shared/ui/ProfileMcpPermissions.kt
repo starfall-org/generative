@@ -44,7 +44,7 @@ fun ProfileMcpPermissions(
     settings: ToolSettings,
     onChange: (Map<String, McpAccess>) -> Unit
 ) {
-    Text(stringResource(R.string.mcp_permissions_title), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.mcp_permissions), style = MaterialTheme.typography.titleMedium)
     if (servers.isEmpty()) {
         Text(stringResource(R.string.mcp_add_servers_hint))
         return

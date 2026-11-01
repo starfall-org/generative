@@ -64,6 +64,11 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                 Row(Modifier.fillMaxWidth().testTag("connection-toolbar"), verticalAlignment = Alignment.CenterVertically) {
                     ModelConnectionCounts(progress, showProgress = true,
                         modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(vertical = 4.dp))
+                    IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
+                        enabled = (testingAny || testableModels.isNotEmpty()) && available) {
+                        if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                        else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.provider_test_all_chat_models))
+                    }
                     if (showUnavailableAction) {
                         val restore = unavailable.isEmpty()
                         IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
@@ -72,15 +77,10 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
                                 tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                         }
                     }
-                    IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
-                        enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                        if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                        else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.common_test_all_text_models))
-                    }
                 }
                 LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
                     .testTag("connection-model-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (textModels.isEmpty()) item { Text(stringResource(R.string.model_no_text_models)) }
+                    if (textModels.isEmpty()) item { Text(stringResource(R.string.provider_test_no_chat_models)) }
                     items(textModels, key = { it }) { id ->
                         val testing = tests.running[id] == true
                         val removed = id in removals.pending

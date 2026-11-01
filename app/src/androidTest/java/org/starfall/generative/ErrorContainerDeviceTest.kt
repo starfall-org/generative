@@ -18,6 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.AlertSeverity
 
 /** Real-Android checks for the common error surface, independent of any screen or network. */
 @RunWith(AndroidJUnit4::class)
@@ -87,6 +88,29 @@ class ErrorContainerDeviceTest {
             assertEquals(1, retries)
             assertEquals(1, dismissals)
         }
+    }
+
+    @Test fun warningUsesSharedActionsWithNeutralAccessibilityLabels() {
+        val warning = "Output token limit reached."
+        var retries = 0
+        compose.setContent {
+            MaterialTheme {
+                ErrorContainer(
+                    message = warning,
+                    severity = AlertSeverity.WARNING,
+                    onRetry = { retries++ }
+                )
+            }
+        }
+
+        compose.onNodeWithText(context.getString(R.string.common_warning)).assertIsDisplayed()
+        compose.onNodeWithText(warning).assertIsDisplayed()
+        compose.onNodeWithContentDescription(context.getString(R.string.expand)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.collapse)).assertExists()
+        compose.onNodeWithTag("error-container-copy").performClick()
+        compose.runOnIdle { assertEquals(warning, clipboardText()) }
+        compose.onNodeWithText(context.getString(R.string.common_retry)).performClick()
+        compose.runOnIdle { assertEquals(1, retries) }
     }
 
     @Test fun compactErrorHasNoExpansionOrUnexpectedActions() {

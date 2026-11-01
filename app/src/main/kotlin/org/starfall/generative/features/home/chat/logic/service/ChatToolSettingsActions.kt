@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.SystemToolConfig
+import org.starfall.generative.shared.model.withSelectedRemoteMachine
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
 
@@ -98,6 +99,13 @@ internal class ChatToolSettingsActions(
                     machinesEnabled = settings.machinesEnabled || enabled
                 )
             }
+        }
+    }
+
+    /** Single atomic selection; Unset disables all remote tools, including legacy master settings. */
+    fun selectMachine(machineId: String?, knownMachineIds: List<String>) {
+        scope.launch(LocalWriteErrors.handler) {
+            store.update { it.withSelectedRemoteMachine(machineId, knownMachineIds) }
         }
     }
 

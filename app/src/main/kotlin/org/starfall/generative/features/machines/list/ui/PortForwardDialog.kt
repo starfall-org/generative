@@ -31,9 +31,9 @@ import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.machines.MachineDialogTitle
 
 private enum class ForwardType(val labelRes: Int) {
-    LOCAL(R.string.remote_machine_forward_local),
-    REMOTE(R.string.remote_machine_forward_remote),
-    DYNAMIC(R.string.remote_machine_forward_dynamic)
+    LOCAL(R.string.remote_server_forward_local),
+    REMOTE(R.string.remote_server_forward_remote),
+    DYNAMIC(R.string.remote_server_forward_dynamic)
 }
 
 private fun String.splitEntries(): List<String> = split('\n', ',').map(String::trim).filter(String::isNotEmpty)
@@ -41,11 +41,20 @@ private fun String.splitEntries(): List<String> = split('\n', ',').map(String::t
 @Composable
 internal fun PortForwardDialog(
     machine: RemoteMachine,
+    activeForwards: List<String>,
     onDismiss: () -> Unit,
+    onStop: () -> Unit,
     onSaveAndStart: (RemoteMachine) -> Unit
 ) {
     val initial = machine.portForwarding
-    var selectedType by rememberSaveable(machine.id) { mutableStateOf(ForwardType.LOCAL) }
+    var selectedType by rememberSaveable(machine.id) {
+        mutableStateOf(when {
+            initial.localEnabled -> ForwardType.LOCAL
+            initial.remoteEnabled -> ForwardType.REMOTE
+            initial.dynamicEnabled -> ForwardType.DYNAMIC
+            else -> ForwardType.LOCAL
+        })
+    }
     var localText by rememberSaveable(machine.id) { mutableStateOf(initial.localRules.joinToString("\n")) }
     var remoteText by rememberSaveable(machine.id) { mutableStateOf(initial.remoteRules.joinToString("\n")) }
     var dynamicText by rememberSaveable(machine.id) { mutableStateOf(initial.dynamicPorts.joinToString(", ")) }
@@ -61,7 +70,7 @@ internal fun PortForwardDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        title = { MachineDialogTitle(stringResource(R.string.remote_machine_start_port_forward), machine) },
+        title = { MachineDialogTitle(stringResource(R.string.remote_port_forward), machine) },
         content = {
             Column(
                 Modifier
@@ -70,7 +79,7 @@ internal fun PortForwardDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 RemoteDropdownField(
-                    label = stringResource(R.string.remote_machine_forward_type),
+                    label = stringResource(R.string.remote_server_forward_type),
                     options = ForwardType.entries.map { it to stringResource(it.labelRes) },
                     selected = selectedType,
                     onSelect = { selectedType = it; error = null }
@@ -80,8 +89,8 @@ internal fun PortForwardDialog(
                         RemoteTextField(
                             value = localText,
                             onValueChange = { localText = it; error = null },
-                            label = stringResource(R.string.remote_machine_forward_local_rules),
-                            supporting = stringResource(R.string.remote_machine_forward_local_hint),
+                            label = stringResource(R.string.remote_server_forward_local_rules),
+                            supporting = stringResource(R.string.remote_server_forward_local_hint),
                             keyboardOptions = remoteLiteralKeyboardOptions(),
                             minLines = 3
                         )
@@ -90,8 +99,8 @@ internal fun PortForwardDialog(
                         RemoteTextField(
                             value = remoteText,
                             onValueChange = { remoteText = it; error = null },
-                            label = stringResource(R.string.remote_machine_forward_remote_rules),
-                            supporting = stringResource(R.string.remote_machine_forward_remote_hint),
+                            label = stringResource(R.string.remote_server_forward_remote_rules),
+                            supporting = stringResource(R.string.remote_server_forward_remote_hint),
                             keyboardOptions = remoteLiteralKeyboardOptions(),
                             minLines = 3
                         )
@@ -104,11 +113,20 @@ internal fun PortForwardDialog(
                                 dynamicText = text
                                 error = null
                             },
-                            label = stringResource(R.string.remote_machine_forward_dynamic_ports),
-                            supporting = stringResource(R.string.remote_machine_forward_dynamic_hint),
+                            label = stringResource(R.string.remote_server_forward_dynamic_ports),
+                            supporting = stringResource(R.string.remote_server_forward_dynamic_hint),
                             // Raw password-style IME disables composition but still offers commas for the list.
                             keyboardOptions = remoteLiteralKeyboardOptions()
                         )
+                    }
+                }
+                if (activeForwards.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.remote_server_forward_active, activeForwards.joinToString(", ")),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall
+                    )
+                    TextButton(onClick = onStop) {
+                        Text(stringResource(R.string.remote_server_stop_port_forward))
                     }
                 }
                 error?.let { RemoteErrorText(it) }
@@ -147,7 +165,7 @@ internal fun PortForwardDialog(
             ) {
                 SharedIcon(Icons.Default.PlayArrow, null)
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.remote_machine_start_port_forward))
+                Text(stringResource(R.string.remote_start_forwarding))
             }
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }

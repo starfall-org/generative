@@ -23,23 +23,27 @@ class RemoteMachinesViewModel(
     val state: StateFlow<RemoteMachineState> = service.state
         .stateIn(viewModelScope, SharingStarted.Eagerly, RemoteMachineState())
 
-    /** Machines holding a persistent SSH connection; there is deliberately no way to open one by hand. */
+    /** All machines holding an SSH connection, whether or not forwarding is running. */
     val connectedMachineIds: StateFlow<Set<String>> = service.connectedMachineIds
+    val forwardedPorts: StateFlow<Map<String, List<String>>> = service.forwardedPorts
 
     fun isConnected(machineId: String): Boolean = service.isConnected(machineId)
 
     fun disconnect(machineId: String) = service.disconnectMachine(machineId)
 
-    /**
-     * Persists the dialog's forwarding rules before opening the kept-alive connection. Saving also
-     * closes an older session, so the newly selected rules cannot be skipped by connection reuse.
-     */
+    /** Save only the forwarding settings, then explicitly activate them on the shared SSH session. */
     fun saveMachineAndStartPortForward(machine: RemoteMachine, onResult: (Result<Unit>) -> Unit) {
         viewModelScope.launch {
             onResult(runCatching {
-                service.saveMachine(machine)
+                service.savePortForwarding(machine)
                 service.startPortForward(machine)
             })
+        }
+    }
+
+    fun stopPortForward(machineId: String, onResult: (Result<Boolean>) -> Unit) {
+        viewModelScope.launch {
+            onResult(runCatching { service.stopPortForward(machineId) })
         }
     }
 

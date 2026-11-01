@@ -69,37 +69,19 @@ enum class AppLanguage(val tag: String, val nativeName: String, val nameRes: Int
 }
 
 /**
- * The language override has to be known before DataStore has loaded, when an Activity attaches its
- * base context, so it is mirrored into a small SharedPreferences file that can be read synchronously.
+ * Locale is read from AppPreferences DataStore after launch. The initial Activity always uses
+ * Android's device configuration, with no bootstrap preferences or synchronous file reads.
  */
 object AppLocale {
-    private const val FILE = "app_locale"
-    private const val USE_SYSTEM = "use_system"
-    private const val TAG = "tag"
-
-    private fun prefs(context: Context) = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-
-    /** Tag of the language chosen in Preferences, or null while the app follows the system language. */
-    fun overrideTag(context: Context): String? {
-        val prefs = prefs(context)
-        return if (prefs.getBoolean(USE_SYSTEM, true)) null else AppLanguage.fromTag(prefs.getString(TAG, null)).tag
-    }
-
-    fun save(context: Context, useSystem: Boolean, tag: String) {
-        prefs(context).edit().putBoolean(USE_SYSTEM, useSystem).putString(TAG, tag).apply()
-    }
-
-    /** Apply the chosen language to [base]; the system language is left untouched. */
-    fun wrap(base: Context): Context {
-        val tag = overrideTag(base)
-        if (tag == null) {
-            // Back to the system language: undo a Locale.setDefault from an earlier override.
-            Locale.setDefault(base.resources.configuration.locales[0])
-            return base
+    /** A locale-specific configuration for Compose. Never modify global Resources or Locale. */
+    fun configuration(base: Configuration, useSystem: Boolean, tag: String): Configuration =
+        if (useSystem) base else Configuration(base).apply {
+            setLocale(AppLanguage.fromTag(tag).locale)
         }
-        val locale = AppLanguage.fromTag(tag).locale
-        Locale.setDefault(locale)
-        val config = Configuration(base.resources.configuration).apply { setLocale(locale) }
-        return base.createConfigurationContext(config)
-    }
+
+    /** Resources for non-Compose work (such as backup notifications). */
+    fun wrap(base: Context, useSystem: Boolean, tag: String): Context =
+        if (useSystem) base else base.createConfigurationContext(
+            configuration(base.resources.configuration, useSystem, tag)
+        )
 }

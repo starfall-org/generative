@@ -97,7 +97,7 @@ fun SpeechServicesScreen(
                     TopAppBar(
                         colors = edgeToEdgeTopAppBarColors(),
                         title = {
-                            FixedAppBarTitle(stringResource(R.string.app_menu_speech_services))
+                            FixedAppBarTitle(stringResource(R.string.speech_synthesis_services))
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
@@ -152,7 +152,7 @@ fun SpeechServicesScreen(
                     ) {
                         itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
                             val providerName = when {
-                                    service.engine == org.starfall.generative.shared.model.SpeechEngine.SYSTEM -> stringResource(R.string.speech_system_tts)
+                                    service.engine == org.starfall.generative.shared.model.SpeechEngine.SYSTEM -> stringResource(R.string.speech_android_system_tts)
                                     service.engine.standalone -> speechEngineLabel(service.engine)
                                     else -> providersById[service.provider]?.name ?: service.provider
                                 }
@@ -267,7 +267,7 @@ private fun SpeechServiceUnifiedCard(
                         onEdit = onEdit,
                         onDelete = onDelete,
                         deleteColor = MaterialTheme.colorScheme.error,
-                        firstActionText = stringResource(R.string.speech_set_tts_provider)
+                        firstActionText = stringResource(R.string.speech_set_as_tts_service)
                             .takeUnless { selected },
                         firstActionImageVector = Icons.Outlined.RecordVoiceOver
                             .takeUnless { selected },

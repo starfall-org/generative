@@ -16,7 +16,9 @@ internal class OAuthAuthorizations(
         val key = key(provider)
         val pending = synchronized(active) {
             active[key] ?: scope.async(start = CoroutineStart.LAZY) {
-                authorizeAccount(provider)
+                try { authorizeAccount(provider) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { Result.failure(e) }
             }.also { request ->
                 active[key] = request
                 request.invokeOnCompletion {

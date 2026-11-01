@@ -1,5 +1,6 @@
 package org.starfall.generative.appwiring
 
+import org.starfall.generative.BuildConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -13,6 +14,7 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.isContentApiName
 import org.starfall.generative.shared.model.isContentApiPreset
+import org.starfall.generative.shared.model.resolvedUrl
 import org.starfall.generative.database.McpRepository
 import org.starfall.generative.database.ModelRepository
 import org.starfall.generative.database.SpeechRepository
@@ -55,7 +57,7 @@ class DefaultDataInitializer(
         }
         // This has its own migration marker so existing installations receive it exactly once.
         // Deleting the preset is respected because the marker remains set.
-        if (!prefs.chatRelations.contentApiPresetInitialized) {
+        if (!prefs.chatRelations.contentApiPresetInitialized && BuildConfig.CONTENT_API_MCP_URL.isNotBlank()) {
             val exists = mcpRepo.allServers.first().any { it.name.isContentApiName() }
             if (!exists) {
                 mcpRepo.saveServer(McpInfo(
@@ -83,7 +85,7 @@ class DefaultDataInitializer(
 
     private suspend fun preloadContentApiTools() {
         val contentApi = mcpRepo.allServers.first().firstOrNull { it.isContentApiPreset() } ?: return
-        if (contentApi.cachedTools != null) return
+        if (contentApi.cachedTools != null || contentApi.resolvedUrl() == null) return
 
         try {
             mcpRepo.saveCachedTools(contentApi.id, mcpRepo.discoverTools(contentApi))

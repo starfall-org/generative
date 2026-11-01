@@ -12,6 +12,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -80,7 +82,7 @@ fun ModelEditor(
     val prettyJson = remember { Json { prettyPrint = true } }
     val modelJsonCode = remember(modelJson) { prettyJson.encodeToString(JsonObject.serializer(), modelJson) }
     LaunchedEffect(trimmedId) {
-        if (initialModelId.isBlank()) modelMemory.get(trimmedId)?.let { remembered ->
+        if (initialModelId.isBlank()) withContext(Dispatchers.IO) { modelMemory.get(trimmedId) }?.let { remembered ->
             config = remembered.copy(displayName = config.displayName, icon = config.icon)
             contextWindowText = remembered.contextWindowTokens.toString()
         }
@@ -118,7 +120,8 @@ fun ModelEditor(
                 reasoningEffort = config.reasoningEffort?.trim()?.ifEmpty { null },
                 reasoningEfforts = config.supportedReasoningEfforts
             )
-            modelMemory.remember(trimmedId, updated)
+            // Preserve standalone ModelEditor behavior without blocking the click on DataStore.
+            modelMemory.rememberInBackground(trimmedId, updated)
             onSave(trimmedId, updated)
             onBack()
         }
@@ -234,7 +237,7 @@ fun ModelEditor(
                         label = { Text(stringResource(R.string.common_audio)) }
                     )
                 }
-                ModelCapabilitySwitch(stringResource(R.string.model_thinking), config.supportsThinking) {
+                ModelCapabilitySwitch(stringResource(R.string.model_reasoning_support), config.supportsThinking) {
                     config = config.copy(supportsThinking = it)
                 }
                 if (config.supportsThinking) {
@@ -294,7 +297,7 @@ fun ModelEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                ModelCapabilitySwitch(stringResource(R.string.tool_calls), config.supportsToolCalls) {
+                ModelCapabilitySwitch(stringResource(R.string.model_tool_support), config.supportsToolCalls) {
                     config = config.copy(supportsToolCalls = it)
                 }
                 HorizontalDivider()

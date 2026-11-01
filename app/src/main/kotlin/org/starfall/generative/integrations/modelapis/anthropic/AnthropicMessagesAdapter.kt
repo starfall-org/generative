@@ -20,6 +20,8 @@ import org.starfall.generative.shared.model.claudeThinkingParameters
 import org.starfall.generative.shared.model.claudeAllowsSampling
 import org.starfall.generative.integrations.modelapis.sdk.useClient
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.requireStreamCompleted
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
@@ -167,8 +169,12 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
 
             sdk.sdkCall { client.messages().createStreaming(params.build()) }.use { response ->
                 val iterator = response.stream().iterator()
+                var completed = false
                 while (sdk.sdkCall { iterator.hasNext() }) {
                     val event = iterator.next()
+                    if (event.messageStop().isPresent) completed = true
+                    if (event.messageDelta().orElse(null)?.delta()?.stopReason()?.orElse(null) ==
+                        com.anthropic.models.messages.StopReason.MAX_TOKENS) error(OUTPUT_TOKEN_LIMIT_REACHED)
                     event.messageStart().orElse(null)?.message()?._usage()?.asKnown()?.orElse(null)?.let { usage ->
                         tokenUsage.update(usage._inputTokens(), usage._cacheCreationInputTokens(),
                             usage._cacheReadInputTokens(), usage._outputTokens())
@@ -186,6 +192,7 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                     }
                     delta.text().orElse(null)?.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                requireStreamCompleted(completed)
                 tokenUsage.usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }

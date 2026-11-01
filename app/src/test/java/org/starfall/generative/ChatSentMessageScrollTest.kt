@@ -305,7 +305,7 @@ class ChatSentMessageScrollTest {
         compose.mainClock.autoAdvance = false
         show(env)
         frames(240)
-        val list = compose.onNode(hasScrollAction())
+        val list = compose.onNodeWithTag("chat-message-list")
         fun position() = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         val before = position()
         update {
@@ -329,7 +329,7 @@ class ChatSentMessageScrollTest {
         update {
             env.conversation.value = conversation(sent.dropLast(1) + message("reply", ChatRole.MODEL, long))
         }
-        val list = compose.onNode(hasScrollAction())
+        val list = compose.onNodeWithTag("chat-message-list")
         fun position() = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         val beforeFinish = position()
 

@@ -32,10 +32,15 @@ internal suspend fun generateConversationSummary(
     val instructions = prompt.ifBlank { DEFAULT_CHAT_SUMMARY_PROMPT }
     val finalPrompt = "$instructions\n\nTarget summary length: approximately $target tokens. Return only the summary."
     val finalInputBudget = budget.inputBudget(finalPrompt, target)
+    val effective = effectiveContext(conversation, conversation.messages, "")
+    // Retain a previous system-role summary as user-visible context, not a new system instruction.
+    val source = if (effective.systemPrompt.isBlank()) effective.messages else
+        listOf(summaryMessage("previous_summary", effective.systemPrompt)) + effective.messages
 
-    suspend fun finish(messages: List<StoredMessage>, systemPrompt: String, outputTokens: Int): String {
-        budget.requireFits(messages, systemPrompt, outputTokens)
-        val text = complete(messages, systemPrompt, outputTokens).trim()
+    suspend fun finish(messages: List<StoredMessage>, instruction: String, outputTokens: Int): String {
+        // Budget the instruction as one user message (including its message framing).
+        budget.requireFits(messages, instruction, outputTokens)
+        val text = complete(messages + summaryMessage("summary_instruction", instruction), "", outputTokens).trim()
         // Some transports append an error as text instead of throwing. Never persist it as a summary.
         val transportError = Regex("(?:^|\\s)\\[Error: (.*)]$", RegexOption.DOT_MATCHES_ALL).find(text)
         if (transportError != null) error(transportError.groupValues[1])
@@ -44,9 +49,8 @@ internal suspend fun generateConversationSummary(
     }
 
     if (!request.chunked) {
-        val effective = effectiveContext(conversation, conversation.messages, finalPrompt)
         report("Summarizing conversation…", 0.35f)
-        return finish(effective.messages, effective.systemPrompt, target)
+        return finish(source, finalPrompt, target)
     }
 
     // Leave room for the final requested output, including when it is larger than the slider range.
@@ -60,10 +64,6 @@ internal suspend fun generateConversationSummary(
     require(partialInputBudget >= 16) {
         "Summary prompt leaves too little input space in the summary model's context window"
     }
-    val effective = effectiveContext(conversation, conversation.messages, "")
-    // A previous system-role summary must be chunked too, rather than lost or repeated in every prompt.
-    val source = if (effective.systemPrompt.isBlank()) effective.messages else
-        listOf(summaryMessage("previous_summary", effective.systemPrompt)) + effective.messages
     val chunks = chunkSummaryMessages(source, minOf(request.tokensPerChunk, partialInputBudget))
     chunks.forEach { budget.requireFits(it, partialPrompt, partialTarget) }
     var merging = chunks.mapIndexed { index, chunk ->
@@ -101,7 +101,7 @@ private class SummaryRequestBudget(private val model: ModelConfiguration) {
         require(outputLimit == null || outputTokens <= outputLimit) {
             "Summary target exceeds the summary model's output limit of $outputLimit tokens"
         }
-        // Long arithmetic avoids wrapping large custom targets. Reserve system-message framing too.
+        // Long arithmetic avoids wrapping large custom targets. Reserve user-message framing too.
         val available = contextWindow.toLong() - outputTokens - estimateTextTokens(prompt) - 4
         require(available >= 0) {
             "Summary target and prompt exceed the summary model's context window of $contextWindow tokens; reduce the target"

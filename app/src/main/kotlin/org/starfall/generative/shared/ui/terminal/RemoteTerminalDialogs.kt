@@ -38,15 +38,15 @@ internal fun RemoteTerminalSecretDialog(
         title = {
             Text(
                 stringResource(
-                    if (request.passphrase) R.string.remote_machine_terminal_passphrase_title
-                    else R.string.remote_machine_terminal_password_title
+                    if (request.passphrase) R.string.remote_server_terminal_passphrase_title
+                    else R.string.remote_server_terminal_password_title
                 )
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    stringResource(R.string.remote_machine_terminal_password_help),
+                    stringResource(R.string.remote_server_terminal_password_help),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -56,8 +56,8 @@ internal fun RemoteTerminalSecretDialog(
                     label = {
                         Text(
                             when {
-                                request.passphrase -> stringResource(R.string.remote_machine_key_passphrase)
-                                request.prompt.isBlank() -> stringResource(R.string.remote_machine_password)
+                                request.passphrase -> stringResource(R.string.remote_server_key_passphrase)
+                                request.prompt.isBlank() -> stringResource(R.string.remote_server_password)
                                 else -> request.prompt.trim()
                             }
                         )
@@ -69,8 +69,8 @@ internal fun RemoteTerminalSecretDialog(
                             SharedIcon(
                                 if (showPromptPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = stringResource(
-                                    if (showPromptPassword) R.string.remote_machine_hide_password
-                                    else R.string.remote_machine_show_password
+                                    if (showPromptPassword) R.string.remote_server_hide_password
+                                    else R.string.remote_server_show_password
                                 )
                             )
                         }
@@ -84,7 +84,7 @@ internal fun RemoteTerminalSecretDialog(
                 enabled = passwordInput.isNotEmpty(),
                 onClick = { pending.answer.complete(passwordInput) }
             ) {
-                Text(stringResource(R.string.remote_machine_terminal_connect))
+                Text(stringResource(R.string.remote_server_terminal_connect))
             }
         },
         dismissButton = {

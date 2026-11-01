@@ -7,7 +7,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.appwiring.AppContainer
 import org.starfall.generative.database.AppDatabase
 import org.starfall.generative.database.RoomOAuthRecordStorage
@@ -35,10 +34,6 @@ class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRec
     override val remoteMachineService: RemoteMachineService get() = container.remoteMachineService
     internal val crashReports by lazy { CrashReportStore(File(filesDir, "last_crash.json")) }
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    override fun attachBaseContext(base: android.content.Context) {
-        super.attachBaseContext(AppLocale.wrap(base))
-    }
 
     override fun onCreate() {
         super.onCreate()

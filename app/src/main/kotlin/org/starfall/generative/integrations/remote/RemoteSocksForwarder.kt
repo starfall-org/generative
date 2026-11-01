@@ -12,6 +12,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
 /**
@@ -25,13 +26,27 @@ internal class RemoteSocksForwarder(
     private val connectTimeoutMillis: Int
 ) {
     private val server = ServerSocket()
+    private val clients = ConcurrentHashMap.newKeySet<Socket>()
+    @Volatile private var stopped = false
 
     /** Binds the port; throws [IOException] when it is unavailable. */
     fun start() {
-        server.reuseAddress = true
-        server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
-        server.soTimeout = ACCEPT_POLL_MILLIS
-        thread(isDaemon = true, name = "socks-forward-$port") { acceptLoop() }
+        try {
+            server.reuseAddress = true
+            server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
+            server.soTimeout = ACCEPT_POLL_MILLIS
+            thread(isDaemon = true, name = "socks-forward-$port") { acceptLoop() }
+        } catch (error: Throwable) {
+            stop()
+            throw error
+        }
+    }
+
+    /** Stop this SOCKS listener and its clients while keeping SSH running. */
+    fun stop() {
+        stopped = true
+        runCatching { server.close() }
+        clients.forEach { runCatching { it.close() } }
     }
 
     private fun acceptLoop() {
@@ -41,6 +56,12 @@ internal class RemoteSocksForwarder(
                     server.accept()
                 } catch (_: SocketTimeoutException) {
                     continue
+                }
+                clients += client
+                if (stopped) {
+                    runCatching { client.close() }
+                    clients.remove(client)
+                    break
                 }
                 thread(isDaemon = true, name = "socks-client-$port") { handle(client) }
             }
@@ -86,6 +107,7 @@ internal class RemoteSocksForwarder(
         } finally {
             runCatching { channel?.disconnect() }
             runCatching { client.close() }
+            clients.remove(client)
         }
     }
 

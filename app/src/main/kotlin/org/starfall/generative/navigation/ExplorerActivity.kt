@@ -17,18 +17,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.starfall.generative.features.machines.shared.ui.RemoteMachineFilesScreen
 import org.starfall.generative.features.storage.ui.StorageExplorerScreen
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
-import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 
 /** Activity host: routes to the owning feature, not to a combined storage implementation. */
 class ExplorerActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocale.wrap(newBase))
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableTransparentSystemBars()
@@ -36,6 +32,7 @@ class ExplorerActivity : ComponentActivity() {
         val machineId = intent.getStringExtra(EXTRA_MACHINE_ID)
         setContent {
             val prefs by preferences.appPreferencesFlow.collectAsStateWithLifecycle(initialValue = AppPreferences())
+            RuntimeAppLocale(prefs.useSystemLanguage, prefs.selectedLanguage) {
             GenerativeTheme(
                 themeMode = prefs.themeMode,
                 amoledMode = prefs.useAmoled,
@@ -68,6 +65,7 @@ class ExplorerActivity : ComponentActivity() {
                         StorageExplorerScreen(onClose = ::finish, onOpenExternal = openExternal)
                     }
                 }
+            }
             }
         }
     }

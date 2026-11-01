@@ -62,7 +62,7 @@ fun ServerListScreen(
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
             title = {
-                FixedAppBarTitle(stringResource(R.string.app_menu_model_context_protocol))
+                FixedAppBarTitle(stringResource(R.string.mcp))
             }, navigationIcon = { IconButton(onClick = onBack) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
                 actions = {
                     ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })

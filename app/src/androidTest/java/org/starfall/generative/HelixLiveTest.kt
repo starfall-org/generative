@@ -40,7 +40,7 @@ class HelixLiveTest {
             back()
         }
         compose.onNode(gear).performClick()
-        val providersMenuLabel = compose.activity.getString(R.string.app_menu_language_providers)
+        val providersMenuLabel = compose.activity.getString(R.string.model_providers)
         if (compose.onAllNodesWithText(providersMenuLabel).fetchSemanticsNodes().isEmpty()) back()
         compose.onNodeWithText(providersMenuLabel).performClick()
         val existing = chat.providers.value.find { it.baseUrl.trimEnd('/') == "https://helixmind.online/v1" }

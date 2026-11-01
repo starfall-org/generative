@@ -93,6 +93,43 @@ class ImmediateStateTest {
         } finally { scope.cancel() }
     }
 
+    @Test fun enqueuedReordersPublishImmediatelyAndPersistInSubmissionOrder() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val disk = MutableStateFlow(listOf("a", "b", "c"))
+            val state = ImmediateState(disk, scope)
+            state.flow.first()
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            state.enqueue({ listOf("c", "a", "b") }) {
+                entered.complete(Unit)
+                release.await()
+                disk.value = listOf("c", "a", "b")
+            }
+            withTimeout(3_000) { entered.await() }
+            state.enqueue({ listOf("b", "c", "a") }) { disk.value = listOf("b", "c", "a") }
+            assertEquals(listOf("b", "c", "a"), state.value)
+            assertEquals(listOf("a", "b", "c"), disk.value)
+            release.complete(Unit)
+            withTimeout(3_000) { disk.first { it == listOf("b", "c", "a") } }
+            assertEquals(disk.value, state.value)
+        } finally { scope.cancel() }
+    }
+
+    @Test fun enqueuedWriteFailureRollsBackAndNextReorderCanSucceed() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val disk = MutableStateFlow(listOf("a", "b"))
+            val state = ImmediateState(disk, scope)
+            state.flow.first()
+            state.enqueue({ it.reversed() }) { throw IOException("no space") }
+            withTimeout(3_000) { state.flow.first { it == listOf("a", "b") } }
+            state.enqueue({ listOf("b", "a") }) { disk.value = listOf("b", "a") }
+            withTimeout(3_000) { disk.first { it == listOf("b", "a") } }
+            assertEquals(disk.value, state.value)
+        } finally { scope.cancel() }
+    }
+
     @Test fun editsBeforeInitialLoadApplyToLoadedData() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {

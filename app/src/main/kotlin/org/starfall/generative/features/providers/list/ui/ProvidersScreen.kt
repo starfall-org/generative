@@ -64,9 +64,11 @@ fun ProvidersScreen(
     onMoveProviderToGroup: (String, String?) -> Unit = { _, _ -> },
     onPlaceProvider: (suspend (ProviderPlacement) -> Result<Unit>)? = null,
     onPlaceProviderImmediately: ((ProviderPlacement) -> Unit)? = null,
+    onPlaceProviderTracked: ((ProviderPlacement, (Result<Unit>) -> Unit) -> Unit)? = null,
     onDeleteProvider: (String) -> Unit,
     onReorderProviders: (List<String>) -> Unit,
     onReorderRootItems: (List<ProviderRootOrderItem>) -> Unit = {},
+    onReorderRootItemsTracked: ((List<ProviderRootOrderItem>, (Result<Unit>) -> Unit) -> Unit)? = null,
     onBack: () -> Unit
 ) = with(Launcher) {
     val context = LocalContext.current
@@ -122,7 +124,9 @@ fun ProvidersScreen(
     val folderCardBounds = remember { mutableStateMapOf<String, Rect>() }
     var containerOrigin by remember { mutableStateOf(Offset.Zero) }
     var containerWindowBounds by remember { mutableStateOf(Rect.Zero) }
+    var rootGridWindowBounds by remember { mutableStateOf(Rect.Zero) }
     val folderEscapeEdgePx = with(LocalDensity.current) { 72.dp.toPx() }
+    val rootScrollEdgePx = with(LocalDensity.current) { 48.dp.toPx() }
 
     val sortedGroups = remember(providerGroups) {
         providerGroups.sortedWith(compareBy<ProviderGroup> { it.sortOrder }.thenBy { it.name.lowercase() })
@@ -220,9 +224,17 @@ fun ProvidersScreen(
             val previousProviders = dragProviderSnapshot.orEmpty()
             val previousRoot = dragRootSnapshot.orEmpty()
             val previousCollapsed = dragCollapsedSnapshot.orEmpty()
-            if (onPlaceProviderImmediately != null) {
-                // The persistence owner must outlive this screen. Calling this synchronously
-                // lets the ViewModel enqueue the write before navigation can dispose the screen.
+            if (onPlaceProviderTracked != null) {
+                // Enqueue synchronously, then acknowledge on Main only after the background write.
+                onPlaceProviderTracked(placement) { result ->
+                    if (result.isFailure && pendingGridLayout == layout) {
+                        pendingGridLayout = null
+                        orderedProviders = previousProviders
+                        rootItems = previousRoot
+                        setCollapsedSections(previousCollapsed)
+                    }
+                }
+            } else if (onPlaceProviderImmediately != null) {
                 onPlaceProviderImmediately(placement)
             } else if (onPlaceProvider != null) scope.launch {
                 if (onPlaceProvider(placement).isFailure) {
@@ -259,8 +271,16 @@ fun ProvidersScreen(
             }
             else if (liveOrderChanged) {
                 val order = rootItems.map { it.toOrderItem() }
+                val before = dragRootSnapshot.orEmpty()
                 pendingRootOrder = order
-                onReorderRootItems(order)
+                if (onReorderRootItemsTracked != null) {
+                    onReorderRootItemsTracked(order) { result ->
+                        if (result.isFailure && pendingRootOrder == order) {
+                            pendingRootOrder = null
+                            rootItems = before
+                        }
+                    }
+                } else onReorderRootItems(order)
             }
             if (collapsedSections != dragCollapsedSnapshot) setCollapsedSections(collapsedSections)
         }
@@ -453,6 +473,29 @@ fun ProvidersScreen(
                     ) { gridMode ->
                         val gridState = rememberLazyGridState()
                         val cellHeight = if (gridMode) 164.dp else 100.dp
+                        val activeDrag = dndState.session
+                        // Near the top, the first card lives below the Scaffold header,
+                        // outside the narrow auto-scroll edge. Let it yield once the
+                        // viewport reaches its start, even without another finger move.
+                        LaunchedEffect(
+                            gridState, activeDrag?.identity, activeDrag?.pointer,
+                            gridState.canScrollBackward, rootGridWindowBounds, gridMode
+                        ) {
+                            val drag = activeDrag ?: return@LaunchedEffect
+                            val pointer = drag.pointer
+                            val bounds = rootGridWindowBounds
+                            if (gridMode != isGridView || gridState.canScrollBackward ||
+                                !bounds.contains(pointer) ||
+                                pointer.y > bounds.top + rootScrollEdgePx ||
+                                pointer.y >= drag.startPointer.y
+                            ) return@LaunchedEffect
+                            val key = if (drag.item.data.isGroup) "group_${drag.item.data.id}"
+                                else "provider_${drag.item.data.id}"
+                            if (rootItems.any { it.cellKey() == key }) {
+                                rootItems.firstOrNull()?.cellKey()
+                                    ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                            }
+                        }
                         LazyVerticalGrid(
                             state = gridState,
                             columns = GridCells.Fixed(if (gridMode) 2 else 1),
@@ -466,15 +509,30 @@ fun ProvidersScreen(
                                         val key = if (dragged.isGroup) "group_${dragged.id}"
                                             else "provider_${dragged.id}"
                                         if (rootItems.any { it.cellKey() == key }) {
-                                            rootItems.lastOrNull()?.cellKey()
-                                                ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                                            // The background spans the entire viewport. A
+                                            // drop in the top header/gutter must not be
+                                            // mistaken for an append-to-end gesture.
+                                            val lastVisibleBottom = gridState.layoutInfo.visibleItemsInfo
+                                                .maxOfOrNull { it.offset.y + it.size.height }
+                                            val isAfterLastRow = !gridState.canScrollForward &&
+                                                rootGridWindowBounds.contains(drag.pointer) &&
+                                                lastVisibleBottom != null &&
+                                                drag.pointer.y > rootGridWindowBounds.top + lastVisibleBottom
+                                            if (isAfterLastRow) {
+                                                rootItems.lastOrNull()?.cellKey()
+                                                    ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                                            }
+                                            liveOrderChanged
                                         } else if (!dragged.isGroup) {
                                             applyProviderPreview(dragged.id, null)
-                                        }
-                                        true
+                                            true
+                                        } else false
                                     }
                                 )
                                 .autoScroll(dndState, gridState)
+                                .onGloballyPositioned {
+                                    if (gridMode == isGridView) rootGridWindowBounds = it.boundsInWindow()
+                                }
                                 .testTag("provider_list")
                         ) {
                             items(visibleRootItems, key = { it.cellKey() }) { item ->

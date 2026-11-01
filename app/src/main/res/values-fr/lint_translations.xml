@@ -3,13 +3,10 @@
     <string name="common_error">Erreur</string>
     <string name="chat_open_app_menu">Ouvrir le menu de l\'application</string>
     <string name="settings_customize_palette">Personnaliser</string>
-    <string name="settings_customize_palette_help">Créez votre propre palette. Choisissez un rôle, déplacez le curseur dans le champ de couleur ou ajustez les valeurs HSV et HEX. Les couleurs sont adaptées pour offrir un bon contraste en mode clair et sombre.</string>
     <string name="settings_palette_primary">Primaire</string>
     <string name="settings_palette_secondary">Secondaire</string>
-    <string name="settings_palette_accent">Accent</string>
     <string name="settings_palette_neutral">Neutre</string>
     <string name="settings_palette_hue">Teinte</string>
-    <string name="settings_palette_saturation">Saturation</string>
     <string name="settings_palette_brightness">Luminosité</string>
     <string name="settings_palette_hex">Couleur HEX (#RRGGBB)</string>
     <string name="settings_palette_preview">Aperçu</string>
@@ -31,7 +28,6 @@
     <string name="video_option_size">Taille de la vidéo</string>
     <string name="video_option_resolution">Résolution vidéo</string>
     <string name="speech_platform_picker_title">Plateforme vocale</string>
-    <string name="speech_engine_android_description">Utilise la synthèse vocale Android</string>
     <string name="speech_engine_direct_description">API vocale dédiée</string>
     <string name="speech_engine_provider_description">Utilise un fournisseur de modèles configuré</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +36,7 @@
     </plurals>
     <string name="customization_title">Personnalisation</string>
     <string name="customization_enable">Activer</string>
-    <string name="customization_description">Couleurs, transparence des éléments, photo de profil et arrière-plans</string>
     <string name="customization_backgrounds_title">Images d\'arrière-plan</string>
-    <string name="user_profile_background_preview_sample">Exemple de contenu avec image d\'arrière-plan</string>
     <string name="provider_custom">Personnalisé</string>
     <string name="provider_custom_endpoints">Points de terminaison personnalisés</string>
     <string name="provider_custom_endpoints_hint">Saisissez des URL complètes. Laissez vide pour utiliser les valeurs par défaut. Les URL de génération Gemini peuvent contenir {model} et {method}.</string>
@@ -61,7 +55,6 @@
     <string name="launcher_drag_test_none">aucun</string>
     <string name="launcher_drag_test_folder_alpha">Dossier Alpha</string>
     <string name="launcher_drag_test_folder_beta">Dossier Bêta</string>
-    <string name="launcher_drag_test_folder">Dossier</string>
     <string name="launcher_drag_test_close">Fermer</string>
     <string name="launcher_drag_test_grid">Grille</string>
     <string name="launcher_drag_test_list">Liste</string>

@@ -105,7 +105,7 @@ class AppMenuScreenGroupUiTest {
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 AppMenuScreen(
-                    onNavigateToChatOptions = { clicked += "Configuration" },
+                    onNavigateToChatOptions = { clicked += "Chat Configuration" },
                     onNavigateToProviders = { clicked += "Providers" },
                     onNavigateToSpeech = { clicked += "Speech" },
                     onNavigateToToolsEditor = { clicked += "Tools" },
@@ -116,7 +116,7 @@ class AppMenuScreenGroupUiTest {
         }
         compose.waitForIdle()
 
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Configuration"))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Chat Configuration"))
         compose.waitForIdle()
         val first = compose.onNodeWithTag("app-menu-chat-options").fetchSemanticsNode().boundsInRoot
         val middle = compose.onNodeWithTag("app-menu-providers").fetchSemanticsNode().boundsInRoot
@@ -140,13 +140,13 @@ class AppMenuScreenGroupUiTest {
         tapAt(Offset(tools.left + 40f, tools.top + 40f))
         tapAt(Offset(mcp.left + 40f, mcp.bottom - 40f))
 
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Remote services"))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Remote SSH"))
         compose.waitForIdle()
         val remote = compose.onNodeWithTag("app-menu-remote").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(remote.left + 4f, remote.top + 4f))
         tapAt(Offset(remote.right - 4f, remote.bottom - 4f))
         tapAt(Offset(remote.left + 40f, remote.top + 40f))
-        assertEquals(listOf("Configuration", "Providers", "Speech", "Tools", "MCP", "Remote"), clicked)
+        assertEquals(listOf("Chat Configuration", "Providers", "Speech", "Tools", "MCP", "Remote"), clicked)
     }
 
     @Test

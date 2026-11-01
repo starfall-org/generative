@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="common_error">Error</string>
     <string name="chat_open_app_menu">Abrir el menú de la aplicación</string>
     <string name="settings_customize_palette">Personalizar</string>
-    <string name="settings_customize_palette_help">Crea tu propia paleta. Elige una función, arrastra sobre el campo de color o ajusta HSV y HEX. Los colores están optimizados para ofrecer contraste en los modos claro y oscuro.</string>
     <string name="settings_palette_primary">Primario</string>
     <string name="settings_palette_secondary">Secundario</string>
     <string name="settings_palette_accent">Acento</string>
@@ -31,7 +29,6 @@
     <string name="video_option_size">Tamaño del vídeo</string>
     <string name="video_option_resolution">Resolución del vídeo</string>
     <string name="speech_platform_picker_title">Plataforma de voz</string>
-    <string name="speech_engine_android_description">Utiliza la síntesis de voz de Android</string>
     <string name="speech_engine_direct_description">API de voz dedicada</string>
     <string name="speech_engine_provider_description">Utiliza un proveedor de modelos configurado</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +37,7 @@
     </plurals>
     <string name="customization_title">Personalización</string>
     <string name="customization_enable">Activar</string>
-    <string name="customization_description">Colores, transparencia de componentes, foto de perfil y fondos</string>
     <string name="customization_backgrounds_title">Imágenes de fondo</string>
-    <string name="user_profile_background_preview_sample">Contenido de ejemplo con imagen de fondo</string>
     <string name="provider_custom">Personalizado</string>
     <string name="provider_custom_endpoints">Endpoints personalizados</string>
     <string name="provider_custom_endpoints_hint">Introduce URL completas. Déjalo en blanco para usar los valores predeterminados. Las URL de generación de Gemini pueden usar {model} y {method}.</string>
@@ -61,7 +56,6 @@
     <string name="launcher_drag_test_none">ninguno</string>
     <string name="launcher_drag_test_folder_alpha">Carpeta Alfa</string>
     <string name="launcher_drag_test_folder_beta">Carpeta Beta</string>
-    <string name="launcher_drag_test_folder">Carpeta</string>
     <string name="launcher_drag_test_close">Cerrar</string>
     <string name="launcher_drag_test_grid">Cuadrícula</string>
     <string name="launcher_drag_test_list">Lista</string>

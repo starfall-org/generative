@@ -3,6 +3,8 @@ package org.starfall.generative.integrations.modelapis.grokbuild
 import android.content.Context
 import java.util.Base64
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.Flow
@@ -101,11 +103,11 @@ internal class GrokBuildAdapter(context: Context, attachments: AttachmentResolve
 
     /** A 401 can also occur before the advertised OAuth expiry; retry only before any output. */
     private suspend fun forceRefresh(provider: ModelProvider) = refreshMutex.withLock {
-        val current = store.load(provider.oauthCredentialId)
+        val current = withContext(Dispatchers.IO) { store.load(provider.oauthCredentialId) }
             ?: error("Grok Build credentials are missing. Sign in again.")
         require(current.refreshToken.isNotBlank()) { "Grok Build authorization expired. Sign in again." }
         val refreshed = exchange(mapOf("grant_type" to "refresh_token", "refresh_token" to current.refreshToken), current)
-        store.save(provider.oauthCredentialId, refreshed)
+        withContext(Dispatchers.IO) { store.save(provider.oauthCredentialId, refreshed) }
     }
 
     override fun streamEvents(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,

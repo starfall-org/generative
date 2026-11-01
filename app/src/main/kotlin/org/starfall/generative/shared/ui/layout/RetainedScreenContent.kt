@@ -11,6 +11,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
 
 /** Whether this page, including any nested editor, currently owns the system Back action. */
 val LocalScreenTransitionActive = compositionLocalOf { true }
@@ -30,7 +31,8 @@ fun <T : Any> RetainedScreenContent(
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()
             .retainWhen(editor == null || (transitioning && transition.currentState == null))
-            .screenSlide { parentOffset.value }) {
+            .screenSlide { parentOffset.value }
+            .then(if (editor == null || transitioning) Modifier else Modifier.clearAndSetSemantics { })) {
             CompositionLocalProvider(
                 LocalScreenTransitionActive provides (parentActive && editor == null)
             ) { content(null) }
@@ -49,7 +51,8 @@ fun <T : Any> RetainedScreenContent(
                     )
                 }
                 val visible = page == editor || (transitioning && page == transition.currentState)
-                Box(Modifier.fillMaxSize().retainWhen(visible).screenSlide { offset.value }) {
+                Box(Modifier.fillMaxSize().retainWhen(visible).screenSlide { offset.value }
+                    .then(if (visible) Modifier else Modifier.clearAndSetSemantics { })) {
                     CompositionLocalProvider(
                         LocalScreenTransitionActive provides (parentActive && page == editor)
                     ) { content(page) }

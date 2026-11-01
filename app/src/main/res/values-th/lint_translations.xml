@@ -3,7 +3,6 @@
     <string name="common_error">ข้อผิดพลาด</string>
     <string name="chat_open_app_menu">เปิดเมนูแอป</string>
     <string name="settings_customize_palette">ปรับแต่ง</string>
-    <string name="settings_customize_palette_help">สร้างชุดสีของคุณเอง เลือกบทบาทสี ลากบนพื้นที่เลือกสี หรือปรับค่า HSV และ HEX สีได้รับการปรับให้มีความคมชัดทั้งในโหมดสว่างและมืด</string>
     <string name="settings_palette_primary">สีหลัก</string>
     <string name="settings_palette_secondary">สีรอง</string>
     <string name="settings_palette_accent">สีเน้น</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">ขนาดวิดีโอ</string>
     <string name="video_option_resolution">ความละเอียดวิดีโอ</string>
     <string name="speech_platform_picker_title">แพลตฟอร์มเสียงพูด</string>
-    <string name="speech_engine_android_description">ใช้ระบบแปลงข้อความเป็นเสียงพูดของ Android</string>
     <string name="speech_engine_direct_description">API เสียงพูดเฉพาะทาง</string>
     <string name="speech_engine_provider_description">ใช้ผู้ให้บริการโมเดลที่ตั้งค่าไว้</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">การปรับแต่ง</string>
     <string name="customization_enable">เปิดใช้งาน</string>
-    <string name="customization_description">สี ความโปร่งใสของส่วนประกอบ รูปโปรไฟล์ และพื้นหลัง</string>
     <string name="customization_backgrounds_title">ภาพพื้นหลัง</string>
-    <string name="user_profile_background_preview_sample">เนื้อหาตัวอย่างพร้อมภาพพื้นหลัง</string>
     <string name="provider_custom">กำหนดเอง</string>
     <string name="provider_custom_endpoints">ปลายทาง API ที่กำหนดเอง</string>
     <string name="provider_custom_endpoints_hint">ป้อน URL แบบเต็ม เว้นว่างเพื่อใช้ค่าเริ่มต้น URL สำหรับสร้างเนื้อหาของ Gemini สามารถใช้ {model} และ {method} ได้</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">ไม่มี</string>
     <string name="launcher_drag_test_folder_alpha">โฟลเดอร์ Alpha</string>
     <string name="launcher_drag_test_folder_beta">โฟลเดอร์ Beta</string>
-    <string name="launcher_drag_test_folder">โฟลเดอร์</string>
     <string name="launcher_drag_test_close">ปิด</string>
     <string name="launcher_drag_test_grid">ตาราง</string>
     <string name="launcher_drag_test_list">รายการ</string>

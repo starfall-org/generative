@@ -56,6 +56,8 @@ class AiService(
         accountAdapters.importCredentials(credentials)
     }
 
+    internal suspend fun awaitModelConfigurationMemoryWrites() = modelConfigurationMemory.awaitBackgroundWrites()
+
     internal fun exportModelConfigurationMemory(): Map<String, JsonObject> = modelConfigurationMemory.exportAll()
 
     internal fun importModelConfigurationMemory(values: Map<String, JsonObject>) {

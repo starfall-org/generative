@@ -59,7 +59,7 @@ internal fun SshOptionsEditor(
                     RemoteTextField(
                         key,
                         {},
-                        stringResource(R.string.remote_machine_ssh_option_name),
+                        stringResource(R.string.remote_server_ssh_option_name),
                         Modifier.weight(1f),
                         readOnly = true,
                         keyboardOptions = remoteLiteralKeyboardOptions()
@@ -71,7 +71,7 @@ internal fun SshOptionsEditor(
                 RemoteTextField(
                     value,
                     { newValue -> onChange(options + (key to newValue)) },
-                    stringResource(R.string.remote_machine_ssh_option_value),
+                    stringResource(R.string.remote_server_ssh_option_value),
                     keyboardOptions = remoteLiteralKeyboardOptions()
                 )
             }
@@ -80,14 +80,14 @@ internal fun SshOptionsEditor(
             RemoteTextField(
                 draftKey,
                 { draftKey = it },
-                stringResource(R.string.remote_machine_ssh_option_name),
+                stringResource(R.string.remote_server_ssh_option_name),
                 keyboardOptions = remoteLiteralKeyboardOptions()
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RemoteTextField(
                     draftValue,
                     { draftValue = it },
-                    stringResource(R.string.remote_machine_ssh_option_value),
+                    stringResource(R.string.remote_server_ssh_option_value),
                     Modifier.weight(1f),
                     keyboardOptions = remoteLiteralKeyboardOptions()
                 )
@@ -137,7 +137,7 @@ internal fun WebSocketProxyDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.remote_machine_websocket_proxy)) },
+        title = { Text(stringResource(R.string.remote_server_websocket_proxy)) },
         content = {
             Column(
                 Modifier
@@ -148,13 +148,13 @@ internal fun WebSocketProxyDialog(
                 RemoteTextField(
                     url,
                     { url = it; error = null },
-                    stringResource(R.string.remote_machine_websocket_url),
+                    stringResource(R.string.remote_server_websocket_url),
                     keyboardOptions = remoteLiteralKeyboardOptions()
                 )
                 RemoteTextField(
                     headersText,
                     { headersText = it },
-                    stringResource(R.string.remote_machine_websocket_headers),
+                    stringResource(R.string.remote_server_websocket_headers),
                     keyboardOptions = remoteLiteralKeyboardOptions(),
                     minLines = 3,
                     maxLines = 6
@@ -162,11 +162,11 @@ internal fun WebSocketProxyDialog(
                 RemoteTextField(
                     connectTimeout,
                     numeric { connectTimeout = it },
-                    stringResource(R.string.remote_machine_websocket_connect_timeout),
+                    stringResource(R.string.remote_server_websocket_connect_timeout),
                     keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                 )
                 RemoteToggle(
-                    label = stringResource(R.string.remote_machine_websocket_skip_certificates),
+                    label = stringResource(R.string.remote_server_websocket_skip_certificates),
                     checked = skipCertificates,
                     onCheckedChange = { skipCertificates = it }
                 )
@@ -180,8 +180,8 @@ internal fun WebSocketProxyDialog(
                 ) {
                     Text(
                         stringResource(
-                            if (advancedExpanded) R.string.remote_machine_websocket_hide_advanced
-                            else R.string.remote_machine_websocket_show_advanced
+                            if (advancedExpanded) R.string.remote_server_websocket_hide_advanced
+                            else R.string.remote_server_websocket_show_advanced
                         ),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
@@ -200,7 +200,7 @@ internal fun WebSocketProxyDialog(
                         RemoteTextField(
                             caCertificate,
                             { caCertificate = it },
-                            stringResource(R.string.remote_machine_websocket_ca_certificate),
+                            stringResource(R.string.remote_server_websocket_ca_certificate),
                             keyboardOptions = remoteLiteralKeyboardOptions(),
                             minLines = 3,
                             maxLines = 8
@@ -208,31 +208,31 @@ internal fun WebSocketProxyDialog(
                         RemoteTextField(
                             handshakeTimeout,
                             numeric { handshakeTimeout = it },
-                            stringResource(R.string.remote_machine_websocket_handshake_timeout),
+                            stringResource(R.string.remote_server_websocket_handshake_timeout),
                             keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                         )
                         RemoteTextField(
                             readTimeout,
                             numeric { readTimeout = it },
-                            stringResource(R.string.remote_machine_websocket_read_timeout),
+                            stringResource(R.string.remote_server_websocket_read_timeout),
                             keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                         )
                         RemoteTextField(
                             writeTimeout,
                             numeric { writeTimeout = it },
-                            stringResource(R.string.remote_machine_websocket_write_timeout),
+                            stringResource(R.string.remote_server_websocket_write_timeout),
                             keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                         )
                         RemoteTextField(
                             closeTimeout,
                             numeric { closeTimeout = it },
-                            stringResource(R.string.remote_machine_websocket_close_timeout),
+                            stringResource(R.string.remote_server_websocket_close_timeout),
                             keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                         )
                         RemoteTextField(
                             subProtocols,
                             { subProtocols = it },
-                            stringResource(R.string.remote_machine_websocket_subprotocols),
+                            stringResource(R.string.remote_server_websocket_subprotocols),
                             keyboardOptions = remoteLiteralKeyboardOptions()
                         )
                     }

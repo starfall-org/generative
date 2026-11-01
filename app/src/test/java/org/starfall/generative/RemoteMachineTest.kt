@@ -23,6 +23,8 @@ import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.model.remote.RemoteSecretRequest
 import org.starfall.generative.shared.model.parsePortForwardRule
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
+import org.starfall.generative.shared.model.selectedRemoteMachine
+import org.starfall.generative.shared.model.withSelectedRemoteMachine
 
 class RemoteMachineTest {
     @Test
@@ -303,4 +305,36 @@ class RemoteMachineTest {
             PortForwardingConfig(localRules = listOf("1080:a:80"), dynamicPorts = listOf(1080)).validated()
         }
     }
+    @Test
+    fun selectingMachineIsAtomicAndUnsetDisablesLegacyTools() {
+        val allIds = listOf("one", "two", "three")
+        val previous = ToolSettings(machinesEnabled = true,
+            enabledMachines = mapOf("one" to true, "two" to true, "stale" to true))
+        val selected = previous.withSelectedRemoteMachine("two", allIds)
+        assertEquals(mapOf("one" to false, "two" to true, "three" to false, "stale" to false),
+            selected.enabledMachines)
+        assertTrue(selected.machinesEnabled)
+
+        val unset = selected.withSelectedRemoteMachine(null, allIds)
+        assertEquals(allIds.toSet() + "stale", unset.enabledMachines.keys)
+        assertTrue(unset.enabledMachines.values.none { it })
+        assertFalse(unset.machinesEnabled)
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            previous.withSelectedRemoteMachine("unknown", allIds)
+        }
+    }
+
+    @Test
+    fun selectedRemoteMachineUsesEnabledMachineAndUnsetOverridesLegacyDefault() {
+        val machines = listOf(RemoteMachine("one", "One"), RemoteMachine("two", "Two"))
+        assertEquals(machines[1], selectedRemoteMachine(
+            ToolSettings(machinesEnabled = true,
+                enabledMachines = mapOf("one" to false, "two" to true)), machines))
+        assertNull(selectedRemoteMachine(
+            ToolSettings(machinesEnabled = false,
+                enabledMachines = mapOf("one" to false, "two" to false)), machines))
+        assertEquals(machines[0], selectedRemoteMachine(
+            ToolSettings(machinesEnabled = true), machines))
+    }
+
 }

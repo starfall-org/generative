@@ -83,7 +83,7 @@ internal fun McpConnectorsSheetContent(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            if (serverAddress.isBlank()) stringResource(R.string.mcp_servers_title) else serverAddress,
+                            if (serverAddress.isBlank()) stringResource(R.string.mcp_servers) else serverAddress,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

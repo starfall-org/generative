@@ -156,7 +156,7 @@ private fun ResponseObserverEditor(
                 modifier = Modifier.fillMaxWidth()
             )
             MediaChoiceField(
-                label = stringResource(R.string.media_chain_observer_mode),
+                label = stringResource(R.string.media_chain_success_condition),
                 selected = observationModeLabel(observation.mode),
                 options = MediaResponseObservationMode.entries,
                 optionLabel = { mode -> observationModeLabel(mode) },
@@ -305,7 +305,7 @@ internal fun MediaFinalResponseEditor(
                 modifier = Modifier.fillMaxWidth()
             )
             MediaChoiceField(
-                label = stringResource(R.string.media_chain_value_kind),
+                label = stringResource(R.string.media_chain_value_format),
                 selected = valueKindLabel(finalResponse.valueKind),
                 options = MediaValueKind.entries,
                 optionLabel = { kind -> valueKindLabel(kind) },
@@ -369,7 +369,7 @@ private fun responseTypeLabel(type: MediaResponseType) = stringResource(
         MediaResponseType.IMAGE -> R.string.common_image
         MediaResponseType.VIDEO -> R.string.common_video
         MediaResponseType.AUDIO -> R.string.music_audio
-        MediaResponseType.OCTET_STREAM -> R.string.media_chain_octet_stream
+        MediaResponseType.OCTET_STREAM -> R.string.media_chain_binary_file
     }
 )
 

@@ -2,6 +2,8 @@ package org.starfall.generative.integrations.modelapis.geminicli
 
 import android.content.Context
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,7 +42,8 @@ internal class GeminiCliAdapter(context: Context, attachments: AttachmentResolve
         val signedIn = result.getOrNull() ?: return result
         val existingChoice = signedIn.config.geminiCliProjectIds[signedIn.oauthCredentialId]
             ?.takeIf(String::isNotBlank)
-        val discovered = store.load(signedIn.oauthCredentialId)?.projectId?.takeIf(String::isNotBlank)
+        val discovered = withContext(Dispatchers.IO) { store.load(signedIn.oauthCredentialId) }
+            ?.projectId?.takeIf(String::isNotBlank)
         val selected = existingChoice ?: discovered ?: return result
         return Result.success(signedIn.copy(config = signedIn.config.copy(
             geminiCliProjectIds = signedIn.config.geminiCliProjectIds +
@@ -134,7 +137,7 @@ internal class GeminiCliAdapter(context: Context, attachments: AttachmentResolve
         token.projectId?.takeIf(String::isNotBlank)?.let { return@withLock token to it }
         val identified = discoverProject(token.accessToken, null)
         val updated = token.copy(projectId = identified)
-        store.save(provider.oauthCredentialId, updated)
+        withContext(Dispatchers.IO) { store.save(provider.oauthCredentialId, updated) }
         updated to identified
     }
 

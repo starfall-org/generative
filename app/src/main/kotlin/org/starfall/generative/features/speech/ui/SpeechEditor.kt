@@ -95,7 +95,7 @@ fun SpeechEditor(
     var modelExpanded by remember { mutableStateOf(false) }
     var advancedExpanded by remember(initialService.id, engine) { mutableStateOf(initialService.extraBody.isNotEmpty()) }
 
-    val systemServiceName = stringResource(R.string.speech_system_tts)
+    val systemServiceName = stringResource(R.string.speech_android_system_tts)
     val newServiceName = stringResource(R.string.speech_custom_tts)
     val defaultServiceName = when (engine) {
         SpeechEngine.SYSTEM -> systemServiceName

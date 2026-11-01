@@ -4,6 +4,11 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -135,18 +140,38 @@ class RemoteMachineStore(context: Context) {
     private val lock = Mutex()
     private var needsMigration = false
     private var passwords = emptyMap<String, String>()
-    private val _state = MutableStateFlow(readState())
+    private val _state = MutableStateFlow(RemoteMachineState())
     val state: StateFlow<RemoteMachineState> = _state.asStateFlow()
+    private val initialized = CompletableDeferred<Unit>()
+    private val initializationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        if (needsMigration) {
-            writeState(_state.value)
-            // Remove the old editable file only after the encrypted replacement was committed.
-            runCatching { sshConfigFile.delete() }
+        // Keystore decrypt, legacy DataStore migration, and file I/O may be slow.
+        // Never perform these operations in a UI-owned constructor.
+        initializationScope.launch {
+            try {
+                lock.withLock {
+                    val loaded = readState()
+                    if (needsMigration) {
+                        writeState(loaded)
+                        // Only remove old SSH configuration after the encrypted save commits.
+                        runCatching { sshConfigFile.delete() }
+                    }
+                    _state.value = loaded
+                }
+                initialized.complete(Unit)
+            } catch (error: Throwable) {
+                initialized.completeExceptionally(error)
+                if (error is CancellationException) throw error
+            }
         }
     }
 
+    /** A backup or mutation must never treat an uninitialized state as an empty collection. */
+    suspend fun awaitInitialized() { initialized.await() }
+
     suspend fun update(transform: (RemoteMachineState) -> RemoteMachineState) {
+        awaitInitialized()
         withContext(Dispatchers.IO) {
             lock.withLock {
                 val updated = transform(_state.value)
@@ -162,6 +187,7 @@ class RemoteMachineStore(context: Context) {
     }
 
     suspend fun replaceState(state: RemoteMachineState) {
+        awaitInitialized()
         withContext(Dispatchers.IO) {
             lock.withLock {
                 writeState(state)

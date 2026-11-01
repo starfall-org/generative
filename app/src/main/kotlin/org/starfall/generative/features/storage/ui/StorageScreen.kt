@@ -152,7 +152,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
                 TopAppBar(
                     colors = edgeToEdgeTopAppBarColors(),
                     title = {
-                        FixedAppBarTitle(stringResource(R.string.app_menu_media_management))
+                        FixedAppBarTitle(stringResource(R.string.media_management))
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {

@@ -3,10 +3,8 @@
     <string name="app_name">Generative</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
-    <string name="message_text_size_custom_hint">When off, use the Android system font size.</string>
     <string name="message_text_size_reset">Reset text size to default</string>
     <string name="message_font_family">Message font family</string>
-    <string name="font_family_label">Font family</string>
     <string name="font_family_default">System default</string>
     <string name="font_family_sans_serif">Sans serif</string>
     <string name="font_family_serif">Serif</string>
@@ -24,7 +22,7 @@
     <string name="thinking_streaming">Thinking...</string>
     <string name="generating">Generating...</string>
     <string name="chat_input_placeholder">Type some text...</string>
-    <string name="chat_submit_failed">Unable to send. Check the selected language model and try again.</string>
+    <string name="chat_submit_failed">Unable to send. Check the selected model and try again.</string>
     <string name="thought_process">Thought Process</string>
     <string name="collapse">Collapse</string>
     <string name="expand">Expand</string>
@@ -34,7 +32,7 @@
     <string name="reasoning_completed_in">Reasoning completed in %1$s</string>
     <string name="tool_executed">Tool executed</string>
     <string name="tool_executed_in">Tool executed in %1$s</string>
-    <string name="provider_saved">Model provider saved</string>
+    <string name="provider_saved">Provider saved</string>
     <string name="oauth_signed_in">Signed in</string>
     <string name="oauth_signed_out">Not signed in</string>
     <string name="oauth_signing_in">Signing in…</string>
@@ -54,7 +52,6 @@
     <string name="entity_icon">Icon</string>
     <string name="choose_icon">Choose image</string>
     <string name="icon_import_failed">Could not load this image. Choose another image.</string>
-    <string name="icon_settings_title">Icons &amp; Trademarks</string>
     <string name="icon_settings_description">Manage shared icons and matching rules</string>
     <string name="icon_cache_search">Search icons or match cases</string>
     <string name="icon_cache_no_results">No matching icons.</string>
@@ -63,7 +60,7 @@
     <string name="icon_cache_add_match">Add match case</string>
     <string name="icon_cache_save_failed">Could not save icon rules.</string>
     <string name="icon_cache_empty">No cached icons yet. Add an image or choose an icon in an editor.</string>
-    <string name="icon_cache_regex">Regex</string>
+    <string translatable="false" name="icon_cache_regex">Regex</string>
     <string name="icon_cache_invalid_regex">Enter a valid regex.</string>
 
     <string name="common_back">Back</string>
@@ -76,7 +73,7 @@
     <string name="dialog_remove_folder_title">Remove folder?</string>
     <string name="dialog_delete_file_title">Delete file?</string>
     <string name="dialog_delete_files_title">Delete files?</string>
-    <string name="dialog_delete_machine_title">Delete machine?</string>
+    <string name="dialog_delete_server_title">Delete server?</string>
     <string name="dialog_delete_connector_title">Delete connector?</string>
     <string name="dialog_delete_provider_title">Delete provider?</string>
     <string name="dialog_delete_provider_group_title">Delete provider group?</string>
@@ -90,8 +87,7 @@
     <string name="common_retry">Retry</string>
     <string name="common_copy">Copy</string>
     <string name="common_name">Name</string>
-    <string name="common_type">Type</string>
-    <string name="provider_api_type">API Type</string>
+    <string translatable="false" name="provider_api_type">API Type</string>
     <string name="common_key">Key</string>
     <string name="common_value">Value</string>
     <string name="common_auto">Auto</string>
@@ -118,9 +114,9 @@
     <string name="explorer_delete_folder_title">Delete folder?</string>
     <string name="explorer_delete_confirm">Delete %1$s?</string>
 
-    <string name="providers_title">Model Providers</string>
+    <string translatable="false" name="model_providers">Model Providers</string>
     <string name="provider_search_filter">Search filters</string>
-    <string name="provider_search_name">Model provider name</string>
+    <string name="provider_search_provider_name">Provider name</string>
     <string name="sidebar_create_folder">Create Folder</string>
     <string name="sidebar_select">Select</string>
     <string name="sidebar_create_action">Create</string>
@@ -145,6 +141,8 @@
     <string name="sidebar_rename_folder">Rename folder</string>
     <string name="sidebar_rename_chat">Rename chat</string>
     <string name="sidebar_chat_title">Chat title</string>
+    <string name="sidebar_regenerate_chat_title">Regenerate chat title with AI</string>
+    <string name="sidebar_title_generation_failed">Could not generate a title. Check the Title Generation model and try again.</string>
     <string name="sidebar_move_to_folder">Move to folder</string>
     <string name="sidebar_move_to_history">Move to History</string>
     <string name="sidebar_new_folder_name">New folder name</string>
@@ -166,21 +164,21 @@
     <string name="message_stop_reading">Stop reading</string>
     <string name="message_read_aloud">Read aloud</string>
     <string name="message_generation_error">Generation error</string>
-    <string name="message_retry_from_error">Retry from error</string>
+    <string name="message_generation_warning">Generation warning</string>
+    <string name="common_warning">Warning</string>
     <string name="message_copy_error">Copy error</string>
     <string name="message_collapse_error">Collapse error</string>
     <string name="message_expand_error">Expand error</string>
     <string name="message_error_copied">Error copied to clipboard</string>
+    <string name="message_warning_copied">Warning copied to clipboard</string>
     <string name="message_error_clip_label">Error</string>
-    <string name="provider_search_model">Model provider with a matching model</string>
-    <string name="search_providers">Search model providers</string>
-    <string name="close_provider_search">Close search</string>
-    <string name="no_provider_search_results">No matching model providers or folders</string>
-    <string name="providers_description">Manage model providers</string>
+    <string name="provider_search_model_name">Model name</string>
+    <string name="search_providers">Search providers</string>
+    <string name="no_provider_search_results">No matching providers or folders</string>
     <string name="switch_to_list_view">Switch to List View</string>
     <string name="switch_to_grid_view">Switch to Grid View</string>
-    <string name="add_provider">Add model provider</string>
-    <string name="no_providers_added">No Model Providers Added</string>
+    <string name="add_provider">Add provider</string>
+    <string name="provider_empty_title">No providers yet</string>
     <string name="delete_provider_message">Delete this model provider? Stored credentials will be deleted.</string>
     <string name="provider_models">Models</string>
     <string name="provider_base_url" translatable="false">Base URL</string>
@@ -194,7 +192,7 @@
     <string name="provider_antigravity_project_id">Antigravity project ID (optional)</string>
     <string name="http_unencrypted_provider_warning">HTTP is unencrypted. API keys, headers and messages can be read on the network. Use HTTPS outside a trusted local network.</string>
     <string name="stream" translatable="false">Stream Response</string>
-    <string name="custom_headers">Custom Headers</string>
+    <string translatable="false" name="custom_headers">Custom Headers</string>
     <string name="open_model_catalog">Open model catalog</string>
     <string name="test_connection">Test connection</string>
     <string name="check_connection">Check Connection</string>
@@ -210,7 +208,6 @@
     <string name="connection_count_passed">%1$d passed</string>
     <string name="connection_count_warning">%1$d returned no content</string>
     <string name="connection_count_failed">%1$d failed</string>
-    <string name="connection_tests_finished">Connection tests finished</string>
     <string name="connection_testing_unavailable">Connection testing is unavailable.</string>
     <string name="refresh_models">Refresh models</string>
     <string name="search_models">Search models</string>
@@ -218,18 +215,15 @@
     <string name="model_discovery_unavailable">Model discovery is unavailable</string>
     <string name="provider_deselect_visible_models">Deselect visible models</string>
     <string name="provider_select_model">Select model %1$s</string>
-    <string name="provider_model_not_returned">Not returned by the current API result</string>
+    <string name="provider_model_not_in_latest_api_response">Not in the latest API response</string>
     <string name="model_temperature_label" translatable="false">Temperature (0–%1$s)</string>
     <string name="model_top_p_label" translatable="false">Top-p (0–1)</string>
     <string name="model_top_k_label" translatable="false">Top-k (positive integer)</string>
     <string name="model_reset_sampling">Reset sampling to API defaults</string>
-    <string name="common_test_all_text_models">Test all language models</string>
-    <string name="model_no_text_models">No language models</string>
-    <string name="storage_tool_files">Tool files</string>
-    <string name="storage_files_summary">%1$d files · %2$s</string>
+    <string name="provider_test_all_chat_models">Test all chat models</string>
+    <string name="provider_test_no_chat_models">No chat models</string>
     <string name="storage_clear_selection">Clear selection</string>
     <string name="storage_select_all">Select all</string>
-    <string name="storage_delete_selected">Delete (%1$d)</string>
     <string name="storage_empty">No tool files stored</string>
     <string name="storage_delete_message">Delete %1$d files? Messages will remain, but the files will no longer be available in chat.</string>
     <string name="mcp_schema_required">required</string>
@@ -242,9 +236,9 @@
     <string name="chat_save_conversation_failed_prefix">Could not save conversation:</string>
     <string name="notification_generation_channel_name">AI Background Generation</string>
     <string name="notification_generation_channel_description">Keeps AI generation alive in the background</string>
-    <string name="notification_generation_title">AI is thinking…</string>
+    <string name="notification_ai_thinking">AI is thinking…</string>
     <string name="notification_generation_text">The language model is generating a response in the background.</string>
-    <string name="notification_summary_title">Summarizing conversation…</string>
+    <string name="notification_summarizing_conversation">Summarizing conversation…</string>
     <string name="notification_oauth_channel_name">Account sign-in</string>
     <string name="notification_oauth_channel_description">Keeps account sign-in active while you use the browser.</string>
     <string name="notification_oauth_title">Account sign-in in progress</string>
@@ -313,8 +307,8 @@
     <string name="model_label_id">ID: %1$s</string>
     <string name="model_label_group">Group: %1$s</string>
     <string name="model_type_chat">Chat</string>
-    <string name="model_type_tts">TTS</string>
-    <string name="model_type_stt">STT</string>
+    <string translatable="false" name="model_type_tts">TTS</string>
+    <string translatable="false" name="model_type_stt">STT</string>
     <string name="common_tools">Tools</string>
     <string name="reasoning_level_xhigh" translatable="false">X-High</string>
     <string name="media_generated_image">Generated image</string>
@@ -345,10 +339,9 @@
     <string name="code_copy">Copy code</string>
     <string name="common_more_options">More options</string>
     <string name="debug_clipboard_unavailable">Clipboard unavailable</string>
-    <string name="debug_log_clip_label">Debug log</string>
+    <string translatable="false" name="debug_log_clip_label">Debug log</string>
     <string name="favicon_image_error">Could not retrieve the image.</string>
     <string name="export_open_file_failed">Could not open the selected file.</string>
-    <string name="export_json_success">JSON file exported</string>
     <string name="export_zip_success">Complete backup ZIP exported</string>
     <string name="export_write_failed">Export failed: could not write the selected file. Choose a writable location and retry.</string>
     <string name="export_prepare_failed">Export failed: could not prepare a complete backup. Check model provider and MCP credentials and try again.</string>
@@ -359,8 +352,6 @@
     <string name="camera_unavailable_title">Camera unavailable</string>
     <string name="camera_unavailable_message">Unable to capture a photo. Check that a camera app is available, or use Photos or Files to attach existing media.</string>
     <string name="common_ok">OK</string>
-    <string name="instruction_details">Instruction details</string>
-    <string name="model_editor">Model editor</string>
     <string name="editor_open_failed">Could not open this editor</string>
     <string name="editor_load_failed_fallback">Could not load the saved record and its credentials.</string>
     <string name="editor_load_retry_hint">Retry, or go back to choose another record. Saved data is unchanged.</string>
@@ -382,7 +373,7 @@
     <string name="loading_mcp_server_editor">Loading MCP server and saved credentials…</string>
     <string name="model_tool_web_search">Web Search</string>
     <string name="model_tool_google_maps">Google Maps</string>
-    <string name="model_tool_url_context">URL Context</string>
+    <string translatable="false" name="model_tool_url_context">URL Context</string>
     <string name="model_tool_code_execution">Code Execution</string>
     <string name="model_tool_file_search">File Search</string>
     <string name="model_tool_computer_use">Computer Use</string>
@@ -439,7 +430,7 @@
     <string name="model_reasoning_level_med" translatable="false">Med</string>
     <string name="model_reasoning_level_xhigh" translatable="false">XHigh</string>
     <string name="code_block_summary">%1$s | %2$d lines</string>
-    <string name="latex_formula_clip_label">LaTeX formula</string>
+    <string translatable="false" name="latex_formula_clip_label">LaTeX formula</string>
     <string name="latex_formula_copied">Formula copied</string>
     <string name="latex_copy_formula">Copy Formula</string>
     <string name="latex_display_mode_overflow">Overflow</string>
@@ -460,26 +451,21 @@
     <string name="model_type" translatable="false">Model Type</string>
     <string name="capabilities" translatable="false">Capabilities</string>
     <string name="input_media" translatable="false">Input</string>
-    <string name="model_thinking" translatable="false">Reasoning Support</string>
-    <string name="tool_calls" translatable="false">Tool Support</string>
+    <string name="model_reasoning_support" translatable="false">Reasoning Support</string>
+    <string name="model_tool_support" translatable="false">Tool Support</string>
     <string name="model_reasoning_levels" translatable="false">Supported reasoning levels</string>
     <string name="model_options_empty">No additional options are available for this model.</string>
     <string name="model_options_title">Model Options</string>
     <string name="model_tools_title" translatable="false">Model Tools</string>
-    <string name="model_tools_hint">Built-in tools this language model supports, sent in the model API request.</string>
     <string name="send_thinking_content_back" translatable="false">Send Thinking Content</string>
     <string name="send_thinking_content_back_hint">Auto sends earlier thinking back only in chats with tool calls. On always sends it. Off never does.</string>
     <string name="common_default">Default</string>
     <string name="mcp_required_parameter_default_needed">Set a default value before disabling this required parameter.</string>
     <string name="model_arguments" translatable="false">Arguments</string>
     <string name="model_tool_name" translatable="false">Tool name</string>
-    <string name="model_tools_editor_hint">Pick default tools, add custom tool names, and toggle tools on or off.</string>
 
-    <string name="mcp_servers_title">MCP Servers</string>
-    <string name="mcp_servers_description">Model Context Protocol tools</string>
-    <string name="toggle_grid_list">Toggle Grid/List</string>
+    <string translatable="false" name="mcp_servers">MCP Servers</string>
     <string name="no_mcp_servers">No MCP Servers</string>
-    <string name="no_mcp_servers_hint">Tap + to connect an MCP server</string>
     <string name="delete_mcp_server_message">Delete this MCP connection?</string>
     <string name="mcp_tool_discovery_error_title">Tool discovery error · %1$s</string>
     <string name="mcp_tool_discovery_error_clipboard">MCP tool discovery error</string>
@@ -488,10 +474,8 @@
     <string name="mcp_basic_settings">Basic Settings</string>
     <string name="legacy_sse" translatable="false">Legacy SSE</string>
     <string name="server_url" translatable="false">Server URL</string>
-    <string name="server_url_help">Server URL for %1$s</string>
     <string name="http_unencrypted_mcp_warning">HTTP is unencrypted. Headers, credentials and tool data are visible on the network.</string>
     <string name="mcp_auth" translatable="false">Auth</string>
-    <string name="mcp_auth_help">Authentication used for MCP requests</string>
     <string name="mcp_auth_type" translatable="false">Type: %1$s</string>
     <string name="header_key" translatable="false">Header key</string>
     <string name="query_parameter_name" translatable="false">Query parameter name</string>
@@ -521,30 +505,27 @@
     <string name="collapse_tool_details">Collapse tool details</string>
     <string name="expand_tool_details">Expand tool details</string>
     <string name="no_parameters">No parameters.</string>
-    <string name="provider_editor">Model provider editor</string>
-    <string name="mcp_editor">MCP editor</string>
+    <string name="provider_editor">Provider editor</string>
+    <string translatable="false" name="mcp_editor">MCP editor</string>
     <string name="common_none">None</string>
-    <string name="common_url">URL</string>
-    <string name="url_query">URL Query</string>
+    <string translatable="false" name="common_url">URL</string>
+    <string translatable="false" name="url_query">URL Query</string>
     <string name="oauth_flow" translatable="false">OAuth Flow</string>
-    <string name="mcp_streamable_http" translatable="false">Streamable HTTP</string>
-    <string name="mcp_sse" translatable="false">SSE</string>
     <string name="loading_tools">Loading tools…</string>
     <string name="common_add">Add</string>
     <string name="common_edit">Edit</string>
-    <string name="new_provider_group">New model provider group</string>
+    <string name="new_provider_group">New provider group</string>
     <string name="provider_group_name">Group name</string>
     <string name="provider_group_name_required">Group name is required.</string>
     <string name="delete_provider_group_message">Delete this model provider group? Its model providers will move back to the Model Providers root. They will not be deleted.</string>
     <string name="move_to_group">Move to group</string>
     <string name="ungrouped">No group</string>
-    <string name="provider_count">%1$d model providers</string>
+    <string name="provider_count">%1$d providers</string>
     <string name="expand_group">Expand %1$s</string>
     <string name="collapse_group">Collapse %1$s</string>
     <string name="delete_group">Delete group</string>
-    <string name="common_all">All</string>
-    <string name="empty_provider_group">No model providers in this group</string>
-    <string name="edit_provider_group">Edit Model Provider Group</string>
+    <string name="empty_provider_group">No providers in this group</string>
+    <string name="edit_provider_group">Edit provider group</string>
     <string name="expand_all_model_sections">Expand all model providers and folders</string>
     <string name="collapse_all_model_sections">Collapse all model providers and folders</string>
     <string name="context_window" translatable="false">Context window (tokens)</string>
@@ -559,7 +540,7 @@
     <string name="tool_generate_video">Generate Video</string>
     <string name="provider_restore_default_url">Restore default URL</string>
     <string name="provider_select_auth_type">Select authentication type</string>
-    <string name="provider_api_key_label">API Key (%1$s)</string>
+    <string translatable="false" name="provider_api_key_label">API Key (%1$s)</string>
     <string name="provider_auth_bearer_type" translatable="false">Bearer</string>
     <string name="provider_auth_custom_header" translatable="false">Custom Header</string>
     <string name="provider_auth_platform_default" translatable="false">Platform Default</string>
@@ -571,7 +552,6 @@
     <string name="file_deleted">File deleted</string>
     <string name="file_attach_next_message">Attach file to next message</string>
     <string name="file_remove_next_message">Remove file from next message</string>
-    <string name="media_exit_fullscreen">Exit fullscreen media</string>
     <string name="video_fullscreen">Open fullscreen video</string>
     <string name="video_exit_fullscreen">Exit fullscreen video</string>
     <string name="provider_multiple_api_keys">Multiple API Keys</string>
@@ -588,7 +568,7 @@
     <string name="provider_save_api_key">Save API key</string>
     <string name="provider_api_key_required">Enter an API key.</string>
     <string name="provider_api_key_duplicate">This API key already exists.</string>
-    <string name="provider_api_key_value">API Key</string>
+    <string translatable="false" name="provider_api_key_value">API Key</string>
     <string name="provider_no_api_keys">No API keys yet. Add a key to get started.</string>
     <string name="provider_api_key_actions">API key actions for %1$s</string>
     <string name="favicon_get_logo">Get logo automatically</string>
@@ -598,14 +578,12 @@
     <string name="favicon_fetch">Fetch</string>
     <string name="provider_drag_save_failed">Could not save the model provider position. Please try again.</string>
     <string name="model_json" translatable="false">Model JSON</string>
-    <string name="word_wrap">Code line wrapping</string>
+    <string name="code_line_wrapping">Code line wrapping</string>
     <string name="word_wrap_viewport">Wrap to available width</string>
     <string name="word_wrap_column">Wrap at the column limit</string>
-    <string name="word_wrap_bounded">Use the smaller width limit</string>
+    <string name="code_wrap_smaller_width_limit">Use the smaller width limit</string>
     <string name="word_wrap_column_count">Column limit</string>
-    <string name="word_wrap_column_hint">Lines wrap at the smaller of the available width and this column limit.</string>
     <string name="code_preview">Preview HTML, React, and JavaScript</string>
-    <string name="code_preview_hint">Show a preview button for supported HTML, React, and JavaScript code blocks.</string>
     <string name="preview_code">Preview code</string>
     <string name="code_preview_title">Code Preview</string>
     <string name="code_preview_reload">Reload preview</string>
@@ -613,14 +591,11 @@
     <string name="code_wrap_enable">Enable wrapping</string>
     <string name="code_wrap_disable">Disable wrapping</string>
     <string name="code_block_display">Long code block display</string>
-    <string name="code_block_display_hint">Choose how code blocks longer than the line threshold are displayed.</string>
     <string name="code_block_show_all">Show full block</string>
-    <string name="code_block_extendable">Expandable preview</string>
-    <string name="code_block_show_in_drawer">Open in full-screen viewer</string>
+    <string name="code_block_expandable_preview">Expandable preview</string>
+    <string name="code_block_full_screen_viewer">Open in full-screen viewer</string>
     <string name="code_block_max_lines">Long block threshold (lines)</string>
-    <string name="code_block_max_lines_hint">Blocks longer than this are expanded or opened in the full-screen viewer, depending on the display mode.</string>
     <string name="code_block_include_undefined">Apply to unlabeled code blocks</string>
-    <string name="code_block_include_undefined_hint">Apply the selected long-block display mode even when a code block has no language label.</string>
     <string name="code_block_extend">Extend</string>
     <string name="code_block_close">Close code block</string>
     <string name="provider_multiple_accounts">Multiple Accounts</string>
@@ -633,8 +608,6 @@
     <string name="resend_message">Resend message</string>
     <string name="settings_language">Language</string>
     <string name="use_system_language">Use system language</string>
-    <string name="use_system_language_desc">Follow the device language. Turn off to choose a language for this app.</string>
-    <string name="app_language">App language</string>
     <string name="language_name_en">English</string>
     <string name="language_name_vi">Vietnamese</string>
     <string name="language_name_fr">French</string>
@@ -651,42 +624,38 @@
     <string name="language_name_id">Indonesian</string>
 
     <!-- App Menu labels only: do not rename shared destination titles. -->
-    <string name="app_menu_default_options">Configuration</string>
-    <string name="app_menu_builtin_tools">Built-in tools</string>
-    <string name="app_menu_language_providers">Language model providers</string>
-    <string name="app_menu_model_context_protocol">Model Context Protocol</string>
-    <string name="app_menu_speech_services">Speech synthesis services</string>
-    <string name="app_menu_remote_servers">Remote services</string>
-    <string name="app_menu_media_management">Media management</string>
-    <string name="app_menu_icons_management">Icons management</string>
+    <string name="chat_configuration">Chat Configuration</string>
+    <string name="built_in_tools">Built-in tools</string>
+    <string translatable="false" name="mcp">MCP</string>
+    <string name="speech_synthesis_services">Speech synthesis services</string>
+    <string translatable="false" name="remote_ssh">Remote SSH</string>
+    <string name="media_management">Media management</string>
+    <string name="icons_management">Icons management</string>
     <string name="app_menu_settings">Settings</string>
     <string name="app_menu_data">Data</string>
     <string name="app_menu_about">About</string>
 
     <string name="settings_group_external_services">External Services</string>
     <string name="settings_group_data_caching">Data &amp; Caching</string>
-    <string name="settings_category_app_settings">General Settings</string>
+    <string name="settings_general_settings">General Settings</string>
     <string name="settings_category_app_settings_description">Appearance, preferences &amp; app behavior</string>
     <string name="settings_tab_preferences">Preferences</string>
-    <string name="settings_tab_appearances">Appearance</string>
-    <string name="settings_category_app_data">Data Controls</string>
+    <string name="settings_tab_appearance">Appearance</string>
+    <string name="settings_data_controls">Data Controls</string>
     <string name="settings_category_app_data_description">Conversation history &amp; application reset</string>
     <string name="settings_category_about">About</string>
     <string name="settings_category_about_description">App information, software updates &amp; license</string>
-    <string name="settings_chat_options">Chat Options</string>
-    <string name="settings_chat_options_description">Conversation helpers, instructions, skills, and default language models</string>
+    <string name="settings_chat_options_description">Conversation helpers, instructions, skills, and default models</string>
     <string name="chat_options_tab_options">Options</string>
-    <string name="settings_tts_provider_title">TTS Service</string>
-    <string name="settings_tts_provider_description">Speech service used to read messages aloud.</string>
-    <string name="settings_tts_provider_select">Speech service</string>
-    <string name="settings_tts_provider_none">No speech service selected</string>
-    <string name="settings_tts_provider_empty">Add a Speech Service to choose one for TTS.</string>
+    <string translatable="false" name="tts_service">TTS Service</string>
+    <string name="tts_service_description">Speech service used to read messages aloud.</string>
+    <string name="tts_service_none">No speech service selected</string>
+    <string name="tts_service_empty">Add a Speech Service to choose one for TTS.</string>
     <string name="common_instructions">Instructions</string>
     <string name="chat_options_tab_skills">Skills</string>
     <string name="common_skills">Skills</string>
     <string name="instruction_open_instructions">Open Chat Options &gt; Instructions</string>
     <string name="instruction_library_empty">No instructions yet. Add one in Chat Options &gt; Instructions.</string>
-    <string name="instruction_content">Instruction text</string>
     <string name="instruction_content_hint">Write the instruction</string>
     <string name="instruction_metadata">%1$s · %2$d characters · ~%3$d tokens</string>
     <string name="instruction_preview_title">Instruction Preview</string>
@@ -699,21 +668,15 @@
     <string name="agent_skills_empty">No skills yet. Add one in Chat Options &gt; Skills.</string>
     <string name="agent_skill_details">Skill details</string>
     <string name="agent_skill_new_name">new-agent-skill</string>
-    <string name="agent_skill_name">Skill name</string>
-    <string name="agent_skill_name_hint">Lowercase letters, numbers, and hyphens only</string>
-    <string name="agent_skill_description">Description</string>
-    <string name="agent_skill_description_hint">What this skill does and when to use it</string>
     <string name="agent_skill_description_template">Describe what this skill does and when an agent should use it.</string>
     <string name="agent_skill_template">## Instructions\nDescribe the step-by-step workflow for this skill.\n\n## Examples\nAdd representative inputs and outputs when useful.\n\n## Edge Cases\nList important edge cases and constraints.</string>
-    <string name="agent_skill_content">Skill instructions</string>
-    <string name="agent_skill_content_hint">Describe what this agent skill should do</string>
     <string name="agent_skill_metadata">%1$d characters · ~%2$d tokens</string>
     <string name="agent_skill_delete_confirmation">Delete “%1$s”? This cannot be undone.</string>
     <string name="agent_skill_save">Save skill</string>
     <string name="agent_skill_import">Import skill</string>
     <string name="agent_skill_export">Export skill</string>
     <string name="agent_skill_choose_file">Choose SKILL.md file</string>
-    <string name="agent_skill_github_url">GitHub URL</string>
+    <string translatable="false" name="agent_skill_github_url">GitHub URL</string>
     <string name="agent_skill_github_hint">github.com/owner/repo/blob/main/SKILL.md</string>
     <string name="agent_skill_import_from_github">Import from GitHub</string>
     <string name="agent_skill_import_invalid">Invalid SKILL.md. Check name, description, and instructions.</string>
@@ -729,28 +692,23 @@
     <string name="agent_skills_menu_empty">No skills are available.</string>
     <string name="agent_skills_menu_no_matches">No matching skills.</string>
     <string name="settings_tools_editor_description">Configure media generation and file tools</string>
-    <string name="settings_providers_description">Model providers, models &amp; API connections</string>
+    <string name="settings_providers_description">Providers, models, and API connections</string>
     <string name="settings_mcp_manage_description">Tool servers &amp; integrations</string>
     <string name="settings_speech_services_description">Text-to-speech models &amp; voices</string>
-    <string name="settings_storage">Media Storage</string>
-    <string name="storage_short_title">Media</string>
+    <string name="storage_media_storage">Media Storage</string>
+    <string name="drawer_media_short_title">Media</string>
     <string name="storage_media_empty">No saved photos, videos, or audio yet.</string>
-    <string name="storage_media_no_results">No matching media.</string>
     <string name="settings_storage_description">Files created by your tools</string>
     <string name="storage_open_in_files">Open in Files</string>
-    <string name="storage_open_in_files_failed">Could not open the system file manager.</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_description">Choose Light, Dark, or follow your system theme.</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_amoled">AMOLED dark mode</string>
-    <string name="settings_amoled_description">Use pure black backgrounds in dark mode.</string>
-    <string name="settings_color">Colors</string>
+    <string name="settings_colors">Colors</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_description">Use colors from your wallpaper on Android 12 and later.</string>
     <string name="settings_color_palette">Color palette</string>
     <string name="settings_customize_palette">Customize</string>
-    <string name="settings_customize_palette_help">Mix your own palette. Choose a role, drag on the color field or adjust HSV and HEX. Colors are tuned for contrast in Light and Dark mode.</string>
     <string name="settings_palette_primary">Primary</string>
     <string name="settings_palette_secondary">Secondary</string>
     <string name="settings_palette_accent">Accent</string>
@@ -763,9 +721,8 @@
     <string name="settings_palette_sample">Sample themed surface</string>
     <string name="settings_code_blocks">Code blocks</string>
     <string name="settings_text_appearance">Text appearance</string>
-    <string name="settings_system_bars">Status bar</string>
-    <string name="settings_immersive_mode">Hide status bar</string>
-    <string name="settings_immersive_mode_description">Hide the status bar while viewing conversations.</string>
+    <string name="settings_status_bar">Status bar</string>
+    <string name="settings_hide_status_bar">Hide status bar</string>
     <string name="settings_summary_suggestion">Summary suggestion</string>
     <string name="settings_summary_suggestion_description">Show a suggestion to summarize when the context is nearly full</string>
     <string name="settings_auto_summary">Auto summarize</string>
@@ -773,62 +730,41 @@
     <string name="settings_auto_summary_threshold">Auto summarize at %1$d%% of the context</string>
     <string name="settings_conversations">Conversations</string>
     <string name="settings_continue_last_chat">Restore last session</string>
-    <string name="settings_continue_last_chat_description">Open the most recently used conversation when the app starts.</string>
     <string name="settings_persist_selected_model">Remember the model for each conversation</string>
-    <string name="settings_persist_selected_model_description">Restore the model last selected in each conversation when you return to it.</string>
     <string name="settings_auto_scroll">Auto-scroll responses</string>
-    <string name="settings_auto_scroll_description">Keep the latest part of a response in view while it is being generated.</string>
-        <string name="tool_call_strategy_description">Run tool calls one at a time or concurrently.</string>
-    <string name="tool_call_concurrent_limit_description">Maximum number of tool calls that may run at the same time.</string>
-<string name="tool_call_options">Tool execution</string>
-    <string name="settings_mcp_tools">MCP &amp; Tools</string>
+<string name="tool_execution">Tool execution</string>
+    <string translatable="false" name="mcp_and_tools">MCP &amp; Tools</string>
     <string name="common_default_value_hint">Default: %1$d</string>
     <string name="tool_call_strategy">Execution strategy</string>
     <string name="tool_call_strategy_sequential">Sequential</string>
     <string name="tool_call_strategy_parallel">Parallel</string>
-    <string name="tool_call_concurrent_limit">Maximum simultaneous tool calls</string>
-    <string name="settings_tool_calls">Tool calls</string>
-    <string name="mcp_attachments_title">MCP Strategy</string>
-    <string name="mcp_attachments_description">Choose how enabled MCP tools are sent to the model.</string>
-    <string name="mcp_attachments_mode_label">MCP tool mode</string>
-    <string name="mcp_attachments_mode_dynamic">Load on demand</string>
-    <string name="mcp_attachments_mode_classic">Attach all enabled MCP tools</string>
-    <string name="mcp_attachments_classic_description">Sends every enabled MCP tool with each request.</string>
-    <string name="mcp_attachments_include_description">Include tool descriptions</string>
-    <string name="mcp_attachments_include_description_summary">Off: descriptions are omitted for MCP tools attached beforehand, reducing request size. The detailed parameter on connect_mcps controls descriptions for on-demand MCPs.</string>
-    <string name="mcp_attachments_dynamic_description">The model gets list_mcps and connect_mcps and connects MCP servers only when it needs them. Dynamic applies once both minimums below are reached. Until then MCPs are sent classically. Include tool descriptions applies to classically attached MCPs. For on-demand MCPs, connect_mcps uses its detailed parameter.</string>
-    <string name="mcp_attachments_min_mcps">Minimum MCP servers</string>
-    <string name="mcp_attachments_min_mcps_hint">Default is %1$d. 0 applies Dynamic to any number of MCPs.</string>
-    <string name="mcp_attachments_min_tools">Minimum MCP tool count</string>
-    <string name="mcp_attachments_min_tools_hint">Default is %1$d. 0 ignores the tool count.</string>
-    <string name="mcp_attachments_dynamic_strategy_label">On-demand strategy</string>
-    <string name="mcp_attachments_strategy_overflow">Initial + on demand</string>
-    <string name="mcp_attachments_strategy_all">Load all servers on demand</string>
-    <string name="mcp_attachments_strategy_overflow_description">Overflow keeps the few MCPs below the minimum attached classically. The rest are loaded on demand.</string>
-    <string name="mcp_attachments_strategy_all_description">All loads every MCP on demand.</string>
-    <string name="mcp_attachments_list_limit">Maximum servers returned by list_mcps</string>
-    <string name="mcp_attachments_load_limit">Maximum MCP servers kept connected</string>
-    <string name="mcp_attachments_limits">On-demand limits</string>
-    <string name="mcp_attachments_number_invalid_from_zero">Enter a number from 0 to %1$d.</string>
+    <string name="maximum_simultaneous_tool_calls">Maximum simultaneous tool calls</string>
+    <string translatable="false" name="mcp_strategy">MCP Strategy</string>
+    <string translatable="false" name="mcp_tool_mode">MCP tool mode</string>
+    <string name="mcp_strategy_load_on_demand">Load on demand</string>
+    <string name="mcp_strategy_attach_all_enabled_tools">Attach all enabled MCP tools</string>
+    <string name="mcp_strategy_include_tool_descriptions">Include tool descriptions</string>
+    <string name="mcp_strategy_min_servers">Minimum MCP servers</string>
+    <string name="mcp_strategy_min_tools">Minimum MCP tool count</string>
+    <string name="mcp_strategy_on_demand">On-demand strategy</string>
+    <string name="mcp_strategy_initial_on_demand">Initial + on demand</string>
+    <string name="mcp_strategy_all_servers_on_demand">Load all servers on demand</string>
+    <string name="mcp_strategy_list_limit">Maximum servers returned by list_mcps</string>
+    <string name="mcp_strategy_connection_limit">Maximum MCP servers kept connected</string>
+    <string name="mcp_strategy_on_demand_limits">On-demand limits</string>
     <string name="settings_limit_tool_rounds">Limit tool-call rounds</string>
-    <string name="settings_limit_tool_rounds_description">When enabled, stop generating after this many rounds of tool calls. When disabled, there is no round limit.</string>
     <string name="settings_maximum_tool_rounds">Maximum tool-call rounds</string>
-    <string name="settings_feedback">Haptics</string>
+    <string name="settings_haptics">Haptics</string>
     <string name="settings_haptic_vibration">Haptic feedback</string>
-    <string name="settings_haptic_vibration_description">Vibrate on taps and generation events.</string>
     <string name="settings_text_to_speech">Text-to-speech</string>
     <string name="settings_read_code_blocks">Read code blocks aloud</string>
-    <string name="settings_read_code_blocks_description">Include code blocks when reading messages aloud.</string>
     <string name="settings_content">Content rendering</string>
     <string name="settings_latex_equation_rendering">Render LaTeX equations</string>
-    <string name="settings_latex_description">Automatically render detected mathematical formulas while keeping currency amounts as plain text.</string>
     <string name="settings_latex_disabled">Disabled</string>
     <string name="settings_latex_auto_detect">Auto-detect</string>
     <string name="settings_developer">Developer Options</string>
     <string name="settings_debug_logs">Enable debug logging</string>
-    <string name="settings_debug_logs_description">Show token usage, request details, and network activity in the debug panel.</string>
     <string name="settings_debug_log_scope">Log sources</string>
-    <string name="settings_debug_log_scope_description">Choose which types of logs the debug panel records.</string>
     <string name="debug_log_category_network">Network</string>
     <string name="debug_log_category_system">System</string>
     <string name="settings_debug_log_level">Minimum log level</string>
@@ -843,20 +779,19 @@
     <string name="debug_log_level">Level</string>
     <string name="debug_log_source">Source</string>
     <string name="debug_log_thread">Thread</string>
-    <string name="debug_log_elapsed">Duration</string>
+    <string name="debug_log_duration">Duration</string>
     <string name="debug_log_state">State</string>
-    <string name="debug_log_http_method">HTTP method</string>
-    <string name="debug_log_endpoint">Endpoint</string>
-    <string name="debug_log_http_status">HTTP status</string>
+    <string translatable="false" name="debug_log_http_method">HTTP method</string>
+    <string translatable="false" name="debug_log_endpoint">Endpoint</string>
+    <string translatable="false" name="debug_log_http_status">HTTP status</string>
 
     <string name="debug_log_pending">Pending</string>
     <string name="debug_log_completed">Completed</string>
     <string name="debug_log_failed">Failed</string>
-    <string name="debug_log_recorded">Recorded</string>
-    <string name="debug_log_stacktrace">Stack trace</string>
+    <string name="debug_log_stack_trace">Stack trace</string>
     <string name="debug_log_message">Message</string>
     <string name="debug_log_no_matches">No logs match these filters.</string>
-    <string name="debug_log_title">Debug logs</string>
+    <string translatable="false" name="debug_logs">Debug logs</string>
     <string name="debug_log_disable">Turn off debug logs</string>
     <string name="debug_log_toggle">Show or hide debug logs</string>
     <string name="debug_log_copy_entry">Copy this log</string>
@@ -867,7 +802,6 @@
     <string name="settings_data_overview">Data overview</string>
     <string name="settings_chats">Chats</string>
     <string name="settings_manage_data">Manage data</string>
-    <string name="settings_manage_data_description">Manage the conversations and configuration stored on this device.</string>
     <string name="settings_clear_all_chat_history">Clear All Chat History</string>
     <string name="settings_reset_all_application_data">Reset All Application Data</string>
     <string name="settings_export_data">Export data</string>
@@ -892,190 +826,162 @@
     <string name="settings_up_to_date">Up to date (%1$s)</string>
     <string name="settings_open_github_release">Open GitHub Release Page</string>
     <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
-    <string name="remote_machines_title">Remote Machines</string>
-    <string name="remote_machine_short_title">Remote</string>
-    <string name="remote_machine_counts">Configured: %1$d • Enabled: %2$d</string>
-    <string name="remote_machines_description">SSH and Google Cloud Shell connections</string>
-    <string name="remote_machine_settings">Remote Settings</string>
-    <string name="remote_machine_settings_description">OAuth clients and SSH keys used by your machines</string>
-    <string name="remote_machine_empty">No remote machines</string>
-    <string name="remote_machine_empty_hint">Add an SSH or Google Cloud Shell connection to open a terminal.</string>
-    <string name="remote_machine_unnamed">Unnamed machine</string>
-    <string name="remote_machine_type_ssh">SSH</string>
-    <string name="remote_machine_type_gcloud">GCloud Shell</string>
-    <string name="remote_machine_open_terminal">Open terminal</string>
-    <string name="remote_machine_delete_message">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
-    <string name="remote_machine_editor_title">Machine Editor</string>
-    <string name="remote_machine_basic_section">Basic information</string>
-    <string name="remote_machine_connection_section">Connection</string>
-    <string name="remote_machine_sftp_section" translatable="false">SFTP files</string>
-    <string name="remote_machine_sftp_section_help">The Files action in this machine’s menu browses this folder over SFTP. The session starts only when needed.</string>
-    <string name="remote_machine_sftp_directory" translatable="false">SFTP Directory</string>
-    <string name="remote_machine_sftp_directory_help">Root folder for Files. Defaults to $HOME. ~ and absolute paths are also supported.</string>
+    <string name="drawer_remote_services_settings_label">Remote Services</string>
+    <string name="remote_select_server">Select server</string>
+    <string name="remote_server_selection_title">Choose a server for AI tools</string>
+    <string name="remote_server_none_selected">No server selected</string>
+    <string name="remote_server_unset_action">Unset</string>
+    <string translatable="false" name="drawer_remote_services">Remote Services</string>
+    <string name="remote_servers_description">SSH and Google Cloud Shell connections</string>
+    <string translatable="false" name="remote_ssh_google_oauth">SSH &amp; Google OAuth</string>
+    <string name="remote_servers_empty">No remote servers</string>
+    <string name="remote_server_empty_hint">Add an SSH or Google Cloud Shell connection to open a terminal or browse files.</string>
+    <string name="remote_server_unnamed">Unnamed server</string>
+    <string translatable="false" name="remote_server_type_ssh">SSH</string>
+    <string translatable="false" name="remote_server_type_gcloud_shell">GCloud Shell</string>
+    <string name="remote_server_open_terminal">Open terminal</string>
+    <string name="remote_server_delete_message">Delete “%1$s”? Saved credentials and its local identity reference will be removed.</string>
+    <string name="remote_server_configuration">Server configuration</string>
+    <string name="remote_server_basic_section">Basic information</string>
+    <string name="remote_server_connection_section">Connection</string>
+    <string name="remote_server_sftp_section" translatable="false">SFTP files</string>
+    <string name="remote_server_sftp_directory" translatable="false">SFTP Directory</string>
     <string name="documents_root_summary" translatable="false">MediaStorage and SFTP</string>
-    <string name="remote_machine_sftp_root_summary" translatable="false">%1$s@%2$s · %3$s</string>
-    <string name="remote_machine_start_port_forward">Start Port Forward</string>
-    <string name="remote_machine_port_forward_started">Port forwarding started. Open terminals reuse this connection.</string>
-    <string name="remote_machine_type_label">Machine type</string>
-    <string name="remote_machine_host" translatable="false">Host</string>
-    <string name="remote_machine_port" translatable="false">Port</string>
-    <string name="remote_machine_ip" translatable="false">Shell IP</string>
-    <string name="remote_machine_get_ip">Get IP</string>
-    <string name="remote_machine_environment" translatable="false">Cloud Shell environment</string>
-    <string name="remote_machine_username" translatable="false">Username</string>
-    <string name="remote_machine_authentication">Authentication</string>
-    <string name="remote_machine_private_key" translatable="false">Private key</string>
-    <string name="remote_machine_password">Password</string>
-    <string name="remote_machine_show_password">Show password</string>
-    <string name="remote_machine_hide_password">Hide password</string>
-    <string name="remote_machine_keyboard_interactive">Use keyboard-interactive authentication</string>
-    <string name="remote_machine_keyboard_interactive_help">Use PAM or interactive SSH prompts. With an empty password, you are prompted only if the server requests one.</string>
-    <string name="remote_machine_password_help">Optional. Leave empty if the server needs no password, or to be prompted only when it asks for one.</string>
-    <string name="remote_machine_choose_key">Choose uploaded key</string>
-    <string name="remote_machine_identity_file" translatable="false">IdentityFile</string>
-    <string name="remote_machine_identity_file_help">Path to the private key, or the name of a key uploaded in Remote Settings. The key is never stored on the machine. Leave empty if not needed.</string>
-    <string name="remote_machine_no_uploaded_keys">No keys uploaded yet</string>
-    <string name="remote_machine_ssh_keys">SSH keys</string>
-    <string name="remote_machine_ssh_keys_help">Upload a private key once and reuse it across machines through IdentityFile. Google Cloud Shell also needs the matching public key (.pub). Upload it with the button on each key.</string>
-    <string name="remote_machine_upload_ssh_key">Upload SSH key file</string>
-    <string name="remote_machine_upload_public_key">Upload public key</string>
-    <string name="remote_machine_public_key_uploaded">Public key uploaded</string>
-    <string name="remote_machine_public_key_missing">No public key (needed for Cloud Shell)</string>
-    <string name="remote_machine_ssh_key_used_by">Used by %1$d machine(s)</string>
-    <string name="remote_machine_key_passphrase" translatable="false">Key passphrase</string>
-    <string name="remote_connection_channel_name">Remote machine connections</string>
-    <string name="remote_connection_channel_description">Connected remote machines, with a button to disconnect.</string>
+    <string translatable="false" name="remote_port_forward">Port Forward</string>
+    <string name="remote_start_forwarding">Start forwarding</string>
+    <string name="remote_server_stop_port_forward">Stop forwarding</string>
+    <string name="remote_server_port_forward_stopped">Port forwarding stopped.</string>
+    <string name="remote_server_forward_active">Active: %1$s</string>
+    <string name="remote_server_port_forward_started">Port forwarding started. Open terminals reuse this connection.</string>
+    <string name="remote_server_type_label">Server type</string>
+    <string name="remote_server_host" translatable="false">Host</string>
+    <string name="remote_server_port" translatable="false">Port</string>
+    <string name="remote_server_ip" translatable="false">Shell IP</string>
+    <string name="remote_server_get_ip">Get IP</string>
+    <string name="remote_server_environment" translatable="false">Cloud Shell environment</string>
+    <string name="remote_server_username" translatable="false">Username</string>
+    <string name="remote_server_authentication">Authentication</string>
+    <string name="remote_server_private_key" translatable="false">Private key</string>
+    <string name="remote_server_password">Password</string>
+    <string name="remote_server_show_password">Show password</string>
+    <string name="remote_server_hide_password">Hide password</string>
+    <string name="remote_server_keyboard_interactive">Use keyboard-interactive authentication</string>
+    <string name="remote_server_choose_key">Choose uploaded key</string>
+    <string name="remote_server_identity_file" translatable="false">IdentityFile</string>
+    <string name="remote_server_no_uploaded_keys">No keys uploaded yet</string>
+    <string translatable="false" name="remote_server_ssh_keys">SSH keys</string>
+    <string name="remote_server_upload_ssh_key">Upload SSH key file</string>
+    <string name="remote_server_upload_public_key">Upload public key</string>
+    <string name="remote_server_public_key_uploaded">Public key uploaded</string>
+    <string name="remote_server_public_key_missing">No public key (needed for Cloud Shell)</string>
+    <string name="remote_server_ssh_key_used_by">Used by %1$d server(s)</string>
+    <string name="remote_server_key_passphrase" translatable="false">Key passphrase</string>
+    <string name="remote_connection_channel_name">Remote server connections</string>
+    <string name="remote_connection_channel_description">Connected remote servers, with a button to disconnect.</string>
     <string name="remote_connection_notification_title">Connected to %1$s</string>
     <string name="remote_connection_notification_text">SSH connection is open.</string>
-    <string name="remote_connection_notification_forwarding">Forwarding %1$s</string>
-    <string name="remote_machine_port_forwarding_section" translatable="false">Port forwarding</string>
-    <string name="remote_machine_port_forwarding_help">Forwards start when the SSH session connects and stop when it disconnects. A machine with an active forward is not disconnected when idle.</string>
-    <string name="remote_machine_forward_type" translatable="false">Forward type</string>
-    <string name="remote_machine_forward_local" translatable="false">Local forward</string>
-    <string name="remote_machine_forward_local_help">Opens a port on this device that forwards to a port on the machine.</string>
-    <string name="remote_machine_forward_local_rules" translatable="false">Local forwards</string>
-    <string name="remote_machine_forward_local_hint">One per line: 8080 (same port) or 8080:10808 (device 8080 → machine 10808)</string>
-    <string name="remote_machine_forward_remote" translatable="false">Remote forward</string>
-    <string name="remote_machine_forward_remote_help">Opens a port on the machine that forwards to a port on this device.</string>
-    <string name="remote_machine_forward_remote_rules" translatable="false">Remote forwards</string>
-    <string name="remote_machine_forward_remote_hint">One per line: 8080 (same port) or 8080:10808 (machine 8080 → device 10808)</string>
-    <string name="remote_machine_forward_dynamic" translatable="false">Dynamic forward (SOCKS5)</string>
-    <string name="remote_machine_forward_dynamic_help">Runs a SOCKS5 proxy on this device that connects through the machine.</string>
-    <string name="remote_machine_forward_dynamic_ports" translatable="false">SOCKS ports</string>
-    <string name="remote_machine_forward_dynamic_hint">Comma-separated local ports, e.g. 1080</string>
-    <string name="remote_machine_ssh_options" translatable="false">SSH options</string>
-    <string name="remote_machine_ssh_options_help">Add JSch options only when needed. Unknown or reserved options are rejected on save.</string>
-    <string name="remote_machine_advanced_ssh_options" translatable="false">Additional SSH options</string>
-    <string name="remote_machine_ssh_option_name" translatable="false">Option name</string>
-    <string name="remote_machine_ssh_option_value" translatable="false">Option value</string>
-    <string name="remote_machine_proxy_machine" translatable="false">Proxy machine</string>
-    <string name="remote_machine_websocket_proxy" translatable="false">WebSocket Proxy</string>
-    <string name="remote_machine_websocket_url" translatable="false">WebSocket full URL</string>
-    <string name="remote_machine_websocket_headers" translatable="false">Headers (one Header: value per line)</string>
-    <string name="remote_machine_websocket_connect_timeout" translatable="false">Connect timeout (seconds)</string>
-    <string name="remote_machine_websocket_skip_certificates">Skip certificate verification</string>
-    <string name="remote_machine_websocket_show_advanced">Advanced WebSocket settings</string>
-    <string name="remote_machine_websocket_hide_advanced">Hide advanced WebSocket settings</string>
-    <string name="remote_machine_websocket_ca_certificate" translatable="false">CA certificate (PEM, optional)</string>
-    <string name="remote_machine_websocket_handshake_timeout" translatable="false">Handshake timeout (seconds)</string>
-    <string name="remote_machine_websocket_read_timeout" translatable="false">Read timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_write_timeout" translatable="false">Write timeout (seconds, 0 = unlimited)</string>
-    <string name="remote_machine_websocket_close_timeout" translatable="false">Close timeout (seconds)</string>
-    <string name="remote_machine_websocket_subprotocols" translatable="false">Sub-protocols (comma separated)</string>
-    <string name="remote_machine_timeout" translatable="false">Connection timeout (seconds)</string>
-    <string name="remote_machine_keep_alive" translatable="false">Server keep-alive (seconds)</string>
-    <string name="remote_machine_strict_host_key" translatable="false">Strict host-key checking</string>
-    <string name="remote_machine_compression">Enable compression</string>
-    <string name="remote_machine_websocket_url_help" formatted="false">Use ws:// or wss://. %h and %p are replaced with the SSH host and port.</string>
-    <string name="remote_machine_google_section">Google Cloud OAuth</string>
-    <string name="remote_machine_oauth_client" translatable="false">OAuth client</string>
-    <string name="remote_machine_select_oauth">Select an OAuth client</string>
-    <string name="remote_machine_oauth_sign_in">Sign in with Google</string>
-    <string name="remote_machine_username_auto">Fetched automatically from the Google Cloud Shell API once Google is authorized.</string>
-    <string name="remote_machine_oauth_authorized">Google account connected</string>
-    <string name="remote_machine_add_oauth_hint">Add an OAuth client in Remote Settings, select it here, and sign in before connecting.</string>
-    <string name="remote_machine_tools_section">Machine Tools</string>
-    <string name="remote_machine_enable_action">Enable</string>
-    <string name="remote_machine_disable_action">Disable</string>
-    <string name="remote_machine_tool_execute">Execute commands</string>
-    <string name="remote_machine_update_ip">Update IP</string>
-    <string name="remote_machine_tool_close_terminal">Close terminal</string>
-    <string name="remote_machine_tool_list_terminal">List terminals</string>
-    <string name="remote_machine_tool_read_terminal">Read terminal</string>
-    <string name="remote_machine_disconnect">Disconnect</string>
-    <string name="remote_machine_tool_update_ip_help">Use only if connecting to this machine fails.</string>
-    <string name="remote_machine_update_ip_title">Cloud Shell IP · %1$s</string>
-    <string name="remote_machine_tools_choose">Choose which tools the language model may use on this machine.</string>
-    <string name="remote_machine_oauth_clients">Google OAuth clients</string>
-    <string name="remote_machine_google_oauth">Google OAuth</string>
-    <string name="remote_machine_oauth_clients_help">Import the JSON downloaded from Google Cloud, or add a client manually. Desktop clients also need a client secret.</string>
-    <string name="remote_machine_no_oauth_clients">No OAuth clients added yet.</string>
-    <string name="remote_machine_import_oauth_json">Import OAuth client JSON</string>
-    <string name="remote_machine_oauth_client_type" translatable="false">OAuth client type</string>
-    <string name="remote_machine_oauth_type_desktop">Desktop app</string>
-    <string name="remote_machine_oauth_type_android">Android app</string>
-    <string name="remote_machine_google_no_access_token">Google did not return an access token.</string>
-    <string name="remote_machine_google_missing_resolution">Google authorization requires interaction, but no resolution was returned.</string>
-    <string name="remote_machine_terminal_connecting">Connecting to remote shell…</string>
-    <string name="remote_machine_terminal_connection_error">Could not connect to the remote shell</string>
-    <string name="remote_machine_terminal_password_title">Enter SSH password</string>
-    <string name="remote_machine_terminal_password_help">The server requests a secret that is not saved for this machine. It is used for this connection only.</string>
-    <string name="remote_machine_terminal_passphrase_title">Enter key passphrase</string>
-    <string name="remote_machine_terminal_connect">Connect</string>
-    <string name="remote_machine_terminal_disconnect_close">Disconnect and close terminal</string>
-    <string name="remote_machine_terminal_ime">Enable IME composition</string>
-    <string name="remote_machine_terminal_keyboard">Show or hide keyboard</string>
-    <string name="remote_machine_terminal_open_browser">Open in browser</string>
-    <string name="remote_machine_terminal_input_settings">Terminal input mode</string>
-    <string name="remote_machine_terminal_force_mouse">Mouse events · tap = click, drag = wheel</string>
-    <string name="remote_machine_terminal_local_input_label">Local input</string>
-    <string name="remote_machine_terminal_add">Open another terminal</string>
-    <string name="remote_machine_terminal_tab">Terminal %1$d</string>
-    <string name="remote_machine_terminal_sessions">Sessions</string>
-    <string name="remote_machine_terminal_toggle_sessions">Show or hide terminal sessions</string>
-    <string name="remote_machine_terminal_connected">Connected</string>
-    <string name="remote_machine_terminal_disconnected">Disconnected</string>
-    <string name="remote_machine_terminal_no_sessions">No terminal sessions</string>
-    <string name="remote_machine_terminal_no_sessions_hint">This machine disconnects when its last terminal session closes. Open a new session to reconnect.</string>
-    <string name="remote_machine_terminal_close_session">Close this session</string>
-    <string name="remote_machine_terminal_input_local_short">Local</string>
-    <string name="remote_machine_terminal_input_remote_short">Remote</string>
-    <string name="remote_machine_terminal_mouse_short">Mouse</string>
-    <string name="remote_machine_terminal_input_ime_short">IME</string>
-    <string name="remote_machine_terminal_choose_machine">Running machines</string>
-    <string name="remote_machine_terminal_connection_lost">Connection lost</string>
-    <string name="remote_machine_not_configured">Not configured</string>
+    <string name="remote_server_forward_type" translatable="false">Forward type</string>
+    <string name="remote_server_forward_local" translatable="false">Local forward</string>
+    <string name="remote_server_forward_local_rules" translatable="false">Local forwards</string>
+    <string name="remote_server_forward_local_hint">One per line: 8080 (same port) or 8080:10808 (device 8080 → server 10808)</string>
+    <string name="remote_server_forward_remote" translatable="false">Remote forward</string>
+    <string name="remote_server_forward_remote_rules" translatable="false">Remote forwards</string>
+    <string name="remote_server_forward_remote_hint">One per line: 8080 (same port) or 8080:10808 (server 8080 → device 10808)</string>
+    <string name="remote_server_forward_dynamic" translatable="false">Dynamic forward (SOCKS5)</string>
+    <string name="remote_server_forward_dynamic_ports" translatable="false">SOCKS ports</string>
+    <string name="remote_server_forward_dynamic_hint">Comma-separated local ports, e.g. 1080</string>
+    <string name="remote_server_ssh_options" translatable="false">SSH options</string>
+    <string name="remote_server_advanced_ssh_options" translatable="false">Additional SSH options</string>
+    <string name="remote_server_ssh_option_name" translatable="false">Option name</string>
+    <string name="remote_server_ssh_option_value" translatable="false">Option value</string>
+    <string name="remote_server_proxy_server" translatable="false">Proxy server</string>
+    <string name="remote_server_websocket_proxy" translatable="false">WebSocket Proxy</string>
+    <string name="remote_server_websocket_url" translatable="false">WebSocket full URL</string>
+    <string name="remote_server_websocket_headers" translatable="false">Headers (one Header: value per line)</string>
+    <string name="remote_server_websocket_connect_timeout" translatable="false">Connect timeout (seconds)</string>
+    <string name="remote_server_websocket_skip_certificates">Skip certificate verification</string>
+    <string name="remote_server_websocket_show_advanced">Advanced WebSocket settings</string>
+    <string name="remote_server_websocket_hide_advanced">Hide advanced WebSocket settings</string>
+    <string name="remote_server_websocket_ca_certificate" translatable="false">CA certificate (PEM, optional)</string>
+    <string name="remote_server_websocket_handshake_timeout" translatable="false">Handshake timeout (seconds)</string>
+    <string name="remote_server_websocket_read_timeout" translatable="false">Read timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_server_websocket_write_timeout" translatable="false">Write timeout (seconds, 0 = unlimited)</string>
+    <string name="remote_server_websocket_close_timeout" translatable="false">Close timeout (seconds)</string>
+    <string name="remote_server_websocket_subprotocols" translatable="false">Sub-protocols (comma separated)</string>
+    <string name="remote_server_timeout" translatable="false">Connection timeout (seconds)</string>
+    <string name="remote_server_keep_alive" translatable="false">Server keep-alive (seconds)</string>
+    <string name="remote_server_strict_host_key" translatable="false">Strict host-key checking</string>
+    <string name="remote_server_compression">Enable compression</string>
+    <string translatable="false" name="remote_google_cloud_oauth">Google Cloud OAuth</string>
+    <string name="remote_server_oauth_client" translatable="false">OAuth client</string>
+    <string name="remote_server_select_oauth">Select an OAuth client</string>
+    <string name="remote_server_oauth_sign_in">Sign in with Google</string>
+    <string name="remote_server_oauth_authorized">Google account connected</string>
+    <string name="remote_ai_tools">AI tools</string>
+    <string name="remote_server_tool_execute">Execute commands</string>
+    <string name="remote_server_update_ip">Update IP</string>
+    <string name="remote_server_tool_close_terminal">Close terminal</string>
+    <string name="remote_server_tool_list_terminal">List terminals</string>
+    <string name="remote_server_tool_read_terminal">Read terminal</string>
+    <string name="remote_server_disconnect">Disconnect</string>
+    <string name="remote_server_update_ip_title">Cloud Shell IP · %1$s</string>
+    <string translatable="false" name="remote_server_google_oauth">Google OAuth</string>
+    <string name="remote_server_no_oauth_clients">No OAuth clients added yet.</string>
+    <string name="remote_server_import_oauth_json">Import OAuth client JSON</string>
+    <string name="remote_server_oauth_client_type" translatable="false">OAuth client type</string>
+    <string name="remote_server_oauth_type_desktop">Desktop app</string>
+    <string name="remote_server_oauth_type_android">Android app</string>
+    <string name="remote_server_google_no_access_token">Google did not return an access token.</string>
+    <string name="remote_server_google_missing_resolution">Google authorization requires interaction, but no resolution was returned.</string>
+    <string name="remote_server_terminal_connecting">Connecting to remote shell…</string>
+    <string name="remote_server_terminal_connection_error">Could not connect to the remote shell</string>
+    <string name="remote_server_terminal_password_title">Enter SSH password</string>
+    <string name="remote_server_terminal_password_help">The server requests a secret that is not saved for this server. It is used for this connection only.</string>
+    <string name="remote_server_terminal_passphrase_title">Enter key passphrase</string>
+    <string name="remote_server_terminal_connect">Connect</string>
+    <string name="remote_server_terminal_disconnect_close">Disconnect and close terminal</string>
+    <string name="remote_server_terminal_ime">Enable IME composition</string>
+    <string name="remote_server_terminal_open_browser">Open in browser</string>
+    <string name="remote_terminal_input_mode">Terminal input mode</string>
+    <string name="remote_server_terminal_force_mouse">Mouse events · tap = click, drag = wheel</string>
+    <string name="remote_server_terminal_add">Open another terminal</string>
+    <string translatable="false" name="remote_server_terminal_tab">Terminal %1$d</string>
+    <string name="remote_server_terminal_sessions">Sessions</string>
+    <string name="remote_server_terminal_toggle_sessions">Show or hide terminal sessions</string>
+    <string name="remote_server_terminal_connected">Connected</string>
+    <string name="remote_server_terminal_disconnected">Disconnected</string>
+    <string name="remote_server_terminal_no_sessions">No terminal sessions</string>
+    <string name="remote_server_terminal_no_sessions_hint">Open a terminal session to run commands. Active port forwarding continues independently.</string>
+    <string name="remote_server_terminal_close_session">Close this session</string>
+    <string name="remote_server_terminal_input_local_short">Local</string>
+    <string translatable="false" name="remote_server_terminal_input_remote_short">Remote</string>
+    <string name="remote_server_terminal_input_ime_short">IME</string>
+    <string name="remote_server_terminal_connection_lost">Connection lost</string>
+    <string name="remote_server_not_configured">Not configured</string>
     <string name="settings_version">Version %1$s (%2$d)</string>
-    <string name="settings_universal_description">Universal AI Gateway for Android</string>
     <string name="quick_action_instructions_description">Choose which instructions apply to this chat</string>
     <string name="quick_action_skills_description">Insert an agent skill into the chat composer</string>
-    <string name="quick_action_feature_tools_description">Choose which built-in tools the language model can use</string>
-    <string name="quick_action_mcp_connectors_description">Choose which MCP servers the language model can use</string>
+    <string name="quick_action_feature_tools_description">Choose which built-in tools the model can use</string>
+    <string name="quick_action_mcp_connectors_description">Choose which MCP servers the model can use</string>
     <string name="quick_action_photos">Photos</string>
     <string name="quick_action_camera">Camera</string>
     <string name="quick_action_image_description">Send directly to an image generation model</string>
     <string name="quick_action_video_description">Send directly to a video generation model</string>
-    <string name="quick_action_remote_machines_description">Choose which machines the language model may use</string>
-    <string name="remote_machine_none_configured">No remote machines configured</string>
-    <string name="remote_machine_name_required">Machine name is required.</string>
-    <string name="remote_machine_host_required">Host is required for SSH machines.</string>
-    <string name="remote_machine_identity_required">IdentityFile is required for private-key authentication.</string>
-    <string name="tool_settings_media_label">Media tool settings</string>
-    <string name="tool_settings_media_tools_title">Media tools</string>
-    <string name="tool_settings_other_tools_title">Other tools</string>
-    <string name="tool_web_search_provider_title">Web Search Service</string>
-    <string name="tool_web_search_provider_description">Pin one MCP server to provide web-search tools.</string>
-    <string name="tool_web_search_provider_select">MCP server</string>
-    <string name="tool_web_search_provider_none">No service selected</string>
-    <string name="tool_web_search_provider_empty">Add an MCP server in MCP Connectors to use it for web search.</string>
+    <string name="remote_servers_none_configured">No remote servers configured</string>
+    <string name="remote_server_name_required">Server name is required.</string>
+    <string name="remote_server_host_required">Host is required for SSH servers.</string>
+    <string name="remote_server_identity_required">IdentityFile is required for private-key authentication.</string>
+    <string name="web_search_service">Web Search Service</string>
+    <string name="web_search_service_description">Pin one MCP server to provide web-search tools.</string>
+    <string name="web_search_service_none">No service selected</string>
+    <string name="web_search_service_empty">Add an MCP server in MCP Connectors to use it for web search.</string>
     <string name="tool_send_file_title">Send File</string>
-    <string name="tool_send_file_description">Let the language model show files from tool results in the chat.</string>
+    <string name="tool_send_file_description">Allow the model to show files from tool results in chat.</string>
     <string name="tool_settings_conversation_helpers_title">Conversation helpers</string>
     <string name="tool_title_generation_title">Title Generation</string>
     <string name="tool_chat_summary_title">Chat Summary</string>
-    <string name="tool_title_generation_description">Language model used to generate conversation titles.</string>
-    <string name="tool_chat_summary_description">Language model used to summarize long conversations.</string>
-    <string name="tool_customize_instructions_description">Edit the instructions sent to this default language model.</string>
+    <string name="tool_title_generation_description">Model used to generate conversation titles.</string>
+    <string name="tool_chat_summary_description">Model used to summarize long conversations.</string>
     <string name="tool_settings_accessibility">Open %1$s settings</string>
     <string name="tool_title_generation_rules_title">Generation rules</string>
     <string name="tool_title_generation_rules_description">Generate a title when either rule is met. Set minimum words to 0 to disable the word-count trigger.</string>
@@ -1085,16 +991,12 @@
     <string name="tool_title_generation_min_words_hint">Enter a value from %1$d to %2$d. Use 0 to disable.</string>
     <string name="tool_title_generation_number_invalid">Enter a valid number in the supported range.</string>
     <string name="tool_summary_settings_title">Summary behavior</string>
-    <string name="tool_summary_settings_description">When Generative suggests or starts a conversation summary. These options apply to the Chat Summary helper.</string>
-    <string name="tool_select_model_hint">Tap to choose a language model</string>
+    <string name="tool_select_model_hint">Tap to select a model</string>
     <string name="tool_image_generation_title" translatable="false">Image Generation</string>
     <string name="tool_video_generation_title" translatable="false">Video Generation</string>
-    <string name="tool_generate_image_description">Generate images from prompts using the selected model.</string>
-    <string name="tool_generate_video_description">Generate videos from prompts using the selected model.</string>
-    <string name="tool_select_compatible_model_hint">Select a compatible model to enable this tool.</string>
     <string name="tool_image_settings">Image settings</string>
     <string name="tool_video_settings">Video settings</string>
-    <string name="mcp_permissions_title">MCP permissions</string>
+    <string translatable="false" name="mcp_permissions">MCP permissions</string>
     <string name="mcp_add_servers_hint">Add servers in MCP Connectors first.</string>
     <string name="mcp_tool_list_not_cached_description">Tool list is not cached. Save or refresh this server in MCP Connectors first.</string>
     <string name="mcp_no_globally_enabled_tools_description">No globally enabled tools available.</string>
@@ -1105,35 +1007,21 @@
     <string name="image_tool_discard_image_message">Your image settings have not been saved.</string>
     <string name="image_tool_range_hint">Range: %1$s – %2$s</string>
     <string name="common_discard">Discard</string>
-    <string name="media_api_type">Profile</string>
+    <string name="media_gen_profile">Profile</string>
     <string name="media_image_profile" translatable="false">Image Profile</string>
     <string name="media_video_profile" translatable="false">Video Profile</string>
     <string name="media_chain_custom">Custom</string>
-    <string name="media_chain_edit_custom">Edit custom mapping</string>
-    <string name="media_chain_custom_summary">Custom request chain is active.</string>
-    <string name="media_chain_custom_not_configured">Custom mode is selected, but no request chain is configured.</string>
-    <string name="media_chain_profile">Generation profile</string>
     <string name="media_chain_select_profile">Select a profile</string>
     <string name="media_chain_remove_profile_message">Remove this API profile? Models using it will return to the Default profile.</string>
-    <string name="media_chain_profiles_help">Manage reusable Default and Custom API profiles for your image/video models.</string>
-    <string name="media_image_gen_profile">ImageGenProfile</string>
-    <string name="media_video_gen_profile">VideoGenProfile</string>
     <string name="media_image_gen_profiles" translatable="false">Image Profiles</string>
     <string name="media_video_gen_profiles" translatable="false">Video Profiles</string>
-    <string name="media_profile_default_hint">Uses the selected profile with the provider’s default generation API.</string>
-    <string name="media_chain_profiles">Profiles</string>
     <plurals name="media_chain_profile_steps">
         <item quantity="one">%d step</item>
         <item quantity="other">%d steps</item>
     </plurals>
-    <string name="media_chain_profile_step_count">%1$d request step(s)</string>
-    <string name="media_chain_active_profile">Active profile</string>
-    <string name="common_done">Done</string>
-    <string name="media_chain_default_settings_hint">Default tool parameters and their visibility are managed in Image/Video settings.</string>
-    <string name="media_chain_open_default_settings">Open Image/Video settings</string>
     <string name="media_chain_steps">Request steps</string>
     <string name="media_chain_steps_help">Requests run in order. Add a step to check status or fetch results.</string>
-    <string name="media_profile_no_model_hint">Select a model to edit provider-specific fields. JSON options remain available.</string>
+    <string name="media_gen_profile_no_model_hint">Select a model to edit provider-specific fields. JSON options remain available.</string>
     <string name="media_chain_test_prompt">Test prompt</string>
     <string name="media_chain_default_test_prompt">Test generation</string>
     <string name="media_chain_test_step">Run through step %1$d</string>
@@ -1163,26 +1051,23 @@
     <string name="video_option_size">Video size</string>
     <string name="video_option_resolution">Video resolution</string>
     <string name="media_chain_headers" translatable="false">Headers</string>
-    <string name="media_chain_headers_editor" translatable="false">Headers JSON</string>
-    <string name="media_chain_headers_json_invalid">Enter a valid JSON object with string header values.</string>
-    <string name="media_chain_headers_help">JSON object. Supports variables. Configured provider authorization is used automatically.</string>
     <string name="media_chain_content_type" translatable="false">Content Type</string>
     <string name="media_chain_content_type_json" translatable="false">application/json</string>
     <string name="media_chain_content_type_form" translatable="false">multipart/form-data</string>
     <string name="media_chain_content_type_raw" translatable="false">Raw bytes</string>
     <string name="media_chain_custom_content_type" translatable="false">Custom content type</string>
     <string name="media_chain_custom_content_type_help">Optional MIME type override. Leave blank for automatic selection.</string>
-    <string name="media_chain_json">JSON</string>
+    <string translatable="false" name="media_chain_json">JSON</string>
     <string name="media_chain_file_transport" translatable="false">File transport</string>
     <string name="media_chain_file">File</string>
-    <string name="media_chain_base64">Base64</string>
+    <string translatable="false" name="media_chain_base64">Base64</string>
     <string name="media_chain_body_editor" translatable="false">Body Editor</string>
     <string name="media_chain_request_body_help">Use {{prompt}}, {{model}}, {{input_files}} or previous step responses. Raw mode supports direct file bytes.</string>
     <string name="media_chain_response_type" translatable="false">Response type</string>
-    <string name="media_chain_octet_stream">Binary file</string>
+    <string name="media_chain_binary_file">Binary file</string>
     <string name="media_chain_observer" translatable="false">Retry observer</string>
     <string name="media_chain_observer_disabled">Retry observer is disabled for this step.</string>
-    <string name="media_chain_observer_mode" translatable="false">Success condition</string>
+    <string name="media_chain_success_condition" translatable="false">Success condition</string>
     <string name="media_chain_observer_path_exists">Path exists</string>
     <string name="media_chain_observer_read_value">Read values</string>
     <string name="media_chain_status_path" translatable="false">Status JSON path (optional)</string>
@@ -1198,14 +1083,12 @@
     <string name="media_chain_last_step">Last step</string>
     <string name="media_chain_media_path" translatable="false">Media path in JSON response</string>
     <string name="media_chain_media_path_help">Use dot paths and array selectors, for example data[0].url.</string>
-    <string name="media_chain_value_kind" translatable="false">Media value format</string>
+    <string name="media_chain_value_format" translatable="false">Media value format</string>
     <string name="media_chain_link">Link</string>
     <string name="media_chain_invalid_configuration">Complete the required fields, use valid JSON, and keep retry values within their bounds. Raw media responses cannot use a JSON status path.</string>
     <string name="media_chain_media_path_required">A JSON final response requires a media path.</string>
     <string name="media_chain_discard_message">Your media request chain changes have not been saved.</string>
-    <string name="speech_voice_optional_hint">Optional, but this service may not work without a voice.</string>
     <string name="speech_voice_instructions_help">Tone, accent, emotion%1$s.</string>
-    <string name="speech_gemini_audio_description">Gemini returns PCM audio, converted to WAV for playback.</string>
     <string name="speech_json_invalid_hint">Enter a valid JSON object.</string>
     <string name="speech_provider_parameters_help">Parameters specific to the model provider. Model, text, and voice use the fields above.</string>
     <string name="speech_api_key_help">Leave empty to use the model provider authentication.</string>
@@ -1213,22 +1096,18 @@
     <string name="model_temperature_invalid">Enter a number from 0 to %1$s, or leave blank.</string>
     <string name="model_top_p_invalid">Enter a number from 0 to 1, or leave blank.</string>
     <string name="model_top_k_invalid">Enter a positive whole number, or leave blank.</string>
-    <string name="provider_no_models_description">No models have been added to this model provider yet.</string>
-    <string name="provider_no_models_returned">Model provider returned no models</string>
+    <string name="provider_no_models_description">No models added to this provider yet.</string>
+    <string name="provider_no_models_returned">Provider returned no models</string>
     <string name="provider_connection_ready">%1$s connection is ready.</string>
-    <string name="provider_fallback_name">Model Provider</string>
+    <string name="provider_default_name">Model Provider</string>
     <string name="provider_oauth_unavailable">OAuth is unavailable for this model provider.</string>
-    <string name="provider_oauth_failed">OAuth authorization failed.</string>
     <string name="provider_oauth_removal_unavailable">OAuth credential removal is unavailable.</string>
-    <string name="provider_oauth_remove_failed">Could not remove OAuth credentials.</string>
     <string name="provider_headers_invalid">Header names and values must be valid and header names must be unique.</string>
-    <string name="speech_services_description">Use Android TTS or TTS models from Model Providers</string>
     <string name="speech_delete_message">Delete this speech service? Its saved configuration will be removed.</string>
     <string name="speech_edit_title">Edit Speech Service</string>
     <string name="speech_service_name">Service name</string>
-    <string name="speech_system_tts">Android System TTS</string>
+    <string translatable="false" name="speech_android_system_tts">Android System TTS</string>
     <string name="speech_platform_picker_title">Speech platform</string>
-    <string name="speech_engine_android_description">Uses Android text-to-speech</string>
     <string name="speech_engine_direct_description">Dedicated speech API</string>
     <string name="speech_engine_provider_description">Uses a configured model provider</string>
     <plurals name="speech_engine_model_count">
@@ -1249,16 +1128,14 @@
     <string name="speech_additional_parameters" translatable="false">Additional API parameters (JSON)</string>
     <string name="speech_api_key_override" translatable="false">API key override (optional)</string>
     <string name="speech_test_announcement">Testing speech voice output.</string>
-    <string name="speech_services_title">Speech Services</string>
-    <string name="speech_custom_tts">Custom TTS</string>
+    <string translatable="false" name="speech_custom_tts">Custom TTS</string>
     <string name="speech_add_service">Add speech service</string>
-    <string name="speech_set_tts_provider">Set TTS Provider</string>
+    <string name="speech_set_as_tts_service">Set as TTS Service</string>
     <string name="speech_preview_text">Hello! This is a preview of the %1$s voice.</string>
     <string name="common_selected">Selected</string>
     <string name="common_system">System</string>
     <string name="common_user">User</string>
     <string name="common_assistant">Assistant</string>
-    <string name="common_active">Active</string>
     <string name="common_label">Label</string>
     <string name="common_reset">Reset</string>
     <string name="common_raw">Raw</string>
@@ -1267,29 +1144,21 @@
     <string name="common_folder_name">Folder name</string>
     <string name="common_discard_changes">Discard changes?</string>
     <string name="common_keep_editing">Keep editing</string>
-    <string name="common_enter_positive_whole_number">Enter a positive whole number.</string>
-    <string name="common_number_range_invalid">Enter a number from 1 to %1$d.</string>
-    <string name="common_number_range_default">Default is %1$d.</string>
     <string name="common_feature_tools">Feature Tools</string>
-    <string name="common_mcp_connectors">MCP Connectors</string>
+    <string translatable="false" name="common_mcp_connectors">MCP Connectors</string>
     <string name="speech_card_voice_line">Voice: %1$s</string>
     <string name="speech_card_model_voice_line">Model: %1$s · Voice: %2$s</string>
-    <string name="profile_new">New profile</string>
-    <string name="profile_name">Profile name</string>
-    <string name="select_model">Select a language model</string>
+    <string name="media_gen_profile_name">Profile name</string>
+    <string name="select_model">Select model</string>
     <string name="search_history">Search history...</string>
     <string name="no_conversations_yet">No conversations yet</string>
-    <string name="connect_providers_description">Connect multiple model providers and agents.</string>
-    <string name="current_model">Current language model</string>
-    <string name="change_model">Change language model</string>
+    <string name="connect_providers_description">Connect providers and agents.</string>
     <string name="open_selected_model">Selected language model and options</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_license">License</string>
     <string name="settings_license_name">Starfall Org Contributor Commercial Copyleft License v1.1</string>
     <string name="settings_update_error">Unable to check GitHub releases</string>
-    <string name="screen_wakelock_title">Keep screen on during generation</string>
-    <string name="screen_wakelock_description">Auto keeps the screen on while the model responds or reasons, but not during tool calls. On keeps it on throughout generation. Off lets the screen turn off normally.</string>
-    <string name="context_window_compact_hint">Tap the circle to compact the context window</string>
+    <string name="keep_screen_on_during_generation">Keep screen on during generation</string>
     <string name="context_window_source_api">API usage (latest matching request)</string>
     <string name="context_window_source_estimated">Estimated — API usage unavailable for this context</string>
     <string name="context_window_source_mixed">API usage + estimated new messages</string>
@@ -1302,19 +1171,14 @@
     <string name="drag_to_exit_folder_hint">Drag up to the app bar or down to the navigation bar to leave the folder</string>
     <string name="conversation_summary_invalid_target">Enter a whole number from 1 to 2,147,483,647. The target size must also fit within the summary language model’s context window and output limit.</string>
     <string name="conversation_summary_invalid_chunk">Enter a whole number of tokens per pass from 1 to 100,000.</string>
-    <string name="chat_minimap_open">Open conversation minimap</string>
-    <string name="chat_minimap_close">Close conversation minimap</string>
     <string name="chat_minimap_navigate">Conversation scrollbar. Drag to scroll through the conversation.</string>
     <string name="tool_agent_skills_search_title" translatable="false">Agent Skills Search</string>
     <string name="tool_agent_skills_search_description">Let the AI find and load skills on demand</string>
     <string name="customization_title">Customization</string>
     <string name="customization_enable">Enable</string>
-    <string name="customization_description">Colors, component transparency, profile photo and backgrounds</string>
     <string name="customization_backgrounds_title">Background images</string>
-    <string name="user_profile_title">User Profile</string>
     <string name="user_profile_photo_options">Profile photo options</string>
     <string name="user_profile_photo_title">Profile Photo</string>
-    <string name="user_profile_photo_description">Choose the photo used across the app</string>
     <string name="user_profile_background_chat">Chat Screen Background</string>
     <string name="user_profile_background_drawer">Side Drawer Background</string>
     <string name="user_profile_background_menu">Menu Screen Background</string>
@@ -1322,12 +1186,9 @@
     <string name="user_profile_background_dialog">Dialog Background</string>
     <string name="user_profile_background_transparency">Background transparency</string>
     <string name="user_profile_background_transparency_reset">Reset background transparency to default</string>
-    <string name="user_profile_background_preview_sample">Sample content with background image</string>
     <string name="user_profile_background_options">%1$s options</string>
-    <string name="user_profile_background_unavailable">%1$s (unavailable)</string>
     <string name="user_profile_image_error">Unable to use image</string>
     <string name="user_profile_photos_gallery">Photos Gallery</string>
-    <string name="user_profile_search_photos">Search photos</string>
     <string name="user_profile_no_photos">No photos in Media Storage</string>
     <string name="tool_search_tools_title" translatable="false">Search Tools</string>
     <string name="tool_search_tools_description">Find tool names and enabled states</string>
@@ -1337,13 +1198,12 @@
     <string name="speech_owned_voices">My voices only</string>
     <string name="speech_no_voices">No voices found.</string>
     <string name="speech_load_more">Load more</string>
-    <string name="speech_engine_model" translatable="false">Synthesis model ID</string>
+    <string name="speech_synthesis_model_id" translatable="false">Synthesis model ID</string>
     <string name="music_profiles">Music Profiles</string>
     <string name="music_audio">Audio</string>
     <string name="tool_music_generation_title" translatable="false">Music Generation</string>
     <string name="tool_generate_music_description">Create playable music using a Custom request profile.</string>
     <string name="music_select_profile">Select Profile</string>
-    <string name="music_profile_required">Select a valid Custom music profile before generating music.</string>
     <string name="music_profile_credential">Profile API key</string>
     <string name="music_profile_credential_help">Stored with Android Keystore. Use {{api_token}} in request headers. Re-enter the key after restoring on another device. Leave this field untouched to keep the saved key.</string>
     <string name="music_duplicate_profile">Duplicate Profile</string>
@@ -1353,7 +1213,6 @@
     <string name="speech_search_voices">Search voices</string>
     <string name="speech_engine_api_key" translatable="false">API key</string>
     <string name="speech_engine_api_key_help">Required by this speech engine. Stored securely on this device.</string>
-    <string name="speech_voice_required">Choose a voice or enter its Voice ID.</string>
     <string name="reasoning_level_none" translatable="false">None</string>
     <string name="reasoning_level_default" translatable="false">Default</string>
     <string name="reasoning_level_active" translatable="false">Active</string>
@@ -1364,7 +1223,6 @@
     <string name="notification_speech_channel">Speech playback</string>
     <string name="notification_speech_playing">Reading aloud</string>
     <string name="settings_item_transparency">Component transparency</string>
-    <string name="settings_item_transparency_description">Adjust the transparency of cards, buttons, and list items. AMOLED mode uses transparent items with outlines.</string>
     <string name="settings_item_transparency_reset">Reset component transparency to default</string>
     <string name="provider_custom">Custom</string>
     <string name="provider_custom_endpoints">Custom endpoints</string>
@@ -1384,7 +1242,6 @@
     <string name="launcher_drag_test_none">none</string>
     <string name="launcher_drag_test_folder_alpha">Folder Alpha</string>
     <string name="launcher_drag_test_folder_beta">Folder Beta</string>
-    <string name="launcher_drag_test_folder">Folder</string>
     <string name="launcher_drag_test_close">Close</string>
     <string name="customization_input_title">Input area</string>
     <string name="customization_input_transparency">Background transparency</string>
@@ -1403,10 +1260,17 @@
     <string name="launcher_drag_test_reorder_proximity">Reorder proximity: %1$d dp</string>
     <string name="tool_settings_tab_media">Media</string>
     <string name="tool_settings_tab_others">Others</string>
-    <string name="media_profile_require_model">Require model</string>
+    <string name="media_gen_profile_require_model">Require model</string>
     <string name="media_chain_test_no_model_note">Test requests may incur charges. File inputs are not available here.</string>
     <string name="shared_attachment_failed">Could not attach one or more shared files</string>
     <string name="device_code_login_hint">Enter this code in the browser at:</string>
     <string name="device_code_clip_label">Device sign-in code</string>
     <string name="provider_gemini_cli_project_id">Gemini CLI project ID (optional)</string>
+    <string name="settings_repair_provider_title">Repair provider records</string>
+    <string name="settings_repair_provider_description">Check provider records in the background; healthy records are left untouched.</string>
+    <string name="settings_repair_provider_action">Repair damaged records</string>
+    <string name="settings_repair_provider_running">Checking provider database…</string>
+    <string name="settings_repair_provider_result">Repaired %1$d provider record(s).</string>
+    <string name="settings_repair_provider_warning">Unreadable JSON metadata will be discarded and damaged OAuth credentials reset for affected providers only. Models and other providers are preserved. You may need to sign in again.</string>
+    <string name="settings_repair_provider_failed">Failed to repair providers: %1$s</string>
 </resources>

@@ -309,7 +309,7 @@ internal fun ModelCatalogSheet(
                                     Text("$label: $detail", style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                if (model == null) Text(stringResource(R.string.provider_model_not_returned),
+                                if (model == null) Text(stringResource(R.string.provider_model_not_in_latest_api_response),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
                         }

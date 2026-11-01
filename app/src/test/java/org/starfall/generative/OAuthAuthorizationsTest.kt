@@ -59,6 +59,24 @@ class OAuthAuthorizationsTest {
         } finally { owner.cancel() }
     }
 
+    @Test fun unexpectedOAuthExceptionBecomesFailureAndDoesNotCrashItsOwnerScope() = runBlocking {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val failure = IllegalStateException("Foreground service unavailable")
+        var attempts = 0
+        val coordinator = OAuthAuthorizations(owner) {
+            if (++attempts == 1) throw failure
+            Result.success(it)
+        }
+        try {
+            val first = coordinator.authorize(provider)
+            assertTrue(first.isFailure)
+            assertSame(failure, first.exceptionOrNull())
+            assertTrue(owner.isActive)
+            assertTrue(coordinator.authorize(provider).isSuccess)
+            assertEquals(2, attempts)
+        } finally { owner.cancel() }
+    }
+
     @Test fun completedOrFailedAuthorizationDoesNotBlockAnExplicitNewAttempt() = runBlocking {
         val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         var attempts = 0

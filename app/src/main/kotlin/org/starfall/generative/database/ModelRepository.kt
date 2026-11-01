@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
@@ -36,6 +40,9 @@ import org.starfall.generative.database.entities.ProviderCatalogModelEntity
 import org.starfall.generative.database.entities.ProviderCatalogToolEntity
 import kotlinx.serialization.json.JsonObject
 
+/** Repair reports individual failures instead of letting one poisoned row stop other repairs. */
+data class ProviderRepairResult(val repaired: Int, val failedIds: List<String>)
+
 class ModelRepository(private val db: AppDatabase, private val service: AiService, private val icons: IconStore? = null) {
     suspend fun testConnection(provider: ModelProvider) = service.testConnection(resolveProvider(provider))
     suspend fun testModel(provider: ModelProvider, modelId: String) = service.testModel(resolveProvider(provider), modelId)
@@ -53,9 +60,34 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
 
     private val structuredJsonDao = db.structuredJsonDao()
     private val mapper = ProviderStorageMapper(db)
+    // Migration-aware token cleanup must never occupy the single Room mutation writer.
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun credentialSlots(provider: ModelProvider) =
+        (provider.oauthAccountsWithCurrent().map { it.id } + provider.id + provider.oauthCredentialId).distinct()
+
+    private fun queueCredentialCleanup(provider: ModelProvider) {
+        cleanupScope.launch {
+            credentialSlots(provider).forEach { id ->
+                runCatching { service.clearAccountCredentials(provider.type, id) }
+                    .onFailure { Log.w("ModelRepository", "Could not clear retired OAuth slot for ${provider.id}", it) }
+            }
+        }
+    }
 
     private val storedProviders: Flow<List<ModelProvider>> = providerDao.getAllProviders().map { entities ->
-        db.withTransaction { entities.map { mapper.metadata(it) } }
+        // A single malformed legacy model/JSON record must not poison the entire Flow,
+        // prevent the writer's initial snapshot, or block deletion of unrelated providers.
+        db.withTransaction {
+            entities.map { entity ->
+                try { mapper.metadata(entity) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) {
+                    Log.e("ModelRepository", "Failed to decode provider metadata ${entity.id}", e)
+                    mapper.unreadableMetadata(entity)
+                }
+            }
+        }
     }
 
     private val storedGroups: Flow<List<ProviderGroup>> = groupDao.getAllGroups().map { groups ->
@@ -91,7 +123,14 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     }
 
     private suspend fun readCatalog() = Catalog(
-        providerDao.getAllProviders().first().map { mapper.metadata(it) },
+        providerDao.getAllProviders().first().map { entity ->
+            try { mapper.metadata(entity) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                Log.w("ModelRepository", "Using unreadable provider placeholder ${entity.id}", e)
+                mapper.unreadableMetadata(entity)
+            }
+        },
         groupDao.getAllGroupsOnce().map { ProviderGroup(it.id, it.name, it.sortOrder, it.icon) }
     )
 
@@ -132,6 +171,8 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     internal fun importAccountCredentials(credentials: Map<String, Map<String, JsonObject>>) {
         service.importAccountCredentials(credentials)
     }
+
+    internal suspend fun awaitModelConfigurationMemoryWrites() = service.awaitModelConfigurationMemoryWrites()
 
     internal fun exportModelConfigurationMemory(): Map<String, JsonObject> = service.exportModelConfigurationMemory()
 
@@ -216,12 +257,47 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             .sortedWith(compareBy<Triple<ProviderRootOrderItem, Int, Int>> { it.second }.thenBy { it.third }.thenBy { it.first.id })
             .map { it.first }
 
+    /** The user-facing drop is accepted in RAM now; the repository writer persists later. */
+    fun queueProviderPlacement(placement: ProviderPlacement) =
+        state.enqueue({ it.placeProvider(placement) }) {
+            db.withTransaction {
+                val updated = readCatalog().placeProvider(placement)
+                updated.providers.forEach { providerDao.updateGroupAndSortOrder(it.id, it.groupId, it.sortOrder) }
+                updated.groups.forEach { groupDao.updateSortOrder(it.id, it.sortOrder) }
+            }
+        }
+
     suspend fun placeProvider(placement: ProviderPlacement) {
         state.mutate({ it.placeProvider(placement) }) {
             db.withTransaction {
                 val updated = readCatalog().placeProvider(placement)
                 updated.providers.forEach { providerDao.updateGroupAndSortOrder(it.id, it.groupId, it.sortOrder) }
                 updated.groups.forEach { groupDao.updateSortOrder(it.id, it.sortOrder) }
+            }
+        }
+    }
+
+    fun queueReorderRootItems(items: List<ProviderRootOrderItem>): kotlinx.coroutines.Deferred<Unit> {
+        // The drop callback runs on the UI thread. Index each destination once rather
+        // than repeatedly scanning the whole root order for every provider and folder.
+        val order = items.toList()
+        val providerRanks = order.withIndex().filterNot { it.value.isGroup }
+            .associate { it.value.id to it.index }
+        val groupRanks = order.withIndex().filter { it.value.isGroup }
+            .associate { it.value.id to it.index }
+        return state.enqueue({ catalog -> catalog.copy(
+            providers = catalog.providers.map { p ->
+                providerRanks[p.id]?.let { p.copy(sortOrder = it) } ?: p
+            }.sortedWith(providerOrder),
+            groups = catalog.groups.map { g ->
+                groupRanks[g.id]?.let { g.copy(sortOrder = it) } ?: g
+            }.sortedBy { it.sortOrder })
+        }) {
+            db.withTransaction {
+                order.forEachIndexed { index, item ->
+                    if (item.isGroup) groupDao.updateSortOrder(item.id, index)
+                    else providerDao.updateSortOrder(item.id, index)
+                }
             }
         }
     }
@@ -266,17 +342,23 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             val authorized = service.authorizeProvider(resolveProvider(provider)).getOrThrow().recordOAuthAccount()
                 .copy(credentialState = CredentialLoadState.LOADED)
             var saved = authorized
+            var obsolete: ModelProvider? = null
             state.mutate({ catalog ->
                 val updated = authorized.metadata()
                 catalog.copy(providers = catalog.providers.upsert(updated) { it.id }.sortedWith(providerOrder))
             }) {
                 db.withTransaction {
                     val persisted = providerForCredentialCleanup(provider.id)
-                    if (persisted != null && persisted.type != authorized.type) clearAllOAuthCredentials(persisted)
+                    if (persisted != null && persisted.type != authorized.type) obsolete = persisted
+                    // Token storage now uses this same Room database. Never call its synchronous
+                    // runBlocking bridge while holding an outer Room transaction.
                     saved = mergeOAuthAuthorization(persisted, authorized)
                     mapper.persist(saved)
                 }
             }
+            // Old provider OAuth slots are cleaned up after the database transaction commits.
+            // This must not run under db.withTransaction (nested Room bridge deadlock).
+            obsolete?.let(::queueCredentialCleanup)
             authorized.copy(config = authorized.config.copy(oauthAccounts = saved.config.oauthAccounts))
         }
     }
@@ -284,8 +366,9 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     suspend fun clearOAuthCredentials(provider: ModelProvider): Result<ModelProvider> = runCatching {
         val resolved = resolveProvider(provider)
         val accountId = resolved.oauthCredentialId
+        // Blocking migration-backed token removal must not run on the repository's writer.
+        withContext(Dispatchers.IO) { service.clearAccountCredentials(resolved.type, accountId) }
         state.mutate({ it }) {
-            service.clearAccountCredentials(resolved.type, accountId)
             db.withTransaction {
                 providerDao.getProviderById(provider.id)?.let { mapper.selected(it) }?.let { persisted ->
                     if (persisted.type == resolved.type) mapper.persist(persisted.removeOAuthAccount(accountId))
@@ -295,16 +378,67 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         resolved.removeOAuthAccount(accountId)
     }
 
-    private fun clearAllOAuthCredentials(provider: ModelProvider) {
-        (provider.oauthAccountsWithCurrent().map { it.id } + provider.id + provider.oauthCredentialId).distinct().forEach {
-            service.clearAccountCredentials(provider.type, it)
-        }
-    }
-
     /** Credential replacement/deletion remains possible when the old encrypted record is damaged. */
     private suspend fun providerForCredentialCleanup(id: String): ModelProvider? = providerDao.getProviderById(id)?.let { entity ->
         try { mapper.selected(entity) } catch (e: CancellationException) { throw e }
-        catch (_: IllegalStateException) { mapper.metadata(entity) }
+        catch (_: Exception) {
+            try { mapper.metadata(entity) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mapper.unreadableMetadata(entity) }
+        }
+    }
+
+    /** Repair only unreadable records; healthy provider rows, models and accounts are untouched. */
+    suspend fun repairCorruptProviders(): ProviderRepairResult = withContext(Dispatchers.IO) {
+        var repaired = 0
+        val failed = mutableListOf<String>()
+        val rows = providerDao.getAllProviders().first()
+        for (entity in rows) {
+            val broken = try { mapper.selected(entity); false }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { true }
+            if (!broken) continue
+            try {
+                var resetCredentials = false
+                state.mutate({ it }) {
+                    db.withTransaction {
+                        val row = providerDao.getProviderById(entity.id) ?: return@withTransaction
+                        // Remove only malformed document graphs; never overwrite healthy model rows.
+                        // All healthy model configuration rows and catalog entries survive.
+                        mapper.deleteMalformedDocuments(row.id)
+                        val metadata = mapper.metadata(row)
+                        if (row.authId != null) {
+                            val authBroken = try { mapper.resolve(metadata, row); false }
+                                catch (e: CancellationException) { throw e }
+                                catch (_: Exception) { true }
+                            if (authBroken) {
+                                db.updateStorageRow("model_providers", row.id, "authId" to null)
+                                val type = metadata.type
+                                if (type.isAccountProvider) {
+                                    structuredJsonDao.replaceDocument(StructuredJsonDocument(
+                                        "provider", row.id, "auth_method", JsonPrimitive(AuthMethod.OAUTH.name)))
+                                }
+                                db.deleteUnreferencedEndpointAuth("provider_auth", "model_providers", row.authId)
+                                resetCredentials = true
+                            }
+                        }
+                        check(providerDao.getProviderById(entity.id)?.let { mapper.selected(it) } != null) {
+                            "Unable to repair provider ${entity.id}"
+                        }
+                    }
+                }
+                if (resetCredentials) {
+                    // Never access synchronous token storage from inside a Room transaction.
+                    queueCredentialCleanup(mapper.unreadableMetadata(entity))
+                }
+                repaired++
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                failed += entity.id
+                Log.e("ModelRepository", "Repair failed for provider ${entity.id}; scanning continues", e)
+            }
+        }
+        ProviderRepairResult(repaired, failed)
     }
 
     suspend fun providerExists(id: String): Boolean = providerDao.getProviderById(id) != null
@@ -313,6 +447,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         val provider = draft
         requireSavableCredentials(provider.credentialState)
         state.mutate({ it.saveProviderDraft(provider.metadata()) }) {
+            var obsolete: ModelProvider? = null
             val previous = db.withTransaction {
                 val catalog = readCatalog()
                 val previous = catalog.providers.firstOrNull { it.id == provider.id }
@@ -320,7 +455,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
                     // Only a credential edit needs the old OAuth account references.
                     providerForCredentialCleanup(provider.id)?.let { old ->
                         if (old.type != provider.type || (old.auth.method == AuthMethod.OAUTH && provider.auth.method != AuthMethod.OAUTH)) {
-                            clearAllOAuthCredentials(old)
+                            obsolete = old
                         }
                     }
                 }
@@ -329,8 +464,14 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
                 mapper.persist(updated.providers.first { it.id == provider.id })
                 previous
             }
-            provider.config.modelConfigs.forEach { (id, config) ->
-                if (previous?.config?.modelConfigs?.get(id) != config) service.modelConfigurationMemory.remember(id, config)
+            obsolete?.let(::queueCredentialCleanup)
+            cleanupScope.launch {
+                provider.config.modelConfigs.forEach { (id, config) ->
+                    if (previous?.config?.modelConfigs?.get(id) != config) {
+                        runCatching { service.modelConfigurationMemory.remember(id, config) }
+                            .onFailure { Log.w("ModelRepository", "Could not remember model template $id", it) }
+                    }
+                }
             }
         }
     }
@@ -362,10 +503,15 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             changes.forEach { (previous, provider) ->
                 if (previous != null && (previous.type != provider.type ||
                         (previous.auth.method == AuthMethod.OAUTH && provider.auth.method != AuthMethod.OAUTH))) {
-                    clearAllOAuthCredentials(previous)
+                    queueCredentialCleanup(previous)
                 }
-                provider.config.modelConfigs.forEach { (id, config) ->
-                    if (previous?.config?.modelConfigs?.get(id) != config) service.modelConfigurationMemory.remember(id, config)
+                cleanupScope.launch {
+                    provider.config.modelConfigs.forEach { (id, config) ->
+                        if (previous?.config?.modelConfigs?.get(id) != config) {
+                            runCatching { service.modelConfigurationMemory.remember(id, config) }
+                                .onFailure { Log.w("ModelRepository", "Could not remember imported model $id", it) }
+                        }
+                    }
                 }
             }
         }
@@ -398,28 +544,80 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         )
     }
 
+    /** Bulk model selection updates the RAM catalog immediately and persists only model tables. */
+    suspend fun saveProviderModels(providerId: String, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>) {
+        val modelIds = modelConfigs.keys.toList()
+        state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map { provider ->
+            if (provider.id == providerId) provider.copy(config = provider.config.copy(
+                modelIds = modelIds, modelConfigs = modelConfigs)) else provider
+        }) }) {
+            db.withTransaction {
+                check(providerDao.getProviderById(providerId) != null) { "Provider $providerId no longer exists" }
+                mapper.persistModels(providerId, modelIds, modelConfigs)
+            }
+        }
+    }
+
+    fun queueReorderProviderModels(providerId: String, modelIds: List<String>) =
+        state.enqueue({ catalog -> catalog.copy(providers = catalog.providers.map {
+            if (it.id == providerId) it.copy(config = it.config.reorderedModels(modelIds)) else it
+        }) }) {
+            db.withTransaction {
+                val entity = providerDao.getProviderById(providerId) ?: return@withTransaction
+                val provider = mapper.metadata(entity)
+                val updated = provider.config.reorderedModels(modelIds)
+                mapper.persistModels(providerId, updated.modelIds, updated.modelConfigs)
+            }
+        }
+
     suspend fun reorderProviderModels(providerId: String, modelIds: List<String>) {
         state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map { if (it.id == providerId) it.copy(config = it.config.reorderedModels(modelIds)) else it }) }) {
             db.withTransaction {
                 val entity = providerDao.getProviderById(providerId) ?: return@withTransaction
                 val provider = mapper.metadata(entity)
-                mapper.persist(provider.copy(config = provider.config.reorderedModels(modelIds)))
+                val updated = provider.config.reorderedModels(modelIds)
+                mapper.persistModels(providerId, updated.modelIds, updated.modelConfigs)
             }
         }
     }
 
+    /**
+     * Delete by primary key without deserializing or decrypting the record being deleted.
+     * Auth/JSON payloads may be corrupt; none may hold a Room transaction hostage.
+     * The RAM catalog drops the row immediately while the background writer persists it.
+     */
     suspend fun deleteProvider(id: String) {
         state.mutate({ it.copy(providers = it.providers.filterNot { p -> p.id == id }) }) {
+            var old: ModelProvider? = null
             db.withTransaction {
                 providerDao.getProviderById(id)?.let { entity ->
-                    // An unreadable auth row must not prevent deletion of the selected record.
-                    val provider = providerForCredentialCleanup(id) ?: return@let
-                    clearAllOAuthCredentials(provider)
-                    mapper.deleteDocuments(id)
+                    old = try { mapper.selected(entity) }
+                        catch (e: CancellationException) { throw e }
+                        catch (_: Exception) { mapper.unreadableMetadata(entity) }
+                    mapper.deleteDocumentsByOwner(id)
                     providerDao.deleteById(id)
-                    entity.authId?.let { authId -> db.deleteUnreferencedEndpointAuth("provider_auth", "model_providers", authId) }
+                    entity.authId?.let { db.deleteUnreferencedEndpointAuth("provider_auth", "model_providers", it) }
+                    // Delete current OAuth token rows using the *same transaction*, not via
+                    // synchronous AccountTokenStore (which would deadlock on this database).
+                    val provider = requireNotNull(old)
+                    val namespace = "generative.${provider.type.name.lowercase()}.oauth"
+                    credentialSlots(provider).forEach { accountId ->
+                        db.oauthTokenDao().remove(namespace, accountId)
+                    }
                 }
             }
+            // Legacy DataStore slots are cleaned asynchronously after the DB commit.
+            // One failed migration can neither resurrect the provider nor block other writes.
+            old?.let(::queueCredentialCleanup)
+        }
+    }
+
+    fun queueReorderProviders(ids: List<String>) {
+        val positions = ids.withIndex().associate { it.value to it.index }
+        state.enqueue({ catalog -> catalog.copy(providers = catalog.providers.map { p ->
+            positions[p.id]?.let { p.copy(sortOrder = it) } ?: p
+        }.sortedBy { it.sortOrder }) }) {
+            db.withTransaction { ids.forEachIndexed { index, id -> providerDao.updateSortOrder(id, index) } }
         }
     }
 

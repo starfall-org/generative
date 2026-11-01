@@ -92,11 +92,12 @@ fun ConversationSideDrawer(
     onCloseDrawer: () -> Unit,
     onOpenMediaStorage: () -> Unit = {},
     onOpenRemoteMachines: () -> Unit = {},
-    onEditRemoteMachine: (RemoteMachine) -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
+    onPortForward: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier,
-    providers: List<ModelProvider> = emptyList()
+    providers: List<ModelProvider> = emptyList(),
+    onSuggestConversationTitle: (suspend (String) -> Result<String>)? = null
 ) {
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by remember { mutableStateOf("") }
@@ -108,7 +109,6 @@ fun ConversationSideDrawer(
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var deleting by remember { mutableStateOf(emptySet<String>()) }
     var renaming by remember { mutableStateOf<ConversationListItem?>(null) }
-    var title by remember { mutableStateOf("") }
     var grouping by remember { mutableStateOf(false) }
     var blankContextMenu by remember { mutableStateOf(false) }
     var creatingFolder by remember { mutableStateOf(false) }
@@ -231,13 +231,13 @@ fun ConversationSideDrawer(
                         unfocusSearch()
                         onOpenRemoteMachines()
                     },
-                    onEditRemoteMachine = { machine ->
-                        unfocusSearch()
-                        onEditRemoteMachine(machine)
-                    },
                     onOpenTerminal = { machine ->
                         unfocusSearch()
                         onOpenTerminal(machine)
+                    },
+                    onPortForward = { machine ->
+                        unfocusSearch()
+                        onPortForward(machine)
                     },
                     onSaveMachineTools = onSaveMachineTools,
                     modifier = Modifier.testTag("conversation_drawer_quick_shortcuts"),
@@ -368,7 +368,7 @@ fun ConversationSideDrawer(
                                     showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
                                     onSelect = { selectChat(chat.id) },
                                     onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
-                                    onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
+                                    onRename = { renaming = chat }, onDelete = { deleting = setOf(chat.id) },
                                     onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true }, modifier = Modifier.padding(start = 14.dp))
                             }
                         }
@@ -384,7 +384,7 @@ fun ConversationSideDrawer(
                         showContextMenu = contextChatId == chat.id, onContextMenuDismiss = ::dismissContextMenu,
                         onSelect = { selectChat(chat.id) },
                         onPin = { onUpdateOrganization { it.copy(pinnedChatIds = if (chat.id in it.pinnedChatIds) it.pinnedChatIds - chat.id else it.pinnedChatIds + chat.id) } },
-                        onRename = { renaming = chat; title = chat.title }, onDelete = { deleting = setOf(chat.id) },
+                        onRename = { renaming = chat }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
                 }
                 if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
@@ -584,10 +584,16 @@ fun ConversationSideDrawer(
         text = { Text(stringResource(R.string.sidebar_delete_chats_message, deleting.size)) },
         confirmButton = { TextButton(onClick = { val ids = deleting; deleting = emptySet(); if (ids.size == 1) onDeleteConversation(ids.first()) else onDeleteConversations(ids); stopSelecting() }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { deleting = emptySet() }) { Text(stringResource(R.string.common_close)) } })
-    if (renaming != null) AlertDialog(onDismissRequest = { renaming = null }, title = { Text(stringResource(R.string.sidebar_rename_chat)) },
-        text = { OutlinedTextField(title, { title = it }, singleLine = true, label = { Text(stringResource(R.string.sidebar_chat_title)) }) },
-        confirmAtRight = true,
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { renaming?.let { onRenameConversation(it.id, title.trim()) }; renaming = null }) { Text(stringResource(R.string.common_save)) } }, dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.common_close)) } })
+    renaming?.let { chat ->
+        key(chat.id) {
+            RenameConversationDialog(
+                chat = chat,
+                onSuggestTitle = onSuggestConversationTitle,
+                onSave = { onRenameConversation(chat.id, it); renaming = null },
+                onDismiss = { renaming = null }
+            )
+        }
+    }
     if (editingFolder != null) AlertDialog(onDismissRequest = { editingFolder = null }, title = { Text(stringResource(R.string.sidebar_rename_folder)) },
         text = { OutlinedTextField(folderName, { folderName = it }, singleLine = true) },
         confirmAtRight = true,

@@ -16,6 +16,8 @@ import org.starfall.generative.shared.model.generation.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.requireStreamCompleted
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
@@ -79,11 +81,20 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
             sdk.sdkCall { client.models.generateContentStream(modelName.removePrefix("models/"), contents, config.build()) }.use { response ->
                 val iterator = response.iterator()
                 var usage: TokenUsage? = null
+                var completed = false
                 while (sdk.sdkCall { iterator.hasNext() }) {
                     val chunk = iterator.next()
+                    chunk.candidates().orElse(emptyList()).forEach { candidate ->
+                        candidate.finishReason().orElse(null)?.let { reason ->
+                            completed = true
+                            if (reason.knownEnum() == com.google.genai.types.FinishReason.Known.MAX_TOKENS)
+                                error(OUTPUT_TOKEN_LIMIT_REACHED)
+                        }
+                    }
                     chunk.usageMetadata().orElse(null)?.tokenUsage()?.let { usage = it }
                     chunk.text()?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 }
+                requireStreamCompleted(completed)
                 usage?.let { emit(GenerationEvent.Usage(it)) }
             }
         }

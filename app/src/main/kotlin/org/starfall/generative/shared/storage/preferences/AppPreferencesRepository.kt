@@ -29,7 +29,10 @@ import org.starfall.generative.shared.theme.CustomPalette
 
 internal val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "app_preferences",
-    produceMigrations = { context -> listOf(SharedPreferencesMigration(context, "notification_permission")) }
+    produceMigrations = { context -> listOf(
+        SharedPreferencesMigration(context, "notification_permission"),
+        SharedPreferencesMigration(context, "app_locale")
+    ) }
 )
 
 @Serializable
@@ -182,6 +185,23 @@ data class AppPreferences(
         instructionLibraryFor(conversation).roleMessages(at)
 }
 
+/** Legacy locale keys are copied only when canonical DataStore values are absent. */
+internal fun migrateLegacyLocaleKeys(stored: MutablePreferences) {
+    val legacySystem = booleanPreferencesKey("use_system")
+    val legacyTag = stringPreferencesKey("tag")
+    if (!stored.contains(legacySystem) && !stored.contains(legacyTag)) return
+    val currentSystem = booleanPreferencesKey("use_system_language")
+    val currentTag = stringPreferencesKey("selected_language")
+    if (!stored.contains(currentSystem)) {
+        stored[legacySystem]?.let { stored[currentSystem] = it }
+    }
+    if (!stored.contains(currentTag)) {
+        stored[legacyTag]?.let { stored[currentTag] = it }
+    }
+    stored.remove(legacySystem)
+    stored.remove(legacyTag)
+}
+
 class AppPreferencesRepository(private val context: Context) {
 
     private val agentSkillsStore = AgentSkillsStore(context)
@@ -267,10 +287,16 @@ class AppPreferencesRepository(private val context: Context) {
 
     private val storedPreferences: Flow<AppPreferences> = context.dataStore.data
         .onStart {
+            migrateLegacyLocalePreferences()
             migrateLegacyPreferenceSchema()
             migrateLegacyAgentSkills()
         }
         .map { preferences -> decodePreferences(preferences) }
+
+    /** Convert the one-time SharedPreferencesMigration keys into canonical DataStore keys. */
+    private suspend fun migrateLegacyLocalePreferences() {
+        context.dataStore.edit { migrateLegacyLocaleKeys(it) }
+    }
 
     /** Disabled customization ignores appearance images but keeps the profile photo available. */
     private fun decodePreferences(
@@ -777,10 +803,8 @@ class AppPreferencesRepository(private val context: Context) {
         }
     }
 
-    /** Changes both settings in one write so the app only has to restart its UI once. */
+    /** Update locale preferences together; Compose applies the change without recreating Activity. */
     suspend fun setAppLanguage(useSystem: Boolean, tag: String) {
-        // Mirrored synchronously: the locale is needed before DataStore has loaded.
-        AppLocale.save(context, useSystem, tag)
         state.mutate({ it.copy(useSystemLanguage = useSystem, selectedLanguage = tag) }) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.USE_SYSTEM_LANGUAGE] = useSystem
@@ -993,7 +1017,6 @@ class AppPreferencesRepository(private val context: Context) {
             .filter { it.content.isNotBlank() }
             .distinctBy { it.name }
         val restoredSkillGroup = skillsWithBundledDefault(restoredSkills)
-        AppLocale.save(context, preferences.useSystemLanguage, preferences.selectedLanguage)
         state.mutate({ preferences.copy(agentSkills = restoredSkillGroup) }) {
             agentSkillsStore.replaceAll(restoredSkills)
             context.dataStore.edit { stored ->

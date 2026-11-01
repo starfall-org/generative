@@ -2,9 +2,13 @@ package org.starfall.generative
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.test.core.app.ApplicationProvider
 import java.util.Locale
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -19,6 +23,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.storage.preferences.AppLanguage
 import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.storage.preferences.migrateLegacyLocaleKeys
 
 /** Language pick, resource selection and the locale override that Preferences drives. */
 @RunWith(RobolectricTestRunner::class)
@@ -121,7 +126,7 @@ class AppLanguageSelectionTest {
     @Test
     fun everyLanguageShipsItsOwnTranslatedStrings() {
         val expected = mapOf(
-            AppLanguage.ENGLISH to "Select a language model",
+            AppLanguage.ENGLISH to "Select model",
             AppLanguage.VIETNAMESE to "Chọn mô hình",
             AppLanguage.FRENCH to "Choisir un modèle",
             AppLanguage.GERMAN to "Modell auswählen",
@@ -188,6 +193,17 @@ class AppLanguageSelectionTest {
     }
 
     @Test
+    fun featureNamesStayInEnglishAcrossLocales() {
+        AppLanguage.entries
+            .filter { it != AppLanguage.INDONESIAN }
+            .forEach { language ->
+                val resources = localizedContext(language).resources
+                assertEquals(language.tag, "Model Providers", resources.getString(R.string.model_providers))
+                assertEquals(language.tag, "MCP", resources.getString(R.string.mcp))
+            }
+    }
+
+    @Test
     fun everyLocaleProvidesTheProfileStepsPlural() {
         AppLanguage.entries
             .filter { it != AppLanguage.INDONESIAN }
@@ -210,38 +226,65 @@ class AppLanguageSelectionTest {
     }
 
     @Test
-    fun savedLanguageOverrideDrivesTheWrappedContext() {
-        AppLocale.save(context, useSystem = false, tag = AppLanguage.ITALIAN.tag)
-        assertEquals(AppLanguage.ITALIAN.tag, AppLocale.overrideTag(context))
+    fun legacyLanguageMigratesIntoDataStoreWithoutReplacingCanonicalValues() {
+        val oldSystem = booleanPreferencesKey("use_system")
+        val oldTag = stringPreferencesKey("tag")
+        val canonicalSystem = booleanPreferencesKey("use_system_language")
+        val canonicalTag = stringPreferencesKey("selected_language")
+        val uninitialized = mutablePreferencesOf(oldSystem to false, oldTag to "ja")
+        migrateLegacyLocaleKeys(uninitialized)
+        assertEquals(false, uninitialized[canonicalSystem])
+        assertEquals("ja", uninitialized[canonicalTag])
+        assertNull(uninitialized[oldSystem])
+        assertNull(uninitialized[oldTag])
 
-        val wrapped = AppLocale.wrap(context)
-        assertEquals(AppLanguage.ITALIAN.tag, wrapped.resources.configuration.locales[0].toLanguageTag())
-        assertEquals(AppLanguage.ITALIAN.locale, Locale.getDefault())
-        assertEquals("Seleziona un modello di lingua", wrapped.getString(R.string.select_model))
+        val existing = mutablePreferencesOf(
+            oldSystem to false, oldTag to "ja", canonicalSystem to true, canonicalTag to "vi")
+        migrateLegacyLocaleKeys(existing)
+        assertEquals(true, existing[canonicalSystem])
+        assertEquals("vi", existing[canonicalTag])
+        assertNull(existing[oldSystem])
+        assertNull(existing[oldTag])
     }
 
     @Test
-    fun followingTheSystemLanguageKeepsTheBaseContext() {
-        AppLocale.save(context, useSystem = true, tag = AppLanguage.THAI.tag)
-        assertNull(AppLocale.overrideTag(context))
+    fun runtimeOverrideBuildsOnlyLocalResourcesWithoutChangingGlobalLocale() {
+        val default = Locale.getDefault()
+        val italian = AppLocale.wrap(context, useSystem = false, tag = AppLanguage.ITALIAN.tag)
+        assertEquals(AppLanguage.ITALIAN.tag, italian.resources.configuration.locales[0].toLanguageTag())
+        assertEquals("Seleziona un modello di lingua", italian.getString(R.string.select_model))
+        assertEquals(default, Locale.getDefault())
 
-        val wrapped = AppLocale.wrap(context)
+        val japanese = AppLocale.wrap(context, useSystem = false, tag = AppLanguage.JAPANESE.tag)
+        assertEquals("モデルを選択", japanese.getString(R.string.select_model))
+        assertEquals("Select model", AppLocale.wrap(context, false, "en").getString(R.string.select_model))
+        assertEquals(default, Locale.getDefault())
+    }
+
+    @Test
+    fun systemLanguageUsesOriginalContextRegardlessOfSavedTag() {
+        val wrapped = AppLocale.wrap(context, useSystem = true, tag = AppLanguage.THAI.tag)
         assertSame(context, wrapped)
         assertNotEquals(AppLanguage.THAI.locale, Locale.getDefault())
     }
 
     @Test
-    fun preferencesMirrorTheLanguageChoiceIntoTheOverride() = runBlocking {
+    fun preferencesChangeLanguageAtRuntimeWithoutBootstrapFile() = runBlocking {
         val repository = AppPreferencesRepository(context)
+        val bootstrap = java.io.File(context.filesDir, "app_locale_bootstrap")
+        bootstrap.delete()
 
         repository.setAppLanguage(useSystem = false, tag = AppLanguage.THAI.tag)
-        assertEquals(AppLanguage.THAI.tag, AppLocale.overrideTag(context))
-        assertEquals(
-            "เลือกโมเดลภาษา",
-            AppLocale.wrap(context).getString(R.string.select_model),
-        )
+        val thai = repository.appPreferencesFlow.first()
+        assertEquals(false, thai.useSystemLanguage)
+        assertEquals(AppLanguage.THAI.tag, thai.selectedLanguage)
+        assertEquals("เลือกโมเดลภาษา",
+            AppLocale.wrap(context, thai.useSystemLanguage, thai.selectedLanguage).getString(R.string.select_model))
 
         repository.setAppLanguage(useSystem = true, tag = AppLanguage.THAI.tag)
-        assertNull(AppLocale.overrideTag(context))
+        val followingSystem = repository.appPreferencesFlow.first()
+        assertEquals(true, followingSystem.useSystemLanguage)
+        assertSame(context, AppLocale.wrap(context, followingSystem.useSystemLanguage, followingSystem.selectedLanguage))
+        assertTrue("Language changes must never create a bootstrap file", !bootstrap.exists())
     }
 }

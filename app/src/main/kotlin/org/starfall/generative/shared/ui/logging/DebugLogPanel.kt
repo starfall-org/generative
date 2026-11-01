@@ -62,7 +62,7 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("${stringResource(R.string.debug_log_title)} · ${visible.size}/${entries.size}",
+                    Text("${stringResource(R.string.debug_logs)} · ${visible.size}/${entries.size}",
                         style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (category != null || level != null) {

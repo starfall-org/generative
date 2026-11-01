@@ -51,7 +51,7 @@ class AppMenuScreenTest {
                     "AppSettings" -> Scaffold(
                         topBar = {
                             MainAppbar(
-                                title = stringResource(R.string.settings_category_app_settings),
+                                title = stringResource(R.string.settings_general_settings),
                                 onBack = { page = "features" }
                             )
                         }
@@ -92,12 +92,12 @@ class AppMenuScreenTest {
                     }
                     else -> AppMenuScreen(
                         onNavigateToCustomization = { destinations.add("Customization") },
-                        onNavigateToChatOptions = { destinations.add("Chat Options") },
+                        onNavigateToChatOptions = { destinations.add("Chat Configuration") },
                         onNavigateToToolsEditor = { destinations.add("Feature Tools") },
                         onNavigateToProviders = { destinations.add("Model Providers") },
                         onNavigateToMcp = { destinations.add("MCP Connectors") },
                         onNavigateToSpeech = { destinations.add("Speech Services") },
-                        onNavigateToRemoteMachines = { destinations.add("Remote Machines") },
+                        onNavigateToRemoteMachines = { destinations.add("Remote SSH") },
                         onNavigateToStorage = { destinations.add("Media Storage") },
                         onNavigateToAppSettings = {
                             if (showSettingsPage) page = "AppSettings" else destinations.add("General Settings")
@@ -183,14 +183,14 @@ class AppMenuScreenTest {
         val destinations = mutableListOf<String>()
         showFeatures(destinations)
         val items = listOf(
-            R.string.app_menu_default_options to "Chat Options",
-            R.string.app_menu_language_providers to "Model Providers",
-            R.string.app_menu_speech_services to "Speech Services",
-            R.string.app_menu_builtin_tools to "Feature Tools",
-            R.string.app_menu_model_context_protocol to "MCP Connectors",
-            R.string.app_menu_remote_servers to "Remote Machines",
-            R.string.app_menu_media_management to "Media Storage",
-            R.string.app_menu_icons_management to "Icons & Trademarks",
+            R.string.chat_configuration to "Chat Configuration",
+            R.string.model_providers to "Model Providers",
+            R.string.speech_synthesis_services to "Speech Services",
+            R.string.built_in_tools to "Feature Tools",
+            R.string.mcp to "MCP Connectors",
+            R.string.remote_ssh to "Remote SSH",
+            R.string.media_management to "Media Storage",
+            R.string.icons_management to "Icons & Trademarks",
             R.string.app_menu_settings to "General Settings",
             R.string.app_menu_data to "Data Controls",
             R.string.app_menu_about to "About"
@@ -202,10 +202,10 @@ class AppMenuScreenTest {
         }
         compose.runOnIdle { assertEquals(items.map { it.second }, destinations) }
         listOf(
-            "configuration" to R.string.app_menu_default_options,
-            "tools" to R.string.app_menu_builtin_tools,
-            "remote" to R.string.app_menu_remote_servers,
-            "media" to R.string.app_menu_media_management,
+            "configuration" to R.string.chat_configuration,
+            "tools" to R.string.built_in_tools,
+            "remote" to R.string.remote_ssh,
+            "media" to R.string.media_management,
             "settings" to R.string.app_menu_settings,
             "data" to R.string.app_menu_data
         ).forEach { (group, label) ->
@@ -229,7 +229,7 @@ class AppMenuScreenTest {
             R.string.settings_providers_description,
             R.string.settings_mcp_manage_description,
             R.string.settings_speech_services_description,
-            R.string.remote_machines_description,
+            R.string.remote_servers_description,
             R.string.settings_storage_description,
             R.string.icon_settings_description,
             R.string.settings_category_app_settings_description,

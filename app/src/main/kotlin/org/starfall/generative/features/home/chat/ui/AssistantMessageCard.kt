@@ -40,9 +40,13 @@ import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderC
 import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
 import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.AlertSeverity
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.layout.nestedContainerColor
+import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -66,7 +70,6 @@ fun AssistantMessageCard(
     onToggleChatImage: ((String) -> Unit)? = null,
     isReading: Boolean = false,
     fallbackModelName: String = "",
-    modelIcon: String? = null,
     modifier: Modifier = Modifier,
     conversationId: String? = null,
     streamStateFlow: StateFlow<ActiveChatStreamState?>? = null,
@@ -136,22 +139,44 @@ fun AssistantMessageCard(
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
+        // A response containing only thinking, tool actions or attachments still needs an
+        // editable answer slot. Keep it separate from the actions timeline and toolbar.
+        if (!isStreaming && hasContent && activeVersion.content.isBlank()) {
+            Surface(
+                onClick = onEdit,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    .heightIn(min = 32.dp).testTag("assistant-empty-content"),
+                shape = RoundedCornerShape(10.dp),
+                color = nestedContainerColor(),
+                border = nestedContainerBorder()
+            ) {
+                Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.CenterStart) {
+                    SharedIcon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp))
+                }
+            }
+        }
         if (isStreaming) {
             GenerationLoadingIndicator(
-                modelName = generatedModelName,
-                modelId = activeVersion.modelId,
-                modelIcon = modelIcon,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
             )
         }
 
         activeVersion.generationError?.takeIf { it.isNotBlank() }?.let { error ->
+            // Token exhaustion is an API-imposed limit, not a transport failure.
+            // Keep the persisted block format unchanged for editing, retry and old conversations.
+            val isWarning = error == OUTPUT_TOKEN_LIMIT_REACHED
             GatedSelectionContainer { SelectionOnlyPlaceholder("[ErrorBlock]") }
             val errorFontSize = (LocalCodeRenderingPreferences.current.effectiveMessageFontSize * 0.78f).sp
             ErrorContainer(
                 message = error,
-                title = stringResource(R.string.message_generation_error),
+                severity = if (isWarning) AlertSeverity.WARNING else AlertSeverity.ERROR,
+                title = stringResource(
+                    if (isWarning) R.string.message_generation_warning else R.string.message_generation_error
+                ),
                 onRetry = onRetryError,
+                expandable = !isWarning,
                 messageStyle = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace,
                     fontSize = errorFontSize,

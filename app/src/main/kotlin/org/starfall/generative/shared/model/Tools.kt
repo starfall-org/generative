@@ -340,6 +340,23 @@ fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.generativ
         settings.machinesEnabled && machine.aiToolsEnabled
     }
 
+/**
+ * Atomically replace the active Remote Machine for chat tools. Explicit false entries ensure that
+ * deselecting also disables the older machinesEnabled fallback for every existing machine.
+ */
+fun ToolSettings.withSelectedRemoteMachine(machineId: String?, knownMachineIds: List<String>): ToolSettings {
+    require(machineId == null || machineId in knownMachineIds)
+    val ids = enabledMachines.keys + knownMachineIds
+    return copy(
+        enabledMachines = ids.associateWith { it == machineId },
+        machinesEnabled = machineId != null
+    )
+}
+
+/** One machine is presented as selected in the drawer. Legacy multi-enabled settings show the first. */
+fun selectedRemoteMachine(settings: ToolSettings, machines: List<RemoteMachine>): RemoteMachine? =
+    machines.firstOrNull { remoteMachineEnabled(settings, it) }
+
 fun remoteMachineToolEnabled(
     settings: ToolSettings,
     machine: org.starfall.generative.shared.model.RemoteMachine,

@@ -71,6 +71,7 @@ fun RemoteMachinesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connectedIds by viewModel.connectedMachineIds.collectAsStateWithLifecycle()
+    val forwardedPorts by viewModel.forwardedPorts.collectAsStateWithLifecycle()
     var isGrid by rememberSaveable { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
     var portForwardMachine by remember { mutableStateOf<RemoteMachine?>(null) }
@@ -85,7 +86,7 @@ fun RemoteMachinesScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
-                title = stringResource(R.string.app_menu_remote_servers),
+                title = stringResource(R.string.remote_ssh),
                 onBack = onBack,
                 actions = {
                     ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
@@ -93,7 +94,7 @@ fun RemoteMachinesScreen(
                         SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                     }
                     IconButton(onClick = onOpenSettings) {
-                        SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_machine_settings))
+                        SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_ssh_google_oauth))
                     }
                 }
             )
@@ -108,9 +109,9 @@ fun RemoteMachinesScreen(
                 ) {
                     SharedIcon(Icons.Outlined.Computer, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text(stringResource(R.string.remote_machine_empty), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.remote_servers_empty), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        stringResource(R.string.remote_machine_empty_hint),
+                        stringResource(R.string.remote_server_empty_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -170,12 +171,23 @@ fun RemoteMachinesScreen(
     portForwardMachine?.let { machine ->
         PortForwardDialog(
             machine = machine,
+            activeForwards = forwardedPorts[machine.id].orEmpty(),
             onDismiss = { portForwardMachine = null },
+            onStop = {
+                portForwardMachine = null
+                viewModel.stopPortForward(machine.id) { result ->
+                    val message = result.fold(
+                        onSuccess = { localizedResources.getString(R.string.remote_server_port_forward_stopped) },
+                        onFailure = { it.message ?: it.toString() }
+                    )
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            },
             onSaveAndStart = { updated ->
                 portForwardMachine = null
                 viewModel.saveMachineAndStartPortForward(updated) { result ->
                     val message = result.fold(
-                        onSuccess = { localizedResources.getString(R.string.remote_machine_port_forward_started) },
+                        onSuccess = { localizedResources.getString(R.string.remote_server_port_forward_started) },
                         onFailure = { it.message ?: it.toString() }
                     )
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
@@ -198,8 +210,8 @@ fun RemoteMachinesScreen(
     deleting?.let { machine ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text(stringResource(R.string.dialog_delete_machine_title)) },
-            text = { Text(stringResource(R.string.remote_machine_delete_message, machine.name)) },
+            title = { Text(stringResource(R.string.dialog_delete_server_title)) },
+            text = { Text(stringResource(R.string.remote_server_delete_message, machine.name)) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.deleteMachine(machine.id)
@@ -215,7 +227,7 @@ fun RemoteMachinesScreen(
     ipUpdateNotice?.let { notice ->
         AlertDialog(
             onDismissRequest = { ipUpdateNotice = null },
-            title = { Text(stringResource(R.string.remote_machine_update_ip_title, notice.machineName)) },
+            title = { Text(stringResource(R.string.remote_server_update_ip_title, notice.machineName)) },
             text = { Text(notice.message) },
             confirmButton = {
                 TextButton(onClick = { ipUpdateNotice = null }) {
@@ -258,7 +270,7 @@ private fun RemoteMachineCard(
           Row(verticalAlignment = Alignment.CenterVertically) {
             if (connected && !isGrid) {
                 IconButton(onClick = onDisconnect) {
-                    SharedIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_machine_disconnect))
+                    SharedIcon(Icons.Outlined.LinkOff, stringResource(R.string.remote_server_disconnect))
                 }
             }
             Box {
@@ -267,28 +279,28 @@ private fun RemoteMachineCard(
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
+                        text = { Text(stringResource(R.string.remote_server_open_terminal)) },
                         leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
                         onClick = { menu = false; onTerminal() }
                     )
                     if (connected && isGrid) DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_disconnect)) },
+                        text = { Text(stringResource(R.string.remote_server_disconnect)) },
                         leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) },
                         onClick = { menu = false; onDisconnect() }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_start_port_forward)) },
+                        text = { Text(stringResource(R.string.remote_port_forward)) },
                         leadingIcon = { SharedIcon(Icons.Outlined.Hub, null) },
                         onClick = { menu = false; onStartPortForward() }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_machine_tools_section)) },
+                        text = { Text(stringResource(R.string.remote_ai_tools)) },
                         leadingIcon = { SharedIcon(Icons.Outlined.Build, null) },
                         onClick = { menu = false; onMachineTools() }
                     )
                     if (gcloud) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.remote_machine_update_ip)) },
+                            text = { Text(stringResource(R.string.remote_server_update_ip)) },
                             leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
                             onClick = { menu = false; onUpdateIp() }
                         )
@@ -316,7 +328,7 @@ private fun RemoteMachineCard(
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
+                        machine.name.ifBlank { stringResource(R.string.remote_server_unnamed) },
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -325,7 +337,7 @@ private fun RemoteMachineCard(
                     RemoteStatusDot(connected)
                 }
                 Text(
-                    stringResource(if (gcloud) R.string.remote_machine_type_gcloud else R.string.remote_machine_type_ssh),
+                    stringResource(if (gcloud) R.string.remote_server_type_gcloud_shell else R.string.remote_server_type_ssh),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -338,7 +350,7 @@ private fun RemoteMachineCard(
                 )
                 if (connected) {
                     Text(
-                        stringResource(R.string.remote_machine_terminal_connected),
+                        stringResource(R.string.remote_server_terminal_connected),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

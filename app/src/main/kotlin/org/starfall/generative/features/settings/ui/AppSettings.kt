@@ -130,8 +130,8 @@ fun AppearanceSettingsView(
             }
         }
         item {
-            SettingsSection(stringResource(R.string.settings_system_bars)) {
-                PreferenceToggle(stringResource(R.string.settings_immersive_mode), null,
+            SettingsSection(stringResource(R.string.settings_status_bar)) {
+                PreferenceToggle(stringResource(R.string.settings_hide_status_bar), null,
                     appPreferences.hideStatusBar, onHideStatusBarChange)
             }
         }
@@ -180,7 +180,7 @@ fun PreferencesSettingsView(
         item {
             org.starfall.generative.shared.ui.layout.SettingsCard {
                 SettingsChoicePreference(
-                    title = stringResource(R.string.screen_wakelock_title),
+                    title = stringResource(R.string.keep_screen_on_during_generation),
                     value = appPreferences.screenWakelockMode,
                     choices = listOf(
                         SettingsChoice(ScreenWakelockMode.EXCEPT_TOOL_CALLS, stringResource(R.string.common_auto)),
@@ -204,8 +204,8 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            SettingsSection(stringResource(R.string.settings_mcp_tools)) {
-                Text(stringResource(R.string.tool_call_options), style = MaterialTheme.typography.titleMedium)
+            SettingsSection(stringResource(R.string.mcp_and_tools)) {
+                Text(stringResource(R.string.tool_execution), style = MaterialTheme.typography.titleMedium)
                 SettingsChoicePreference(
                     title = stringResource(R.string.tool_call_strategy),
                     value = appPreferences.toolCallStrategy,
@@ -218,7 +218,7 @@ fun PreferencesSettingsView(
                 )
                 if (appPreferences.toolCallStrategy == ToolCallStrategy.PARALLEL) {
                     SettingsNumberPreference(
-                        title = stringResource(R.string.tool_call_concurrent_limit),
+                        title = stringResource(R.string.maximum_simultaneous_tool_calls),
                         value = appPreferences.toolCallConcurrentLimit,
                         defaultValue = DEFAULT_TOOL_CALL_CONCURRENT_LIMIT,
                         range = 1..MAX_TOOL_CALL_CONCURRENT_LIMIT,
@@ -247,7 +247,7 @@ fun PreferencesSettingsView(
             }
         }
         item {
-            SettingsSection(stringResource(R.string.settings_feedback)) {
+            SettingsSection(stringResource(R.string.settings_haptics)) {
                 PreferenceToggle(stringResource(R.string.settings_haptic_vibration), null,
                     appPreferences.enableVibration, onEnableVibrationChange)
             }
@@ -326,7 +326,7 @@ fun AppSettings(
         AppSwipeTabs(
             tabs = listOf(
                 stringResource(R.string.settings_tab_preferences),
-                stringResource(R.string.settings_tab_appearances)
+                stringResource(R.string.settings_tab_appearance)
             ),
             pagerState = pager,
             modifier = Modifier.weight(1f).fillMaxWidth(),

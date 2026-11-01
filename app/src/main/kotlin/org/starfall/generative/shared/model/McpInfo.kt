@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.model
 
+import org.starfall.generative.BuildConfig
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -44,13 +45,11 @@ data class McpInfo(
     @kotlinx.serialization.Transient val credentialState: org.starfall.generative.shared.model.auth.CredentialLoadState = org.starfall.generative.shared.model.auth.CredentialLoadState.LOADED
 )
 
-const val CONTENT_API_MCP_ENDPOINT = "https://serverweb.serv00.net/mcp"
-
 fun String.isContentApiName(): Boolean =
     trim().lowercase().replace("-", "").replace(" ", "") == "contentapi"
 
 fun McpInfo.isContentApiPreset(): Boolean = id == "content-api" || name.isContentApiName()
 
-/** Returns the effective endpoint while allowing the built-in Content API URL to stay hidden. */
+/** Explicit MCP URLs win; the Content API preset uses the build-configured endpoint. */
 fun McpInfo.resolvedUrl(): String? = url?.trim()?.takeIf(String::isNotEmpty)
-    ?: CONTENT_API_MCP_ENDPOINT.takeIf { name.isContentApiName() }
+    ?: BuildConfig.CONTENT_API_MCP_URL.trim().takeIf { name.isContentApiName() && it.isNotEmpty() }

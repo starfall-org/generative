@@ -36,6 +36,7 @@ class RemoteTerminalAppBarTest {
                 TerminalAppBar(
                     bridge = bridge,
                     onToggleSessions = {},
+                    onBack = {},
                     onDisconnect = {},
                     onInputModeChange = { bridge.setInputMode(it); modeChanges++ },
                     onToggleIme = { bridge.updateImeEnabled(!bridge.imeEnabled) },
@@ -72,7 +73,7 @@ class RemoteTerminalAppBarTest {
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 TerminalAppBar(
-                    bridge = null, onToggleSessions = {}, onDisconnect = {},
+                    bridge = null, onToggleSessions = {}, onBack = {}, onDisconnect = {},
                     onInputModeChange = {},
                     onToggleIme = {}, onToggleForceMouse = {}
                 )
@@ -83,6 +84,34 @@ class RemoteTerminalAppBarTest {
     }
 
     @Test
+    fun backIsLeftOfDisconnectAndDoesNotInvokeDisconnect() {
+        var backedOut = 0
+        var disconnected = 0
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                TerminalAppBar(
+                    bridge = null,
+                    onToggleSessions = {},
+                    onBack = { backedOut++ },
+                    onDisconnect = { disconnected++ },
+                    onInputModeChange = {},
+                    onToggleIme = {},
+                    onToggleForceMouse = {}
+                )
+            }
+        }
+        val back = compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        val disconnect = compose.onNodeWithContentDescription("Disconnect and close terminal").assertIsDisplayed()
+        assertEquals(true, back.fetchSemanticsNode().boundsInRoot.right <=
+            disconnect.fetchSemanticsNode().boundsInRoot.left)
+        back.performClick()
+        compose.runOnIdle {
+            assertEquals(1, backedOut)
+            assertEquals(0, disconnected)
+        }
+    }
+
+    @Test
     fun disconnectAlsoClosesTheScreenWithoutAnActiveSession() {
         var closed = false
         compose.setContent {
@@ -90,6 +119,7 @@ class RemoteTerminalAppBarTest {
                 TerminalAppBar(
                     bridge = null,
                     onToggleSessions = {},
+                    onBack = {},
                     onDisconnect = { closed = true },
                     onInputModeChange = {},
                     onToggleIme = {},

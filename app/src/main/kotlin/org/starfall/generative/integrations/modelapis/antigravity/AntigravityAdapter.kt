@@ -5,6 +5,8 @@ import okhttp3.FormBody
 import org.starfall.generative.shared.logging.DebugLogInterceptor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.*
@@ -208,7 +210,7 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 }
                 if (!projectId.isNullOrBlank()) {
                     token = token.copy(projectId = projectId, codeAssistBaseUrl = base)
-                    store.save(provider.oauthCredentialId, token)
+                    withContext(Dispatchers.IO) { store.save(provider.oauthCredentialId, token) }
                     return@withLock token
                 }
                 lastFailure = IllegalStateException("Code Assist did not return a provisioned project")
@@ -247,12 +249,13 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
                 }
                 // Keep the generation route on the endpoint that returned this account's catalog.
                 if (token.codeAssistBaseUrl != base) projectLock.withLock {
-                    val current = store.load(provider.oauthCredentialId)
+                    val current = withContext(Dispatchers.IO) { store.load(provider.oauthCredentialId) }
                     val hasConfiguredProject = provider.config.antigravityProjectId(provider.oauthCredentialId) != null
-                    if (current != null && (hasConfiguredProject || current.projectId == token.projectId)) store.save(
-                        provider.oauthCredentialId,
-                        current.copy(codeAssistBaseUrl = base)
-                    )
+                    if (current != null && (hasConfiguredProject || current.projectId == token.projectId)) {
+                        withContext(Dispatchers.IO) {
+                            store.save(provider.oauthCredentialId, current.copy(codeAssistBaseUrl = base))
+                        }
+                    }
                 }
                 return catalog
             } catch (e: CancellationException) {

@@ -100,7 +100,7 @@ class ConfigurationTest {
             for ((p, model, temp, limit) in listOf(
                 Case(provider, "a", 0.2, 123), Case(provider, "b", null, 123), Case(other, "a", 0.8, 456)
             )) {
-                server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody("data: [DONE]\n\n"))
+                server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody("data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
                 service.streamContent(p, model, messages, "Prompt").toList()
                 val request = server.takeRequest(5, TimeUnit.SECONDS)!!
                 val body = json.parseToJsonElement(request.body.readUtf8()).jsonObject
@@ -173,7 +173,7 @@ class ConfigurationTest {
     @Test fun modelCanEnableStreamingWhenProviderDisablesIt() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
-                .setBody("data: [DONE]\n\n"))
+                .setBody("data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
             val provider = ModelProvider("p", "P", ModelApiType.OPENAI, Authorization(key = "test"),
                 baseUrl = server.url("/v1").toString(), config = ProviderConfiguration(supportStream = false,
                     modelConfigs = mapOf("custom" to ModelConfiguration(supportStream = true))))

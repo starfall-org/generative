@@ -84,8 +84,13 @@ internal class ToolRequestService(
                 JsonObject(scopedBody + ("model" to str(model))) else scopedBody
             val requestProvider = aiService.prepareAccountRequest(p, provider, requestBody)
             val upstreamStream = aiService.accountShouldStreamUpstream(p, requestProvider, model, stream)
-            val response = http.modelResponse(aiService.accountRequestUrl(p, provider, url),
-                aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt), requestProvider, upstreamStream,
+            // Account adapters may synchronously access encrypted Room credentials when
+            // normalizing requests; never evaluate these callbacks on a UI-owned dispatcher.
+            val (requestUrl, normalizedBody) = withContext(Dispatchers.IO) {
+                aiService.accountRequestUrl(p, provider, url) to
+                    aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt)
+            }
+            val response = http.modelResponse(requestUrl, normalizedBody, requestProvider, upstreamStream,
                 { chunk -> if (stream) text(chunk) }, { chunk -> if (stream) reasoning(chunk) },
                 { aiService.unwrapAccountResponse(p, it) })
             val restored = aiService.restoreAccountToolResponse(p, provider, requestBody, response)

@@ -202,7 +202,7 @@ fun IconsScreen(onBack: () -> Unit) {
                                 )
                             )
                         } else {
-                            FixedAppBarTitle(stringResource(R.string.app_menu_icons_management))
+                            FixedAppBarTitle(stringResource(R.string.icons_management))
                         }
                     }
                 },
@@ -375,15 +375,18 @@ private fun StoredIconPreview(
 ) {
     val context = LocalContext.current
     val dark = useDarkVariant ?: (MaterialTheme.colorScheme.background.luminance() < 0.5f)
-    val data = remember(image, dark, context) { IconStore(context).imageData(image, dark) }
+    val data by produceState<Any?>(initialValue = null, image, dark, context) {
+        value = withContext(Dispatchers.IO) { IconStore(context).imageData(image, dark) }
+    }
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = backgroundColor ?: MaterialTheme.colorScheme.surfaceContainerHighest,
         border = if (backgroundColor == null) nestedContainerBorder() else null
     ) {
-        if (data != null && (data !is File || data.exists())) {
-            AsyncImage(model = data, contentDescription = null, modifier = Modifier.fillMaxSize(),
+        val iconData = data
+        if (iconData != null && (iconData !is File || iconData.exists())) {
+            AsyncImage(model = iconData, contentDescription = null, modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit)
         } else {
             Box(contentAlignment = Alignment.Center) {

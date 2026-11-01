@@ -1,3 +1,5 @@
+import java.net.URI
+
 // Needs full git history: shallow CI checkouts must be unshallowed first (see codemagic.yaml).
 val gitCommitNumber = providers.exec {
     commandLine("git", "rev-list", "--count", "HEAD")
@@ -52,6 +54,20 @@ android {
         }
 
         manifestPlaceholders["appAuthRedirectScheme"] = "generative-oauth"
+
+        // Build-time configuration only; never commit the Content API endpoint.
+        val contentApiMcpUrl = providers.environmentVariable("CONTENT_API_MCP_URL")
+            .orNull.orEmpty().trim()
+        if (contentApiMcpUrl.isNotEmpty()) {
+            val parsed = URI(contentApiMcpUrl)
+            require(parsed.scheme in setOf("http", "https") && !parsed.host.isNullOrBlank()) {
+                "CONTENT_API_MCP_URL must be an absolute HTTP(S) URL"
+            }
+        }
+        val escapedContentApiMcpUrl = contentApiMcpUrl
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+            .replace("\n", "\\n").replace("\r", "\\r")
+        buildConfigField("String", "CONTENT_API_MCP_URL", "\"$escapedContentApiMcpUrl\"")
 
         testInstrumentationRunner = if (providers.gradleProperty("migrationUiRunner").orNull == "true") {
             "org.starfall.generative.MigrationUiTestRunner"

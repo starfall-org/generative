@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -25,9 +27,11 @@ fun FeaturesLogo(
 ) {
     val context = LocalContext.current
     val revision by IconStore.revision.collectAsState()
-    val data = remember(image, revision, context) {
-        image?.let { IconStore(context).imageData(it, dark = false)
-            ?: java.io.File(it).takeIf { file -> file.isFile } }
+    val data by produceState<Any?>(initialValue = null, image, revision, context) {
+        value = withContext(Dispatchers.IO) {
+            image?.let { IconStore(context).imageData(it, dark = false)
+                ?: java.io.File(it).takeIf { file -> file.isFile } }
+        }
     }
     val dark = LocalDarkMode.current
     Box(

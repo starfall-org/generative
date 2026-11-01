@@ -111,7 +111,7 @@ class ChatOpeningScrollTest {
         show(current)
         compose.runOnIdle { current.value = saved }
         assertEndVisible("delayed")
-        val list = compose.onNode(hasScrollAction())
+        val list = compose.onNodeWithTag("chat-message-list")
         fun position() = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         val bottom = position()
         list.performTouchInput {
@@ -127,17 +127,27 @@ class ChatOpeningScrollTest {
         compose.onNodeWithContentDescription("Jump to latest").assertIsDisplayed()
     }
 
-    @Test fun nativeContentInsetsIncludeTheWholeErrorAndComposerPanel() {
+    @Test fun saveFailureAppearsInMessageListWithoutResizingComposer() {
         val current = mutableStateOf<Conversation?>(conversation("with-error"))
-        val error = mutableStateOf<String?>(
-            org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX + " Storage unavailable"
-        )
+        val error = mutableStateOf<String?>(null)
         show(current, error = error)
         assertEndVisible("with-error")
+        val before = compose.onNodeWithTag("chat-bottom-panel").fetchSemanticsNode().boundsInRoot
+
+        compose.runOnIdle {
+            error.value = org.starfall.generative.features.home.chat.logic.SAVE_CONVERSATION_ERROR_PREFIX +
+                " Storage unavailable"
+        }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Storage unavailable", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Storage unavailable", substring = true).assertIsDisplayed()
-        val panelTop = compose.onNodeWithTag("chat-bottom-panel").fetchSemanticsNode().boundsInRoot.top
-        val end = compose.onNodeWithTag("chat-content-end-with-error-answer").fetchSemanticsNode().boundsInRoot.bottom
-        assertTrue("The real content end must be above the entire bottom panel", end <= panelTop)
+        compose.onNodeWithTag("error-container-copy").assertExists()
+        compose.onNodeWithTag("error-container-toggle").assertExists()
+        val after = compose.onNodeWithTag("chat-bottom-panel").fetchSemanticsNode().boundsInRoot
+        assertTrue("A save error in chat history must not change the composer height",
+            kotlin.math.abs(before.top - after.top) <= 1f)
     }
 
     @Test fun pendingHistoryReadIsVeiledEvenBeforeConversationOrMessagesExist() {

@@ -22,8 +22,20 @@ import org.starfall.generative.shared.ui.model.ModelPickerCard
 
 @Composable
 internal fun ProviderModelsPane(models: List<String>, configurations: Map<String, ModelConfiguration>, listState: LazyListState,
-    onMove: (Int, Int) -> Unit, onDrop: () -> Unit, onEdit: (String) -> Unit, onDelete: (String) -> Unit, onOpenCatalog: () -> Unit) = with(Launcher) {
+    onOrderChange: (List<String>) -> Unit, onDrop: (List<String>, List<String>) -> Unit, onEdit: (String) -> Unit, onDelete: (String) -> Unit, onOpenCatalog: () -> Unit) = with(Launcher) {
     val dndState = Launcher.rememberState<String>()
+    var dragSnapshot by remember { mutableStateOf<List<String>?>(null) }
+    var workingOrder by remember { mutableStateOf(models) }
+    var lastTarget by remember { mutableStateOf<String?>(null) }
+
+    fun move(draggedId: String, targetId: String) {
+        val from = workingOrder.indexOf(draggedId)
+        val to = workingOrder.indexOf(targetId)
+        if (from >= 0 && to >= 0 && from != to) {
+            workingOrder = workingOrder.toMutableList().apply { add(to, removeAt(from)) }
+            onOrderChange(workingOrder)
+        }
+    }
     Launcher.Host(dndState, Modifier.fillMaxSize(), preview = { drag ->
         configurations[drag.item.data]?.let { model ->
             ModelPickerCard(modelId = drag.item.data, config = model, isSelected = false,
@@ -54,14 +66,32 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                     showReasoningEffort = false,
                     onClick = { onEdit(id) },
                     modifier = Modifier.animateItem()
-                        .dragSource(dndState, id, id)
+                        .dragSource(dndState, id, id,
+                            onDragStart = { dragSnapshot = models; workingOrder = models; lastTarget = null },
+                            onDragEnd = { outcome ->
+                                val before = dragSnapshot
+                                if (outcome.accepted && before != null && workingOrder != before) {
+                                    onDrop(before, workingOrder)
+                                } else if (!outcome.accepted) {
+                                    before?.let(onOrderChange)
+                                }
+                                dragSnapshot = null
+                                lastTarget = null
+                            })
                         .dropTarget(dndState, "slot:$id", accepts = { it.key != id },
+                            onDragEnter = { dragged ->
+                                if (lastTarget != id) {
+                                    move(dragged.item.data, id)
+                                    lastTarget = id
+                                }
+                            },
                             onDrop = { dragged ->
-                                val from = models.indexOf(dragged.item.data)
-                                val to = models.indexOf(id)
-                                if (from >= 0 && to >= 0 && from != to) { onMove(from, to); onDrop(); true }
-                                else false
-                            }),
+                                if (lastTarget != id) move(dragged.item.data, id)
+                                true
+                            })
+                        .dropTarget(dndState, "self:$id", priority = 5,
+                            accepts = { it.key == id },
+                            onDrop = { dragSnapshot != workingOrder }),
                     trailingContent = {
                         ItemContextMenu(onEdit = { onEdit(id) }, onDelete = { onDelete(id) }, deleteColor = MaterialTheme.colorScheme.error, modifier = Modifier.size(32.dp))
                     }

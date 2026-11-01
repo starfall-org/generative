@@ -96,7 +96,7 @@ internal fun RemoteMachineSettings(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
-                title = stringResource(R.string.remote_machine_settings),
+                title = stringResource(R.string.remote_ssh_google_oauth),
                 onBack = onBack
             )
         }
@@ -106,8 +106,8 @@ internal fun RemoteMachineSettings(
         ) {
             AppSwipeTabs(
                 tabs = listOf(
-                    stringResource(R.string.remote_machine_ssh_keys),
-                    stringResource(R.string.remote_machine_google_oauth)
+                    stringResource(R.string.remote_server_ssh_keys),
+                    stringResource(R.string.remote_server_google_oauth)
                 ),
                 pagerState = pager,
                 modifier = Modifier.fillMaxSize(),
@@ -126,13 +126,13 @@ internal fun RemoteMachineSettings(
                                     IconButton(onClick = {
                                         identityLauncher.launch(arrayOf("application/octet-stream", "text/plain", "*/*"))
                                     }) {
-                                        SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_ssh_key))
+                                        SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_server_upload_ssh_key))
                                     }
                                 }
                                 identityError?.let { RemoteErrorText(it) }
                                 if (state.identities.isEmpty()) {
                                     Text(
-                                        stringResource(R.string.remote_machine_no_uploaded_keys),
+                                        stringResource(R.string.remote_server_no_uploaded_keys),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -146,13 +146,13 @@ internal fun RemoteMachineSettings(
                                                 append("\n")
                                                 append(
                                                     localizedResources.getString(
-                                                        if (key.publicKeyPath.isNotBlank()) R.string.remote_machine_public_key_uploaded
-                                                        else R.string.remote_machine_public_key_missing
+                                                        if (key.publicKeyPath.isNotBlank()) R.string.remote_server_public_key_uploaded
+                                                        else R.string.remote_server_public_key_missing
                                                     )
                                                 )
                                                 if (users > 0) {
                                                     append("\n")
-                                                    append(localizedResources.getString(R.string.remote_machine_ssh_key_used_by, users))
+                                                    append(localizedResources.getString(R.string.remote_server_ssh_key_used_by, users))
                                                 }
                                             },
                                             subtitleMaxLines = 3,
@@ -162,7 +162,7 @@ internal fun RemoteMachineSettings(
                                                     publicKeyTarget = key.id
                                                     publicKeyLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
                                                 }) {
-                                                    SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_upload_public_key))
+                                                    SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_server_upload_public_key))
                                                 }
                                                 IconButton(enabled = users == 0, onClick = { viewModel.deleteIdentityKey(key.id) }) {
                                                     SharedIcon(
@@ -181,7 +181,7 @@ internal fun RemoteMachineSettings(
                             SettingsCard {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                                     IconButton(onClick = { oauthLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
-                                        SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_machine_import_oauth_json))
+                                        SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_server_import_oauth_json))
                                     }
                                     IconButton(onClick = { clientEditor = viewModel.newOAuthClient() }) {
                                         SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
@@ -190,15 +190,15 @@ internal fun RemoteMachineSettings(
                                 oauthError?.let { RemoteErrorText(it) }
                                 if (state.oauthClients.isEmpty()) {
                                     Text(
-                                        stringResource(R.string.remote_machine_no_oauth_clients),
+                                        stringResource(R.string.remote_server_no_oauth_clients),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 } else {
                                     state.oauthClients.forEach { client ->
                                         val type = stringResource(
-                                            if (client.type == GoogleOAuthClientType.ANDROID) R.string.remote_machine_oauth_type_android
-                                            else R.string.remote_machine_oauth_type_desktop
+                                            if (client.type == GoogleOAuthClientType.ANDROID) R.string.remote_server_oauth_type_android
+                                            else R.string.remote_server_oauth_type_desktop
                                         )
                                         RemoteListRow(
                                             title = client.name,

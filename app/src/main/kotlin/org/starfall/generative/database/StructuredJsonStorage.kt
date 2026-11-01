@@ -59,10 +59,15 @@ internal suspend fun StructuredJsonDao.readDocument(ownerType: String, ownerId: 
     val document = getDocument(ownerType, ownerId, fieldName) ?: return null
     val nodes = getNodes(document.id).associateBy { it.nodeId }
     val childrenByParent = nodes.values.groupBy { it.parentNodeId }
+    val visiting = hashSetOf<Int>()
     fun read(nodeId: Int): JsonElement {
+        // A malformed imported/legacy graph must fail just this document, never recurse
+        // indefinitely until StackOverflowError poisons the entire provider list.
+        check(visiting.add(nodeId)) { "Cyclic structured JSON document $ownerType/$ownerId/$fieldName" }
+        check(visiting.size <= 128) { "Structured JSON depth exceeded for $ownerType/$ownerId/$fieldName" }
         val node = requireNotNull(nodes[nodeId]) { "Missing structured JSON node $nodeId" }
         val children = childrenByParent[node.nodeId].orEmpty().sortedBy { it.ordinal }
-        return when (node.nodeKind) {
+        val value = when (node.nodeKind) {
             "null" -> JsonNull
             "string" -> JsonPrimitive(node.scalarValue.orEmpty())
             "boolean" -> JsonPrimitive(node.scalarValue == "true")
@@ -73,6 +78,8 @@ internal suspend fun StructuredJsonDao.readDocument(ownerType: String, ownerId: 
             }
             else -> error("Unknown structured JSON node kind ${node.nodeKind}")
         }
+        visiting.remove(nodeId)
+        return value
     }
     return nodes.values.firstOrNull { it.parentNodeId == null }?.let { read(it.nodeId) }
 }

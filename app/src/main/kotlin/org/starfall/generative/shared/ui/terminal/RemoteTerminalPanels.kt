@@ -75,22 +75,22 @@ internal fun TerminalSessionsSideBar(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.remote_machine_terminal_sessions),
+                        stringResource(R.string.remote_server_terminal_sessions),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         stringResource(
-                            if (slots.isEmpty()) R.string.remote_machine_terminal_disconnected
-                            else R.string.remote_machine_terminal_connected
+                            if (slots.isEmpty()) R.string.remote_server_terminal_disconnected
+                            else R.string.remote_server_terminal_connected
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(enabled = !connecting, onClick = onNew) {
-                    SharedIcon(Icons.Default.Add, stringResource(R.string.remote_machine_terminal_add))
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.remote_server_terminal_add))
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -117,7 +117,7 @@ internal fun TerminalSessionsSideBar(
                             TerminalStatusDot(slot.terminal.isOpen)
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(R.string.remote_machine_terminal_tab, index + 1),
+                                    stringResource(R.string.remote_server_terminal_tab, index + 1),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = if (selected) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
@@ -138,7 +138,7 @@ internal fun TerminalSessionsSideBar(
                             IconButton(onClick = { onClose(slot) }, modifier = Modifier.size(32.dp)) {
                                 SharedIcon(
                                     Icons.Default.Close,
-                                    stringResource(R.string.remote_machine_terminal_close_session),
+                                    stringResource(R.string.remote_server_terminal_close_session),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -148,7 +148,7 @@ internal fun TerminalSessionsSideBar(
                 if (slots.isEmpty()) {
                     item {
                         Text(
-                            stringResource(R.string.remote_machine_terminal_no_sessions_hint),
+                            stringResource(R.string.remote_server_terminal_no_sessions_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)

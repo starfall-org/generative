@@ -17,9 +17,12 @@ class LibraryTestApplication : Application(), SingletonImageLoader.Factory, OAut
     private val tokenDatabase by lazy {
         Room.inMemoryDatabaseBuilder(this, AppDatabase::class.java).build()
     }
-    override val oauthRecordStorage: OAuthRecordStorage by lazy {
-        RoomOAuthRecordStorage(this, tokenDatabase)
-    }
+    private val defaultOAuthStorage by lazy { RoomOAuthRecordStorage(this, tokenDatabase) }
+    // Tests can point the synchronous OAuth adapter at the very same database as a repository,
+    // reproducing nested-transaction deadlocks that separate in-memory stores would miss.
+    @Volatile var testOAuthStorage: OAuthRecordStorage? = null
+    override val oauthRecordStorage: OAuthRecordStorage
+        get() = testOAuthStorage ?: defaultOAuthStorage
 
     override fun onCreate() {
         super.onCreate()

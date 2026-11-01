@@ -24,8 +24,8 @@ import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 /** Owns persistent SSH sessions and interactive/exec channels for remote-machine operations. */
 internal class RemoteMachineConnectionManager(
     private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Session,
-    /** Short labels (e.g. "L 8080→10808") of the forwards that were really applied to a freshly opened session. */
-    private val forwardLabelsOf: (Session) -> List<String> = { emptyList() }
+    /** Forwarding is opt-in, never part of opening a plain SSH session. */
+    private val startForwards: (Session, RemoteMachine) -> ActivePortForwards
 ) {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connections = ConcurrentHashMap<String, SharedConnection>()
@@ -84,7 +84,9 @@ internal class RemoteMachineConnectionManager(
             withContext(NonCancellable + Dispatchers.IO) {
                 runCatching { shared.release() }
                 if (error is CancellationException) throw error
-                runCatching { dropConnection(shared) }
+                // A shell channel failing must not tear down an otherwise healthy SSH connection,
+                // especially one running independent port forwards.
+                if (!shared.session.isConnected) runCatching { dropConnection(shared) }
             }
             throw error
         }
@@ -140,14 +142,19 @@ internal class RemoteMachineConnectionManager(
     fun isConnected(machineId: String): Boolean = connections[machineId]?.session?.isConnected == true
     fun disconnectMachine(machineId: String) { ioScope.launch { disconnectMachineNow(machineId) } }
     fun disconnectAllWhenIdle() { ioScope.launch {
-        connections.values.toList().filterNot { it.pinned }
-            .forEach { connection -> if (connection.requestClose()) closeConnection(connection) }
+        connections.values.toList().forEach { connection ->
+            machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock {
+                // The user may have started forwarding while this idle sweep was queued.
+                if (connections[connection.machineId] === connection && !connection.pinned &&
+                    connection.requestClose()
+                ) closeConnection(connection)
+            }
+        }
     } }
 
     /**
-     * Opens (or reuses) the machine's connection and pins it: it is no longer closed for being idle, when
-     * its last terminal closes, or when chat generation ends. Only a disconnect or a network failure ends it.
-     * Terminals opened afterwards share this connection instead of creating another one.
+     * Explicitly starts forwarding on the existing SSH connection (or opens one if necessary).
+     * Existing shell/exec channels remain live. Changing rules replaces only the forwarding listeners.
      */
     suspend fun startPortForward(
         machine: RemoteMachine,
@@ -156,28 +163,59 @@ internal class RemoteMachineConnectionManager(
     ) {
         val shared = acquireShared(machine.id, create = machine, passwordOverride = passwordOverride, askSecret = askSecret)
             ?: error("Could not open an SSH connection.")
-        shared.pinned = true
-        shared.release()
+        try {
+            withContext(Dispatchers.IO) {
+                machineLocks.getOrPut(machine.id) { Mutex() }.withLock {
+                    check(connections[machine.id] === shared && shared.session.isConnected) {
+                        "SSH connection was closed before port forwarding started."
+                    }
+                    // Reconfigure only forward listeners; never close existing shell channels.
+                    shared.forwards?.close()
+                    shared.forwards = null
+                    publishConnected()
+                    shared.forwards = startForwards(shared.session, machine)
+                    // A pending chat-idle close may have been requested after acquireShared().
+                    // Explicit forwarding always wins over such a queued idle disconnect.
+                    shared.keepAliveForForwards()
+                    publishConnected()
+                }
+            }
+        } finally {
+            withContext(NonCancellable + Dispatchers.IO) { shared.release() }
+        }
+    }
+
+    /** Stops forwarding independently of any terminal channels on the same SSH session. */
+    suspend fun stopPortForward(machineId: String): Boolean = withContext(Dispatchers.IO) {
+        machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+            val shared = connections[machineId] ?: return@withLock false
+            val forwards = shared.forwards ?: return@withLock false
+            forwards.close()
+            shared.forwards = null
+            publishConnected()
+            if (terminals[machineId].isNullOrEmpty() && shared.requestClose()) closeConnection(shared)
+            true
+        }
     }
 
     suspend fun disconnectMachineNow(machineId: String): Boolean = withContext(NonCancellable + Dispatchers.IO) {
-        val connection = connections[machineId] ?: run {
-            closeAllTerminals(machineId)
-            return@withContext false
+        machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+            val connection = connections[machineId] ?: run {
+                closeAllTerminals(machineId)
+                return@withLock false
+            }
+            closeConnection(connection)
+            true
         }
-        closeAllTerminals(machineId)
-        closeConnection(connection); true
     }
 
     /** One SSH session shared by tool commands and terminals of the same machine. */
     private inner class SharedConnection(
         val machineId: String,
         val session: Session,
-        /** Active port forwards live only as long as the session, so such a connection is never closed for being idle. */
-        pinned: Boolean = false,
-        val forwards: List<String> = emptyList(),
     ) {
-        @Volatile var pinned: Boolean = pinned
+        @Volatile var forwards: ActivePortForwards? = null
+        val pinned: Boolean get() = forwards != null
         private var users = 0
         private var closeOnRelease = false
         private var idleJob: Job? = null
@@ -188,6 +226,14 @@ internal class RemoteMachineConnectionManager(
         @Synchronized
         fun acquire() {
             users++
+            closeOnRelease = false
+            idleJob?.cancel()
+            idleJob = null
+        }
+
+        /** Cancel any close request queued before an explicit Port Forward start completed. */
+        @Synchronized
+        fun keepAliveForForwards() {
             closeOnRelease = false
             idleJob?.cancel()
             idleJob = null
@@ -222,7 +268,11 @@ internal class RemoteMachineConnectionManager(
                 while (isActive) {
                     delay(RemoteMachineService.CONNECTION_POLL_MILLIS)
                     if (!session.isConnected) {
-                        closeConnection(this@SharedConnection)
+                        machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+                            if (connections[machineId] === this@SharedConnection && !session.isConnected) {
+                                closeConnection(this@SharedConnection)
+                            }
+                        }
                         break
                     }
                 }
@@ -236,31 +286,35 @@ internal class RemoteMachineConnectionManager(
                 idleJob?.cancel()
                 idleJob = null
             }
+            forwards?.close()
+            forwards = null
             runCatching { session.disconnect() }
         }
     }
 
     private suspend fun disconnectIfIdle(connection: SharedConnection) {
         machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock {
-            if (connection.inUse || connections[connection.machineId] !== connection) return
+            if (connection.inUse || connection.pinned || connections[connection.machineId] !== connection) return
             closeConnection(connection)
         }
     }
 
     private fun closeConnection(connection: SharedConnection) {
-        connections.remove(connection.machineId, connection)
+        if (!connections.remove(connection.machineId, connection)) return
         closeAllTerminals(connection.machineId)
         publishConnected()
         connection.shutdown()
     }
 
     private suspend fun dropConnection(connection: SharedConnection) =
-        withContext(NonCancellable + Dispatchers.IO) { closeConnection(connection) }
+        withContext(NonCancellable + Dispatchers.IO) {
+            machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock { closeConnection(connection) }
+        }
 
     private fun publishConnected() {
         _forwardedPorts.value = connections.values
-            .filter { it.forwards.isNotEmpty() }
-            .associate { it.machineId to it.forwards }
+            .mapNotNull { shared -> shared.forwards?.labels?.takeIf { it.isNotEmpty() }?.let { shared.machineId to it } }
+            .toMap()
         _connectedMachineIds.value = connections.keys.toSet()
     }
 
@@ -287,12 +341,7 @@ internal class RemoteMachineConnectionManager(
                 if (connection == null) {
                     if (create == null) return@withLock null
                     val session = openSession(create, passwordOverride, askSecret)
-                    connection = SharedConnection(
-                        machineId,
-                        session,
-                        create.portForwarding.hasActiveForwards,
-                        forwardLabelsOf(session)
-                    )
+                    connection = SharedConnection(machineId, session)
                     connections[machineId] = connection
                     connection.startMonitor()
                     publishConnected()
@@ -372,8 +421,10 @@ internal class RemoteMachineConnectionManager(
             } catch (error: Throwable) {
                 connection.release()
                 if (error is CancellationException) throw error
-                // The server or network may have dropped the connection since its last use. The
-                // command never started, so reconnecting once and retrying cannot repeat it.
+                // A rejected exec channel must not terminate healthy terminal/forward sessions.
+                // Only reconnect when the transport has actually gone away.
+                if (connection.session.isConnected) throw error
+                // The command never started, so reconnecting once cannot repeat the command.
                 dropConnection(connection)
                 if (retried) throw error
                 retried = true

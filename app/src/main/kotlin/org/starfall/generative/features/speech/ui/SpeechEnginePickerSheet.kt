@@ -58,7 +58,7 @@ internal fun SpeechEnginePickerSheet(
         ) {
             item(key = "system") {
                 SpeechPlatformCard(
-                    title = stringResource(R.string.speech_system_tts),
+                    title = stringResource(R.string.speech_android_system_tts),
                     iconName = null,
                     iconImage = null,
                     selected = engine == SpeechEngine.SYSTEM,

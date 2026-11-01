@@ -77,7 +77,7 @@ internal fun SpeechModelField(
             val menuWidth = maxWidth
             val menuAction = stringResource(if (expanded) R.string.collapse else R.string.expand)
             OutlinedTextField(service.modelId.orEmpty(), onChange,
-                label = { Text(stringResource(R.string.speech_engine_model)) }, singleLine = true,
+                label = { Text(stringResource(R.string.speech_synthesis_model_id)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
                 trailingIcon = {

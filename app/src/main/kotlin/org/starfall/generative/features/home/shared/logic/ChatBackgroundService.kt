@@ -156,8 +156,8 @@ class ChatBackgroundService : Service() {
         val summary = summaryState.value
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(
-                if (summary != null) org.starfall.generative.R.string.notification_summary_title
-                else org.starfall.generative.R.string.notification_generation_title
+                if (summary != null) org.starfall.generative.R.string.notification_summarizing_conversation
+                else org.starfall.generative.R.string.notification_ai_thinking
             ))
             .setContentText(summary?.label ?: getString(org.starfall.generative.R.string.notification_generation_text))
             .setSmallIcon(R.drawable.ic_menu_info_details)

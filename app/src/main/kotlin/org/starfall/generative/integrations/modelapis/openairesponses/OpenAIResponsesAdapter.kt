@@ -19,6 +19,9 @@ import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
 import org.starfall.generative.integrations.modelapis.sdk.useClient
 import org.starfall.generative.shared.model.generation.GenerationEvent
+import org.starfall.generative.shared.model.generation.requireStreamCompleted
+import org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END
+import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
@@ -108,6 +111,9 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
             if (!provider.config.supportStream && !codexWire) {
                 val response = sdk.sdkCall { client.responses().create(params.build()) }
                 check(!response.error().isPresent) { "OpenAI Responses request failed" }
+                if (response.incompleteDetails().orElse(null)?.reason()?.orElse(null) ==
+                    com.openai.models.responses.Response.IncompleteDetails.Reason.MAX_OUTPUT_TOKENS)
+                    error(OUTPUT_TOKEN_LIMIT_REACHED)
                 response.output().forEach { item ->
                     item.reasoning().orElse(null)?.content()?.orElse(emptyList())?.forEach { part ->
                         part.text().takeIf { it.isNotBlank() }?.let { emit(GenerationEvent.Reasoning(it)) }
@@ -140,14 +146,19 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     event.outputTextDelta().orElse(null)?.delta()?.takeIf { it.isNotEmpty() }?.let {
                         if (bufferEvents) bufferedText.append(it) else emit(GenerationEvent.Text(it))
                     }
-                    if (event.completed().isPresent || event.incomplete().isPresent) {
+                    event.incomplete().orElse(null)?.let { incomplete ->
+                        if (incomplete.response().incompleteDetails().orElse(null)?.reason()?.orElse(null) ==
+                            com.openai.models.responses.Response.IncompleteDetails.Reason.MAX_OUTPUT_TOKENS)
+                            error(OUTPUT_TOKEN_LIMIT_REACHED)
+                        error(UNEXPECTED_STREAM_END)
+                    }
+                    event.completed().orElse(null)?.let { completed ->
                         finished = true
-                        val finalResponse = event.completed().orElse(null)?._response()?.asKnown()?.orElse(null)
-                            ?: event.incomplete().orElse(null)?._response()?.asKnown()?.orElse(null)
-                        finalResponse?._usage()?.asKnown()?.orElse(null)?.tokenUsage()?.let { usage = it }
+                        completed._response().asKnown().orElse(null)
+                            ?._usage()?.asKnown()?.orElse(null)?.tokenUsage()?.let { usage = it }
                     }
                 }
-                check(finished) { "OpenAI Responses stream ended without a final response" }
+                requireStreamCompleted(finished)
                 if (bufferEvents) {
                     if (bufferedReasoning.isNotEmpty()) emit(GenerationEvent.Reasoning(bufferedReasoning.toString()))
                     if (bufferedText.isNotEmpty()) emit(GenerationEvent.Text(bufferedText.toString()))

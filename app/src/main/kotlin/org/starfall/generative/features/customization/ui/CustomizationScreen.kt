@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.AppImages
 import org.starfall.generative.shared.icons.IconStore
@@ -224,7 +225,7 @@ fun CustomizationScreen(
             item(key = "colors") {
                 CustomizationEnabledSection(customizationEnabled) {
                     CustomizationActionRow(
-                        title = stringResource(R.string.settings_color),
+                        title = stringResource(R.string.settings_colors),
                         summary = if (appearance.useDynamicColor) stringResource(R.string.settings_dynamic_color)
                             else if (appearance.colorSchemeName == "CUSTOM") stringResource(R.string.settings_customize_palette)
                             else appearance.colorSchemeName.lowercase().replaceFirstChar { it.uppercase() },
@@ -321,7 +322,7 @@ fun CustomizationScreen(
     }
     if (customizationEnabled && colorsDialog) {
         Dialog(onDismissRequest = { colorsDialog = false },
-            title = { Text(stringResource(R.string.settings_color)) }, scrollableContent = true,
+            title = { Text(stringResource(R.string.settings_colors)) }, scrollableContent = true,
             content = {
                 CustomizationColors(
                     appearance = appearance,
@@ -437,7 +438,7 @@ private fun SlotMenu(expanded: Boolean, hasImage: Boolean, onDismiss: () -> Unit
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(text = { Text(stringResource(R.string.user_profile_photos_gallery)) }, onClick = onGallery,
             leadingIcon = { SharedIcon(Icons.Outlined.Image, null) })
-        DropdownMenuItem(text = { Text(stringResource(R.string.settings_storage)) }, onClick = onStorage,
+        DropdownMenuItem(text = { Text(stringResource(R.string.storage_media_storage)) }, onClick = onStorage,
             leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) })
         DropdownMenuItem(text = { Text(stringResource(R.string.common_remove)) }, enabled = hasImage, onClick = onRemove,
             leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
@@ -453,7 +454,11 @@ private fun ProfileImage(image: String?, modifier: Modifier, fallback: Boolean =
         }
     } else {
         val context = LocalContext.current
-        val model = remember(image) { IconStore(context).imageData(image) ?: AppImages.source(image) }
+        val model by produceState<Any?>(initialValue = null, image, context) {
+            value = withContext(Dispatchers.IO) {
+                IconStore(context).imageData(image) ?: AppImages.source(image)
+            }
+        }
         AsyncImage(model = model, contentDescription = null, modifier = modifier,
             contentScale = ContentScale.Crop)
     }

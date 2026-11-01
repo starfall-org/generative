@@ -2,6 +2,8 @@ package org.starfall.generative.integrations.modelapis.metamuse
 
 import android.content.Context
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
@@ -90,7 +92,7 @@ internal class MetaMuseAdapter(context: Context, attachments: AttachmentResolver
     }
 
     private suspend fun refreshMintedKey(provider: ModelProvider) = refreshMutex.withLock {
-        val previous = store.load(provider.oauthCredentialId)
+        val previous = withContext(Dispatchers.IO) { store.load(provider.oauthCredentialId) }
             ?: error("Meta account credentials are missing. Sign in again.")
         val dca = previous.deviceToken?.takeIf(String::isNotBlank)
             ?: error("Meta account has no device token. Sign in again.")
@@ -98,10 +100,12 @@ internal class MetaMuseAdapter(context: Context, attachments: AttachmentResolver
             "Meta device token expired. Sign in again."
         }
         val minted = mintKey(dca)
-        store.save(provider.oauthCredentialId, previous.copy(
-            accessToken = minted.accessToken, apiBaseUrl = minted.apiBaseUrl,
-            email = minted.email ?: previous.email
-        ))
+        withContext(Dispatchers.IO) {
+            store.save(provider.oauthCredentialId, previous.copy(
+                accessToken = minted.accessToken, apiBaseUrl = minted.apiBaseUrl,
+                email = minted.email ?: previous.email
+            ))
+        }
     }
 
     override fun streamEvents(provider: ModelProvider, modelName: String, messages: List<StoredMessage>,

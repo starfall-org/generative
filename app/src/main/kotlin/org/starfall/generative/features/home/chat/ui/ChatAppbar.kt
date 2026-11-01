@@ -59,10 +59,7 @@ fun ChatAppBar(
     featuresLogoImage: String? = null,
     isTemporaryChat: Boolean = false,
     onOpenTemporaryChat: () -> Unit = onNewChat,
-    onOpenModelPicker: () -> Unit = {},
-    /** True while at least one remote machine holds a live connection. */
-    showTerminalButton: Boolean = false,
-    onOpenTerminal: () -> Unit = {}
+    onOpenModelPicker: () -> Unit = {}
 ) {
     val statusBarHeight = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
@@ -140,28 +137,6 @@ fun ChatAppBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showTerminalButton) {
-                    Box(Modifier.size(44.dp)) {
-                        IconButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxSize()) {
-                            SharedIcon(
-                                imageVector = Icons.Outlined.Terminal,
-                                contentDescription = stringResource(R.string.remote_machine_open_terminal),
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        // Live-connection dot; keep it above the icon without a second backdrop.
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 7.dp, end = 7.dp)
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-                }
-
                 IconButton(
                     onClick = if (isTemporaryChat) onOpenTemporaryChat else onNewChat,
                     modifier = Modifier.size(44.dp)

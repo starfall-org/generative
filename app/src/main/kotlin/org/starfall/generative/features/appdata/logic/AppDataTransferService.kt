@@ -87,6 +87,9 @@ class AppDataTransferService(
         prefix: String = "generative-backup-"
     ): File = withContext(Dispatchers.IO) {
         require(directory.mkdirs() || directory.isDirectory) { "Could not create backup directory." }
+        // A cold RemoteMachineStore loads/decrypts asynchronously; do not export its placeholder state.
+        remoteMachineService.store.awaitInitialized()
+        modelRepository.awaitModelConfigurationMemoryWrites()
         val storedFiles = toolFiles.list().associateBy { it.name }
         val backup = AppDataBackup(
             exportedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date()),
@@ -412,6 +415,7 @@ class AppDataTransferService(
         toolSettingsStore.replace(data.toolSettings)
         modelRepository.importAccountCredentials(data.accountCredentials)
         mcpRepository.importOAuthTokens(data.mcpOAuthTokens)
+        modelRepository.awaitModelConfigurationMemoryWrites()
         modelRepository.importModelConfigurationMemory(data.modelConfigurationMemory)
         restoreRemoteTerminalPreferences(data.remoteTerminalPreferences)
         iconStore.restore(data.icons, imported.iconFiles)
@@ -422,7 +426,10 @@ class AppDataTransferService(
         remoteMachineService.replaceState(data.remoteMachines, imported.remoteIdentityFiles)
     }
 
-    private fun localizedContext(): Context = AppLocale.wrap(context)
+    private suspend fun localizedContext(): Context {
+        val settings = preferencesRepository.appPreferencesFlow.first()
+        return AppLocale.wrap(context, settings.useSystemLanguage, settings.selectedLanguage)
+    }
 
     private suspend fun showToast(resId: Int, duration: Int) {
         withContext(Dispatchers.Main) {

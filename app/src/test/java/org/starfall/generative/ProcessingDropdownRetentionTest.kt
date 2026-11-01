@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,6 +73,33 @@ class ProcessingDropdownRetentionTest {
         compose.onNodeWithText("Completed thinking", substring = true, useUnmergedTree = true).assertDoesNotExist()
         header.performClick() // Normal header behavior remains available.
         compose.onNodeWithText("Completed thinking", substring = true, useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun tappingThinkingOrToolStepNumberClosesActions() {
+        val items = listOf(
+            ProcessingDropdownItem.Thinking("Completed thinking"),
+            ProcessingDropdownItem.Tool(ToolActivity("tool-1", "web_search", status = "success"))
+        )
+        compose.setContent { MaterialTheme {
+            ProcessingDropdown(items, durationMillis = null, startNumber = 1, isStreaming = false)
+        } }
+        val header = compose.onNodeWithTag("processing-dropdown-toggle")
+
+        // Each badge handles its own tap without widening the original padding strip.
+        header.performClick()
+        compose.onNodeWithTag("processing-dropdown-padding").assertWidthIsEqualTo(8.dp)
+        compose.onNodeWithText("Completed thinking", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("processing-step-number-0").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("processing-dropdown-padding").assertDoesNotExist()
+        compose.onNodeWithText("Completed thinking", substring = true, useUnmergedTree = true).assertDoesNotExist()
+
+        header.performClick()
+        compose.onNodeWithText("web search", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("processing-step-number-1").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("processing-dropdown-padding").assertDoesNotExist()
+        compose.onNodeWithText("web search", substring = true, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun longPressPaddingOpensDeleteMenuWithoutClosingActions() {

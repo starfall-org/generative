@@ -9,7 +9,6 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.*
-import org.starfall.generative.R
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.*
 import org.starfall.generative.shared.model.auth.*
@@ -126,21 +125,23 @@ internal class OllamaAdapter(
             }
             val channel = response.bodyAsChannel()
             var usage: TokenUsage? = null
+            var completed = false
             while (!channel.isClosedForRead) {
                 val line = channel.readLine() ?: break
                 if (line.isBlank()) continue
                 val parsed = runCatching { json.parseToJsonElement(line).jsonObject }.getOrNull() ?: continue
                 providerTokenUsage(modelApiType, parsed)?.let { usage = it }
+                if (parsed["done_reason"]?.jsonPrimitive?.contentOrNull == "length")
+                    error(OUTPUT_TOKEN_LIMIT_REACHED)
+                if (parsed["done"]?.jsonPrimitive?.booleanOrNull == true) completed = true
                 parsed["message"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
                     ?.takeIf { it.isNotEmpty() }?.let { emit(GenerationEvent.Text(it)) }
                 parsed["error"]?.jsonPrimitive?.contentOrNull?.let { error(it) }
             }
+            requireStreamCompleted(completed)
             usage?.let { emit(GenerationEvent.Usage(it)) }
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
-        } catch (e: Exception) {
-            val detail = e.localizedMessage ?: context.getString(R.string.ollama_network_error)
-            emit(GenerationEvent.Text(" " + context.getString(R.string.ollama_error_text, detail)))
         }
     }
 

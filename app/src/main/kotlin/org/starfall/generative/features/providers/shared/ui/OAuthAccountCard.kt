@@ -2,6 +2,7 @@ package org.starfall.generative.features.providers.shared.ui
 
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.ErrorContainer
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -128,8 +129,7 @@ internal fun OAuthAccountCard(
                 }
             }
             error?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
+                ErrorContainer(message = it, modifier = Modifier.fillMaxWidth())
             }
         }
     }

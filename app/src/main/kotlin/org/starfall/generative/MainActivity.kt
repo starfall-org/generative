@@ -39,10 +39,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
@@ -74,21 +74,17 @@ class MainActivity : ComponentActivity() {
     private val remoteMachinesViewModel: RemoteMachinesViewModel by viewModels { container.viewModelFactory }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    /** Language override this Activity was created with; a different one means the UI must be recreated. */
-    private var createdLocaleTag: String? = null
     private var pendingTerminalMachineId by mutableStateOf<String?>(null)
     private var pendingAppDeepLink by mutableStateOf<AppDeepLinkRequest?>(null)
     private var nextAppDeepLinkId = 0L
     private var pendingExternalShare by mutableStateOf<ExternalShareRequest?>(null)
     private var nextExternalShareId = 0L
-
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(AppLocale.wrap(newBase))
-    }
+    private val crashReportStore get() = (application as GenerativeApplication).crashReports
+    private var pendingCrash by mutableStateOf<CrashReport?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        createdLocaleTag = AppLocale.overrideTag(this)
+        pendingCrash = crashReportStore.pending()
         pendingTerminalMachineId = savedInstanceState?.getString("pending_terminal_machine_id")
         if (savedInstanceState?.getBoolean("pending_external_share") == true) {
             pendingExternalShare = ExternalShareRequest(++nextExternalShareId, ExternalShare(
@@ -127,8 +123,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val crashReports = (application as GenerativeApplication).crashReports
-            var pendingCrash by remember { mutableStateOf(crashReports.pending()) }
+            val crashReports = crashReportStore
             val crashScope = rememberCoroutineScope()
             fun saveCrashLog(report: CrashReport) {
                 crashScope.launch {
@@ -158,10 +153,9 @@ class MainActivity : ComponentActivity() {
                 anyGenerationActive = isAnyGenerating,
                 anyResponseActive = isAnyResponseActive
             )
-            // Strings are resolved when the Activity is created, so a new language needs a fresh one.
-            LaunchedEffect(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
-                if (AppLocale.overrideTag(this@MainActivity) != createdLocaleTag) recreate()
-            }
+            // The first frame uses the device language. DataStore can then supply an override
+            // without recreating Activity or interrupting an ongoing chat session.
+            RuntimeAppLocale(appPrefs.useSystemLanguage, appPrefs.selectedLanguage) {
             GenerativeTheme(
                 themeMode = appPrefs.themeMode,
                 amoledMode = appPrefs.useAmoled,
@@ -222,8 +216,17 @@ class MainActivity : ComponentActivity() {
                         })
                 }
             }
+            }
         }
         requestBackgroundNotificationPermission()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // OAuth opens an external browser. A fatal exception can be recorded while this
+        // Activity is stopped but retained by Android; onCreate will not run again then.
+        // Refresh on each return so the crash dialog is not lost behind browser handoff.
+        pendingCrash = crashReportStore.pending()
     }
 
     override fun onPause() {

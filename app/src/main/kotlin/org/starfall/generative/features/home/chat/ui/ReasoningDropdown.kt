@@ -245,7 +245,11 @@ internal fun ProcessingDropdown(
                                             contentAlignment = Alignment.TopCenter
                                         ) {
                                             Surface(
-                                                modifier = Modifier.size(24.dp),
+                                                modifier = Modifier.size(24.dp)
+                                                    .testTag("processing-step-number-$index")
+                                                    .clickable(enabled = expanded, role = Role.Button) {
+                                                        expanded = false
+                                                    },
                                                 shape = CircleShape,
                                                 color = MaterialTheme.colorScheme.primaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -284,7 +288,8 @@ internal fun ProcessingDropdown(
             }
         }
         if (expanded || onDelete != null) {
-            // Only padding handles fold/delete gestures; selection and tools are untouched.
+            // Keep the narrow padding target for folding/deleting. Number badges above
+            // handle their own taps, without extending this overlay across the step rows.
             Box(Modifier.matchParentSize()) {
                 BlockContextPadding(
                     onTap = if (expanded) ({ expanded = false }) else null,

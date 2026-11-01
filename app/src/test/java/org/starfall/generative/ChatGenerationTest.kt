@@ -16,6 +16,8 @@ import org.starfall.generative.features.home.chat.logic.updateResponse
 class ChatGenerationTest {
     private suspend fun ChatGeneration.awaitCompletion() {
         withTimeout(5_000) { busy.first { !it } }
+        // UI generation and durability are deliberately independent now.
+        withTimeout(5_000) { awaitPersistence() }
     }
 
     @Test fun regenerationAndStreamingPreserveOriginalAndNewModelNames() {
@@ -115,11 +117,12 @@ class ChatGenerationTest {
 
     @Test fun completedToolTurnSavesOnceBeforeNextAssistantBlockFinishes() = runBlocking {
         val writes = mutableListOf<Conversation>()
+        val firstBlockSaved = CompletableDeferred<Unit>()
         val nextBlockStarted = CompletableDeferred<Unit>()
         val releaseNextBlock = CompletableDeferred<Unit>()
         val runner = ChatGeneration(
             CoroutineScope(coroutineContext + Dispatchers.Unconfined),
-            { writes += it }, {}
+            { writes += it; if (writes.size == 1) firstBlockSaved.complete(Unit) }, {}
         )
         runner.startEvents(conversation(), "a1", flow {
             emit(GenerationEvent.Text("Completed first block"))
@@ -130,6 +133,7 @@ class ChatGenerationTest {
             emit(GenerationEvent.Text(" and done"))
         })
         nextBlockStarted.await()
+        withTimeout(5_000) { firstBlockSaved.await() }
         assertEquals(1, writes.size)
         assertEquals("Completed first block", writes.single().messages[1].content)
         assertEquals(listOf("u1", "a1", "u2"), writes.single().messages.map { it.id })
@@ -365,22 +369,65 @@ class ChatGenerationTest {
         assertEquals("next", saved.messages.last().content)
     }
 
-    @Test fun busyRemainsSetUntilCancelledResponseIsSaved() = runBlocking {
+    @Test fun stuckMidTurnRoomWriteDoesNotStopFollowingStreamOrCancellation() = runBlocking {
+        val firstWriteStarted = CompletableDeferred<Unit>()
+        val unblockRoom = CompletableDeferred<Unit>()
+        val secondResponseReached = CompletableDeferred<Unit>()
+        val saved = mutableListOf<Conversation>()
+        val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), { completed ->
+            if (saved.isEmpty()) {
+                firstWriteStarted.complete(Unit)
+                unblockRoom.await()
+            }
+            saved += completed
+        }, {})
+
+        assertTrue(runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Text("First tool block"))
+            emit(GenerationEvent.UserMessage(message("u2", ChatRole.USER, "Continue")))
+            emit(GenerationEvent.Text("Second tool block"))
+            secondResponseReached.complete(Unit)
+            awaitCancellation()
+        }))
+        withTimeout(5_000) { firstWriteStarted.await() }
+        // The next response must be able to stream while Room has not finished its first write.
+        withTimeout(5_000) { secondResponseReached.await() }
+        assertTrue(runner.busy.value)
+        runner.stop()
+        withTimeout(5_000) { runner.busy.first { !it } }
+        assertFalse(runner.busy.value)
+        assertTrue(saved.isEmpty())
+
+        unblockRoom.complete(Unit)
+        withTimeout(5_000) { runner.awaitPersistence() }
+        assertEquals(2, saved.size)
+        assertEquals("First tool block", saved[0].messages[1].content)
+        assertEquals("Second tool block", saved[1].messages.last().content)
+    }
+
+    @Test fun stopDoesNotWaitForBrokenDatabaseAndLaterSaveKeepsOrder() = runBlocking {
         val saving = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
+        val persisted = mutableListOf<String>()
         var saves = 0
         val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined), {
             if (++saves == 1) { saving.complete(Unit); release.await() }
+            persisted += it.messages.last().activeVersion.content
         }, {})
         runner.start(conversation(), "a1", flow { emit("partial"); awaitCancellation() })
         runner.stop()
+        withTimeout(5_000) { runner.busy.first { !it } }
+        // Even while the save is still waiting on a deadlocked/damaged Room transaction,
+        // the UI has stopped and the next generation can start purely in memory.
         saving.await()
-        assertTrue(runner.busy.value)
-        assertFalse(runner.start(conversation(), "a1", emptyFlow()))
-        release.complete(Unit)
-        runner.stopAndJoin()
         assertFalse(runner.busy.value)
-        assertEquals("Stop saves once, not at the beginning of the stream", 1, saves)
+        assertTrue(runner.start(conversation(), "a1", flowOf("next answer")))
+        withTimeout(5_000) { runner.busy.first { !it } }
+        assertEquals("The second save must not overtake the blocked first save", 1, saves)
+        release.complete(Unit)
+        withTimeout(5_000) { runner.awaitPersistence() }
+        assertEquals(listOf("partial", "next answer"), persisted)
+        assertFalse(runner.busy.value)
     }
 
     @Test fun deletingAfterStopCannotResurrectConversation() = runBlocking {
@@ -539,6 +586,26 @@ class ChatGenerationTest {
         assertFalse(runner.busy.value)
     }
 
+    @Test fun abruptlyClosedReasoningStreamKeepsThinkingAndShowsErrorBlock() = runBlocking {
+        var saved: Conversation? = null
+        val runner = ChatGeneration(CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            { saved = it }, {})
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Reasoning("Partially thought through"))
+            throw IllegalStateException(
+                org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END)
+        })
+        runner.awaitCompletion()
+        val finalVersion = requireNotNull(saved).messages.last().activeVersion
+        assertEquals("Partially thought through", finalVersion.reasoningContent)
+        assertEquals(org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END,
+            finalVersion.generationError)
+        assertFalse(finalVersion.generationInterrupted)
+        assertEquals(org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END,
+            runner.error.value)
+        assertFalse(runner.busy.value)
+    }
+
     @Test fun failurePublishesTerminalStreamStatusEvenWhenNoTextWasCommitted() = runBlocking {
         val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
         val runner = ChatGeneration(
@@ -590,6 +657,7 @@ class ChatGenerationTest {
         })
 
         owner.cancelAndJoin()
+        runner.awaitPersistence()
 
         assertEquals("partial before Activity finishes", saved!!.messages.last().content)
         assertFalse(runner.busy.value)

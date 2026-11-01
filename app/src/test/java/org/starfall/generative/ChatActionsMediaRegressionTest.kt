@@ -55,14 +55,14 @@ class ChatActionsMediaRegressionTest {
             )
         } }
         compose.onNodeWithContentDescription(context.getString(R.string.common_copy)).performClick()
+        // Tool-only replies have an editable empty answer slot in addition to the More action.
+        compose.onNodeWithTag("assistant-empty-content").assertExists().performClick()
         compose.onNodeWithContentDescription(context.getString(R.string.common_more)).performClick()
-        // Tool-only replies edit only through More, without an extra full-width button.
-        compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
         compose.onAllNodesWithText(context.getString(R.string.common_edit)).assertCountEquals(1)
         compose.onNodeWithText(context.getString(R.string.common_edit)).performClick()
         compose.runOnIdle {
             assertEquals(1, copies)
-            assertEquals(1, edits)
+            assertEquals(2, edits)
             assertEquals(0, deletions)
         }
         compose.onNodeWithContentDescription(context.getString(R.string.common_more)).performClick()

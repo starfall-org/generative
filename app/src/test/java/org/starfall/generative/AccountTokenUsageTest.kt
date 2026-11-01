@@ -196,8 +196,8 @@ class AccountTokenUsageTest {
                 if (includeUsage) {
                     add(json("""{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":3}}"""))
                     add(json("""{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":7}}"""))
-                    add(json("""{"type":"message_stop"}"""))
                 }
+                add(json("""{"type":"message_stop"}"""))
             }
             ModelApiType.GOOGLE -> if (includeUsage) listOf(
                 JsonObject(full + ("usageMetadata" to json("""{"promptTokenCount":60,"candidatesTokenCount":3}"""))),
@@ -217,6 +217,7 @@ class AccountTokenUsageTest {
                         "created" to JsonPrimitive(0), "model" to str("chat"), "choices" to JsonArray(emptyList()),
                         "usage" to full.getValue("usage")))
                 }
+                add(json("""{"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}"""))
             }
         }
         return if (type == ModelApiType.OLLAMA) events.joinToString("\n", postfix = "\n") { it.toString() }
@@ -224,7 +225,7 @@ class AccountTokenUsageTest {
                 val typeHeader = if (type == ModelApiType.ANTHROPIC || type == ModelApiType.OPENAI_RESPONSES)
                     "event: " + event.getValue("type").jsonPrimitive.content + "\n" else ""
                 typeHeader + "data: " + envelope(event) + "\n\n"
-            }
+            } + if (type == ModelApiType.OPENAI) "data: [DONE]\n\n" else ""
     }
 
     private fun usageFields(value: JsonObject) = value.filterKeys {

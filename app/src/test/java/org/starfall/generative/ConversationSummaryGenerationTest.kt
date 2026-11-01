@@ -24,7 +24,14 @@ class ConversationSummaryGenerationTest {
         modelJson = Json.parseToJsonElement("""{"outputTokenLimit":16384}""").jsonObject)
 
     private data class Call(val messages: List<StoredMessage>, val prompt: String, val output: Int) {
-        val inputTokens get() = estimateTextTokens(prompt) + 4 + messages.sumOf { estimateMessageTokens(it, false) }
+        val inputTokens get() = (if (prompt.isBlank()) 0 else estimateTextTokens(prompt) + 4) +
+            messages.sumOf { estimateMessageTokens(it, false) }
+        val instruction get() = messages.last().content
+        fun assertUserInstruction() {
+            assertTrue("Summarization should not send a system prompt", prompt.isBlank())
+            assertEquals("Summary instruction must be the last user message", ChatRole.USER, messages.last().role)
+            assertEquals("summary_instruction", messages.last().id)
+        }
     }
 
     private fun message(id: String, text: String) =
@@ -46,7 +53,8 @@ class ConversationSummaryGenerationTest {
             assertEquals("summary", text)
             assertEquals(1, calls.size)
             assertEquals(target, calls.single().output)
-            assertTrue(calls.single().prompt.contains("approximately $target tokens"))
+            assertTrue(calls.single().instruction.contains("approximately $target tokens"))
+            calls.single().assertUserInstruction()
             assertTrue(calls.single().inputTokens + target <= model.contextWindowTokens)
         }
     }
@@ -66,7 +74,8 @@ class ConversationSummaryGenerationTest {
             assertTrue(calls.size > 2)
             assertEquals(target, calls.last().output)
             assertEquals(target.toLong(), estimateTextTokens(text))
-            assertTrue(calls.dropLast(1).all { it.output < target && it.prompt.contains("at most ${it.output} tokens") })
+            assertTrue(calls.dropLast(1).all { it.output < target && it.instruction.contains("at most ${it.output} tokens") })
+            calls.forEach { it.assertUserInstruction() }
         }
     }
 
@@ -199,6 +208,30 @@ class ConversationSummaryGenerationTest {
             assertTrue(inputs.contains("important previous decision"))
             assertTrue(inputs.contains("new decision"))
             assertFalse(inputs.contains("obsolete history"))
+        }
+    }
+
+    @Test fun allPassesAppendUserInstructionEvenAfterAnAssistantTurnAndRetainPriorSummary() = runBlocking {
+        val previous = conversation.copy(
+            messages = listOf(message("old", "obsolete history"),
+                StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(content = "latest answer")))),
+            summary = ConversationSummary("s", "important previous decision", "old", SummaryRole.SYSTEM)
+        )
+        for (chunked in listOf(false, true)) {
+            val calls = mutableListOf<Call>()
+            generateConversationSummary(previous, model, "Summarize custom instructions",
+                ConversationSummaryRequest(8000, chunked = chunked),
+                complete = { messages, prompt, output ->
+                    calls += Call(messages, prompt, output)
+                    "summary"
+                })
+            assertEquals(if (chunked) 2 else 1, calls.size)
+            calls.forEach { it.assertUserInstruction() }
+            assertTrue(calls.first().messages.any { it.content.contains("important previous decision") })
+            assertTrue(calls.first().messages.any { it.content.contains("latest answer") })
+            assertFalse(calls.first().messages.any { it.content.contains("obsolete history") })
+            assertTrue(calls.first().instruction.contains("Summarize custom instructions"))
+            assertTrue(calls.last().instruction.contains("approximately 8000 tokens"))
         }
     }
 

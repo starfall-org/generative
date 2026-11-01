@@ -31,7 +31,7 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
         terminalView.setOnCreateContextMenuListener { menu, _, _ ->
             val url = terminalBrowserUrl(terminalView.storedSelectedText)
             if (url != null) {
-                menu.add(org.starfall.generative.R.string.remote_machine_terminal_open_browser)
+                menu.add(org.starfall.generative.R.string.remote_server_terminal_open_browser)
                     .setOnMenuItemClickListener {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             .addCategory(Intent.CATEGORY_BROWSABLE)

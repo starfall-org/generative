@@ -3,6 +3,7 @@ package org.starfall.generative.features.providers.shared.logic
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,6 +26,7 @@ import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.database.McpRepository
 import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.ProviderRepairResult
 import org.starfall.generative.database.ProfileRepository
 import org.starfall.generative.database.SpeechRepository
 import org.starfall.generative.shared.storage.preferences.AppPreferences
@@ -210,17 +212,15 @@ class ConfigurationViewModel(
     }
 
     fun reorderProviderModels(providerId: String, modelIds: List<String>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { modelRepo.reorderProviderModels(providerId, modelIds) }
+        modelRepo.queueReorderProviderModels(providerId, modelIds)
     }
 
     fun saveProviderModels(providerId: String, modelConfigs: Map<String, ModelConfiguration>) {
-        viewModelScope.launch(LocalWriteErrors.handler) {
-            val provider = providerMetadataById(providerId) ?: return@launch
+        // Queue the catalog edit before returning to the model editor. A quick reorder must
+        // never overtake the model selection it follows; Room work still runs off-thread.
+        viewModelScope.launch(LocalWriteErrors.handler, start = CoroutineStart.UNDISPATCHED) {
             val modelIds = modelConfigs.keys.toList()
-            modelRepo.saveProvider(provider.copy(config = provider.config.copy(
-                modelConfigs = modelConfigs,
-                modelIds = modelIds
-            )))
+            modelRepo.saveProviderModels(providerId, modelConfigs)
             val prefs = appPreferences.value
             if (prefs.selectedModel.providerId == providerId && prefs.selectedModel.modelId !in modelIds) {
                 prefsRepo.setSelectedModel(providerId, modelIds.firstOrNull().orEmpty())
@@ -229,7 +229,8 @@ class ConfigurationViewModel(
     }
 
     fun saveProvider(provider: ModelProvider) {
-        viewModelScope.launch(LocalWriteErrors.handler) {
+        // A newly created provider must be queued before its first model reorder is accepted.
+        viewModelScope.launch(LocalWriteErrors.handler, start = CoroutineStart.UNDISPATCHED) {
             modelRepo.saveProvider(provider)
             val prefs = appPreferences.value
             val modelIds = provider.config.modelIds
@@ -277,6 +278,11 @@ class ConfigurationViewModel(
         speechRepo.saveService((stored ?: draft).copy(icon = draft.icon))
     }
 
+    suspend fun repairCorruptProviders(): Result<ProviderRepairResult> = try {
+        Result.success(modelRepo.repairCorruptProviders())
+    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+    catch (e: Exception) { Result.failure(e) }
+
     fun deleteProvider(providerId: String) {
         viewModelScope.launch(LocalWriteErrors.handler) {
             modelRepo.deleteProvider(providerId)
@@ -303,10 +309,32 @@ class ConfigurationViewModel(
     /** Start a provider placement from the application-scoped ViewModel. The provider screen may
      * be removed immediately after a drop, so the write must not be owned by its composition scope. */
     fun queueProviderPlacement(placement: ProviderPlacement) {
-        viewModelScope.launch(LocalWriteErrors.handler) {
-            modelRepo.placeProvider(placement)
+        modelRepo.queueProviderPlacement(placement)
+    }
+
+    /** Callbacks run on Main, after the repository's background writer finishes. */
+    private fun observeReorderWrite(pending: kotlinx.coroutines.Deferred<Unit>, done: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = try {
+                pending.await()
+                Result.success(Unit)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                Result.failure(failure)
+            }
+            done(result)
         }
     }
+
+    fun queueProviderPlacementTracked(placement: ProviderPlacement, done: (Result<Unit>) -> Unit) =
+        observeReorderWrite(modelRepo.queueProviderPlacement(placement), done)
+
+    fun reorderProviderModelsTracked(providerId: String, ids: List<String>, done: (Result<Unit>) -> Unit) =
+        observeReorderWrite(modelRepo.queueReorderProviderModels(providerId, ids), done)
+
+    fun reorderProviderRootItemsTracked(items: List<ProviderRootOrderItem>, done: (Result<Unit>) -> Unit) =
+        observeReorderWrite(modelRepo.queueReorderRootItems(items), done)
 
     fun moveProviderToGroup(providerId: String, groupId: String?) {
         viewModelScope.launch(LocalWriteErrors.handler) { modelRepo.moveProviderToGroup(providerId, groupId) }
@@ -317,7 +345,7 @@ class ConfigurationViewModel(
     }
 
     fun reorderProviderRootItems(items: List<ProviderRootOrderItem>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { modelRepo.reorderRootItems(items) }
+        modelRepo.queueReorderRootItems(items)
     }
 
     private val oauthAuthorizations = OAuthAuthorizations(viewModelScope, modelRepo::authorizeProvider)
@@ -399,19 +427,19 @@ class ConfigurationViewModel(
     }
 
     fun reorderProfiles(ids: List<String>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { profileRepo.reorderProfiles(ids) }
+        profileRepo.queueReorderProfiles(ids)
     }
 
     fun reorderProviders(ids: List<String>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { modelRepo.reorderProviders(ids) }
+        modelRepo.queueReorderProviders(ids)
     }
 
     fun reorderMcpServers(ids: List<String>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { mcpRepo.reorderServers(ids) }
+        mcpRepo.queueReorderServers(ids)
     }
 
     fun reorderSpeechServices(ids: List<String>) {
-        viewModelScope.launch(LocalWriteErrors.handler) { speechRepo.reorderServices(ids) }
+        speechRepo.queueReorderServices(ids)
     }
 
     fun setShowProfilesAsGrid(isGrid: Boolean) {

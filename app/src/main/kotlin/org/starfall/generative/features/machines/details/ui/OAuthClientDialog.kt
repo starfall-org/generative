@@ -33,17 +33,17 @@ internal fun OAuthClientDialog(
     var clientType by remember(initial.id) { mutableStateOf(initial.type) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.remote_machine_oauth_client)) },
+        title = { Text(stringResource(R.string.remote_server_oauth_client)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
                 RemoteTextField(clientId, { clientId = it }, stringResource(R.string.client_id))
                 RemoteDropdownField(
-                    label = stringResource(R.string.remote_machine_oauth_client_type),
+                    label = stringResource(R.string.remote_server_oauth_client_type),
                     options = GoogleOAuthClientType.entries.map { option ->
                         option to stringResource(
-                            if (option == GoogleOAuthClientType.ANDROID) R.string.remote_machine_oauth_type_android
-                            else R.string.remote_machine_oauth_type_desktop
+                            if (option == GoogleOAuthClientType.ANDROID) R.string.remote_server_oauth_type_android
+                            else R.string.remote_server_oauth_type_desktop
                         )
                     },
                     selected = clientType,

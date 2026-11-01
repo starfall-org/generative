@@ -40,6 +40,7 @@ import org.starfall.generative.features.icons.ui.IconsScreen
 import org.starfall.generative.features.machines.details.ui.MachineDetailsScreen
 import org.starfall.generative.features.machines.details.ui.RemoteMachineSettings
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
+import org.starfall.generative.features.machines.list.ui.PortForwardDialog
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
@@ -243,9 +244,8 @@ internal fun AppNavigation(
     val mcpToolErrors by configurationViewModel.mcpToolErrors.collectAsStateWithLifecycle()
     val mcpToolsLoading by configurationViewModel.mcpToolsLoading.collectAsStateWithLifecycle()
     val remoteMachineState by remoteMachinesViewModel.state.collectAsStateWithLifecycle()
-    val connectedMachineIds by remoteMachinesViewModel.connectedMachineIds.collectAsStateWithLifecycle()
-    val connectedMachines = remoteMachineState.machines.filter { it.id in connectedMachineIds }
     var remoteMachinePage by remember { mutableStateOf<Any?>(null) }
+    var drawerPortForwardMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     LaunchedEffect(pendingTerminalMachineId, remoteMachineState.machines) {
         val machine = remoteMachineState.machines.firstOrNull { it.id == pendingTerminalMachineId }
         if (machine != null) {
@@ -506,6 +506,9 @@ internal fun AppNavigation(
             setMachine = { machineId, enabled ->
                 viewModel.setMachineEnabled(machineId, enabled, remoteMachineState.machines.map { it.id })
             },
+            selectMachine = { machineId ->
+                viewModel.selectRemoteMachine(machineId, remoteMachineState.machines.map { it.id })
+            },
             setMachineTool = viewModel::setMachineToolEnabled,
             setSendFile = viewModel::setSendFileEnabled,
             setWebSearch = viewModel::setWebSearchEnabled,
@@ -552,6 +555,7 @@ internal fun AppNavigation(
                     onRenameConversation = { id, newTitle ->
                         viewModel.renameConversation(id, newTitle)
                     },
+                    onSuggestConversationTitle = viewModel::suggestConversationTitle,
                     onDeleteConversation = {
                         viewModel.deleteConversations(setOf(it), chatAttachments.attachments.value)
                         retainedChats.discard(setOf(it))
@@ -573,10 +577,9 @@ internal fun AppNavigation(
                         coroutineScope.launch { drawerState.close() }
                         openConfiguration(AppDestination.REMOTE_MACHINES)
                     },
-                    onEditRemoteMachine = { machine ->
-                        remoteMachinePage = MachineEditorPage(machine, isNew = false)
+                    onPortForward = { machine ->
+                        drawerPortForwardMachine = machine
                         coroutineScope.launch { drawerState.close() }
-                        openConfiguration(AppDestination.REMOTE_MACHINES)
                     },
                     onOpenTerminal = { machine ->
                         coroutineScope.launch { drawerState.close() }
@@ -717,10 +720,6 @@ internal fun AppNavigation(
                         onFetchOllamaModels = { url ->
                             configurationViewModel.fetchOllamaModels(url)
                         },
-                        connectedMachines = connectedMachines,
-                         onOpenTerminal = { machine ->
-                             openTerminal(machine)
-                         },
                          onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                          onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
                      )
@@ -781,6 +780,7 @@ internal fun AppNavigation(
                                     onSaveIcon = configurationViewModel::saveProviderIcon,
                                     onSaveModelIcon = configurationViewModel::saveModelIcon,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
+                                    onReorderModelsTracked = configurationViewModel::reorderProviderModelsTracked,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
                                     onClearOAuthCredentials = configurationViewModel::clearOAuthCredentials,
@@ -842,6 +842,7 @@ internal fun AppNavigation(
                                     onSaveIcon = configurationViewModel::saveProviderIcon,
                                     onSaveModelIcon = configurationViewModel::saveModelIcon,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
+                                    onReorderModelsTracked = configurationViewModel::reorderProviderModelsTracked,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
                                     onCancelProviderAuthorization = configurationViewModel::cancelProviderAuthorization,
                                     onClearOAuthCredentials = configurationViewModel::clearOAuthCredentials,
@@ -883,6 +884,8 @@ internal fun AppNavigation(
                             },
                             onMoveProviderToGroup = configurationViewModel::moveProviderToGroup,
                             onPlaceProviderImmediately = configurationViewModel::queueProviderPlacement,
+                            onPlaceProviderTracked = configurationViewModel::queueProviderPlacementTracked,
+                            onReorderRootItemsTracked = configurationViewModel::reorderProviderRootItemsTracked,
                             onDeleteProvider = { providerId ->
                                 configurationViewModel.deleteProvider(providerId)
                                 settingsViewModel.setModelPickerCollapsedProviders(appPrefs.modelPickerCollapsedProviders - providerId)
@@ -1200,7 +1203,7 @@ internal fun AppNavigation(
                             containerColor = androidx.compose.ui.graphics.Color.Transparent,
                             topBar = {
                                 MainAppbar(
-                                    title = stringResource(R.string.settings_category_app_settings),
+                                    title = stringResource(R.string.settings_general_settings),
                                     onBack = { navController.popBackStack() }
                                 )
                             }
@@ -1287,6 +1290,7 @@ internal fun AppNavigation(
                             },
                             onExportZip = ::exportData,
                             onImportZip = ::importData,
+                            onRepairProviders = configurationViewModel::repairCorruptProviders,
                             exportInProgress = preparingExport,
                             importInProgress = importInProgress,
                             onBack = { navController.popBackStack() }
@@ -1320,7 +1324,40 @@ internal fun AppNavigation(
             }
         }
     }
-    BackHandler(enabled = drawerState.isOpen) {
+    drawerPortForwardMachine?.let { selected ->
+        val machine = remoteMachineState.machines.firstOrNull { it.id == selected.id }
+        if (machine == null) {
+            LaunchedEffect(selected.id) { drawerPortForwardMachine = null }
+        } else {
+            val activeForwards by remoteMachinesViewModel.forwardedPorts.collectAsStateWithLifecycle()
+            PortForwardDialog(
+                machine = machine,
+                activeForwards = activeForwards[machine.id].orEmpty(),
+                onDismiss = { drawerPortForwardMachine = null },
+                onStop = {
+                    drawerPortForwardMachine = null
+                    remoteMachinesViewModel.stopPortForward(machine.id) { result ->
+                        val message = result.fold(
+                            onSuccess = { localizedResources.getString(R.string.remote_server_port_forward_stopped) },
+                            onFailure = { it.message ?: it.toString() }
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSaveAndStart = { updated ->
+                    drawerPortForwardMachine = null
+                    remoteMachinesViewModel.saveMachineAndStartPortForward(updated) { result ->
+                        val message = result.fold(
+                            onSuccess = { localizedResources.getString(R.string.remote_server_port_forward_started) },
+                            onFailure = { it.message ?: it.toString() }
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            )
+        }
+    }
+    BackHandler(enabled = drawerState.isOpen && drawerPortForwardMachine == null) {
         coroutineScope.launch { drawerState.close() }
     }
 }

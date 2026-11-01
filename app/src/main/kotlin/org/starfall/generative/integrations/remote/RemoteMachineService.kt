@@ -59,11 +59,9 @@ class RemoteMachineService(
 ) {
     private val appContext = context.applicationContext
     private val assets = RemoteMachineAssetsService(context, store)
-    /** What [applyPortForwarding] really opened per session, for the connection notification. */
-    private val appliedForwards = java.util.Collections.synchronizedMap(java.util.WeakHashMap<Session, List<String>>())
     private val connectionManager = RemoteMachineConnectionManager(
         openSessionCallback = { machine, password, prompt -> openSession(machine, password, prompt) },
-        forwardLabelsOf = { session -> appliedForwards[session].orEmpty() }
+        startForwards = ::applyPortForwarding
     )
     private val cloudShell = RemoteMachineCloudShellService(context, store, assets)
     private val sftpSessions = RemoteSftpSessionPool { machine -> openSession(machine) }
@@ -83,12 +81,12 @@ class RemoteMachineService(
      */
     val connectedMachineIds: StateFlow<Set<String>> get() = connectionManager.connectedMachineIds
 
-    /** Forwards that are actually active, per connected machine, as short labels such as "L 8080→10808". */
+    /** Forwards explicitly started by the user (saved rules do not activate themselves). */
     val forwardedPorts: StateFlow<Map<String, List<String>>> get() = connectionManager.forwardedPorts
 
     /**
-     * Starts a connection that is kept until the user disconnects it and applies the machine's port
-     * forwards. Terminals opened later reuse it.
+     * Explicit forwarding opt-in. Reuses the terminal SSH connection if available, without ending
+     * terminal channels. Ordinary terminal, SFTP and proxy sessions never start forwarding.
      */
     suspend fun startPortForward(
         machine: RemoteMachine,
@@ -99,6 +97,19 @@ class RemoteMachineService(
             "Turn on a port forward with at least one valid rule in this machine's settings first."
         }
         connectionManager.startPortForward(machine, passwordOverride, askSecret)
+    }
+
+    suspend fun stopPortForward(machineId: String): Boolean = connectionManager.stopPortForward(machineId)
+
+    /** Saving forwarding settings must not disconnect any live terminal session. */
+    suspend fun savePortForwarding(machine: RemoteMachine) {
+        val config = machine.portForwarding.validated()
+        store.update { current ->
+            require(current.machines.any { it.id == machine.id }) { "Remote machine no longer exists." }
+            current.copy(machines = current.machines.map { existing ->
+                if (existing.id == machine.id) existing.copy(portForwarding = config) else existing
+            })
+        }
     }
 
     suspend fun saveMachine(machine: RemoteMachine) {
@@ -512,30 +523,59 @@ class RemoteMachineService(
         }
         // Keepalive off means no read timeout once connected (the connect timeout must not end idle sessions).
         if (machine.keepAliveSeconds == 0) runCatching { session.timeout = 0 }
-        applyPortForwarding(session, machine)
+        // Simply connecting SSH must never activate the machine's saved forwarding rules.
         return session
     }
 
-    /** Forwards die with the session. One failing rule (port in use, forwarding forbidden) must not fail the connection. */
-    private fun applyPortForwarding(session: Session, machine: RemoteMachine) {
-        val forwarding = machine.portForwarding
-        val applied = mutableListOf<String>()
+    /**
+     * Called only by the explicit Port Forward action. Stop handles allow forwards to be changed or
+     * stopped without disconnecting any shell, exec or SFTP channel on the same SSH connection.
+     */
+    private fun applyPortForwarding(session: Session, machine: RemoteMachine): ActivePortForwards {
+        val forwarding = machine.portForwarding.validated()
+        val labels = mutableListOf<String>()
+        val stops = mutableListOf<() -> Unit>()
+        val failures = mutableListOf<String>()
         forwarding.activeLocalRules.forEach { rule ->
             runCatching { session.setPortForwardingL(LOCAL_FORWARD_BIND, rule.listenPort, rule.targetHost, rule.targetPort) }
-                .onSuccess { applied += "L ${rule.label()}" }
-                .onFailure { Log.w(TAG, "Local forward ${rule.listenPort} failed: ${it.message}") }
+                .onSuccess {
+                    labels += "L ${rule.label()}"
+                    stops += { session.delPortForwardingL(LOCAL_FORWARD_BIND, rule.listenPort) }
+                }
+                .onFailure {
+                    failures += "L ${rule.listenPort}: ${it.message}"
+                    Log.w(TAG, "Local forward ${rule.listenPort} failed", it)
+                }
         }
         forwarding.activeRemoteRules.forEach { rule ->
             runCatching { session.setPortForwardingR(rule.listenPort, rule.targetHost, rule.targetPort) }
-                .onSuccess { applied += "R ${rule.label()}" }
-                .onFailure { Log.w(TAG, "Remote forward ${rule.listenPort} failed: ${it.message}") }
+                .onSuccess {
+                    labels += "R ${rule.label()}"
+                    stops += { session.delPortForwardingR(rule.listenPort) }
+                }
+                .onFailure {
+                    failures += "R ${rule.listenPort}: ${it.message}"
+                    Log.w(TAG, "Remote forward ${rule.listenPort} failed", it)
+                }
         }
         forwarding.activeDynamicPorts.forEach { port ->
-            runCatching { RemoteSocksForwarder(session, port, machine.connectTimeoutSeconds * 1_000).start() }
-                .onSuccess { applied += "SOCKS $port" }
-                .onFailure { Log.w(TAG, "Dynamic forward $port failed: ${it.message}") }
+            runCatching { RemoteSocksForwarder(session, port, machine.connectTimeoutSeconds * 1_000).also { it.start() } }
+                .onSuccess {
+                    labels += "SOCKS $port"
+                    stops += { it.stop() }
+                }
+                .onFailure {
+                    failures += "SOCKS $port: ${it.message}"
+                    Log.w(TAG, "Dynamic forward $port failed", it)
+                }
         }
-        appliedForwards[session] = applied
+        // A failed rule must not silently leave partial forwarding running.
+        // Roll back opened ports and report every failing rule to the user.
+        if (failures.isNotEmpty() || labels.isEmpty()) {
+            ActivePortForwards(labels, stops).close()
+            error("Port forwarding failed: ${failures.joinToString("; ").ifBlank { "No valid forward rules." }}")
+        }
+        return ActivePortForwards(labels, stops)
     }
 
     /** `8080→10808`, or `8080→db:3306` when the target is not this loopback. */

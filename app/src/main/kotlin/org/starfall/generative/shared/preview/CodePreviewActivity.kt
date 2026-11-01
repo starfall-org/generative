@@ -17,10 +17,10 @@ import org.starfall.generative.R
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.UUID
-import org.starfall.generative.shared.storage.preferences.AppLocale
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
@@ -29,10 +29,6 @@ import org.starfall.generative.shared.ui.layout.LocalItemTransparency
 /** Private Activity keeps generated scripts away from native app state and credentials. */
 class CodePreviewActivity : ComponentActivity() {
     private var previewFile: File? = null
-
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocale.wrap(newBase))
-    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,6 +40,7 @@ class CodePreviewActivity : ComponentActivity() {
         setContent {
             val preferencesFlow = remember { AppPreferencesRepository(applicationContext).appPreferencesFlow }
             val appearance by preferencesFlow.collectAsState(initial = AppPreferences())
+            RuntimeAppLocale(appearance.useSystemLanguage, appearance.selectedLanguage) {
             GenerativeTheme(
                 themeMode = appearance.themeMode,
                 amoledMode = appearance.useAmoled,
@@ -105,6 +102,7 @@ class CodePreviewActivity : ComponentActivity() {
                         })
                     }
                 }
+            }
             }
         }
     }

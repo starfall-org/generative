@@ -3,7 +3,6 @@
     <string name="common_error">Ошибка</string>
     <string name="chat_open_app_menu">Открыть меню приложения</string>
     <string name="settings_customize_palette">Настроить</string>
-    <string name="settings_customize_palette_help">Создайте собственную палитру. Выберите роль, перемещайте указатель по цветовому полю или настройте HSV и HEX. Цвета подобраны для контрастности в светлой и тёмной темах.</string>
     <string name="settings_palette_primary">Основной</string>
     <string name="settings_palette_secondary">Дополнительный</string>
     <string name="settings_palette_accent">Акцентный</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">Размер видео</string>
     <string name="video_option_resolution">Разрешение видео</string>
     <string name="speech_platform_picker_title">Речевая платформа</string>
-    <string name="speech_engine_android_description">Используется синтез речи Android</string>
     <string name="speech_engine_direct_description">Специализированный API синтеза речи</string>
     <string name="speech_engine_provider_description">Используется настроенный провайдер моделей</string>
     <plurals name="speech_engine_model_count">
@@ -42,9 +40,7 @@
     </plurals>
     <string name="customization_title">Персонализация</string>
     <string name="customization_enable">Включить</string>
-    <string name="customization_description">Цвета, прозрачность элементов, фото профиля и фоновые изображения</string>
     <string name="customization_backgrounds_title">Фоновые изображения</string>
-    <string name="user_profile_background_preview_sample">Пример содержимого с фоновым изображением</string>
     <string name="provider_custom">Пользовательский</string>
     <string name="provider_custom_endpoints">Пользовательские конечные точки</string>
     <string name="provider_custom_endpoints_hint">Введите полные URL. Оставьте пустым для значений по умолчанию. URL генерации Gemini могут содержать {model} и {method}.</string>
@@ -63,7 +59,6 @@
     <string name="launcher_drag_test_none">нет</string>
     <string name="launcher_drag_test_folder_alpha">Папка Альфа</string>
     <string name="launcher_drag_test_folder_beta">Папка Бета</string>
-    <string name="launcher_drag_test_folder">Папка</string>
     <string name="launcher_drag_test_close">Закрыть</string>
     <string name="launcher_drag_test_grid">Сетка</string>
     <string name="launcher_drag_test_list">Список</string>

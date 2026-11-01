@@ -251,7 +251,7 @@ internal class OpenAICodexAdapter(
         val credentialId = provider.oauthCredentialId
         return refreshLocks.computeIfAbsent(credentialId) { Mutex() }.withLock {
             // Reload after acquiring the per-credential lock: another caller may already have rotated it.
-            val current = tokenStore.load(credentialId)
+            val current = withContext(Dispatchers.IO) { tokenStore.load(credentialId) }
                 ?: error("OpenAI Codex credentials are missing. Sign in again.")
             val expiresAt = current.expiresAt
             if (expiresAt == null || expiresAt > System.currentTimeMillis() + REFRESH_BUFFER_MS) {
@@ -261,7 +261,7 @@ internal class OpenAICodexAdapter(
                 "OpenAI Codex authorization expired. Sign in again."
             }
             val refreshed = refresh(current)
-            tokenStore.save(credentialId, refreshed)
+            withContext(Dispatchers.IO) { tokenStore.save(credentialId, refreshed) }
             refreshed
         }
     }

@@ -3,7 +3,6 @@
     <string name="common_error">오류</string>
     <string name="chat_open_app_menu">앱 메뉴 열기</string>
     <string name="settings_customize_palette">사용자 지정</string>
-    <string name="settings_customize_palette_help">나만의 색상 팔레트를 만드세요. 색상 역할을 선택한 뒤 색상 영역을 드래그하거나 HSV 및 HEX 값을 조정하세요. 밝은 모드와 어두운 모드에서 대비가 잘 보이도록 색상을 조정합니다.</string>
     <string name="settings_palette_primary">기본</string>
     <string name="settings_palette_secondary">보조</string>
     <string name="settings_palette_accent">강조</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">동영상 크기</string>
     <string name="video_option_resolution">동영상 해상도</string>
     <string name="speech_platform_picker_title">음성 플랫폼</string>
-    <string name="speech_engine_android_description">Android 텍스트 음성 변환 사용</string>
     <string name="speech_engine_direct_description">전용 음성 API</string>
     <string name="speech_engine_provider_description">설정된 모델 제공자 사용</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">사용자 지정</string>
     <string name="customization_enable">활성화</string>
-    <string name="customization_description">색상, 구성요소 투명도, 프로필 사진 및 배경</string>
     <string name="customization_backgrounds_title">배경 이미지</string>
-    <string name="user_profile_background_preview_sample">배경 이미지가 있는 샘플 콘텐츠</string>
     <string name="provider_custom">사용자 지정</string>
     <string name="provider_custom_endpoints">사용자 지정 엔드포인트</string>
     <string name="provider_custom_endpoints_hint">전체 URL을 입력하세요. 비워 두면 기본값을 사용합니다. Gemini 생성 URL에는 {model}과 {method}를 사용할 수 있습니다.</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">없음</string>
     <string name="launcher_drag_test_folder_alpha">Alpha 폴더</string>
     <string name="launcher_drag_test_folder_beta">Beta 폴더</string>
-    <string name="launcher_drag_test_folder">폴더</string>
     <string name="launcher_drag_test_close">닫기</string>
     <string name="launcher_drag_test_grid">격자</string>
     <string name="launcher_drag_test_list">목록</string>

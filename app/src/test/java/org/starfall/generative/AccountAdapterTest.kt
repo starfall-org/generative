@@ -256,7 +256,7 @@ class AccountAdapterTest {
                             "event: " + Json.parseToJsonElement(event).jsonObject.getValue("type").jsonPrimitive.content + "\ndata: $event\n\n"
                         }
                         ModelApiType.ANTIGRAVITY -> "data: $body\n\n"
-                        else -> """data: {"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello","reasoning_content":"plan"},"finish_reason":null}]}""" + "\n\ndata: [DONE]\n\n"
+                        else -> """data: {"id":"chatcmpl-test","object":"chat.completion.chunk","created":0,"model":"chat","choices":[{"index":0,"delta":{"content":"hello","reasoning_content":"plan"},"finish_reason":null}]}""" + "\n\ndata: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
                     }
                     if (type == ModelApiType.GITHUB_COPILOT)
                         server.enqueue(MockResponse().setBody("""{"data":[{"id":"chat","supported_endpoints":["/chat/completions"],"capabilities":{"limits":{"max_output_tokens":1000,"max_prompt_tokens":10000},"supports":{"tool_calls":true}}}]}"""))

@@ -58,11 +58,11 @@ fun WebSearchProviderSettings(
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    stringResource(R.string.tool_web_search_provider_title),
+                    stringResource(R.string.web_search_service),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
                 Text(
-                    stringResource(R.string.tool_web_search_provider_description),
+                    stringResource(R.string.web_search_service_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -77,7 +77,7 @@ fun WebSearchProviderSettings(
 
         Box(Modifier.fillMaxWidth()) {
             DefaultSelectionItem(
-                title = selectedProvider?.name ?: stringResource(R.string.tool_web_search_provider_none),
+                title = selectedProvider?.name ?: stringResource(R.string.web_search_service_none),
                 icon = {
                     EntityIcon(
                         image = selectedProvider?.icon,
@@ -92,7 +92,7 @@ fun WebSearchProviderSettings(
             if (expanded) {
                 BottomSheet(onDismissRequest = { expanded = false }) {
                     Text(
-                        stringResource(R.string.tool_web_search_provider_title),
+                        stringResource(R.string.web_search_service),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.titleLarge
                     )
@@ -103,7 +103,7 @@ fun WebSearchProviderSettings(
                     ) {
                         item {
                             ChatOptionSelectionCard(
-                                title = stringResource(R.string.tool_web_search_provider_none),
+                                title = stringResource(R.string.web_search_service_none),
                                 selected = selectedProvider == null,
                                 icon = {
                                     EntityIcon(
@@ -150,7 +150,7 @@ fun WebSearchProviderSettings(
         }
         if (servers.isEmpty()) {
             Text(
-                stringResource(R.string.tool_web_search_provider_empty),
+                stringResource(R.string.web_search_service_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

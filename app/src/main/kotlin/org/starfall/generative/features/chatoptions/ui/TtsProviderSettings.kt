@@ -57,9 +57,9 @@ internal fun TtsProviderSettings(
                 EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.RecordVoiceOver)
                 Spacer(Modifier.width(14.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(stringResource(R.string.settings_tts_provider_title),
+                    Text(stringResource(R.string.tts_service),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Text(stringResource(R.string.settings_tts_provider_description),
+                    Text(stringResource(R.string.tts_service_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -67,7 +67,7 @@ internal fun TtsProviderSettings(
             Box(Modifier.fillMaxWidth()) {
                 DefaultSelectionItem(
                     title = selectedService?.name
-                        ?: stringResource(R.string.settings_tts_provider_none),
+                        ?: stringResource(R.string.tts_service_none),
                     icon = {
                         EntityIcon(
                             image = selectedService?.icon,
@@ -82,7 +82,7 @@ internal fun TtsProviderSettings(
                 if (expanded) {
                     BottomSheet(onDismissRequest = { expanded = false }) {
                         Text(
-                            stringResource(R.string.settings_tts_provider_title),
+                            stringResource(R.string.tts_service),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -92,12 +92,12 @@ internal fun TtsProviderSettings(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             if (speechServices.isEmpty()) item {
-                                Text(stringResource(R.string.settings_tts_provider_empty))
+                                Text(stringResource(R.string.tts_service_empty))
                             }
                             items(speechServices, key = { it.id }) { service ->
                                 val provider = providers.firstOrNull { it.id == service.provider }
                                 val providerName = when (service.engine) {
-                                    SpeechEngine.SYSTEM -> stringResource(R.string.speech_system_tts)
+                                    SpeechEngine.SYSTEM -> stringResource(R.string.speech_android_system_tts)
                                     SpeechEngine.PROVIDER -> provider?.name ?: service.provider
                                     SpeechEngine.ELEVENLABS -> "ElevenLabs"
                                     SpeechEngine.FISH_AUDIO -> "Fish Audio"
@@ -135,7 +135,7 @@ internal fun TtsProviderSettings(
             }
             if (speechServices.isEmpty()) {
                 Text(
-                    stringResource(R.string.settings_tts_provider_empty),
+                    stringResource(R.string.tts_service_empty),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

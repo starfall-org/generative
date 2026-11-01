@@ -35,13 +35,13 @@ internal fun CodeRenderingPreferences(
     includeTextAppearance: Boolean = true
 ) {
     SettingsChoicePreference(
-        title = stringResource(R.string.word_wrap),
+        title = stringResource(R.string.code_line_wrapping),
         value = preferences.wordWrapMode,
         choices = listOf(
             SettingsChoice(WordWrapMode.OFF, stringResource(R.string.common_off)),
             SettingsChoice(WordWrapMode.VIEWPORT, stringResource(R.string.word_wrap_viewport)),
             SettingsChoice(WordWrapMode.COLUMN, stringResource(R.string.word_wrap_column)),
-            SettingsChoice(WordWrapMode.BOUNDED, stringResource(R.string.word_wrap_bounded))
+            SettingsChoice(WordWrapMode.BOUNDED, stringResource(R.string.code_wrap_smaller_width_limit))
         ),
         onSelected = onModeChange,
         modifier = Modifier.testTag("word-wrap-mode")
@@ -63,8 +63,8 @@ internal fun CodeRenderingPreferences(
         value = preferences.codeBlockDisplayMode,
         choices = listOf(
             SettingsChoice(CodeBlockDisplayMode.SHOW_ALL, stringResource(R.string.code_block_show_all)),
-            SettingsChoice(CodeBlockDisplayMode.EXTENDABLE, stringResource(R.string.code_block_extendable)),
-            SettingsChoice(CodeBlockDisplayMode.SHOW_IN_DRAWER, stringResource(R.string.code_block_show_in_drawer))
+            SettingsChoice(CodeBlockDisplayMode.EXTENDABLE, stringResource(R.string.code_block_expandable_preview)),
+            SettingsChoice(CodeBlockDisplayMode.SHOW_IN_DRAWER, stringResource(R.string.code_block_full_screen_viewer))
         ),
         onSelected = onCodeBlockDisplayModeChange,
         modifier = Modifier.testTag("code-block-display-mode")

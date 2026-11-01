@@ -113,11 +113,12 @@ internal abstract class OAuthAccountAdapter(
         require(provider.type == providerType && provider.auth.method == AuthMethod.OAUTH && provider.auth.value == marker) {
             "${providerType.displayName} is not authorized. Sign in from Provider settings."
         }
-        val current = store.load(provider.oauthCredentialId) ?: error("Credentials are missing. Sign in again.")
+        val current = withContext(Dispatchers.IO) { store.load(provider.oauthCredentialId) }
+            ?: error("Credentials are missing. Sign in again.")
         if (current.expiresAt != null && current.expiresAt <= System.currentTimeMillis() + 60_000) {
             require(current.refreshToken.isNotBlank()) { "Authorization expired. Sign in again." }
             exchange(mapOf("grant_type" to "refresh_token", "refresh_token" to current.refreshToken), current)
-                .also { store.save(provider.oauthCredentialId, it) }
+                .also { withContext(Dispatchers.IO) { store.save(provider.oauthCredentialId, it) } }
         } else current
     }
 

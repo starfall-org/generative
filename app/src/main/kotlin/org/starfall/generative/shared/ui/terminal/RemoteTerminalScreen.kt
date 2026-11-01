@@ -110,7 +110,7 @@ internal fun RemoteTerminalScreen(
     var connectionJob by remember(machine.id) { mutableStateOf<Job?>(null) }
     var openError by remember(machine.id) { mutableStateOf<String?>(null) }
     val error = openError ?: if (RemoteTerminalSessions.connectionLost(machine.id)) {
-        stringResource(R.string.remote_machine_terminal_connection_lost)
+        stringResource(R.string.remote_server_terminal_connection_lost)
     } else null
     var secretRequest by remember(machine.id) { mutableStateOf<PendingRemoteSecretRequest?>(null) }
     var passwordInput by remember(machine.id) { mutableStateOf("") }
@@ -199,8 +199,13 @@ internal fun RemoteTerminalScreen(
         }
     }
 
-    // Phone back closes the screen while keeping the process-wide terminal sessions alive.
-    BackHandler(enabled = LocalScreenTransitionActive.current) { leaveScreen(); onDismiss() }
+    // Both the system Back action and the app-bar Back action leave active sessions untouched.
+    // Only an unfinished connection attempt is cancelled when the screen goes away.
+    val navigateBack = {
+        leaveScreen()
+        onDismiss()
+    }
+    BackHandler(enabled = LocalScreenTransitionActive.current) { navigateBack() }
     DisposableEffect(machine.id) {
         onDispose { leaveScreen() }
     }
@@ -245,6 +250,7 @@ internal fun RemoteTerminalScreen(
         TerminalAppBar(
             bridge = activeBridge,
             onToggleSessions = { drawerExpanded = !sessionsDrawerOpen },
+            onBack = navigateBack,
             onDisconnect = {
                 leaveScreen()
                 RemoteTerminalSessions.closeAll(machine.id)
@@ -366,7 +372,7 @@ internal fun RemoteTerminalScreen(
                                 ) {
                                     LoadingIndicator(Modifier.size(18.dp))
                                     Spacer(Modifier.width(10.dp))
-                                    Text(stringResource(R.string.remote_machine_terminal_connecting))
+                                    Text(stringResource(R.string.remote_server_terminal_connecting))
                                 }
                             }
                         }
@@ -382,26 +388,26 @@ internal fun RemoteTerminalScreen(
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Text(
-                                    stringResource(R.string.remote_machine_terminal_no_sessions),
+                                    stringResource(R.string.remote_server_terminal_no_sessions),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = terminalForeground
                                 )
                                 Text(
-                                    stringResource(R.string.remote_machine_terminal_no_sessions_hint),
+                                    stringResource(R.string.remote_server_terminal_no_sessions_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = terminalForeground.copy(alpha = 0.65f)
                                 )
                                 FilledTonalButton(onClick = { openTerminal() }) {
                                     SharedIcon(Icons.Default.Add, null, Modifier.size(18.dp))
                                     Spacer(Modifier.width(6.dp))
-                                    Text(stringResource(R.string.remote_machine_terminal_add))
+                                    Text(stringResource(R.string.remote_server_terminal_add))
                                 }
                             }
                         }
                         if (!connecting && error != null && secretRequest == null) {
                             ErrorContainer(
                                 message = error.orEmpty(),
-                                title = stringResource(R.string.remote_machine_terminal_connection_error),
+                                title = stringResource(R.string.remote_server_terminal_connection_error),
                                 onRetry = { openTerminal() },
                                 modifier = Modifier.align(Alignment.Center).padding(16.dp)
                             )

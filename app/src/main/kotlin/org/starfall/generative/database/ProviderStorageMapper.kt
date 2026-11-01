@@ -54,6 +54,27 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
     private val dao = db.modelProviderDao()
     private val structured = db.structuredJsonDao()
 
+    /** A last-resort RAM placeholder, never requiring another database query or decryption. */
+    fun unreadableMetadata(entity: ModelProviderEntity) = ModelProvider(
+        id = entity.id, name = entity.name,
+        type = runCatching { ModelApiType.valueOf(entity.type) }.getOrDefault(ModelApiType.OPENAI),
+        baseUrl = EndpointSecrets.split(entity.baseUrl).publicUrl.orEmpty(),
+        icon = entity.icon, groupId = entity.groupId, sortOrder = entity.sortOrder,
+        credentialState = CredentialLoadState.ERROR
+    )
+
+    /** Raw owner cleanup: never decode model JSON, and never match sibling provider ID prefixes. */
+    fun deleteDocumentsByOwner(id: String) {
+        check(db.inTransaction()) { "Provider cleanup requires a transaction" }
+        db.openHelper.writableDatabase.execSQL(
+            """DELETE FROM structured_json_documents WHERE
+                (ownerType IN ('provider', 'provider_catalog') AND ownerId = ?) OR
+                (ownerType = 'provider_model' AND ownerId IN (
+                    SELECT (? || '/' || modelId) FROM provider_model_configurations WHERE providerId = ?))""",
+            arrayOf(id, id, id)
+        )
+    }
+
     suspend fun metadata(entity: ModelProviderEntity): ModelProvider {
         val selections = dao.getModelSelection(entity.id).sortedBy { it.ordinal }
         val values = dao.getModelValues(entity.id).groupBy { it.modelId to it.listKind }
@@ -80,7 +101,8 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
         }
         val policy = if (entity.authId == null) {
             (structured.readDocument("provider", entity.id, "auth_method") as? JsonPrimitive)?.content
-                ?.let { AuthMethod.valueOf(it) } ?: AuthMethod.PLATFORM_DEFAULT
+                ?.let { runCatching { AuthMethod.valueOf(it) }.getOrDefault(AuthMethod.PLATFORM_DEFAULT) }
+                ?: AuthMethod.PLATFORM_DEFAULT
         } else AuthMethod.PLATFORM_DEFAULT
         return ModelProvider(
             id = entity.id, name = entity.name,
@@ -187,27 +209,73 @@ internal class ProviderStorageMapper(private val db: AppDatabase) {
         if (projectIds.isEmpty()) deleteDocument("provider", provider.id, "antigravity_project_ids")
         else structured.replaceDocument(StructuredJsonDocument("provider", provider.id, "antigravity_project_ids",
             JsonObject(projectIds.mapValues { JsonPrimitive(it.value) })))
-        val removedModels = dao.getModelConfigurations(provider.id).map { it.modelId } - provider.config.modelConfigs.keys
-        removedModels.forEach { deleteDocument("provider_model", "${provider.id}/$it", "model_json") }
-        dao.deleteModelSelection(provider.id)
-        dao.deleteModelValues(provider.id)
-        dao.deleteModelConfigurations(provider.id)
-        dao.insertModelSelection(provider.config.modelIds.orEmpty().mapIndexed { ordinal, id -> ProviderModelSelectionEntity(provider.id, ordinal, id) })
-        provider.config.modelConfigs.entries.forEachIndexed { ordinal, (modelId, model) ->
-            dao.insertModelConfigurations(listOf(ProviderModelConfigurationEntity(
-                provider.id, modelId, ordinal, model.temperature, model.topP, model.topK, model.supportStream,
-                model.displayName, model.contextWindowTokens, model.modelType.name, model.supportsVision, model.supportsVideoInput,
-                model.supportsAudioInput, model.supportsThinking, model.reasoningEffort, model.thinkingLevel, model.supportsToolCalls,
-                 model.legacySendThinkingContent, model.thinkingPassback?.name, model.icon,
-                 model.mediaApiType.name, model.mediaRequestProfileId
-            )))
-            dao.insertModelValues(listOf("reasoning_efforts" to model.reasoningEfforts, "model_tools" to model.modelTools,
+        persistModels(provider.id, provider.config.modelIds, provider.config.modelConfigs)
+    }
+
+    /** Model-only write path. Nothing here reads or replaces provider credentials. */
+    suspend fun persistModels(providerId: String, modelIds: List<String>?, modelConfigs: Map<String, ModelConfiguration>) {
+        check(db.inTransaction()) { "Model storage updates require a transaction" }
+        val oldIds = dao.getModelConfigurations(providerId).map { it.modelId }
+        (oldIds - modelConfigs.keys).forEach { deleteDocument("provider_model", "$providerId/$it", "model_json") }
+        // Updating a UNIQUE ordinal row in place can conflict with a simultaneous reorder;
+        // delete/reinsert the dependent rows in ONE transaction and bulk-insert each table.
+        dao.deleteModelSelection(providerId)
+        dao.deleteModelValues(providerId)
+        dao.deleteModelConfigurations(providerId)
+        dao.insertModelSelection(modelIds.orEmpty().mapIndexed { ordinal, id ->
+            ProviderModelSelectionEntity(providerId, ordinal, id)
+        })
+        dao.insertModelConfigurations(modelConfigs.entries.mapIndexed { ordinal, (modelId, model) ->
+            ProviderModelConfigurationEntity(
+                providerId, modelId, ordinal, model.temperature, model.topP, model.topK, model.supportStream,
+                model.displayName, model.contextWindowTokens, model.modelType.name, model.supportsVision,
+                model.supportsVideoInput, model.supportsAudioInput, model.supportsThinking,
+                model.reasoningEffort, model.thinkingLevel, model.supportsToolCalls,
+                model.legacySendThinkingContent, model.thinkingPassback?.name, model.icon,
+                model.mediaApiType.name, model.mediaRequestProfileId
+            )
+        })
+        dao.insertModelValues(modelConfigs.flatMap { (modelId, model) ->
+            listOf("reasoning_efforts" to model.reasoningEfforts, "model_tools" to model.modelTools,
                 "enabled_model_tools" to model.enabledModelTools).flatMap { (kind, values) ->
-                values.mapIndexed { index, value -> ProviderModelValueEntity(provider.id, modelId, kind, index, value) }
-            })
-            if (model.modelJson.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("provider_model", "${provider.id}/$modelId", "model_json", model.modelJson))
-            else deleteDocument("provider_model", "${provider.id}/$modelId", "model_json")
+                values.mapIndexed { index, value -> ProviderModelValueEntity(providerId, modelId, kind, index, value) }
+            }
+        })
+        for ((modelId, model) in modelConfigs) {
+            if (model.modelJson.isNotEmpty()) structured.replaceDocument(
+                StructuredJsonDocument("provider_model", "$providerId/$modelId", "model_json", model.modelJson)
+            ) else deleteDocument("provider_model", "$providerId/$modelId", "model_json")
         }
+        // Persist model selection mode without touching auth/parent relations.
+        db.updateStorageRow("model_providers", providerId,
+            "modelSelectionMode" to if (modelIds == null) "DISCOVERY" else "EXPLICIT")
+    }
+
+    /** Discard only corrupted JSON graphs belonging to one provider. Keeps healthy documents. */
+    suspend fun deleteMalformedDocuments(providerId: String): Int {
+        check(db.inTransaction()) { "Provider repair requires a transaction" }
+        data class Document(val id: String, val type: String, val owner: String, val field: String)
+        val rows = mutableListOf<Document>()
+        db.openHelper.writableDatabase.query(
+            """SELECT id, ownerType, ownerId, fieldName FROM structured_json_documents WHERE
+                (ownerType IN ('provider', 'provider_catalog') AND ownerId = ?) OR
+                (ownerType = 'provider_model' AND ownerId IN (
+                    SELECT (? || '/' || modelId) FROM provider_model_configurations WHERE providerId = ?))""",
+            arrayOf(providerId, providerId, providerId)
+        ).use { cursor ->
+            while (cursor.moveToNext()) rows += Document(
+                cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3))
+        }
+        var repaired = 0
+        for (row in rows) {
+            try { structured.readDocument(row.type, row.owner, row.field) }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                structured.deleteDocument(row.id)
+                repaired++
+            }
+        }
+        return repaired
     }
 
     suspend fun deleteDocuments(providerId: String) {

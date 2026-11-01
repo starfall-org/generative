@@ -62,6 +62,15 @@ class ProfileRepository(private val db: AppDatabase) {
 
     suspend fun deleteProfile(id: String) = withContext(Dispatchers.IO) { dao.deleteById(id) }
 
+    fun queueReorderProfiles(ids: List<String>) {
+        val positions = ids.withIndex().associate { it.value to it.index }
+        state.enqueue({ items -> items.map { item ->
+            positions[item.id]?.let { item.copy(sortOrder = it) } ?: item
+        }.sortedBy { it.sortOrder } }) {
+            db.withTransaction { ids.forEachIndexed { index, id -> dao.updateSortOrder(id, index) } }
+        }
+    }
+
     suspend fun reorderProfiles(ids: List<String>) {
         state.mutate({ items -> items.map { item -> ids.indexOf(item.id).takeIf { it >= 0 }?.let { item.copy(sortOrder = it) } ?: item }.sortedBy { it.sortOrder } }) {
             db.withTransaction { ids.forEachIndexed { index, id -> dao.updateSortOrder(id, index) } }

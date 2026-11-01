@@ -16,6 +16,7 @@ data class ToolControls(
     val setMcp: (String,Boolean)->Unit = {_,_->},
     val setMachines: (Boolean)->Unit = {},
     val setMachine: (String, Boolean)->Unit = {_,_->},
+    val selectMachine: (String?) -> Unit = {},
     val setMachineTool: (String, String, Boolean)->Unit = {_,_,_->},
     val setSendFile: (Boolean)->Unit = {},
     val setWebSearch: (Boolean)->Unit = {},

@@ -21,6 +21,7 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LocalInstructionControls
 
@@ -40,15 +41,17 @@ class ChatOptionsAndToolsEditorTest {
             }
         }
 
-        compose.onNodeWithText("Configuration").assertIsDisplayed()
+        compose.onNodeWithText("Chat Configuration").assertIsDisplayed()
         compose.onNodeWithText("Options").assertIsDisplayed()
         compose.onNodeWithText("Instructions").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertIsDisplayed()
-        compose.onNodeWithText("Web Search Provider").assertIsDisplayed()
-        compose.onNodeWithText("TTS Provider").assertIsDisplayed()
+        compose.onNodeWithText("Web Search Service").assertIsDisplayed()
+        compose.onNodeWithTag("chat-options-list").performScrollToIndex(4)
+        compose.onNodeWithText("TTS Service").assertIsDisplayed()
         compose.onNodeWithText("Image Generation").assertDoesNotExist()
         compose.onNodeWithText("Send File").assertDoesNotExist()
 
+        compose.onNodeWithTag("chat-options-list").performScrollToIndex(0)
         compose.onNodeWithText("Conversation helpers").performTouchInput { swipeLeft() }
         compose.onNodeWithContentDescription("Add").assertIsDisplayed()
         compose.onNodeWithText("System Prompt & Instructions").assertDoesNotExist()
@@ -85,17 +88,17 @@ class ChatOptionsAndToolsEditorTest {
         assertTrue("Instruction editor must span the available screen width", editorSize.width > screenSize.width * 0.85f)
         assertTrue("Instruction editor must fill the available screen height", editorSize.height > screenSize.height * 0.70f)
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(2)
-        compose.onAllNodes(hasSetTextAction())[0].performTextInput("Concise")
-        compose.onAllNodes(hasSetTextAction())[1].performTextInput("Keep answers concise")
-        compose.onNodeWithContentDescription("Back").performClick()
-
-        compose.onNodeWithText("Concise").assertIsDisplayed()
+        compose.onNodeWithTag("instruction_name_input").performTextInput("Concise")
+        compose.onNodeWithTag("instruction_content_input").performTextInput("Keep answers concise")
+        compose.onAllNodesWithContentDescription("Back").onLast().performClick()
+        compose.waitForIdle()
         compose.runOnIdle {
             val saved = savedLibrary.instructions.single()
             assertEquals("Concise", saved.name)
             assertEquals("Keep answers concise", saved.content)
             assertFalse(saved.id in savedLibrary.selectedIds)
         }
+        compose.onNodeWithText("Concise").assertIsDisplayed()
     }
 
     @Test
@@ -160,7 +163,7 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithTag("built-in-tools-media-tab").performClick()
         compose.onNodeWithText("Image Generation").assertIsDisplayed()
         compose.onNodeWithText("Conversation helpers").assertDoesNotExist()
-        compose.onNodeWithText("Web Search Provider").assertDoesNotExist()
+        compose.onNodeWithText("Web Search Service").assertDoesNotExist()
     }
 
     @Test
@@ -187,10 +190,11 @@ class ChatOptionsAndToolsEditorTest {
             }
         }
 
+        compose.onNodeWithTag("chat-options-list").performScrollToIndex(4)
         compose.onNodeWithText("System Voice").performClick()
         compose.onNodeWithTag("tts-service-option-cloud").assertIsDisplayed()
         compose.onNodeWithText("ElevenLabs").assertIsDisplayed()
-        compose.onNodeWithText("Model: eleven-v3 · Voice: Rachel").assertIsDisplayed()
+        compose.onNodeWithText("Model: eleven-v3 · Voice: Rachel").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("tts-service-option-cloud").performClick()
         compose.runOnIdle { assertEquals("cloud", selectedId) }
         compose.onNodeWithTag("tts-service-option-cloud").assertDoesNotExist()
@@ -219,7 +223,8 @@ class ChatOptionsAndToolsEditorTest {
         compose.onNodeWithText("Search API").performClick()
         compose.onNodeWithTag("web-search-provider-option-second").assertIsDisplayed()
         compose.onNodeWithText("https://second.example/mcp").assertIsDisplayed()
-        compose.onNodeWithText("0 cached tools").assertIsDisplayed()
+        compose.onNodeWithTag("web-search-provider-option-first").performScrollTo()
+        compose.onNodeWithText("0 cached tools").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("web-search-provider-option-second").performClick()
         compose.runOnIdle {
             assertEquals("second", selectedId)
@@ -249,7 +254,8 @@ class ChatOptionsAndToolsEditorTest {
             }
         }
 
-        compose.onNodeWithText("TTS Provider").assertIsDisplayed()
+        compose.onNodeWithTag("chat-options-list").performScrollToIndex(4)
+        compose.onNodeWithText("TTS Service").assertIsDisplayed()
         compose.onNodeWithText("Voice").performClick()
         compose.onAllNodesWithText("Voice").assertCountEquals(2)
         compose.onAllNodesWithText("Voice")[1].performClick()
@@ -259,5 +265,7 @@ class ChatOptionsAndToolsEditorTest {
 
 @Composable
 private fun TestTheme(content: @Composable () -> Unit) {
-    MaterialTheme(content = content)
+    RuntimeAppLocale(useSystemLanguage = false, selectedLanguage = "en") {
+        MaterialTheme(content = content)
+    }
 }

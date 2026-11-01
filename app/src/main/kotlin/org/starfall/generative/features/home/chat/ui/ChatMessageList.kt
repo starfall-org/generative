@@ -155,7 +155,7 @@ internal fun ChatMessageList(
     appBarHeight: Dp,
     bottomClearance: Dp,
     modifier: Modifier = Modifier,
-    warning: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
     messageContent: @Composable (StoredMessage) -> Unit
 ) {
     if (historyLoading) {
@@ -314,8 +314,13 @@ internal fun ChatMessageList(
                                     })
                             }
                         }
-                        if (index == turns.lastIndex) warning?.invoke()
+                        if (index == turns.lastIndex) footer?.invoke()
                     }
+                }
+                // An empty conversation can still report a failed first save/submission.
+                // Keep that error in the same chronological list, never inside InputArea.
+                if (turns.isEmpty() && footer != null) {
+                    item(key = "chat-empty-footer") { footer() }
                 }
                 // This zero-height boundary selects the first viewport at the chronological end.
                 // Actual follow requests still target the real-content markers inside each turn,

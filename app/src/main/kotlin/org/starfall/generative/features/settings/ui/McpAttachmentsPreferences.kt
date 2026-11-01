@@ -39,14 +39,14 @@ fun McpAttachmentsPreferences(
     settings: McpAttachmentSettings,
     onChange: (McpAttachmentSettings) -> Unit
 ) {
-    Text(stringResource(R.string.mcp_attachments_title), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.mcp_strategy), style = MaterialTheme.typography.titleMedium)
 
     SettingsChoicePreference(
-        title = stringResource(R.string.mcp_attachments_mode_label),
+        title = stringResource(R.string.mcp_tool_mode),
         value = settings.mode,
         choices = listOf(
-            SettingsChoice(McpAttachmentMode.DYNAMIC, stringResource(R.string.mcp_attachments_mode_dynamic)),
-            SettingsChoice(McpAttachmentMode.CLASSIC, stringResource(R.string.mcp_attachments_mode_classic))
+            SettingsChoice(McpAttachmentMode.DYNAMIC, stringResource(R.string.mcp_strategy_load_on_demand)),
+            SettingsChoice(McpAttachmentMode.CLASSIC, stringResource(R.string.mcp_strategy_attach_all_enabled_tools))
         ),
         onSelected = { onChange(settings.copy(mode = it)) },
         modifier = Modifier
@@ -61,24 +61,24 @@ fun McpAttachmentsPreferences(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(stringResource(R.string.mcp_attachments_include_description), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.mcp_strategy_include_tool_descriptions), style = MaterialTheme.typography.titleSmall)
         Switch(checked = settings.includeToolDescription, onCheckedChange = null)
     }
 
     if (settings.mode == McpAttachmentMode.CLASSIC) return
 
     SettingsChoicePreference(
-        title = stringResource(R.string.mcp_attachments_dynamic_strategy_label),
+        title = stringResource(R.string.mcp_strategy_on_demand),
         value = settings.strategy,
         choices = listOf(
-            SettingsChoice(McpDynamicStrategy.OVERFLOW, stringResource(R.string.mcp_attachments_strategy_overflow)),
-            SettingsChoice(McpDynamicStrategy.ALL, stringResource(R.string.mcp_attachments_strategy_all))
+            SettingsChoice(McpDynamicStrategy.OVERFLOW, stringResource(R.string.mcp_strategy_initial_on_demand)),
+            SettingsChoice(McpDynamicStrategy.ALL, stringResource(R.string.mcp_strategy_all_servers_on_demand))
         ),
         onSelected = { onChange(settings.copy(strategy = it)) }
     )
 
     var limitsOpen by rememberSaveable { mutableStateOf(false) }
-    SettingsActionPreference(stringResource(R.string.mcp_attachments_limits)) { limitsOpen = true }
+    SettingsActionPreference(stringResource(R.string.mcp_strategy_on_demand_limits)) { limitsOpen = true }
     if (limitsOpen) {
         McpLimitsDialog(settings, onDismiss = { limitsOpen = false }) { updated ->
             onChange(updated)
@@ -108,27 +108,27 @@ private fun McpLimitsDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.mcp_attachments_limits)) },
+        title = { Text(stringResource(R.string.mcp_strategy_on_demand_limits)) },
         scrollableContent = true,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SettingsNumberField(
-                    stringResource(R.string.mcp_attachments_min_mcps), minMcps,
+                    stringResource(R.string.mcp_strategy_min_servers), minMcps,
                     DEFAULT_MCP_DYNAMIC_MIN_MCPS, 0..MAX_MCP_DYNAMIC_MIN,
                     "mcp-attachment-min-mcps", onInputChange = { minMcps = it }
                 )
                 SettingsNumberField(
-                    stringResource(R.string.mcp_attachments_min_tools), minTools,
+                    stringResource(R.string.mcp_strategy_min_tools), minTools,
                     DEFAULT_MCP_DYNAMIC_MIN_TOOLS, 0..MAX_MCP_DYNAMIC_MIN,
                     "mcp-attachment-min-tools", onInputChange = { minTools = it }
                 )
                 SettingsNumberField(
-                    stringResource(R.string.mcp_attachments_list_limit), listLimit,
+                    stringResource(R.string.mcp_strategy_list_limit), listLimit,
                     DEFAULT_MCP_LIST_LIMIT, 1..MAX_MCP_LIST_LIMIT,
                     "mcp-attachment-list-limit", onInputChange = { listLimit = it }
                 )
                 SettingsNumberField(
-                    stringResource(R.string.mcp_attachments_load_limit), loadLimit,
+                    stringResource(R.string.mcp_strategy_connection_limit), loadLimit,
                     settings.defaultLoadLimit, 1..MAX_MCP_LOAD_LIMIT,
                     "mcp-attachment-load-limit", onInputChange = { loadLimit = it }
                 )

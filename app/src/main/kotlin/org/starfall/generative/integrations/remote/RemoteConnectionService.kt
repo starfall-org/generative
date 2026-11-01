@@ -43,8 +43,8 @@ class RemoteConnectionService : Service() {
     /** Notification ids this service has posted, so removal never depends on the system's active list alone. */
     private val postedIds = mutableSetOf<Int>()
 
-    /** A connected machine plus the port forwards that are really active on it. */
-    private class Connected(val machine: RemoteMachine, val forwards: List<String>)
+    /** Only connection state belongs in the notification; forwarding status is managed separately. */
+    private class Connected(val machine: RemoteMachine)
 
     override fun onCreate() {
         super.onCreate()
@@ -70,10 +70,9 @@ class RemoteConnectionService : Service() {
             observeJob = scope.launch {
                 combine(
                     machineService.connectedMachineIds,
-                    machineService.state,
-                    machineService.forwardedPorts
-                ) { ids, state, forwards ->
-                    state.machines.filter { it.id in ids }.map { Connected(it, forwards[it.id].orEmpty()) }
+                    machineService.state
+                ) { ids, state ->
+                    state.machines.filter { it.id in ids }.map(::Connected)
                 }.collect { render(it) }
             }
         }
@@ -93,8 +92,7 @@ class RemoteConnectionService : Service() {
 
     private fun connectedMachines(service: RemoteMachineService): List<Connected> {
         val ids = service.connectedMachineIds.value
-        val forwards = service.forwardedPorts.value
-        return service.state.value.machines.filter { it.id in ids }.map { Connected(it, forwards[it.id].orEmpty()) }
+        return service.state.value.machines.filter { it.id in ids }.map(::Connected)
     }
 
     private fun cancelAllNotifications(manager: NotificationManagerCompat) {
@@ -154,11 +152,7 @@ class RemoteConnectionService : Service() {
     private fun notificationFor(entry: Connected): Notification {
         val machine = entry.machine
         val name = machine.name.ifBlank { machine.displayHost }
-        val text = if (entry.forwards.isNotEmpty()) {
-            getString(R.string.remote_connection_notification_forwarding, entry.forwards.joinToString(", "))
-        } else {
-            getString(R.string.remote_connection_notification_text)
-        }
+        val text = getString(R.string.remote_connection_notification_text)
         val disconnect = PendingIntent.getBroadcast(
             this,
             notificationId(machine.id),
@@ -177,7 +171,7 @@ class RemoteConnectionService : Service() {
             .setContentTitle(getString(R.string.remote_connection_notification_title, name))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .addAction(0, getString(R.string.remote_machine_disconnect), disconnect)
+            .addAction(0, getString(R.string.remote_server_disconnect), disconnect)
             .build()
     }
 

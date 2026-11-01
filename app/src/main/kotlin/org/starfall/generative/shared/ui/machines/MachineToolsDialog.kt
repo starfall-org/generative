@@ -45,7 +45,7 @@ fun MachineToolsDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        title = { MachineDialogTitle(stringResource(R.string.remote_machine_tools_section), machine) },
+        title = { MachineDialogTitle(stringResource(R.string.remote_ai_tools), machine) },
         content = {
             Column(
                 Modifier
@@ -56,13 +56,13 @@ fun MachineToolsDialog(
                 remoteMachineToolNames(machine.type).forEach { toolName ->
                     val label = stringResource(
                         when (toolName) {
-                            REMOTE_TOOL_UPDATE_IP -> R.string.remote_machine_update_ip
-                            REMOTE_TOOL_DISCONNECT -> R.string.remote_machine_disconnect
-                            REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_machine_open_terminal
-                            REMOTE_TOOL_CLOSE_TERMINAL -> R.string.remote_machine_tool_close_terminal
-                            REMOTE_TOOL_LIST_TERMINAL -> R.string.remote_machine_tool_list_terminal
-                            REMOTE_TOOL_READ_TERMINAL -> R.string.remote_machine_tool_read_terminal
-                            else -> R.string.remote_machine_tool_execute
+                            REMOTE_TOOL_UPDATE_IP -> R.string.remote_server_update_ip
+                            REMOTE_TOOL_DISCONNECT -> R.string.remote_server_disconnect
+                            REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_server_open_terminal
+                            REMOTE_TOOL_CLOSE_TERMINAL -> R.string.remote_server_tool_close_terminal
+                            REMOTE_TOOL_LIST_TERMINAL -> R.string.remote_server_tool_list_terminal
+                            REMOTE_TOOL_READ_TERMINAL -> R.string.remote_server_tool_read_terminal
+                            else -> R.string.remote_server_tool_execute
                         }
                     )
                     val checked = aiTools[toolName] != false

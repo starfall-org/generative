@@ -173,21 +173,21 @@ fun AppMenuScreen(
         item(key = "configuration-group") {
             FeatureGroup(Modifier.testTag("app-menu-group-configuration")) {
                 FeatureButton(
-                    stringResource(R.string.app_menu_default_options),
+                    stringResource(R.string.chat_configuration),
                     FluentUi.Regular.Chat,
                     onNavigateToChatOptions,
                     shape = GroupTopShape,
                     tag = "chat-options"
                 )
                 FeatureButton(
-                    stringResource(R.string.app_menu_language_providers),
+                    stringResource(R.string.model_providers),
                     FluentUi.Regular.Cloud,
                     onNavigateToProviders,
                     shape = GroupMiddleShape,
                     tag = "providers"
                 )
                 FeatureButton(
-                    stringResource(R.string.app_menu_speech_services),
+                    stringResource(R.string.speech_synthesis_services),
                     FluentUi.Regular.PersonVoice,
                     onNavigateToSpeech,
                     shape = GroupBottomShape,
@@ -198,14 +198,14 @@ fun AppMenuScreen(
         item(key = "tools-group") {
             FeatureGroup(Modifier.testTag("app-menu-group-tools")) {
                 FeatureButton(
-                    stringResource(R.string.app_menu_builtin_tools),
+                    stringResource(R.string.built_in_tools),
                     FluentUi.Regular.WrenchScrewdriver,
                     onNavigateToToolsEditor,
                     shape = GroupTopShape,
                     tag = "feature-tools"
                 )
                 FeatureButton(
-                    stringResource(R.string.app_menu_model_context_protocol),
+                    stringResource(R.string.mcp),
                     FluentUi.Regular.PuzzlePiece,
                     onNavigateToMcp,
                     shape = GroupBottomShape,
@@ -216,7 +216,7 @@ fun AppMenuScreen(
         item(key = "remote-group") {
             FeatureGroup(Modifier.testTag("app-menu-group-remote")) {
                 FeatureButton(
-                    stringResource(R.string.app_menu_remote_servers),
+                    stringResource(R.string.remote_ssh),
                     FluentUi.Regular.Desktop,
                     onNavigateToRemoteMachines,
                     shape = GroupSingleShape,
@@ -227,14 +227,14 @@ fun AppMenuScreen(
         item(key = "media-group") {
             FeatureGroup(Modifier.testTag("app-menu-group-media")) {
                 FeatureButton(
-                    stringResource(R.string.app_menu_media_management),
+                    stringResource(R.string.media_management),
                     FluentUi.Regular.FolderOpen,
                     onNavigateToStorage,
                     shape = GroupTopShape,
                     tag = "media"
                 )
                 FeatureButton(
-                    stringResource(R.string.app_menu_icons_management),
+                    stringResource(R.string.icons_management),
                     FluentUi.Regular.Image,
                     onNavigateToIcons,
                     shape = GroupBottomShape,

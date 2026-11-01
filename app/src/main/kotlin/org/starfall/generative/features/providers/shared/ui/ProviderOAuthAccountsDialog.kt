@@ -29,6 +29,8 @@ import org.starfall.generative.features.providers.shared.logic.isEmpty
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderOAuthAccount
 import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.auth.oauthErrorDetails
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
@@ -61,8 +63,9 @@ internal fun ProviderOAuthAccountsDialog(
         scope.launch {
             busy = true; error = null
             try {
-                onAuthorize(editingId, label).onSuccess { editing = false }.onFailure { error = it.message }
+                onAuthorize(editingId, label).onSuccess { editing = false }.onFailure { error = oauthErrorDetails(it) }
             } catch (_: CancellationException) { error = cancelled }
+            catch (e: Exception) { error = oauthErrorDetails(e) }
             finally { busy = false }
         }
     }
@@ -77,7 +80,7 @@ internal fun ProviderOAuthAccountsDialog(
         } else R.string.provider_manage_accounts)) },
         content = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { ErrorContainer(message = it) }
                 if (busy) DeviceCodeChallengeText(providerType)
                 if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -138,7 +141,9 @@ internal fun ProviderOAuthAccountsDialog(
                                                 menu = false
                                                 scope.launch {
                                                     busy = true; error = null
-                                                    try { onDelete(account.id).onFailure { error = it.message } }
+                                                    try { onDelete(account.id).onFailure { error = oauthErrorDetails(it) } }
+                                                    catch (e: CancellationException) { throw e }
+                                                    catch (e: Exception) { error = oauthErrorDetails(e) }
                                                     finally { busy = false }
                                                 }
                                             })

@@ -111,9 +111,9 @@ internal fun MachineDetailsScreen(
     var environment by remember(initial.id) { mutableStateOf(initial.environmentName) }
     var sftpDirectory by remember(initial.id) { mutableStateOf(initial.sftpDirectory.ifBlank { REMOTE_SFTP_HOME }) }
     var error by remember { mutableStateOf<String?>(null) }
-    val nameRequiredError = stringResource(R.string.remote_machine_name_required)
-    val hostRequiredError = stringResource(R.string.remote_machine_host_required)
-    val identityRequiredError = stringResource(R.string.remote_machine_identity_required)
+    val nameRequiredError = stringResource(R.string.remote_server_name_required)
+    val hostRequiredError = stringResource(R.string.remote_server_host_required)
+    val identityRequiredError = stringResource(R.string.remote_server_identity_required)
     var websocketDialog by remember { mutableStateOf(false) }
     var loadingIp by remember { mutableStateOf(false) }
     var authorizing by remember { mutableStateOf(false) }
@@ -130,7 +130,7 @@ internal fun MachineDetailsScreen(
             runCatching { identityOAuth.accessTokenFromIntent(result.data) }
                 .onSuccess { accessToken ->
                     if (accessToken.isNullOrBlank()) {
-                        error = localizedResources.getString(R.string.remote_machine_google_no_access_token)
+                        error = localizedResources.getString(R.string.remote_server_google_no_access_token)
                         authorizing = false
                     } else scope.launch {
                         onStoreAndroidOAuthToken(client, accessToken).onFailure { error = it.message }
@@ -195,7 +195,7 @@ internal fun MachineDetailsScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             RemoteMachinesTopBar(
-                title = stringResource(R.string.remote_machine_editor_title),
+                title = stringResource(R.string.remote_server_configuration),
                 onBack = onBack,
                 actions = {
                     Button(onClick = ::save, modifier = Modifier.padding(end = 8.dp)) {
@@ -215,34 +215,34 @@ internal fun MachineDetailsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            RemoteSection(stringResource(R.string.remote_machine_basic_section)) {
+            RemoteSection(stringResource(R.string.remote_server_basic_section)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
                 RemoteDropdownField(
-                    label = stringResource(R.string.remote_machine_type_label),
+                    label = stringResource(R.string.remote_server_type_label),
                     options = listOf(
-                        RemoteMachineType.SSH to stringResource(R.string.remote_machine_type_ssh),
-                        RemoteMachineType.GCLOUD_SHELL to stringResource(R.string.remote_machine_type_gcloud)
+                        RemoteMachineType.SSH to stringResource(R.string.remote_server_type_ssh),
+                        RemoteMachineType.GCLOUD_SHELL to stringResource(R.string.remote_server_type_gcloud_shell)
                     ),
                     selected = type,
                     onSelect = { type = it }
                 )
             }
-            RemoteSection(stringResource(R.string.remote_machine_connection_section)) {
+            RemoteSection(stringResource(R.string.remote_server_connection_section)) {
                 if (type == RemoteMachineType.SSH) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         RemoteTextField(
-                            host, { host = it }, stringResource(R.string.remote_machine_host), Modifier.weight(1f),
+                            host, { host = it }, stringResource(R.string.remote_server_host), Modifier.weight(1f),
                             keyboardOptions = remoteLiteralKeyboardOptions()
                         )
                         RemoteTextField(
-                            port, { if (it.all(Char::isDigit)) port = it }, stringResource(R.string.remote_machine_port), Modifier.width(100.dp),
+                            port, { if (it.all(Char::isDigit)) port = it }, stringResource(R.string.remote_server_port), Modifier.width(100.dp),
                             keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                         )
                     }
                 } else {
-                    RemoteTextField(environment, { environment = it }, stringResource(R.string.remote_machine_environment), keyboardOptions = remoteLiteralKeyboardOptions())
+                    RemoteTextField(environment, { environment = it }, stringResource(R.string.remote_server_environment), keyboardOptions = remoteLiteralKeyboardOptions())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RemoteTextField(host, {}, stringResource(R.string.remote_machine_ip), Modifier.weight(1f), readOnly = true, keyboardOptions = remoteLiteralKeyboardOptions())
+                        RemoteTextField(host, {}, stringResource(R.string.remote_server_ip), Modifier.weight(1f), readOnly = true, keyboardOptions = remoteLiteralKeyboardOptions())
                         OutlinedButton(enabled = !loadingIp, onClick = {
                             loadingIp = true
                             scope.launch {
@@ -268,14 +268,14 @@ internal fun MachineDetailsScreen(
                             if (loadingIp) LoadingIndicator(Modifier.size(16.dp))
                             else SharedIcon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.remote_machine_get_ip))
+                            Text(stringResource(R.string.remote_server_get_ip))
                         }
                     }
                 }
                 if (type == RemoteMachineType.GCLOUD_SHELL) {
                     // Cloud Shell reports its own SSH user, so it is filled in when the endpoint is loaded.
                     RemoteTextField(
-                        username, {}, stringResource(R.string.remote_machine_username),
+                        username, {}, stringResource(R.string.remote_server_username),
                         readOnly = true,
                         keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = if (fetchingUsername) {
@@ -283,13 +283,13 @@ internal fun MachineDetailsScreen(
                         } else null
                     )
                 } else {
-                    RemoteTextField(username, { username = it }, stringResource(R.string.remote_machine_username), keyboardOptions = remoteLiteralKeyboardOptions())
+                    RemoteTextField(username, { username = it }, stringResource(R.string.remote_server_username), keyboardOptions = remoteLiteralKeyboardOptions())
                 }
                 RemoteDropdownField(
-                    label = stringResource(R.string.remote_machine_authentication),
+                    label = stringResource(R.string.remote_server_authentication),
                     options = listOf(
-                        RemoteAuthentication.PRIVATE_KEY to stringResource(R.string.remote_machine_private_key),
-                        RemoteAuthentication.PASSWORD to stringResource(R.string.remote_machine_password)
+                        RemoteAuthentication.PRIVATE_KEY to stringResource(R.string.remote_server_private_key),
+                        RemoteAuthentication.PASSWORD to stringResource(R.string.remote_server_password)
                     ),
                     selected = auth,
                     onSelect = { auth = it }
@@ -298,7 +298,7 @@ internal fun MachineDetailsScreen(
                     RemoteTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = stringResource(R.string.remote_machine_password),
+                        label = stringResource(R.string.remote_server_password),
                         visual = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = remoteLiteralKeyboardOptions(),
                         trailingIcon = {
@@ -306,14 +306,14 @@ internal fun MachineDetailsScreen(
                                 SharedIcon(
                                     if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                     contentDescription = stringResource(
-                                        if (showPassword) R.string.remote_machine_hide_password else R.string.remote_machine_show_password
+                                        if (showPassword) R.string.remote_server_hide_password else R.string.remote_server_show_password
                                     )
                                 )
                             }
                         }
                     )
                     RemoteToggle(
-                        label = stringResource(R.string.remote_machine_keyboard_interactive),
+                        label = stringResource(R.string.remote_server_keyboard_interactive),
                         checked = keyboardInteractive,
                         onCheckedChange = { keyboardInteractive = it }
                     )
@@ -321,7 +321,7 @@ internal fun MachineDetailsScreen(
                     RemoteTextField(
                         identityFile,
                         { identityFile = it },
-                        stringResource(R.string.remote_machine_identity_file),
+                        stringResource(R.string.remote_server_identity_file),
                         keyboardOptions = remoteLiteralKeyboardOptions()
                     )
                     var keyMenu by remember { mutableStateOf(false) }
@@ -329,12 +329,12 @@ internal fun MachineDetailsScreen(
                         OutlinedButton(onClick = { keyMenu = true }) {
                             SharedIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.remote_machine_choose_key))
+                            Text(stringResource(R.string.remote_server_choose_key))
                         }
                         DropdownMenu(expanded = keyMenu, onDismissRequest = { keyMenu = false }) {
                             if (state.identities.isEmpty()) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.remote_machine_no_uploaded_keys)) },
+                                    text = { Text(stringResource(R.string.remote_server_no_uploaded_keys)) },
                                     onClick = { keyMenu = false },
                                     enabled = false
                                 )
@@ -348,15 +348,15 @@ internal fun MachineDetailsScreen(
                         }
                     }
                     RemoteTextField(
-                        passphrase, { passphrase = it }, stringResource(R.string.remote_machine_key_passphrase),
+                        passphrase, { passphrase = it }, stringResource(R.string.remote_server_key_passphrase),
                         visual = PasswordVisualTransformation(),
                         keyboardOptions = remoteLiteralKeyboardOptions()
                     )
                 }
                 RemoteListRow(
-                    title = stringResource(R.string.remote_machine_websocket_proxy),
+                    title = stringResource(R.string.remote_server_websocket_proxy),
                     subtitle = websocketProxy?.url?.takeIf { it.isNotBlank() }
-                        ?: stringResource(R.string.remote_machine_not_configured),
+                        ?: stringResource(R.string.remote_server_not_configured),
                     leading = { RemoteIconTile(Icons.Outlined.Language) },
                     trailing = {
                         if (websocketProxy != null) {
@@ -371,7 +371,7 @@ internal fun MachineDetailsScreen(
                 )
                 if (type == RemoteMachineType.SSH) {
                     RemoteDropdownField(
-                        label = stringResource(R.string.remote_machine_proxy_machine),
+                        label = stringResource(R.string.remote_server_proxy_server),
                         options = listOf("" to stringResource(R.string.common_none)) + state.machines
                             .filter { it.id != initial.id }
                             .map { it.id to it.name },
@@ -380,40 +380,40 @@ internal fun MachineDetailsScreen(
                     )
                 }
             }
-            RemoteSection(stringResource(R.string.remote_machine_sftp_section)) {
+            RemoteSection(stringResource(R.string.remote_server_sftp_section)) {
                 RemoteTextField(
                     value = sftpDirectory,
                     onValueChange = { sftpDirectory = it },
-                    label = stringResource(R.string.remote_machine_sftp_directory),
+                    label = stringResource(R.string.remote_server_sftp_directory),
                     keyboardOptions = remoteLiteralKeyboardOptions()
                 )
             }
-            RemoteSection(stringResource(R.string.remote_machine_ssh_options)) {
+            RemoteSection(stringResource(R.string.remote_server_ssh_options)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     RemoteTextField(
-                        timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_machine_timeout), Modifier.weight(1f),
+                        timeout, { if (it.all(Char::isDigit)) timeout = it }, stringResource(R.string.remote_server_timeout), Modifier.weight(1f),
                         keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                     )
                     RemoteTextField(
-                        keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_machine_keep_alive), Modifier.weight(1f),
+                        keepAlive, { if (it.all(Char::isDigit)) keepAlive = it }, stringResource(R.string.remote_server_keep_alive), Modifier.weight(1f),
                         keyboardOptions = remoteLiteralKeyboardOptions(KeyboardType.Number)
                     )
                 }
-                RemoteToggle(stringResource(R.string.remote_machine_strict_host_key), strictHostKey) { strictHostKey = it }
-                RemoteToggle(stringResource(R.string.remote_machine_compression), compression) { compression = it }
+                RemoteToggle(stringResource(R.string.remote_server_strict_host_key), strictHostKey) { strictHostKey = it }
+                RemoteToggle(stringResource(R.string.remote_server_compression), compression) { compression = it }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text(
-                    stringResource(R.string.remote_machine_advanced_ssh_options),
+                    stringResource(R.string.remote_server_advanced_ssh_options),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 SshOptionsEditor(options = sshOptions, onChange = { sshOptions = it })
             }
             if (type == RemoteMachineType.GCLOUD_SHELL) {
-                RemoteSection(stringResource(R.string.remote_machine_google_section)) {
+                RemoteSection(stringResource(R.string.remote_google_cloud_oauth)) {
                     RemoteDropdownField(
-                        label = stringResource(R.string.remote_machine_oauth_client),
-                        options = listOf("" to stringResource(R.string.remote_machine_select_oauth)) +
+                        label = stringResource(R.string.remote_server_oauth_client),
+                        options = listOf("" to stringResource(R.string.remote_server_select_oauth)) +
                             state.oauthClients.map { it.id to it.name },
                         selected = oauthClientId,
                         onSelect = { oauthClientId = it }
@@ -442,11 +442,11 @@ internal fun MachineDetailsScreen(
                                                         authorizing = false
                                                     }
                                                     GCloudIdentityAuthorization.MissingResolution -> {
-                                                        error = localizedResources.getString(R.string.remote_machine_google_missing_resolution)
+                                                        error = localizedResources.getString(R.string.remote_server_google_missing_resolution)
                                                         authorizing = false
                                                     }
                                                     GCloudIdentityAuthorization.MissingAccessToken -> {
-                                                        error = localizedResources.getString(R.string.remote_machine_google_no_access_token)
+                                                        error = localizedResources.getString(R.string.remote_server_google_no_access_token)
                                                         authorizing = false
                                                     }
                                                 }
@@ -472,7 +472,7 @@ internal fun MachineDetailsScreen(
                             if (authorizing) LoadingIndicator(Modifier.size(16.dp))
                             else SharedIcon(Icons.Outlined.Key, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.remote_machine_oauth_sign_in))
+                            Text(stringResource(R.string.remote_server_oauth_sign_in))
                         }
                         if (authorizing) {
                             // Cancelling stops the loopback listener and closes its port.
@@ -482,7 +482,7 @@ internal fun MachineDetailsScreen(
                         }
                         if (oauthAuthorized) {
                             Text(
-                                stringResource(R.string.remote_machine_oauth_authorized),
+                                stringResource(R.string.remote_server_oauth_authorized),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.bodySmall
                             )

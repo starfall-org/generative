@@ -71,7 +71,8 @@ internal fun ToolDetailsSheet(
         activity.files.map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
     var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
-    val responseIsJson = remember(responseText) { looksLikeJson(responseText) }
+    val responseLanguage = remember(responseText) { toolResponseLanguage(responseText) }
+    val responseIsJson = responseLanguage == "json"
     val downloadResponse = rememberResponseDownload(
         fileName = "${
             activity.name.replace(
@@ -132,7 +133,7 @@ internal fun ToolDetailsSheet(
             Spacer(Modifier.height(10.dp))
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
             LazyCodeBlock(
-                language = if (responseIsJson) "json" else "text",
+                language = responseLanguage,
                 text = responseText.ifBlank {
                     if (activity.status == "running") stringResource(R.string.tool_details_waiting_response) else stringResource(R.string.tool_details_no_response)
                 },
@@ -164,10 +165,11 @@ internal fun ToolDetailsSheet(
 
 /**
  * Tool responses are sometimes wrapped in a JSON string or carry literal escape sequences ("\n", "\t", …),
- * which would otherwise show up as raw text on one line. Decode a JSON string wrapper first, then fall back
- * to unescaping the common sequences so newlines render as real line breaks.
+ * which would otherwise show up as raw text on one line. Decode a JSON string wrapper first, but
+ * preserve escape sequences in JSON objects and arrays so they remain valid JSON and highlight correctly.
+ * Only unescape plain-text responses as a fallback.
  */
-private fun unescapeToolResponse(raw: String): String {
+internal fun unescapeToolResponse(raw: String): String {
     val trimmed = raw.trim()
     if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
         val decoded = runCatching {
@@ -175,6 +177,8 @@ private fun unescapeToolResponse(raw: String): String {
         }.getOrNull()
         if (decoded != null) return decoded
     }
+    // Literal backslash escapes are part of serialized JSON, not presentation escapes.
+    if (looksLikeJson(raw)) return raw
     if (!raw.contains('\\')) return raw
     val out = StringBuilder(raw.length)
     var i = 0
@@ -351,6 +355,8 @@ private fun displayJsonValue(value: JsonElement): String = when (value) {
     is JsonPrimitive -> if (value.isString) value.content else value.toString()
     else -> runCatching { toolJson.encodeToString(JsonElement.serializer(), value) }.getOrDefault(value.toString())
 }
+
+internal fun toolResponseLanguage(value: String): String = if (looksLikeJson(value)) "json" else "text"
 
 private fun looksLikeJson(value: String): Boolean {
     val first = value.firstOrNull { !it.isWhitespace() } ?: return false

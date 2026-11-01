@@ -4,16 +4,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.shared.model.CONTENT_API_MCP_ENDPOINT
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isContentApiName
 import org.starfall.generative.shared.model.resolvedUrl
 
 class ContentApiMcpTest {
     @Test
-    fun recognizedNamesUseHiddenDefaultEndpoint() {
+    fun recognizedNamesUseBuildConfiguredEndpointOrNone() {
+        val endpoint = BuildConfig.CONTENT_API_MCP_URL.trim().ifEmpty { null }
         listOf("Content API", "contentapi", "CONTENT-API").forEach { name ->
-            assertEquals(CONTENT_API_MCP_ENDPOINT, McpInfo("id", name).resolvedUrl())
+            assertEquals(endpoint, McpInfo("id", name).resolvedUrl())
             assertTrue(name.isContentApiName())
         }
         assertNull(McpInfo("id", "Another server").resolvedUrl())

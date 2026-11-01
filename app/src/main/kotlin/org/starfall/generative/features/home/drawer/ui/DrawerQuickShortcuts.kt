@@ -24,7 +24,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,15 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.model.remoteMachineEnabled
+import org.starfall.generative.shared.model.selectedRemoteMachine
 import org.starfall.generative.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
@@ -53,11 +50,12 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
+import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /**
  * Single combined card at the top of the left drawer.
- * - Remote: expandable list with per-machine context menus, title is "Remote"
+ * - Remote: single selected machine with a BottomSheet picker, title is "Remote Services"
  * - Media: opens the media grid sheet, title is "Media"
  * Both rows share the same [prominentContainerColor] block.
  */
@@ -65,239 +63,134 @@ import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
-    onEditRemoteMachine: (RemoteMachine) -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
+    onPortForward: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit,
     modifier: Modifier = Modifier,
     maxExpandedHeight: Dp = 280.dp
 ) {
     val controls = LocalToolControls.current
     val machines = controls.machines
-    val enabledCount = machines.count { remoteMachineEnabled(controls.settings, it) }
+    val selectedMachine = selectedRemoteMachine(controls.settings, machines)
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    var machineMenu by remember { mutableStateOf(false) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
-
-    val subtitle = if (machines.isEmpty()) {
-        stringResource(R.string.remote_machine_none_configured)
-    } else {
-        stringResource(R.string.remote_machine_counts, machines.size, enabledCount)
-    }
-
-    // Header (~72dp) + Media row (~66dp) + dividers ≈ 150dp. Rest is scrollable list.
-    // On short screens preserve those rows instead of forcing the card beyond its half-drawer cap.
-    val listMaxHeight = (maxExpandedHeight - 150.dp).coerceAtLeast(0.dp)
+    val subtitle = selectedMachine?.let { it.name.ifBlank { it.displayHost } }
+        ?: stringResource(if (machines.isEmpty()) R.string.remote_servers_none_configured
+            else R.string.remote_server_none_selected)
 
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = prominentContainerColor(),
         border = prominentContainerBorder(),
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(max = if (expanded) maxExpandedHeight else Dp.Unspecified)
+        modifier = modifier.fillMaxWidth().heightIn(max = if (expanded) maxExpandedHeight else Dp.Unspecified)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Remote row — expands/collapses the machine list
+        Column(Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
                     .clickable { expanded = !expanded }
                     .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
+                Surface(shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.size(42.dp)
-                ) {
+                    modifier = Modifier.size(42.dp)) {
                     Box(contentAlignment = Alignment.Center) {
-                        SharedIcon(
-                            imageVector = FluentUi.Regular.Desktop,
-                            contentDescription = null,
+                        SharedIcon(FluentUi.Regular.Desktop, null,
                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(22.dp)
-                        )
+                            modifier = Modifier.size(22.dp))
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.remote_machine_short_title),
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.drawer_remote_services),
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.heightIn(min = 2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(
-                    onClick = onOpenRemoteMachines,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    SharedIcon(
-                        imageVector = FluentUi.Regular.Settings,
-                        contentDescription = stringResource(
-                            R.string.tool_settings_accessibility,
-                            stringResource(R.string.remote_machines_title)
-                        ),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                IconButton(onClick = onOpenRemoteMachines, modifier = Modifier.size(36.dp)) {
+                    SharedIcon(FluentUi.Regular.Settings,
+                        stringResource(R.string.tool_settings_accessibility,
+                            stringResource(R.string.drawer_remote_services_settings_label)),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
-                IconButton(
-                    onClick = { expanded = !expanded },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    SharedIcon(
-                        imageVector = if (expanded) FluentUi.Regular.ChevronUp else FluentUi.Regular.ChevronDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(36.dp)) {
+                    SharedIcon(if (expanded) FluentUi.Regular.ChevronUp else FluentUi.Regular.ChevronDown,
+                        null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp))
                 }
             }
-
-            AnimatedVisibility(
-                visible = expanded,
+            AnimatedVisibility(visible = expanded,
                 enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(horizontal = 14.dp)
-                    )
-                    if (machines.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.remote_machine_empty_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp)
-                        )
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = listMaxHeight)
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                exit = shrinkVertically() + fadeOut()) {
+                Column(Modifier.fillMaxWidth()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 14.dp))
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
+                        .testTag("drawer_remote_selected_machine"),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f)
+                                .testTag("drawer_machine_picker_trigger")
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { pickerOpen = true }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            machines.forEach { machine ->
-                                val icon = if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer
-                                val checked = remoteMachineEnabled(controls.settings, machine)
-                                var menuExpanded by remember(machine.id) { mutableStateOf(false) }
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 8.dp, end = 2.dp, top = 6.dp, bottom = 6.dp)
-                                            .testTag("drawer_machine_row_${machine.id}"),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        SharedIcon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = if (checked) 1f else 0.55f
-                                            )
-                                        )
-                                        Spacer(Modifier.width(10.dp))
-                                        Text(
-                                            text = machine.name.ifBlank { stringResource(R.string.remote_machine_unnamed) },
-                                            modifier = Modifier.weight(1f),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (checked) MaterialTheme.colorScheme.onSurface
-                                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Box {
-                                            IconButton(
-                                                onClick = { menuExpanded = true },
-                                                modifier = Modifier.size(36.dp)
-                                                    .testTag("drawer_machine_options_${machine.id}")
-                                            ) {
-                                                SharedIcon(
-                                                    Icons.Default.MoreVert,
-                                                    stringResource(R.string.common_more_options),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            DropdownMenu(
-                                                expanded = menuExpanded,
-                                                onDismissRequest = { menuExpanded = false }
-                                            ) {
-                                                val toggleLabel = stringResource(
-                                                    if (checked) R.string.remote_machine_disable_action
-                                                    else R.string.remote_machine_enable_action
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text(toggleLabel) },
-                                                    leadingIcon = { SharedIcon(icon, null) },
-                                                    trailingIcon = {
-                                                        Switch(
-                                                            checked = checked,
-                                                            onCheckedChange = { controls.setMachine(machine.id, it) },
-                                                            modifier = Modifier.testTag("drawer_machine_switch_${machine.id}")
-                                                                .semantics { contentDescription = toggleLabel }
-                                                        )
-                                                    },
-                                                    onClick = { controls.setMachine(machine.id, !checked) }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text(stringResource(R.string.remote_machine_open_terminal)) },
-                                                    leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
-                                                    onClick = {
-                                                        menuExpanded = false
-                                                        onOpenTerminal(machine)
-                                                    }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text(stringResource(R.string.common_tools)) },
-                                                    leadingIcon = { SharedIcon(FluentUi.Regular.WrenchScrewdriver, null) },
-                                                    onClick = {
-                                                        menuExpanded = false
-                                                        toolsMachine = machine
-                                                    }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text(stringResource(R.string.common_edit)) },
-                                                    leadingIcon = { SharedIcon(FluentUi.Regular.Edit, null) },
-                                                    onClick = {
-                                                        menuExpanded = false
-                                                        onEditRemoteMachine(machine)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
+                            SharedIcon(if (selectedMachine?.type?.name == "GCLOUD_SHELL")
+                                Icons.Outlined.Cloud else Icons.Outlined.Computer,
+                                null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(21.dp))
+                            Text(
+                                selectedMachine?.let { it.name.ifBlank { it.displayHost } }
+                                    ?: stringResource(R.string.remote_select_server),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            SharedIcon(FluentUi.Regular.ChevronRight, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp))
+                        }
+                        if (selectedMachine != null) {
+                            Box {
+                                IconButton(onClick = { machineMenu = true },
+                                    modifier = Modifier.size(40.dp)
+                                        .testTag("drawer_machine_options_${selectedMachine.id}")) {
+                                    SharedIcon(Icons.Default.MoreVert,
+                                        stringResource(R.string.common_more_options),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                DropdownMenu(expanded = machineMenu,
+                                    onDismissRequest = { machineMenu = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.remote_server_open_terminal)) },
+                                        leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
+                                        onClick = { machineMenu = false; onOpenTerminal(selectedMachine) })
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.remote_port_forward)) },
+                                        leadingIcon = { SharedIcon(Icons.Outlined.Hub, null) },
+                                        onClick = { machineMenu = false; onPortForward(selectedMachine) })
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.common_tools)) },
+                                        leadingIcon = { SharedIcon(FluentUi.Regular.WrenchScrewdriver, null) },
+                                        onClick = { machineMenu = false; toolsMachine = selectedMachine })
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.remote_server_unset_action)) },
+                                        leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) },
+                                        onClick = { machineMenu = false; controls.selectMachine(null) })
                                 }
                             }
                         }
                     }
                 }
             }
-
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                modifier = Modifier.padding(horizontal = 14.dp)
-            )
-
+                modifier = Modifier.padding(horizontal = 14.dp))
             // Media row — opens the media grid sheet
             Row(
                 modifier = Modifier
@@ -324,7 +217,7 @@ internal fun DrawerQuickShortcuts(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.storage_short_title),
+                        text = stringResource(R.string.drawer_media_short_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -346,6 +239,65 @@ internal fun DrawerQuickShortcuts(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+
+    if (pickerOpen) {
+        BottomSheet(onDismissRequest = { pickerOpen = false }) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Text(stringResource(R.string.remote_server_selection_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp))
+                if (machines.isEmpty()) {
+                    Text(stringResource(R.string.remote_servers_none_configured),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp))
+                } else {
+                    Column(Modifier.fillMaxWidth().heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        machines.forEach { machine ->
+                            val selected = selectedMachine?.id == machine.id
+                            Surface(
+                                onClick = {
+                                    controls.selectMachine(machine.id)
+                                    pickerOpen = false
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                color = prominentContainerColor(),
+                                border = prominentContainerBorder(),
+                                modifier = Modifier.fillMaxWidth()
+                                    .testTag("drawer_machine_picker_item_${machine.id}")
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    SharedIcon(if (machine.type.name == "GCLOUD_SHELL")
+                                        Icons.Outlined.Cloud else Icons.Outlined.Computer, null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(machine.name.ifBlank {
+                                            stringResource(R.string.remote_server_unnamed) },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(machine.displayHost,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    if (selected) SharedIcon(Icons.Outlined.Check, null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.size(12.dp))
             }
         }
     }

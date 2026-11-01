@@ -103,6 +103,12 @@ Requires JDK 17 and Android SDK (`sdk.dir` in `local.properties`):
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing guidance.
 
+### Localization
+
+- **Tier 1:** English (source)
+- **Tier 2:** Vietnamese, Japanese, Chinese (Simplified)
+- **Tier 3:** Korean, Chinese (Traditional), German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil)
+
 ## License
 
 Licensed under the [Starfall Org Contributor Commercial Copyleft License v1.1](LICENSE). Non-commercial use is required unless permitted by the license; app-store distribution requires prior written permission from Starfall Org.

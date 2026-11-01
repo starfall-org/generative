@@ -20,7 +20,7 @@ import org.starfall.generative.shared.ui.dialogs.RadioSelectionOption
 class RadioSelectionDialogTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun aChoiceIsAppliedOnceAndDismissesWithoutFooter() {
+    @Test fun aChoiceIsAppliedOnceAndDismissesWithCloseFooter() {
         var open by mutableStateOf(true)
         var selected by mutableStateOf("first")
         var selectionCount = 0
@@ -39,7 +39,8 @@ class RadioSelectionDialogTest {
                 )
             }
         }
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
+        compose.onNodeWithTag("app-dialog-buttons").assertExists()
+        compose.onNodeWithTag("radio-selection-close").assertHasClickAction()
         compose.onNodeWithTag("radio-first").assertIsSelected()
         compose.onNodeWithText("Other option").assertExists()
         compose.onNodeWithTag("radio-second").performClick()
@@ -47,6 +48,31 @@ class RadioSelectionDialogTest {
         compose.runOnIdle {
             assertEquals("second", selected)
             assertEquals(1, selectionCount)
+            assertEquals(1, dismissCount)
+        }
+    }
+
+    @Test fun closeFooterDismissesWithoutChangingSelection() {
+        var open by mutableStateOf(true)
+        var selected by mutableStateOf("first")
+        var dismissCount = 0
+        var selectionCount = 0
+        compose.setContent {
+            MaterialTheme {
+                if (open) RadioSelectionDialog(
+                    title = "Choose type",
+                    selected = selected,
+                    options = listOf(RadioSelectionOption("first", "First"), RadioSelectionOption("second", "Second")),
+                    onDismissRequest = { open = false; dismissCount++ },
+                    onSelected = { selected = it; selectionCount++ }
+                )
+            }
+        }
+        compose.onNodeWithTag("radio-selection-close").assertHasClickAction().performClick()
+        compose.onNodeWithTag("app-dialog").assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals("first", selected)
+            assertEquals(0, selectionCount)
             assertEquals(1, dismissCount)
         }
     }
@@ -68,6 +94,6 @@ class RadioSelectionDialogTest {
         }
         compose.onNodeWithTag("radio-35").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(35, selected) }
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
+        compose.onNodeWithTag("app-dialog-buttons").assertExists()
     }
 }

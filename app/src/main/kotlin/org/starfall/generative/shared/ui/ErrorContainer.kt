@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -34,9 +35,14 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.appearanceContainerColor
+import org.starfall.generative.shared.theme.LocalDarkMode
+import org.starfall.generative.shared.theme.warningColor
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 
-/** Consistent, selectable error details with optional retry/dismiss actions and built-in copying. */
+/** Message presentation only; existing error data and retry mechanics are unchanged. */
+enum class AlertSeverity { ERROR, WARNING }
+
+/** Consistent, selectable error/warning details with optional actions and built-in copying. */
 @Composable
 fun ErrorContainer(
     message: String,
@@ -49,17 +55,26 @@ fun ErrorContainer(
     expandable: Boolean = true,
     collapsedLines: Int = 3,
     messageStyle: TextStyle? = null,
-    copyButtonModifier: Modifier = Modifier.testTag("error-container-copy")
+    copyButtonModifier: Modifier = Modifier.testTag("error-container-copy"),
+    severity: AlertSeverity = AlertSeverity.ERROR
 ) {
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    var expanded by remember(message, initiallyExpanded) { mutableStateOf(initiallyExpanded) }
-    val foreground = MaterialTheme.colorScheme.onErrorContainer
+    var expanded by remember(message, initiallyExpanded, severity) { mutableStateOf(initiallyExpanded) }
+    val isWarning = severity == AlertSeverity.WARNING
+    val accent = if (isWarning) warningColor() else MaterialTheme.colorScheme.error
+    val foreground = if (isWarning) MaterialTheme.colorScheme.onSurface
+        else MaterialTheme.colorScheme.onErrorContainer
+    val containerColor = when {
+        !isWarning -> MaterialTheme.colorScheme.errorContainer
+        LocalDarkMode.current -> Color(0xFF423310)
+        else -> Color(0xFFFFF2CB)
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = appearanceContainerColor(MaterialTheme.colorScheme.errorContainer, opacityBoost = 0.2f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+        color = appearanceContainerColor(containerColor, opacityBoost = 0.2f),
+        border = BorderStroke(1.dp, accent)
     ) {
         Column(
             Modifier.fillMaxWidth().animateContentSize()
@@ -71,11 +86,11 @@ fun ErrorContainer(
                         .then(if (expandable) Modifier.clickable { expanded = !expanded } else Modifier),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SharedIcon(Icons.Outlined.ErrorOutline, null, Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.error)
+                    SharedIcon(if (isWarning) Icons.Outlined.Warning else Icons.Outlined.ErrorOutline,
+                        null, Modifier.size(18.dp), tint = accent)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        title ?: stringResource(R.string.common_error),
+                        title ?: stringResource(if (isWarning) R.string.common_warning else R.string.common_error),
                         style = MaterialTheme.typography.labelLarge,
                         color = foreground,
                         maxLines = 2,
@@ -90,17 +105,24 @@ fun ErrorContainer(
                 IconButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.message_error_clip_label), copyText))
-                        Toast.makeText(context, localizedResources.getString(R.string.message_error_copied), Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(ClipData.newPlainText(
+                            localizedResources.getString(if (isWarning) R.string.common_warning else R.string.message_error_clip_label),
+                            copyText
+                        ))
+                        Toast.makeText(context, localizedResources.getString(
+                            if (isWarning) R.string.message_warning_copied else R.string.message_error_copied
+                        ), Toast.LENGTH_SHORT).show()
                     },
                     modifier = copyButtonModifier.size(32.dp)
                 ) {
-                    SharedIcon(Icons.Outlined.ContentCopy, stringResource(R.string.message_copy_error),
+                    SharedIcon(Icons.Outlined.ContentCopy,
+                        stringResource(if (isWarning) R.string.common_copy else R.string.message_copy_error),
                         modifier = Modifier.size(18.dp), tint = foreground)
                 }
                 if (onDismiss != null) {
                     IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp).testTag("error-container-dismiss")) {
-                        SharedIcon(Icons.Outlined.Close, stringResource(R.string.chat_dismiss_error),
+                        SharedIcon(Icons.Outlined.Close,
+                            stringResource(if (isWarning) R.string.common_close else R.string.chat_dismiss_error),
                             modifier = Modifier.size(18.dp), tint = foreground)
                     }
                 }
@@ -111,7 +133,12 @@ fun ErrorContainer(
                     ) {
                         SharedIcon(
                             if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            stringResource(if (expanded) R.string.message_collapse_error else R.string.message_expand_error),
+                            stringResource(when {
+                                isWarning && expanded -> R.string.collapse
+                                isWarning -> R.string.expand
+                                expanded -> R.string.message_collapse_error
+                                else -> R.string.message_expand_error
+                            }),
                             modifier = Modifier.size(18.dp), tint = foreground
                         )
                     }

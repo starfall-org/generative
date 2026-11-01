@@ -5,20 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.click
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,83 +30,98 @@ class DrawerRemoteMachineContextMenuTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun menuKeepsSwitchFirstAndOpensTerminalToolsAndEditor() {
-        val machine = RemoteMachine("machine-1", "Staging")
-        var enabled by mutableStateOf(true)
-        var edits: RemoteMachine? = null
+    fun remoteShowsOnlyOneSelectionAndContextMenuSupportsForwardToolsAndUnset() {
+        val staging = RemoteMachine("machine-1", "Staging")
+        val production = RemoteMachine("machine-2", "Production")
+        val machines = listOf(staging, production)
+        var selectedId by mutableStateOf<String?>(null)
+        var forwarded: RemoteMachine? = null
         var terminal: RemoteMachine? = null
-        var toggleCount = 0
+        var toolsSaved: RemoteMachine? = null
 
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 CompositionLocalProvider(
                     LocalToolControls provides ToolControls(
-                        machines = listOf(machine),
-                        settings = ToolSettings(enabledMachines = mapOf(machine.id to enabled)),
-                        setMachine = { id, value ->
-                            assertEquals(machine.id, id)
-                            enabled = value
-                            toggleCount++
-                        }
+                        machines = machines,
+                        settings = ToolSettings(
+                            machinesEnabled = selectedId != null,
+                            enabledMachines = machines.associate { it.id to (it.id == selectedId) }
+                        ),
+                        selectMachine = { selectedId = it }
                     )
                 ) {
                     DrawerQuickShortcuts(
                         onOpenMediaStorage = {},
                         onOpenRemoteMachines = {},
-                        onEditRemoteMachine = { edits = it },
                         onOpenTerminal = { terminal = it },
-                        onSaveMachineTools = {},
+                        onPortForward = { forwarded = it },
+                        onSaveMachineTools = { toolsSaved = it },
                         maxExpandedHeight = 400.dp
                     )
                 }
             }
         }
 
-        compose.onNodeWithText("Remote").performClick()
-        val row = compose.onNodeWithTag("drawer_machine_row_machine-1")
-        row.assertIsDisplayed().assert(!hasClickAction())
-        row.performTouchInput { click(androidx.compose.ui.geometry.Offset(10f, center.y)) }
-        compose.onNodeWithText("Machine Tools").assertDoesNotExist()
-        compose.runOnIdle {
-            assertEquals(0, toggleCount)
-            assertEquals(null, edits)
-        }
+        compose.onNodeWithText("Remote Services").performClick()
+        compose.onNodeWithText("Select server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_options_machine-1").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_machine_options_machine-2").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithText("Choose a server for AI tools").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_item_machine-2").performClick()
+        compose.runOnIdle { assertEquals(production.id, selectedId) }
 
-        compose.onNodeWithTag("drawer_machine_options_machine-1").performClick()
-        compose.onNodeWithText("Disable").assertIsDisplayed()
-        val machineSwitch = compose.onNodeWithTag("drawer_machine_switch_machine-1", useUnmergedTree = true)
-        machineSwitch.assertIsOn()
-        val switchBounds = machineSwitch.fetchSemanticsNode().boundsInRoot
-        val terminalBounds = compose.onNodeWithText("Open terminal").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        assertTrue("The switch stays above all menu actions", switchBounds.bottom <= terminalBounds.top)
-        compose.onNodeWithText("Tools").assertIsDisplayed()
-        compose.onNodeWithText("Edit").assertIsDisplayed().performClick()
-        compose.runOnIdle { assertEquals(machine, edits) }
-
-        compose.onNodeWithTag("drawer_machine_options_machine-1").performClick()
-        compose.onNodeWithText("Tools").performClick()
-        compose.onNodeWithText("Machine Tools").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithText("Open terminal").assertIsDisplayed()
+        compose.onNodeWithText("Port Forward").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(production, forwarded) }
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithText("Edit").assertDoesNotExist()
+        compose.onNodeWithText("Tools").assertIsDisplayed().performClick()
+        compose.onNodeWithText("AI tools").assertIsDisplayed()
         compose.onNodeWithText("Close").performClick()
-
-        compose.onNodeWithTag("drawer_machine_options_machine-1").performClick()
-        compose.onNodeWithText("Disable").performClick()
-        compose.runOnIdle {
-            assertFalse(enabled)
-            assertEquals(1, toggleCount)
-        }
-        machineSwitch.assertIsOff()
-        // Toggling leaves the menu open, and the switch itself is interactive.
-        machineSwitch.performClick()
-        compose.runOnIdle {
-            assertTrue(enabled)
-            assertEquals(2, toggleCount)
-        }
-        machineSwitch.assertIsOn()
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
         compose.onNodeWithText("Open terminal").performClick()
-        compose.runOnIdle {
-            assertEquals(machine, terminal)
-            assertEquals(2, toggleCount)
+        compose.runOnIdle { assertEquals(production, terminal) }
+
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithText("Unset").performClick()
+        compose.runOnIdle { assertNull(selectedId) }
+        compose.onNodeWithTag("drawer_machine_options_machine-2").assertDoesNotExist()
+        compose.onNodeWithText("Select server").assertIsDisplayed()
+        compose.runOnIdle { assertNull(toolsSaved) }
+    }
+
+    @Test
+    fun selectingAnotherMachineReplacesTheCurrentSelection() {
+        val machines = listOf(RemoteMachine("machine-a", "Alpha"), RemoteMachine("machine-b", "Beta"))
+        var selectedId by mutableStateOf<String?>("machine-a")
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                CompositionLocalProvider(LocalToolControls provides ToolControls(
+                    machines = machines,
+                    settings = ToolSettings(
+                        machinesEnabled = true,
+                        enabledMachines = machines.associate { it.id to (it.id == selectedId) }
+                    ),
+                    selectMachine = { selectedId = it }
+                )) {
+                    DrawerQuickShortcuts(
+                        onOpenMediaStorage = {},
+                        onOpenRemoteMachines = {},
+                        onSaveMachineTools = {},
+                        maxExpandedHeight = 400.dp
+                    )
+                }
+            }
         }
-        compose.onNodeWithText("Open terminal").assertDoesNotExist()
+        compose.onNodeWithText("Remote Services").performClick()
+        compose.onNodeWithTag("drawer_machine_options_machine-a").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_item_machine-b").performClick()
+        compose.runOnIdle { assertEquals("machine-b", selectedId) }
+        compose.onNodeWithTag("drawer_machine_options_machine-a").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_machine_options_machine-b").assertIsDisplayed()
     }
 }

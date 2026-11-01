@@ -71,9 +71,29 @@ class ConversationSummaryOutputOverrideTest {
             assertEquals("Summary", text)
             val body = requestBody(server)
             assertEquals(target, body.getValue("max_completion_tokens").jsonPrimitive.int)
-            assertTrue(body.getValue("messages").jsonArray.first().jsonObject.getValue("content")
+            val messages = body.getValue("messages").jsonArray
+            assertEquals("user", messages.last().jsonObject.getValue("role").jsonPrimitive.content)
+            assertTrue(messages.last().jsonObject.getValue("content")
                 .jsonPrimitive.content.contains("approximately $target tokens"))
+            assertTrue("Summary request must not add a system role", messages.none {
+                it.jsonObject.getValue("role").jsonPrimitive.content == "system"
+            })
             assertEquals(4000, provider.config.maxTokens)
+        }
+    }
+
+    @Test fun chunkedSummaryAlsoSendsInstructionsAsLastUserMessage() = fixture { server, tool ->
+        val provider = provider(server)
+        repeat(2) { server.enqueue(answer()) }
+        generateConversationSummary(conversation, model, "", ConversationSummaryRequest(8000, chunked = true),
+            complete = { messages, prompt, output ->
+                tool.completeText(provider, "summary-model", messages, prompt, maxOutputTokens = output)
+            })
+        repeat(2) {
+            val messages = requestBody(server).getValue("messages").jsonArray
+            assertEquals("user", messages.last().jsonObject.getValue("role").jsonPrimitive.content)
+            assertTrue(messages.last().jsonObject.getValue("content").jsonPrimitive.content.contains("summary"))
+            assertTrue(messages.none { it.jsonObject.getValue("role").jsonPrimitive.content == "system" })
         }
     }
 

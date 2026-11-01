@@ -152,7 +152,7 @@ fun MediaRequestProfileEditor(
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
                 title = {
-                    Text(draft.name.ifBlank { stringResource(R.string.profile_name) }, maxLines = 1)
+                    Text(draft.name.ifBlank { stringResource(R.string.media_gen_profile_name) }, maxLines = 1)
                 },
                 navigationIcon = {
                     IconButton(onClick = ::leave) {
@@ -190,7 +190,7 @@ fun MediaRequestProfileEditor(
                 OutlinedTextField(
                     value = draft.name,
                     onValueChange = { draft = draft.copy(name = it) },
-                    label = { Text(stringResource(R.string.profile_name)) },
+                    label = { Text(stringResource(R.string.media_gen_profile_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("media-profile-name-field")
                 )
@@ -206,7 +206,7 @@ fun MediaRequestProfileEditor(
             if (!music && draft.mode == MediaGenerationMode.CUSTOM) item {
                 SettingsCard {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.media_profile_require_model),
+                        Text(stringResource(R.string.media_gen_profile_require_model),
                             modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         Switch(
                             checked = draft.requiresModel,
@@ -227,7 +227,7 @@ fun MediaRequestProfileEditor(
             if (draft.mode == MediaGenerationMode.DEFAULT) {
                 item {
                     if (provider == null || config.modelId.isBlank()) {
-                        Text(stringResource(R.string.media_profile_no_model_hint),
+                        Text(stringResource(R.string.media_gen_profile_no_model_hint),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall)
                     } else {

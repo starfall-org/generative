@@ -53,6 +53,8 @@ class DialogControlsLayoutTest {
             config = ProviderConfiguration(modelConfigs = models))
         lateinit var checkAll: String
         lateinit var removeUnavailable: String
+        lateinit var checkModel: String
+        lateinit var deleteModel: String
         lateinit var idleProgress: String
         compose.setContent {
             val scope = rememberCoroutineScope()
@@ -60,8 +62,10 @@ class DialogControlsLayoutTest {
                 if (id == "model-0") Result.failure(IllegalStateException("Unavailable")) else Result.success("OK")
             } }
             GenerativeTheme(darkTheme = false, amoledMode = false) {
-                checkAll = stringResource(R.string.common_test_all_text_models)
+                checkAll = stringResource(R.string.provider_test_all_chat_models)
                 removeUnavailable = stringResource(R.string.remove_unavailable_models)
+                checkModel = stringResource(R.string.test_model, "model-29")
+                deleteModel = stringResource(R.string.delete_model, "model-29")
                 idleProgress = stringResource(R.string.connection_count_progress, 0, models.size)
                 ModelConnectionDialog(provider, tests, available = true, onRemoveModels = {}, onDismiss = {})
             }
@@ -70,8 +74,15 @@ class DialogControlsLayoutTest {
         val toolbar = compose.onNodeWithTag("connection-toolbar").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         compose.onNode(hasContentDescription(checkAll) and hasAnyAncestor(hasTestTag("connection-toolbar")))
             .assertIsDisplayed().performClick()
-        compose.onNode(hasContentDescription(removeUnavailable) and hasAnyAncestor(hasTestTag("connection-toolbar"))).assertIsDisplayed()
+        val batchCheck = compose.onNode(hasContentDescription(checkAll) and hasAnyAncestor(hasTestTag("connection-toolbar")))
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val batchDelete = compose.onNode(hasContentDescription(removeUnavailable) and hasAnyAncestor(hasTestTag("connection-toolbar")))
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("Batch check must precede batch delete, like the per-model actions", batchCheck.left < batchDelete.left)
         compose.onNodeWithTag("connection-model-list").performScrollToIndex(29)
+        val modelCheck = compose.onNodeWithContentDescription(checkModel).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val modelDelete = compose.onNodeWithContentDescription(deleteModel).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("Per-model check must precede delete", modelCheck.left < modelDelete.left)
         val after = compose.onNodeWithTag("connection-toolbar").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertEquals(toolbar.top, after.top, 1f)
         assertEquals(toolbar.height, after.height, 1f)

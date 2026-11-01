@@ -293,12 +293,12 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         val compactHeight = compose.onNodeWithTag("connection-model-text-ok").fetchSemanticsNode().boundsInRoot.height
         assertTrue("Model rows without a logo should be compact", compactHeight <= with(compose.density) { 72.dp.toPx() })
         compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).assertIsDisplayed()
-        compose.onNodeWithContentDescription("Test all language models").performClick()
+        compose.onNodeWithContentDescription("Test all chat models").performClick()
         compose.waitUntil(5_000) { calls.size == 2 }
         compose.waitForIdle()
         val deleteBounds = compose.onNodeWithContentDescription("Remove unavailable models").assertIsDisplayed()
             .fetchSemanticsNode().boundsInRoot
-        val testBounds = compose.onNodeWithContentDescription("Test all language models").fetchSemanticsNode().boundsInRoot
+        val testBounds = compose.onNodeWithContentDescription("Test all chat models").fetchSemanticsNode().boundsInRoot
         val closeBounds = compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).fetchSemanticsNode().boundsInRoot
         assertTrue("Delete unavailable belongs on the left", deleteBounds.right < testBounds.left)
         assertTrue("Test All belongs above the fixed footer", testBounds.bottom <= closeBounds.top)
@@ -325,7 +325,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithText("Models").performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test connection").performClick()
-        compose.onNodeWithContentDescription("Test all language models").performClick()
+        compose.onNodeWithContentDescription("Test all chat models").performClick()
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("No content").fetchSemanticsNodes().isNotEmpty() &&
                 compose.onAllNodesWithContentDescription("1 passed").fetchSemanticsNodes().isNotEmpty() &&

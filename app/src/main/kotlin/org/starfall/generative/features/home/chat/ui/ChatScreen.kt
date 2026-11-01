@@ -27,8 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
@@ -39,7 +37,6 @@ import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryProgress
 import org.starfall.generative.shared.model.ConversationSummaryRequest
-import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.language.ThinkingPassback
@@ -53,7 +50,6 @@ import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
-import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
@@ -65,8 +61,6 @@ import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
-import org.starfall.generative.shared.ui.layout.prominentContainerBorder
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @Composable
 fun ChatScreen(
@@ -122,9 +116,6 @@ fun ChatScreen(
     contextWindowStatus: ContextWindowStatus? = null,
     speakingMessageId: String? = null,
     onResendUserMessage: (String) -> Boolean = { false },
-    /** Remote machines with a live connection; non-empty shows the terminal button in the app bar. */
-    connectedMachines: List<RemoteMachine> = emptyList(),
-    onOpenTerminal: (RemoteMachine) -> Unit = {},
     onOpenFeatureToolsSettings: () -> Unit = {},
     onOpenMcpConnectorsSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -208,10 +199,12 @@ fun ChatScreen(
 
     var regeneratingMessageId by remember(conversationKey, foreground) { mutableStateOf<String?>(null) }
     var showContextSummarySheet by remember(conversationKey, foreground) { mutableStateOf(false) }
-    var showTerminalMachinePicker by remember(conversationKey, foreground) { mutableStateOf(false) }
     var showSummaryDialog by remember(conversationKey, foreground) { mutableStateOf(false) }
+    // Persistence errors belong to the chat history; composer submission errors stay by InputArea.
+    var saveConversationError by remember(conversation?.id) { mutableStateOf<String?>(null) }
     var inlineChatError by remember(conversation?.id) { mutableStateOf<String?>(null) }
     fun submitMessage(action: () -> Boolean): Boolean {
+        saveConversationError = null
         inlineChatError = null
         return action().also { accepted ->
             if (accepted) {
@@ -237,7 +230,7 @@ fun ChatScreen(
     val saveConversationFailedPrefix = stringResource(R.string.chat_save_conversation_failed_prefix)
     LaunchedEffect(chatError, saveConversationFailedPrefix) {
         chatError?.takeIf { it.startsWith(SAVE_CONVERSATION_ERROR_PREFIX) }?.let { error ->
-            inlineChatError = saveConversationFailedPrefix + error.removePrefix(SAVE_CONVERSATION_ERROR_PREFIX)
+            saveConversationError = saveConversationFailedPrefix + error.removePrefix(SAVE_CONVERSATION_ERROR_PREFIX)
         }
     }
     LaunchedEffect(conversation?.id, foreground) {
@@ -300,12 +293,6 @@ fun ChatScreen(
                     onOpenModelPicker = {
                         minimapState.isOpen = false
                         bottomSheets.openModelPicker()
-                    },
-                    showTerminalButton = connectedMachines.isNotEmpty(),
-                    onOpenTerminal = {
-                        // One running machine opens its terminal directly; several need a choice first.
-                        if (connectedMachines.size == 1) onOpenTerminal(connectedMachines.single())
-                        else showTerminalMachinePicker = true
                     },
                     modifier = Modifier
                 )
@@ -387,6 +374,7 @@ fun ChatScreen(
                             if (isQueued) {
                                 onEditQueuedMessage(id, text, files)
                             } else {
+                                saveConversationError = null
                                 inlineChatError = null
                                 onEditMessage(id, text, files).also { if (it) resumeFollowing() }
                             }
@@ -437,7 +425,7 @@ fun ChatScreen(
         org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         val appBarHeight = insets.calculateTopPadding()
         val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
-        if (messages.isEmpty()) {
+        if (messages.isEmpty() && saveConversationError == null) {
             ChatOpeningVeil(
                 active = historyLoading,
                 modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
@@ -487,10 +475,22 @@ fun ChatScreen(
                 appBarHeight = appBarHeight + 8.dp,
                 bottomClearance = bottomClearance,
                 modifier = Modifier.fillMaxSize(),
-                warning = if (isGenerating && !streamingHere) {
-                    { Text(stringResource(R.string.chat_error_other_conversation),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall) }
+                footer = if ((isGenerating && !streamingHere) || saveConversationError != null) {
+                    {
+                        if (isGenerating && !streamingHere) {
+                            Text(stringResource(R.string.chat_error_other_conversation),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        saveConversationError?.let { error ->
+                            ErrorContainer(
+                                message = error,
+                                onDismiss = { saveConversationError = null },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .testTag("chat-save-error")
+                            )
+                        }
+                    }
                 } else null
             ) { msg ->
                     val isLast = msg.id == lastMessage?.id
@@ -545,10 +545,6 @@ fun ChatScreen(
                         AssistantMessageCard(
                             message = msg,
                             isReading = speakingMessageId == msg.id,
-                            modelIcon = msg.activeVersion.let { version ->
-                                val provider = providers.find { it.id == version.providerId.ifBlank { conversation?.providerId.orEmpty() } }
-                                provider?.config?.modelConfigs?.get(version.modelId.ifBlank { conversation?.modelId.orEmpty() })?.icon
-                            },
                             fallbackModelName = providers.find { it.id == conversation?.providerId }
                                 ?.config?.modelConfigs?.get(conversation?.modelId)?.displayName
                                 ?.ifBlank { conversation?.modelId.orEmpty() } ?: conversation?.modelId.orEmpty(),
@@ -633,65 +629,6 @@ fun ChatScreen(
 
     if (foreground && showContextSummarySheet) {
         ConversationSummarySheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
-    }
-
-    if (foreground && showTerminalMachinePicker) {
-        BottomSheet(
-            onDismissRequest = { showTerminalMachinePicker = false }
-        ) {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    stringResource(org.starfall.generative.R.string.remote_machine_terminal_choose_machine),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                connectedMachines.forEach { machine ->
-                    Surface(
-                        onClick = {
-                            showTerminalMachinePicker = false
-                            onOpenTerminal(machine)
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        color = prominentContainerColor(),
-                        border = prominentContainerBorder(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            SharedIcon(
-                                Icons.Outlined.Terminal, null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    machine.name.ifBlank { stringResource(org.starfall.generative.R.string.remote_machine_unnamed) },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    "${machine.username.ifBlank { "?" }}@${machine.displayHost}:${machine.port}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            SharedIcon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp))
-                        }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-            }
-        }
     }
 
     if (foreground && showSummaryDialog) {

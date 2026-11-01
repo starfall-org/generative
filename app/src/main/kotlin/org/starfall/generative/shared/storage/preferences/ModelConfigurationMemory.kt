@@ -1,6 +1,14 @@
 package org.starfall.generative.shared.storage.preferences
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.starfall.generative.shared.storage.LocalWriteErrors
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
@@ -18,6 +26,27 @@ internal fun rememberedModelName(modelId: String): String =
 /** Portable model behavior, independent of provider prefixes and entity-specific icons. */
 class ModelConfigurationMemory(context: Context) {
     private val preferences = MigratedStringPreferences.get(context, "model-configuration-memory")
+    private companion object {
+        // Editor callbacks must not synchronously await DataStore during a click.
+        val backgroundWrites = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler)
+        val backgroundWriteLock = Mutex()
+    }
+
+    fun rememberInBackground(modelId: String, configuration: ModelConfiguration, onlyIfMissing: Boolean = false) {
+        // Register this write in FIFO order before the editor closes. The actual disk work
+        // starts on IO, and a backup can await the same lock without capturing stale data.
+        backgroundWrites.launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundWriteLock.withLock {
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    remember(modelId, configuration, onlyIfMissing)
+                }
+            }
+        }
+    }
+
+    suspend fun awaitBackgroundWrites() {
+        backgroundWriteLock.withLock { /* All previously registered writes have completed. */ }
+    }
     private val json = Json { ignoreUnknownKeys = true }
 
     fun get(modelId: String): ModelConfiguration? = preferences.getString(rememberedModelName(modelId), null)?.let {

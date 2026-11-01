@@ -87,6 +87,6 @@ class DebugLogOverlayTest {
         compose.onNodeWithTag("debug-log-detail-close").performClick()
         compose.onNodeWithTag("debug-log-detail").assertDoesNotExist()
         compose.onRoot().performTouchInput { click(Offset(5f, 5f)) }
-        compose.onNodeWithText(context.getString(R.string.debug_log_title), substring = true).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.debug_logs), substring = true).assertDoesNotExist()
     }
 }

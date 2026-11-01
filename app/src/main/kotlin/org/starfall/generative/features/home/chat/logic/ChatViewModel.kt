@@ -115,6 +115,9 @@ class ChatViewModel(
     fun setMachinesEnabled(enabled: Boolean) = toolSettingsActions.setMachinesEnabled(enabled)
     fun setMachineEnabled(machineId: String, enabled: Boolean, knownMachineIds: List<String> = emptyList()) =
         toolSettingsActions.setMachineEnabled(machineId, enabled, knownMachineIds)
+    fun selectRemoteMachine(machineId: String?, knownMachineIds: List<String>) =
+        toolSettingsActions.selectMachine(machineId, knownMachineIds)
+
     fun setMachineToolEnabled(machineId: String, toolName: String, enabled: Boolean) =
         toolSettingsActions.setMachineToolEnabled(machineId, toolName, enabled)
 
@@ -453,6 +456,7 @@ class ChatViewModel(
         conversationCoordinator.deleteConversations(ids, attachedFiles)
     }
     fun renameConversation(id: String, newTitle: String) = conversationCoordinator.renameConversation(id, newTitle)
+    suspend fun suggestConversationTitle(id: String): Result<String> = conversationTitleGenerator.suggest(id)
     fun clearAllConversations(attachedFiles: Collection<String> = emptyList()) {
         _activeStreams.value = emptyMap()
         _liveConversationPreviews.value = emptyMap()

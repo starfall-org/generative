@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -282,7 +283,7 @@ fun ChatOptionsScreen(
                     TopAppBar(
                         colors = edgeToEdgeTopAppBarColors(),
                         title = {
-                            FixedAppBarTitle(stringResource(R.string.app_menu_default_options))
+                            FixedAppBarTitle(stringResource(R.string.chat_configuration))
                         },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
@@ -330,7 +331,7 @@ fun ChatOptionsScreen(
                     ) { page ->
                         when (page) {
                             0 -> LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize().testTag("chat-options-list"),
                                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + padding.calculateBottomPadding()),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {

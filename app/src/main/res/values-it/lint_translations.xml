@@ -3,7 +3,6 @@
     <string name="common_error">Errore</string>
     <string name="chat_open_app_menu">Apri il menu dell\'app</string>
     <string name="settings_customize_palette">Personalizza</string>
-    <string name="settings_customize_palette_help">Crea la tua tavolozza. Scegli un ruolo, trascina nel campo colore oppure regola HSV e HEX. I colori sono ottimizzati per il contrasto nelle modalità chiara e scura.</string>
     <string name="settings_palette_primary">Primario</string>
     <string name="settings_palette_secondary">Secondario</string>
     <string name="settings_palette_accent">Accento</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">Dimensioni video</string>
     <string name="video_option_resolution">Risoluzione video</string>
     <string name="speech_platform_picker_title">Piattaforma vocale</string>
-    <string name="speech_engine_android_description">Usa la sintesi vocale di Android</string>
     <string name="speech_engine_direct_description">API vocale dedicata</string>
     <string name="speech_engine_provider_description">Usa un provider di modelli configurato</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">Personalizzazione</string>
     <string name="customization_enable">Attiva</string>
-    <string name="customization_description">Colori, trasparenza dei componenti, foto del profilo e sfondi</string>
     <string name="customization_backgrounds_title">Immagini di sfondo</string>
-    <string name="user_profile_background_preview_sample">Contenuto di esempio con immagine di sfondo</string>
     <string name="provider_custom">Personalizzato</string>
     <string name="provider_custom_endpoints">Endpoint personalizzati</string>
     <string name="provider_custom_endpoints_hint">Inserisci URL completi. Lascia vuoto per usare i valori predefiniti. Gli URL di generazione Gemini possono usare {model} e {method}.</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">nessuno</string>
     <string name="launcher_drag_test_folder_alpha">Cartella Alfa</string>
     <string name="launcher_drag_test_folder_beta">Cartella Beta</string>
-    <string name="launcher_drag_test_folder">Cartella</string>
     <string name="launcher_drag_test_close">Chiudi</string>
     <string name="launcher_drag_test_grid">Griglia</string>
     <string name="launcher_drag_test_list">Elenco</string>

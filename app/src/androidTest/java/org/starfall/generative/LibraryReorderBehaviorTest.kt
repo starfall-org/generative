@@ -10,7 +10,6 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.features.providers.shared.ui.ProviderModelsPane
 
 class LibraryReorderBehaviorTest {
@@ -22,8 +21,8 @@ class LibraryReorderBehaviorTest {
         val saved = mutableListOf<List<String>>()
         compose.setContent { MaterialTheme {
             ProviderModelsPane(order.value, configurations, rememberLazyListState(),
-                onMove = { from, to -> order.value = order.value.moved(from, to) },
-                onDrop = { saved += order.value }, onEdit = {}, onDelete = {}, onOpenCatalog = {})
+                onOrderChange = { order.value = it },
+                onDrop = { _, reordered -> saved += reordered }, onEdit = {}, onDelete = {}, onOpenCatalog = {})
         } }
         val source = compose.onNodeWithText("First")
         val from = source.fetchSemanticsNode().boundsInRoot

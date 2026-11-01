@@ -3,7 +3,6 @@
     <string name="common_error">錯誤</string>
     <string name="chat_open_app_menu">開啟應用程式選單</string>
     <string name="settings_customize_palette">自訂</string>
-    <string name="settings_customize_palette_help">建立自己的調色盤。選擇色彩角色，在色彩區域拖曳，或調整 HSV 和 HEX。色彩已針對淺色和深色模式的對比度進行調整。</string>
     <string name="settings_palette_primary">主要色</string>
     <string name="settings_palette_secondary">次要色</string>
     <string name="settings_palette_accent">強調色</string>
@@ -31,7 +30,6 @@
     <string name="video_option_size">影片尺寸</string>
     <string name="video_option_resolution">影片解析度</string>
     <string name="speech_platform_picker_title">語音平台</string>
-    <string name="speech_engine_android_description">使用 Android 文字轉語音</string>
     <string name="speech_engine_direct_description">專用語音 API</string>
     <string name="speech_engine_provider_description">使用已設定的模型供應商</string>
     <plurals name="speech_engine_model_count">
@@ -40,9 +38,7 @@
     </plurals>
     <string name="customization_title">個人化</string>
     <string name="customization_enable">啟用</string>
-    <string name="customization_description">色彩、元件透明度、個人照片與背景</string>
     <string name="customization_backgrounds_title">背景圖片</string>
-    <string name="user_profile_background_preview_sample">含背景圖片的範例內容</string>
     <string name="provider_custom">自訂</string>
     <string name="provider_custom_endpoints">自訂端點</string>
     <string name="provider_custom_endpoints_hint">請輸入完整 URL。留空則使用預設值。Gemini 生成 URL 可使用 {model} 和 {method}。</string>
@@ -61,7 +57,6 @@
     <string name="launcher_drag_test_none">無</string>
     <string name="launcher_drag_test_folder_alpha">Alpha 資料夾</string>
     <string name="launcher_drag_test_folder_beta">Beta 資料夾</string>
-    <string name="launcher_drag_test_folder">資料夾</string>
     <string name="launcher_drag_test_close">關閉</string>
     <string name="launcher_drag_test_grid">格狀</string>
     <string name="launcher_drag_test_list">清單</string>

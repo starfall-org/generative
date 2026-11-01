@@ -56,6 +56,30 @@ class RemoteTerminalScreenTest {
     }
 
     @Test
+    fun appBarBackLeavesWithoutDisconnecting() {
+        var visible by mutableStateOf(true)
+        var disconnected = false
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                if (visible) RemoteTerminalScreen(
+                    machine = RemoteMachine("toolbar-back", "Test"),
+                    openTerminal = { _, _ -> awaitCancellation() },
+                    disconnect = { disconnected = true },
+                    onDismiss = { visible = false }
+                )
+            }
+        }
+        val back = compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        val disconnect = compose.onNodeWithContentDescription("Disconnect and close terminal").assertIsDisplayed()
+        assertTrue(back.getUnclippedBoundsInRoot().right <= disconnect.getUnclippedBoundsInRoot().left)
+        back.performClick()
+        compose.runOnIdle {
+            assertFalse(visible)
+            assertFalse(disconnected)
+        }
+    }
+
+    @Test
     fun systemBackLeavesWithoutDisconnectingAndCancelsPendingConnection() {
         var visible by mutableStateOf(true)
         var cancelled = false

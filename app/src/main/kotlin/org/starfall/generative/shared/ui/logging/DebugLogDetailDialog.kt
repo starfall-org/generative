@@ -53,7 +53,7 @@ internal fun DebugLogDetailDialog(entry: DebugLogEntry, onDismiss: () -> Unit, o
                                 else if (entry.level == DebugLogLevel.ERROR) R.string.debug_log_failed
                                 else R.string.debug_log_completed))
                             entry.durationMillis?.let { ms ->
-                                LogMetadata(stringResource(R.string.debug_log_elapsed), "${ms} ms")
+                                LogMetadata(stringResource(R.string.debug_log_duration), "${ms} ms")
                             }
                         }
                         HorizontalDivider(Modifier.padding(top = 6.dp))
@@ -71,7 +71,7 @@ internal fun DebugLogDetailDialog(entry: DebugLogEntry, onDismiss: () -> Unit, o
                 entry.stackTrace?.let { trace ->
                     item(key = "stacktrace-label") {
                         HorizontalDivider()
-                        Text(stringResource(R.string.debug_log_stacktrace),
+                        Text(stringResource(R.string.debug_log_stack_trace),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 6.dp))
                     }
