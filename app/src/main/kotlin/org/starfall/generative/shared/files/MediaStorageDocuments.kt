@@ -11,9 +11,14 @@ import java.io.File
 import java.io.FileNotFoundException
 
 /** Local file operations for the MediaStorage directory inside the unified DocumentsProvider. */
-class MediaStorageDocuments(private val appContext: Context) {
+class MediaStorageDocuments(
+    private val appContext: Context,
+    private val rootId: String = ROOT_ID,
+    private val displayName: String = "MediaStorage",
+    private val storageDirectory: File = ToolFiles.appStorageDirectory(appContext)
+) {
     private val baseDirectory: File
-        get() = ToolFiles.appStorageDirectory(appContext)
+        get() = storageDirectory
 
     fun queryDocument(documentId: String?, projection: Array<out String>?): Cursor {
         val cursor = MatrixCursor(projection ?: DOCUMENT_PROJECTION)
@@ -64,7 +69,7 @@ class MediaStorageDocuments(private val appContext: Context) {
         } else if (!target.createNewFile()) {
             throw FileNotFoundException("Could not create file: $safeName")
         }
-        notifyChildrenChanged(parentDocumentId ?: ROOT_ID)
+        notifyChildrenChanged(parentDocumentId ?: rootId)
         return documentIdFor(target)
     }
 
@@ -72,7 +77,7 @@ class MediaStorageDocuments(private val appContext: Context) {
         val file = fileFor(documentId)
         if (file.canonicalFile == baseDirectory.canonicalFile || !file.exists()) throw FileNotFoundException("No such document: $documentId")
         if (!file.deleteRecursively()) throw FileNotFoundException("Could not delete: $documentId")
-        notifyChildrenChanged(documentId?.substringBeforeLast('/', ROOT_ID) ?: ROOT_ID)
+        notifyChildrenChanged(documentId?.substringBeforeLast('/', rootId) ?: rootId)
     }
 
     fun isChildDocument(parentDocumentId: String?, documentId: String?): Boolean = runCatching {
@@ -85,11 +90,11 @@ class MediaStorageDocuments(private val appContext: Context) {
     /** MediaStorage/<relative path>, also accepting legacy plain-file IDs from older releases. */
     private fun fileFor(documentId: String?): File {
         val base = baseDirectory.canonicalFile
-        if (documentId == ROOT_ID) return base
+        if (documentId == rootId) return base
         val path = when {
             documentId == null -> throw FileNotFoundException("Missing document ID")
-            documentId.startsWith("$ROOT_ID/") -> documentId.removePrefix("$ROOT_ID/")
-            '/' !in documentId -> documentId // Previously issued media file URI.
+            documentId.startsWith("$rootId/") -> documentId.removePrefix("$rootId/")
+            rootId == ROOT_ID && '/' !in documentId -> documentId // Previously issued media file URI.
             else -> throw FileNotFoundException("Invalid media document: $documentId")
         }
         if (path.isBlank() || path.split('/').any {
@@ -103,7 +108,7 @@ class MediaStorageDocuments(private val appContext: Context) {
     }
 
     private fun documentIdFor(file: File): String =
-        "$ROOT_ID/${file.relativeTo(baseDirectory).invariantSeparatorsPath}"
+        "$rootId/${file.relativeTo(baseDirectory).invariantSeparatorsPath}"
 
     private fun includeFile(cursor: MatrixCursor, file: File) {
         val isRoot = file.canonicalFile == baseDirectory.canonicalFile
@@ -112,8 +117,8 @@ class MediaStorageDocuments(private val appContext: Context) {
             fun put(column: String, value: Any?) {
                 if (column in fields) add(column, value)
             }
-            put(DocumentsContract.Document.COLUMN_DOCUMENT_ID, if (isRoot) ROOT_ID else documentIdFor(file))
-            put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, if (isRoot) "MediaStorage" else file.name)
+            put(DocumentsContract.Document.COLUMN_DOCUMENT_ID, if (isRoot) rootId else documentIdFor(file))
+            put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, if (isRoot) displayName else file.name)
             put(DocumentsContract.Document.COLUMN_MIME_TYPE,
                 if (file.isDirectory) DocumentsContract.Document.MIME_TYPE_DIR else
                     MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase())
@@ -135,6 +140,7 @@ class MediaStorageDocuments(private val appContext: Context) {
 
     companion object {
         const val ROOT_ID = "media_storage"
+        const val UPLOAD_ROOT_ID = "upload_caches"
 
         private val DOCUMENT_PROJECTION = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,

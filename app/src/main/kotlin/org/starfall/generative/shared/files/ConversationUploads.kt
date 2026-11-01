@@ -14,10 +14,19 @@ import org.starfall.generative.shared.model.Conversation
 internal fun Conversation.uploadedFileNames(files: ToolFiles): Set<String> {
     val uploaded = messages.filter { it.role == ChatRole.USER }
         .flatMap { message -> message.versions.flatMap { it.files } }
-        .mapNotNull(files::nameOf)
-    val produced = messages.filter { it.role != ChatRole.USER }
-        .flatMap { message -> message.versions.flatMap { version -> version.files + version.toolActivity.flatMap { it.files } } }
-        .mapNotNull(files::nameOf)
-        .toSet()
-    return uploaded.toSet() - produced
+        .flatMap { reference -> listOfNotNull(files.nameOf(reference)) + files.importedCopyNames(reference) }
+    return uploaded.toSet() - generatedFileNames(files)
 }
+
+/** All assistant/tool output, except send_file which only forwards existing files. */
+internal fun Conversation.generatedFileNames(files: ToolFiles): Set<String> = messages
+    .filter { it.role != ChatRole.USER }
+    .flatMap { message -> message.versions.flatMap { version ->
+        val forwarded = version.toolActivity.filter { it.wireName == "send_file" }
+            .flatMap { it.files }.mapNotNull(files::nameOf).toSet()
+        (version.files.mapNotNull(files::nameOf) - forwarded) +
+            version.toolActivity.filter { it.wireName != "send_file" }
+                .flatMap { it.files }.mapNotNull(files::nameOf)
+    } }
+    .filterNot(files::isUserUpload)
+    .toSet()

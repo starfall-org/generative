@@ -27,9 +27,28 @@ class ExplorerStorageTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val root: File get() = ToolFiles.appStorageDirectory(context)
     private val media = ExplorerLocation(sourceId = "media", label = "MediaStorage")
+    private val uploads = ExplorerLocation(sourceId = "uploads", label = "UploadCaches")
 
     @After fun cleanUp() {
         File(root, "explorer-test-folder").deleteRecursively()
+        File(ToolFiles.uploadStorageDirectory(context), "explorer-test-upload.png").delete()
+    }
+
+    @Test fun explorerListsBothRootsButKeepsTheirFilesSeparate() = runBlocking<Unit> {
+        val repository = MediaStorageExplorerRepository(context)
+        val names = repository.list(ExplorerLocation()).map { it.name }
+        assertEquals(listOf("MediaStorage", "UploadCaches"), names)
+        val source = File(ToolFiles.uploadStorageDirectory(context), "explorer-test-upload.png")
+        try {
+            source.writeText("user-upload")
+            assertTrue(repository.list(uploads).any { it.name == source.name })
+            assertFalse(repository.list(media).any { it.name == source.name })
+            val item = repository.list(uploads).single { it.name == source.name }
+            assertTrue(repository.documentUri(item).toString().contains("upload_caches"))
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { repository.delete(org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem("UploadCaches", uploads, true)) }
+            }
+        } finally { source.delete() }
     }
 
     @Test fun localMediaFoldersAreBrowsableRenamableAndDeletable() = runBlocking<Unit> {

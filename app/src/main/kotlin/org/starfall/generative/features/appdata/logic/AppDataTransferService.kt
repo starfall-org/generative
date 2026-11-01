@@ -91,6 +91,8 @@ class AppDataTransferService(
         remoteMachineService.store.awaitInitialized()
         modelRepository.awaitModelConfigurationMemoryWrites()
         val storedFiles = toolFiles.list().associateBy { it.name }
+        val uploadFiles = toolFiles.listUploads().associateBy { it.name }
+        val backedUpFileNames = storedFiles.keys + uploadFiles.keys
         val backup = AppDataBackup(
             exportedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date()),
             providers = modelRepository.loadProvidersForExport(),
@@ -99,6 +101,11 @@ class AppDataTransferService(
             speechServices = speechRepository.allServices.first(),
             conversations = conversationRepository.conversationList.first().mapNotNull { conversationRepository.loadById(it.id) },
             storedFileNames = storedFiles.keys.sorted(),
+            uploadFileNames = uploadFiles.keys.sorted(),
+            generatedMediaNames = toolFiles.generatedMediaNames().filter { it in backedUpFileNames }.sorted(),
+            importedMediaNames = toolFiles.importedMediaNames().mapValues { (_, names) ->
+                names.filter { it in backedUpFileNames }
+            }.filterValues { it.isNotEmpty() },
             profiles = profileRepository.allProfiles.first(),
             appPreferences = preferencesRepository.backupSnapshot(),
             toolSettings = toolSettingsStore.snapshot(),
@@ -117,7 +124,7 @@ class AppDataTransferService(
         val destination = File.createTempFile(prefix, ".zip", directory)
         try {
             destination.outputStream().use { output ->
-                writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles, skillFiles)
+                writeZipBackup(output, backup, iconFiles, storedFiles, identityFiles, skillFiles, uploadFiles)
             }
             destination
         } catch (error: Throwable) {
@@ -376,8 +383,15 @@ class AppDataTransferService(
         require(data.remoteMachines.identities.map { it.id }.toSet() == imported.remoteIdentityFiles.keys) {
             "The SSH identity files in the backup do not match its manifest."
         }
-        require(data.storedFileNames.toSet() == imported.toolFiles.keys) {
+        require(data.storedFileNames.toSet() == imported.toolFiles.keys &&
+            data.uploadFileNames.toSet() == imported.uploadFiles.keys &&
+            (imported.toolFiles.keys intersect imported.uploadFiles.keys).isEmpty()) {
             "The stored files in the backup do not match its manifest."
+        }
+        val allBackedUpFiles = imported.toolFiles.keys + imported.uploadFiles.keys
+        require(data.generatedMediaNames.all { it in allBackedUpFiles } &&
+            data.importedMediaNames.values.flatten().all { it in allBackedUpFiles }) {
+            "Media ownership references files missing from the backup."
         }
         val backedUpSkills = data.appPreferences.agentSkills.skills.map { it.name }.toSet()
         require(imported.skillFiles.keys.all { path ->
@@ -420,9 +434,16 @@ class AppDataTransferService(
         restoreRemoteTerminalPreferences(data.remoteTerminalPreferences)
         iconStore.restore(data.icons, imported.iconFiles)
         toolFiles.clearAll()
+        toolFiles.clearUploads()
         imported.toolFiles.forEach { (name, file) ->
             FileInputStream(file).use { toolFiles.restore(name, it) }
         }
+        imported.uploadFiles.forEach { (name, file) ->
+            FileInputStream(file).use { toolFiles.restoreUpload(name, it) }
+        }
+        // Older backups lack provenance; rebuild generated ownership from conversation history.
+        toolFiles.replaceMediaProvenance(data.generatedMediaNames, data.importedMediaNames)
+        toolFiles.markGeneratedMedia(conversationRepository.generatedFileReferences())
         remoteMachineService.replaceState(data.remoteMachines, imported.remoteIdentityFiles)
     }
 

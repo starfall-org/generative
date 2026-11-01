@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.file.Files
 import java.io.RandomAccessFile
 import java.util.zip.ZipEntry
@@ -59,6 +60,25 @@ class ZipAppDataTransferTest {
             source.deleteRecursively()
             staging.deleteRecursively()
         }
+    }
+
+    @Test fun uploadCachesAndGeneratedMediaRoundTripToSeparateZipDirectories() {
+        val source = Files.createTempDirectory("generative-separated-files").toFile()
+        val staging = Files.createTempDirectory("generative-separated-staging").toFile()
+        try {
+            val generated = File(source, "generated.png").apply { writeText("model output") }
+            val uploaded = File(source, "upload_document.pdf").apply { writeText("user attachment") }
+            val backup = AppDataBackup(exportedAt = "2026-11-01T00:00:00Z",
+                storedFileNames = listOf(generated.name), uploadFileNames = listOf(uploaded.name))
+            val bytes = ByteArrayOutputStream().also { output ->
+                writeZipBackup(output, backup, emptyMap(), mapOf(generated.name to generated),
+                    emptyMap(), uploadFiles = mapOf(uploaded.name to uploaded))
+            }.toByteArray()
+            val restored = readZipBackup(ByteArrayInputStream(bytes), staging)
+            assertEquals(backup, restored.data)
+            assertEquals("model output", restored.toolFiles.getValue(generated.name).readText())
+            assertEquals("user attachment", restored.uploadFiles.getValue(uploaded.name).readText())
+        } finally { source.deleteRecursively(); staging.deleteRecursively() }
     }
 
     @Test fun skillDirectoryResourcesRoundTripWithoutFlatteningPaths() {

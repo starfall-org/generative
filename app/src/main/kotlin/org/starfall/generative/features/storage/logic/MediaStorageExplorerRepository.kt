@@ -16,20 +16,27 @@ import org.starfall.generative.shared.files.AppDocumentsLocation
 import org.starfall.generative.shared.files.MediaStorageDocuments
 import org.starfall.generative.shared.files.ToolFiles
 
-/** MediaStorage's sole adapter to the reusable explorer. No Remote Machines dependency. */
+/** Local MediaStorage and UploadCaches adapter to the reusable explorer. */
 class MediaStorageExplorerRepository(context: Context) : ExplorerRepository {
     private val app = context.applicationContext
     private val root = ToolFiles.appStorageDirectory(app).canonicalFile
+    private val uploadRoot = ToolFiles.uploadStorageDirectory(app).canonicalFile
     private val media = ExplorerLocation(sourceId = "media", label = "MediaStorage")
+    private val uploads = ExplorerLocation(sourceId = "uploads", label = "UploadCaches")
+    private fun rootFor(location: ExplorerLocation): File = when (location.sourceId) {
+        media.sourceId -> root
+        uploads.sourceId -> uploadRoot
+        else -> throw FileNotFoundException("Unknown storage location")
+    }
 
     override suspend fun list(location: ExplorerLocation): List<ExplorerItem> = when {
-        location.isHome -> listOf(ExplorerItem(media.label, media, true))
-        location.sourceId == media.sourceId -> withContext(Dispatchers.IO) {
-            val directory = mediaFile(location.path)
+        location.isHome -> listOf(ExplorerItem(media.label, media, true), ExplorerItem(uploads.label, uploads, true))
+        location.sourceId == media.sourceId || location.sourceId == uploads.sourceId -> withContext(Dispatchers.IO) {
+            val directory = mediaFile(location, location.path)
             if (!directory.isDirectory) throw FileNotFoundException("Not a directory")
             directory.listFiles().orEmpty().asSequence()
                 .filter { !it.name.endsWith(".part") && !it.name.endsWith(".spill") &&
-                    runCatching { mediaFile(join(location.path, it.name)) }.isSuccess }
+                    runCatching { mediaFile(location, join(location.path, it.name)) }.isSuccess }
                 .map { file -> ExplorerItem(file.name, location.copy(path = join(location.path, file.name)),
                     file.isDirectory, file.length(), file.lastModified()) }
                 .sortedWith(compareByDescending<ExplorerItem> { it.directory }.thenBy { it.name.lowercase() })
@@ -40,41 +47,41 @@ class MediaStorageExplorerRepository(context: Context) : ExplorerRepository {
 
     override suspend fun createFolder(parent: ExplorerLocation, name: String) {
         val safe = checkName(name)
-        requireMedia(parent)
+        requireLocal(parent)
         withContext(Dispatchers.IO) {
-            if (!mediaFile(join(parent.path, safe)).mkdir()) throw FileNotFoundException("Could not create directory")
+            if (!mediaFile(parent, join(parent.path, safe)).mkdir()) throw FileNotFoundException("Could not create directory")
         }
     }
 
     override suspend fun rename(item: ExplorerItem, newName: String) {
         val safe = checkName(newName)
-        requireMedia(item.location)
+        requireLocal(item.location)
         require(item.location.path.isNotEmpty()) { "Cannot rename the storage root" }
         withContext(Dispatchers.IO) {
-            val source = mediaFile(item.location.path)
-            val target = mediaFile(join(item.location.parent().path, safe))
+            val source = mediaFile(item.location, item.location.path)
+            val target = mediaFile(item.location, join(item.location.parent().path, safe))
             if (target.exists() || !source.renameTo(target)) throw FileNotFoundException("Could not rename file")
             ToolFiles.revision.value++
         }
     }
 
     override suspend fun delete(item: ExplorerItem) {
-        requireMedia(item.location)
+        requireLocal(item.location)
         require(item.location.path.isNotEmpty()) { "Cannot delete the storage root" }
         withContext(Dispatchers.IO) {
-            if (!mediaFile(item.location.path).deleteRecursively()) throw FileNotFoundException("Could not delete file")
+            if (!mediaFile(item.location, item.location.path).deleteRecursively()) throw FileNotFoundException("Could not delete file")
             ToolFiles.revision.value++
         }
     }
 
     /** Upload into a validated directory, without overwriting an existing file. */
     suspend fun upload(parent: ExplorerLocation, name: String, input: InputStream) {
-        requireMedia(parent)
+        requireLocal(parent)
         val safeName = checkName(name)
         withContext(Dispatchers.IO) {
-            val directory = mediaFile(parent.path)
+            val directory = mediaFile(parent, parent.path)
             if (!directory.isDirectory) throw FileNotFoundException("Not a directory")
-            val target = mediaFile(join(parent.path, safeName))
+            val target = mediaFile(parent, join(parent.path, safeName))
             if (!target.createNewFile()) throw FileNotFoundException("File already exists: $safeName")
             try {
                 target.outputStream().use { input.copyTo(it) }
@@ -92,28 +99,33 @@ class MediaStorageExplorerRepository(context: Context) : ExplorerRepository {
     }
 
     fun fileFor(item: ExplorerItem): File {
-        requireMedia(item.location)
-        return mediaFile(item.location.path).also {
+        requireLocal(item.location)
+        return mediaFile(item.location, item.location.path).also {
             if (item.directory || !it.isFile) throw FileNotFoundException("Not a file")
         }
     }
 
     fun documentUri(item: ExplorerItem): Uri {
         fileFor(item)
+        val rootId = if (item.location.sourceId == uploads.sourceId)
+            MediaStorageDocuments.UPLOAD_ROOT_ID else MediaStorageDocuments.ROOT_ID
         return DocumentsContract.buildDocumentUri(AppDocumentsLocation.authority(app),
-            "${MediaStorageDocuments.ROOT_ID}/${item.location.path}")
+            "$rootId/${item.location.path}")
     }
 
-    private fun requireMedia(location: ExplorerLocation) {
-        require(location.sourceId == media.sourceId) { "Unknown storage location" }
+    private fun requireLocal(location: ExplorerLocation) {
+        require(location.sourceId == media.sourceId || location.sourceId == uploads.sourceId) {
+            "Unknown storage location"
+        }
     }
 
-    private fun mediaFile(relative: String): File {
+    private fun mediaFile(location: ExplorerLocation, relative: String): File {
+        val root = rootFor(location)
         if (relative.startsWith('/') || '\u0000' in relative || relative.split('/').any { it == "." || it == ".." ||
                 (relative.isNotBlank() && it.isEmpty()) }) throw FileNotFoundException("Invalid media path")
         val file = File(root, relative).canonicalFile
         if (file != root && !file.path.startsWith(root.path + File.separator)) {
-            throw FileNotFoundException("Outside MediaStorage")
+            throw FileNotFoundException("Outside storage")
         }
         return file
     }

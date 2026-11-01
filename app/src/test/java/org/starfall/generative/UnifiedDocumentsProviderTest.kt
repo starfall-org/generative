@@ -26,13 +26,15 @@ import org.starfall.generative.shared.files.ToolFiles
 class UnifiedDocumentsProviderTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val folder: File get() = ToolFiles.appStorageDirectory(context)
+    private val uploads: File get() = ToolFiles.uploadStorageDirectory(context)
 
     @After fun cleanUp() {
         File(folder, "documents-test.txt").delete()
         File(folder, "documents-test-folder").deleteRecursively()
+        File(uploads, "documents-test-upload.jpg").delete()
     }
 
-    @Test fun oneSystemRootContainsMediaStorageFolder() {
+    @Test fun oneSystemRootContainsMediaStorageAndUploadCaches() {
         val provider = Robolectric.buildContentProvider(AppDocumentsProvider::class.java).create().get()
         try {
             provider.queryRoots(arrayOf(DocumentsContract.Root.COLUMN_ROOT_ID)).use { roots ->
@@ -46,18 +48,27 @@ class UnifiedDocumentsProviderTest {
                     children.getString(children.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)))
                 assertEquals("MediaStorage",
                     children.getString(children.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)))
+                assertTrue(children.moveToNext())
+                assertEquals(MediaStorageDocuments.UPLOAD_ROOT_ID,
+                    children.getString(children.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)))
+                assertEquals("UploadCaches",
+                    children.getString(children.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)))
                 while (children.moveToNext()) {
                     assertTrue(children.getString(children.getColumnIndexOrThrow(
                         DocumentsContract.Document.COLUMN_DISPLAY_NAME)).startsWith("SFTP_"))
                 }
             }
             assertTrue(provider.isChildDocument(AppDocumentsLocation.ROOT_ID, MediaStorageDocuments.ROOT_ID))
+            assertTrue(provider.isChildDocument(AppDocumentsLocation.ROOT_ID, MediaStorageDocuments.UPLOAD_ROOT_ID))
             assertFalse(provider.isChildDocument(MediaStorageDocuments.ROOT_ID, AppDocumentsLocation.ROOT_ID))
             assertThrows(FileNotFoundException::class.java) {
                 provider.createDocument(AppDocumentsLocation.ROOT_ID, "text/plain", "bad.txt")
             }
             assertThrows(FileNotFoundException::class.java) {
                 provider.deleteDocument(MediaStorageDocuments.ROOT_ID)
+            }
+            assertThrows(FileNotFoundException::class.java) {
+                provider.deleteDocument(MediaStorageDocuments.UPLOAD_ROOT_ID)
             }
         } finally {
             provider.shutdown()
@@ -90,6 +101,31 @@ class UnifiedDocumentsProviderTest {
         media.deleteDocument(child)
         media.deleteDocument(directory)
         assertFalse(File(folder, "documents-test-folder").exists())
+    }
+
+    @Test fun uploadsRemainInTheirOwnProviderFolderAndCannotEscapeToMediaStorage() {
+        val provider = Robolectric.buildContentProvider(AppDocumentsProvider::class.java).create().get()
+        try {
+            File(uploads, "documents-test-upload.jpg").writeText("upload content")
+            val id = "${MediaStorageDocuments.UPLOAD_ROOT_ID}/documents-test-upload.jpg"
+            provider.queryChildDocuments(MediaStorageDocuments.UPLOAD_ROOT_ID, null, sortOrder = null).use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val children = buildSet {
+                    while (cursor.moveToNext()) add(cursor.getString(idColumn))
+                }
+                assertTrue(id in children)
+            }
+            assertTrue(provider.isChildDocument(MediaStorageDocuments.UPLOAD_ROOT_ID, id))
+            assertFalse(provider.isChildDocument(MediaStorageDocuments.ROOT_ID, id))
+            provider.openDocument(id, "r", null).use { descriptor ->
+                ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use {
+                    assertEquals("upload content", it.readText())
+                }
+            }
+            assertThrows(FileNotFoundException::class.java) {
+                provider.queryDocument("${MediaStorageDocuments.UPLOAD_ROOT_ID}/../media_storage/secret", null)
+            }
+        } finally { provider.shutdown() }
     }
 
     @Test fun documentPathsCannotEscapeOrExposeTemporaryFiles() {

@@ -96,8 +96,12 @@ class AiService(
     ): JsonArray = JsonArray(message.files.map { reference ->
         val meta = attachments.metadata(reference) ?: error("Attachment metadata is missing")
         val bytes = attachments.readBytes(reference) ?: error("Attachment data is missing")
-        val uri = imported[reference] ?: ("tool-file:" + files.save(bytes.inputStream(), meta.mimeType)).also {
-            imported[reference] = it
+        val uri = imported[reference] ?: run {
+            // Picker/share/clipboard imports already live in ToolFiles. No second disk write.
+            val existing = files.nameOf(reference)?.takeIf { files.resolveInCurrentSession(it) != null }
+            val name = existing ?: files.saveUpload(bytes.inputStream(), meta.mimeType)
+            if (existing == null) files.recordImportedAttachment(reference, name)
+            "tool-file:$name".also { imported[reference] = it }
         }
         buildJsonObject {
             put("uri", uri)
@@ -112,8 +116,16 @@ class AiService(
             references.map { reference ->
                 val meta = attachments.metadata(reference) ?: error("Attachment metadata is missing")
                 require(meta.sizeBytes <= maxBytes) { "Reference file is too large for the selected generation API." }
-                val input = attachments.open(reference) ?: error("Attachment data is missing")
-                "tool-file:" + files.save(input, meta.mimeType, maxBytes)
+                val existing = files.nameOf(reference)?.takeIf { name ->
+                    files.resolveInCurrentSession(name)?.let { it.isFile && it.length() <= maxBytes } == true
+                }
+                val name = existing ?: run {
+                    val input = attachments.open(reference) ?: error("Attachment data is missing")
+                    files.saveUpload(input, meta.mimeType, maxBytes).also {
+                        files.recordImportedAttachment(reference, it)
+                    }
+                }
+                "tool-file:$name"
             }
         }
 

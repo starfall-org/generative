@@ -112,11 +112,16 @@ Explorer is presentation and state only. It may depend on Compose, platform APIs
 or `appwiring/`, and it never accesses an application database, filesystem backend or remote API
 itself. Backend implementations and external viewers remain the host's responsibility.
 
-The MediaStorage and SFTP hosts both implement upload/download using streams, so files are not
+The MediaStorage, UploadCaches and SFTP hosts implement upload/download using streams, so files are not
 loaded into memory all at once. The local adapter refuses to overwrite existing names and removes
 incomplete uploads; the SFTP adapter uploads to a temporary remote path before publishing the
 file. Download failure may leave a partial document in a third-party destination (Android's
 provider owns it), which the user can remove with their file manager.
+
+The local storage host exposes **MediaStorage** for tool-generated output and **UploadCaches**
+for durable user-supplied chat attachments. The latter is omitted from Media Management and
+chat-associated copies are deleted when no conversations reference them; either folder is directly browsable
+from the local Explorer root.
 
 Current hosts include `features/storage/logic/MediaStorageExplorerRepository.kt` with
 `features/storage/ui/StorageExplorerScreen.kt`, and

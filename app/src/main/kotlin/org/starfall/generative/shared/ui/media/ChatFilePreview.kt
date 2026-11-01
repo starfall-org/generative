@@ -79,12 +79,22 @@ fun ChatFilePreview(
     thumbnail: ImageBitmap?,
     loading: Boolean,
     modifier: Modifier = Modifier,
+    missing: Boolean = false,
     selectedForChat: Boolean = false,
     onToggleAttachment: ((String) -> Unit)? = null,
     playVideoInline: Boolean = true,
     overlayActive: Boolean = true,
     onOpen: () -> Unit
 ) {
+    if (missing) {
+        BoundedMediaFrame(if (mime.startsWith("image/")) 1f else 16f / 9f, modifier) {
+            Text(stringResource(R.string.attachment_reference_missing),
+                color = Color.White.copy(alpha = 0.78f),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(12.dp))
+        }
+        return
+    }
     val sharedSelection = LocalChatAttachmentSelection.current
     val toggle = onToggleAttachment ?: sharedSelection?.let { it::toggle }
     val selected = if (onToggleAttachment == null && sharedSelection != null) reference in sharedSelection.attachments.value else selectedForChat

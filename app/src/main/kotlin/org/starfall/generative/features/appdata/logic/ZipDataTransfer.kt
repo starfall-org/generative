@@ -28,6 +28,7 @@ import org.starfall.generative.features.appdata.model.ZipAppDataBackup
 private const val MANIFEST_ENTRY = "manifest.json"
 private const val ICON_PREFIX = "icons/"
 private const val FILE_PREFIX = "files/"
+private const val UPLOAD_PREFIX = "uploads/"
 private const val IDENTITY_PREFIX = "remote-identities/"
 private const val SKILL_PREFIX = "skills/"
 private const val MAX_ENTRY_BYTES = 256L * 1024 * 1024
@@ -45,7 +46,8 @@ fun writeZipBackup(
     iconFiles: Map<String, File>,
     toolFiles: Map<String, File>,
     identityFiles: Map<String, Pair<File, File?>>,
-    skillFiles: Map<String, File> = emptyMap()
+    skillFiles: Map<String, File> = emptyMap(),
+    uploadFiles: Map<String, File> = emptyMap()
 ) {
     val names = mutableSetOf<String>()
     ZipOutputStream(BufferedOutputStream(output)).use { zip ->
@@ -94,6 +96,7 @@ fun writeZipBackup(
         addBytes(MANIFEST_ENTRY, backupJson.encodeToString(data).toByteArray(Charsets.UTF_8))
         iconFiles.forEach { (name, file) -> addFile(ICON_PREFIX + name, file) }
         toolFiles.forEach { (name, file) -> addFile(FILE_PREFIX + name, file) }
+        uploadFiles.forEach { (name, file) -> addFile(UPLOAD_PREFIX + name, file) }
         identityFiles.forEach { (id, files) ->
             addFile("$IDENTITY_PREFIX$id", files.first)
             files.second?.let { addFile("$IDENTITY_PREFIX$id.pub", it) }
@@ -177,6 +180,7 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
     var manifest: AppDataBackup? = null
     val iconFiles = linkedMapOf<String, File>()
     val toolFiles = linkedMapOf<String, File>()
+    val uploadFiles = linkedMapOf<String, File>()
     val privateIdentities = linkedMapOf<String, File>()
     val publicIdentities = linkedMapOf<String, File>()
     val skillFiles = linkedMapOf<String, File>()
@@ -190,7 +194,8 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
             val name = entry.name
             check(seen.add(name)) { "Duplicate backup entry: $name" }
             check(name == MANIFEST_ENTRY || name.startsWith(ICON_PREFIX) || name.startsWith(FILE_PREFIX) ||
-                name.startsWith(IDENTITY_PREFIX) || name.startsWith(SKILL_PREFIX)) {
+                name.startsWith(IDENTITY_PREFIX) || name.startsWith(SKILL_PREFIX) ||
+                name.startsWith(UPLOAD_PREFIX)) {
                 "Unsupported backup entry: $name"
             }
             check(!name.startsWith('/') && ".." !in name.split('/')) { "Unsafe backup entry path." }
@@ -198,6 +203,7 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
                 name == MANIFEST_ENTRY -> "manifest.json"
                 name.startsWith(ICON_PREFIX) -> name.removePrefix(ICON_PREFIX)
                 name.startsWith(FILE_PREFIX) -> name.removePrefix(FILE_PREFIX)
+                name.startsWith(UPLOAD_PREFIX) -> name.removePrefix(UPLOAD_PREFIX)
                 name.startsWith(SKILL_PREFIX) -> name.removePrefix(SKILL_PREFIX)
                 else -> name.removePrefix(IDENTITY_PREFIX)
             }
@@ -227,6 +233,7 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
                 }
                 name.startsWith(ICON_PREFIX) -> iconFiles[relative] = destination
                 name.startsWith(FILE_PREFIX) -> toolFiles[relative] = destination
+                name.startsWith(UPLOAD_PREFIX) -> uploadFiles[relative] = destination
                 name.startsWith(SKILL_PREFIX) -> skillFiles[relative] = destination
                 name.startsWith(IDENTITY_PREFIX) && relative.endsWith(".pub") ->
                     publicIdentities[relative.removeSuffix(".pub")] = destination
@@ -240,5 +247,5 @@ fun readZipBackup(input: InputStream, directory: File): ZipAppDataBackup {
     require(data.type == "full_backup") { "The archive is not a Generative full backup." }
     require(data.formatVersion == AppDataBackup.CURRENT_FORMAT_VERSION) { "Unsupported backup version." }
     val identities = privateIdentities.mapValues { (id, file) -> file to publicIdentities[id] }
-    return ZipAppDataBackup(data, iconFiles, toolFiles, identities, skillFiles)
+    return ZipAppDataBackup(data, iconFiles, toolFiles, identities, skillFiles, uploadFiles)
 }

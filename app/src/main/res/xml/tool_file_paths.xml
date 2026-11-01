@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="tool_media" path="tool_media/" />
+    <files-path name="upload_caches" path="UploadCaches/" />
     <cache-path name="temporary_chat_media" path="temporary_chat_media/" />
 </paths>

@@ -38,6 +38,7 @@ import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.code.codeLanguage
 
 private fun File.mime() = mediaMimeType(name)
+private fun String.mimeForMissingFile() = mediaMimeType(this)
 private const val TEXT_PREVIEW_LIMIT = 200_000
 private val textFileExtensions = setOf(
     "txt", "log", "md", "markdown", "csv", "tsv", "json", "jsonl", "xml", "svg", "html", "htm", "css", "scss",
@@ -91,7 +92,10 @@ fun MediaFileCard(
         if (!imageOnly) Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-    } else Text(stringResource(R.string.file_deleted), style = MaterialTheme.typography.bodySmall)
+    } else if (imageOnly) ChatFilePreview(
+        File(store.directory, name).absolutePath, name, name.mimeForMissingFile(), null, false,
+        missing = true, overlayActive = overlayActive, onOpen = {}
+    ) else Text(stringResource(R.string.file_deleted), style = MaterialTheme.typography.bodySmall)
     if (overlayActive && view && file != null) MediaViewer(store, file) { view = false }
 }
 

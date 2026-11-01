@@ -261,6 +261,7 @@
     <string name="attachment_remove_from_next">次のメッセージから画像を削除</string>
     <string name="attachment_attach_to_next">画像を次のメッセージに添付</string>
     <string name="attachment_fallback_name">添付ファイル</string>
+    <string name="attachment_reference_missing">参照ファイルが見つかりません</string>
     <string name="attachment_file_unavailable">ファイルを利用できません</string>
     <string name="attachment_cannot_save_file">ファイルを保存できません</string>
     <string name="summary_send_as">要約を送信する形式</string>

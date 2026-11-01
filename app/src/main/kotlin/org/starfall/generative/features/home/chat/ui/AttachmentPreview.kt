@@ -39,6 +39,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.media.MediaPreviewCover
 import org.starfall.generative.shared.ui.media.mediaThumbnail
+import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -47,7 +48,8 @@ internal data class AttachmentPreviewData(
     val name: String,
     val mimeType: String,
     val bitmap: ImageBitmap? = null,
-    val durationMs: Long? = null
+    val durationMs: Long? = null,
+    val missing: Boolean = false
 )
 
 @Composable
@@ -102,10 +104,19 @@ private fun AttachmentTile(
     val context = LocalContext.current
     val foreground = LocalChatForeground.current
     var showPreview by remember(reference, foreground) { mutableStateOf(false) }
-    val data by produceState<AttachmentPreviewData?>(initialValue = AttachmentPreviewCache.get(reference), reference) {
-        value = AttachmentPreviewCache.get(reference)
-            ?: withContext(Dispatchers.IO) { loadPreview(context, reference) }
-                .also { AttachmentPreviewCache.put(reference, it) }
+    val data by produceState<AttachmentPreviewData?>(initialValue = null, reference) {
+        val preview = withContext(Dispatchers.IO) {
+            val cached = AttachmentPreviewCache.get(reference)
+            val readable = runCatching { AttachmentResolver(context).open(reference)?.use { true } == true }
+                .getOrDefault(false)
+            when {
+                !readable -> (cached ?: loadPreview(context, reference)).copy(bitmap = null, missing = true)
+                cached != null && !cached.missing -> cached
+                else -> loadPreview(context, reference)
+            }
+        }
+        AttachmentPreviewCache.put(reference, preview)
+        value = preview
     }
     // An inline preview changes the item's height when it arrives; a fixed-size tile does not.
     TrackPendingWork(inlinePreview && data == null)
@@ -116,6 +127,7 @@ private fun AttachmentTile(
     if (inlinePreview && data != null) {
         val preview = data!!
         ChatFilePreview(reference, preview.name, preview.mimeType, preview.bitmap, false,
+            missing = preview.missing,
             selectedForChat = selectedForChat, onToggleAttachment = onToggleChatImage,
             playVideoInline = foreground, overlayActive = foreground,
             onOpen = { if (foreground) showPreview = true })
@@ -135,10 +147,15 @@ private fun AttachmentTile(
                     Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
                 } else Modifier
             )
-            .clickable(enabled = data != null) { showPreview = true }
+            .clickable(enabled = data != null && data?.missing != true) { showPreview = true }
     ) {
         val preview = data
-        if (preview?.bitmap != null) {
+        if (preview?.missing == true) {
+            Text(stringResource(R.string.attachment_reference_missing),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center).padding(8.dp))
+        } else if (preview?.bitmap != null) {
             Image(
                 bitmap = preview.bitmap,
                 contentDescription = preview.name,
@@ -167,13 +184,13 @@ private fun AttachmentTile(
             }
         }
 
-        if (preview?.mimeType?.startsWith("video/") == true || preview?.mimeType?.startsWith("audio/") == true) {
+        if (preview?.missing != true && (preview?.mimeType?.startsWith("video/") == true || preview?.mimeType?.startsWith("audio/") == true)) {
             Surface(modifier = Modifier.align(Alignment.Center), shape = CircleShape,
                 color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f)) {
                 SharedIcon(Icons.Default.PlayArrow, stringResource(R.string.attachment_play_media), Modifier.padding(8.dp), tint = MaterialTheme.colorScheme.inverseOnSurface)
             }
         }
-        preview?.durationMs?.let { duration ->
+        preview?.takeUnless { it.missing }?.durationMs?.let { duration ->
             Surface(
                 color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.56f),
                 shape = RoundedCornerShape(12.dp),
@@ -203,7 +220,7 @@ private fun AttachmentTile(
                     Text("×", style = MaterialTheme.typography.titleLarge)
                 }
             }
-        } else if (data?.mimeType?.startsWith("image/") == true && onToggleChatImage != null) {
+        } else if (data?.missing != true && data?.mimeType?.startsWith("image/") == true && onToggleChatImage != null) {
             FilledTonalIconToggleButton(
                 checked = selectedForChat,
                 onCheckedChange = { onToggleChatImage(reference) },
@@ -218,7 +235,7 @@ private fun AttachmentTile(
         }
     }
     val preview = data
-    if (foreground && showPreview && preview != null) {
+    if (foreground && showPreview && preview != null && !preview.missing) {
         MediaPreviewCover(reference, preview.name, preview.mimeType) { showPreview = false }
     }
 }
@@ -243,7 +260,9 @@ private suspend fun loadPreview(context: Context, reference: String): Attachment
     val metadata = runCatching { AttachmentResolver(context).metadata(reference) }.getOrNull()
     val name = metadata?.name ?: uri.lastPathSegment ?: context.getString(R.string.attachment_fallback_name)
     val mime = metadata?.mimeType.orEmpty()
-    val bitmap = mediaThumbnail(context, reference, mime, 480)
+    val bitmap = try { mediaThumbnail(context, reference, mime, 480) }
+        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { null }
     var duration: Long? = null
     if (mime.startsWith("video/") || mime.startsWith("audio/")) {
         val retriever = MediaMetadataRetriever()
@@ -255,7 +274,7 @@ private suspend fun loadPreview(context: Context, reference: String): Attachment
         runCatching { retriever.release() }
     }
 
-    return AttachmentPreviewData(name, mime, bitmap, duration)
+    return AttachmentPreviewData(name, mime.ifBlank { mediaMimeType(name) }, bitmap, duration)
 }
 
 private fun formatDuration(durationMs: Long): String {

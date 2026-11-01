@@ -1,6 +1,10 @@
 package org.starfall.generative.features.home
 
 import android.content.Intent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -11,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
@@ -19,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.importUserAttachment
 import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
 import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
 import org.starfall.generative.shared.ui.model.rememberThinkingColorBurst
@@ -145,19 +151,52 @@ internal fun BottomSheetsLink(
     contextWindowContent: (@Composable (onDarkBackground: Boolean) -> Unit)? = null,
     /** Starts summarization; null hides the Summarize button. */
     onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null,
-    temporaryChatId: String? = null
+    temporaryChatId: String? = null,
+    attachmentSessionKey: String? = null,
+    onAttachmentImportingChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
-    fun retainReadPermission(uri: Uri) {
-        runCatching {
-            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val files = remember(context) { ToolFiles(context) }
+    val scope = rememberCoroutineScope()
+    val latestAttachments by rememberUpdatedState(attachments)
+    val latestOnAttachmentsChange by rememberUpdatedState(onAttachmentsChange)
+    val latestSessionKey by rememberUpdatedState(attachmentSessionKey)
+    var activeImports by remember(attachmentSessionKey) { mutableIntStateOf(0) }
+    var launchedPickerSessionKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(activeImports, attachmentSessionKey) {
+        onAttachmentImportingChange(activeImports > 0)
+    }
+    fun importSelection(uris: List<Uri>) {
+        if (uris.isEmpty() || launchedPickerSessionKey != attachmentSessionKey) return
+        val targetSessionKey = attachmentSessionKey
+        val targetTemporaryId = temporaryChatId
+        activeImports++
+        scope.launch {
+            try {
+                val imported = mutableListOf<String>()
+                var failed = false
+                uris.distinct().forEach { uri ->
+                    try {
+                        imported += importUserAttachment(context, files, uri, temporaryChatId = targetTemporaryId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        failed = true
+                    }
+                }
+                // A late picker read must not attach a different chat's file to the current draft.
+                if (targetSessionKey != latestSessionKey) return@launch
+                if (imported.isNotEmpty()) latestOnAttachmentsChange((latestAttachments + imported).distinct())
+                if (failed) sheets.openFilesUnavailableDialog()
+            } finally {
+                activeImports--
+            }
         }
     }
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(maxItems = 20)
     ) { uris ->
-        uris.forEach(::retainReadPermission)
-        onAttachmentsChange((attachments + uris.map(Uri::toString)).distinct())
+        importSelection(uris)
     }
     val documentPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -169,8 +208,7 @@ internal fun BottomSheetsLink(
                 for (index in 0 until clip.itemCount) add(clip.getItemAt(index).uri)
             }
         }.distinct()
-        picked.forEach(::retainReadPermission)
-        onAttachmentsChange((attachments + picked.map(Uri::toString)).distinct())
+        importSelection(picked)
     }
     // Keep the destination across activity recreation while the external camera is open.
     var pendingPhotoPath by rememberSaveable(temporaryChatId) { mutableStateOf<String?>(null) }
@@ -204,6 +242,7 @@ internal fun BottomSheetsLink(
                     null, QuickActionsPage.ROOT -> QuickActionsSheetContent(
                         onPickImage = {
                             if (!pageActive) return@QuickActionsSheetContent
+                            launchedPickerSessionKey = attachmentSessionKey
                             photoPicker.launch(PickVisualMediaRequest(
                                 if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) ActivityResultContracts.PickVisualMedia.ImageAndVideo
                                 else ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -211,12 +250,13 @@ internal fun BottomSheetsLink(
                         },
                         onPickDocument = {
                             if (!pageActive) return@QuickActionsSheetContent
+                            launchedPickerSessionKey = attachmentSessionKey
                             documentPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                                 addCategory(Intent.CATEGORY_OPENABLE)
                                 type = if (mediaKind == null || mediaKind == ModelType.VIDEO_GENERATION) "*/*" else "image/*"
                                 if (mediaKind == ModelType.VIDEO_GENERATION) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
                                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             })
                         },
                         onTakePhoto = {
@@ -227,7 +267,7 @@ internal fun BottomSheetsLink(
                                         File(context.cacheDir, "temporary_chat_media/$id").also {
                                             check(it.isDirectory) { "Temporary chat was discarded" }
                                         }
-                                    } ?: ToolFiles.appStorageDirectory(context)
+                                    } ?: ToolFiles.uploadStorageDirectory(context)
                                     val photo = File.createTempFile("capture_", ".jpg", directory)
                                     pendingPhotoPath = photo.absolutePath
                                     cameraLauncher.launch(FileProvider.getUriForFile(

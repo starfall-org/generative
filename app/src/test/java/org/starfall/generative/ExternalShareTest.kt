@@ -82,13 +82,14 @@ class ExternalShareTest {
         val data = "%PDF-1.7\nExample shared attachment".toByteArray()
         shadowOf(context.contentResolver).registerInputStream(uri, ByteArrayInputStream(data))
         val location = File(context.cacheDir, "external-share-unit-test")
-        val files = ToolFiles(location)
+        val files = ToolFiles(location, File(context.cacheDir, "external-share-uploads-test"))
         try {
             val reference = stageSharedAttachment(context, files, uri, "application/pdf", null)
             assertTrue(reference.endsWith(".pdf"))
             assertArrayEquals(data, File(reference).readBytes())
         } finally {
             location.deleteRecursively()
+            files.uploadDirectory?.deleteRecursively()
         }
     }
 }

@@ -14,6 +14,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
+import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.files.generatedFileNames
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
@@ -38,7 +40,11 @@ class ConversationMigrationException(
     val issueCodes: List<String>
 ) : IllegalStateException("Conversation $conversationId needs recovery before it can be opened.")
 
-class ConversationRepository @JvmOverloads constructor(private val db: AppDatabase, journalDirectory: File? = null) {
+class ConversationRepository @JvmOverloads constructor(
+    private val db: AppDatabase,
+    journalDirectory: File? = null,
+    private val toolFiles: ToolFiles? = null
+) {
     private val journal = journalDirectory?.let(::ConversationSaveJournal)
     private val dao = db.conversationDao()
     private val writeLock = Mutex()
@@ -113,6 +119,8 @@ class ConversationRepository @JvmOverloads constructor(private val db: AppDataba
             upsertConversation(modelToEntity(conversation))
             persistChildren(conversation)
         }
+        // Persist output ownership separately from chat history. It must survive chat deletion.
+        toolFiles?.let { it.markGeneratedMedia(conversation.generatedFileNames(it)) }
     }
 
     suspend fun renameConversation(id: String, title: String) {

@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.files.uploadedFileNames
+import org.starfall.generative.shared.files.generatedFileNames
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.MessageVersion
@@ -474,10 +475,13 @@ internal class ChatConversationCoordinator(
     }
 
     private suspend fun uploadsForDeletion(previous: Conversation?): Set<String> {
-        val uploaded = conversationRepo.userFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
-            previous?.uploadedFileNames(toolFiles).orEmpty()
-        // Normalize references before comparing: generated media can be attached again using a path.
-        val generated = conversationRepo.generatedFileReferences().mapNotNull(toolFiles::nameOf).toSet()
+        // Record the provenance *before* deleting the database rows. A generated item may later
+        // be attached as a user message in another chat, long after its original chat is gone.
+        val generated = conversationRepo.generatedFileReferences().mapNotNull(toolFiles::nameOf).toSet() +
+            previous?.takeUnless { it.isTemporary }?.generatedFileNames(toolFiles).orEmpty()
+        toolFiles.markGeneratedMedia(generated)
+        val uploaded = localChatUploadNames(toolFiles, conversationRepo.userFileReferences()) +
+            previous?.takeUnless { it.isTemporary }?.uploadedFileNames(toolFiles).orEmpty()
         return uploaded - generated
     }
 
@@ -489,9 +493,10 @@ internal class ChatConversationCoordinator(
         if (candidates.isEmpty()) return
         val queued = queuedMessagesByConversation.value.filterKeys { it !in removedConversationIds }.values
             .flatten().flatMap { message -> message.versions.flatMap { it.files } }
-        val stillWanted = (attachedFiles + queued).mapNotNull(toolFiles::nameOf).toSet()
-        val orphaned = conversationRepo.unreferencedFiles(candidates - stillWanted)
-        if (orphaned.isNotEmpty()) withContext(Dispatchers.IO) { toolFiles.delete(orphaned) }
+        deleteUnreferencedChatUploads(
+            conversationRepo, toolFiles, candidates,
+            attachedFiles + queued + conversationRepo.userFileReferences()
+        )
     }
 
     fun renameConversation(id: String, newTitle: String) {

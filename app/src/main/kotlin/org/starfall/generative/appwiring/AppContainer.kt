@@ -53,7 +53,7 @@ class AppContainer(context: Context) {
     private val toolHttp = ToolHttp(toolFiles)
     private val mcpOAuth = McpOAuthService(appContext, toolHttp)
     private val mcpService = McpService(toolHttp, mcpOAuth)
-    private val conversations = ConversationRepository(database, File(appContext.noBackupFilesDir, "pending-conversation-saves"))
+    private val conversations = ConversationRepository(database, File(appContext.noBackupFilesDir, "pending-conversation-saves"), toolFiles)
     private val profiles = ProfileRepository(database)
     private val icons = IconStore(appContext)
     private val providers = ModelRepository(database, aiService, icons)

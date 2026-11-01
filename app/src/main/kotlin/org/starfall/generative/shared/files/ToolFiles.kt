@@ -21,8 +21,12 @@ class TemporaryChatFiles(val conversationId: String) : AbstractCoroutineContextE
 }
 
 /** App-private files only; database rows never contain binary data. */
-class ToolFiles(val directory: File) {
-    constructor(context: Context): this(appStorageDirectory(context)) {
+class ToolFiles(
+    val directory: File,
+    val uploadDirectory: File? = null,
+    private val fileNamePrefix: String = ""
+) {
+    constructor(context: Context): this(appStorageDirectory(context), uploadStorageDirectory(context)) {
         val root = File(context.cacheDir, "temporary_chat_media")
         synchronized(initialized) {
             if (initializedTemporaryRoots.add(directory.canonicalPath)) {
@@ -42,14 +46,18 @@ class ToolFiles(val directory: File) {
         }
     }
     private data class CachedHash(val length: Long, val modified: Long, val digest: String)
-    private class DirectoryIndex { val hashes = mutableMapOf<String, CachedHash>() }
+    private class DirectoryIndex(directory: File) {
+        val hashes = mutableMapOf<String, CachedHash>()
+        val provenance = ToolFileProvenance(File(directory.parentFile, ".${directory.name}.provenance"))
+    }
     companion object {
         /**
-         * The single directory holding every file the app generates (tool and media output).
-         * The single DocumentsProvider exposes this directory as MediaStorage in Android's DocumentsUI,
-         * so files saved here are also browsable from the system Files app.
+         * Generated media storage, exposed as MediaStorage by the unified DocumentsProvider.
+         * User-uploaded copies are stored separately under UploadCaches.
          */
         fun appStorageDirectory(context: Context): File = File(context.filesDir, "tool_media").apply { mkdirs() }
+        /** Durable user-provided copies, never included in Media Management. */
+        fun uploadStorageDirectory(context: Context): File = File(context.filesDir, "UploadCaches").apply { mkdirs() }
         val revision = kotlinx.coroutines.flow.MutableStateFlow(0L)
         private val initialized = mutableSetOf<String>()
         private val indexes = mutableMapOf<String, DirectoryIndex>()
@@ -58,7 +66,35 @@ class ToolFiles(val directory: File) {
         private val temporarySessions = mutableMapOf<String, MutableMap<String, ToolFiles>>()
     }
     private val index = synchronized(initialized) {
-        indexes.getOrPut(directory.canonicalPath) { DirectoryIndex() }
+        indexes.getOrPut(directory.canonicalPath) { DirectoryIndex(directory) }
+    }
+    private val uploadStore by lazy {
+        uploadDirectory?.let { ToolFiles(it, fileNamePrefix = "upload_") }
+    }
+
+    /** User input is private and durable, but never part of generated MediaStorage. */
+    suspend fun saveUpload(input: InputStream, mime: String? = null, maxBytes: Long = limit): String {
+        val temporary = currentTemporaryFiles()
+        return if (temporary != null) temporary.save(input, mime, maxBytes)
+        else (uploadStore ?: this).save(input, mime, maxBytes)
+    }
+
+    /** The upload copy's real file path, or the current temporary-session file path. */
+    suspend fun resolveUploadInCurrentSession(name: String): File? {
+        if (nameOf(name) != name) return null
+        val storage = currentTemporaryFiles()?.directory ?: uploadStore?.directory ?: directory
+        val file = File(storage, name)
+        return file.takeIf { it.isFile && it.canonicalFile.parentFile == storage.canonicalFile }
+    }
+
+    /** Backup/restore can enumerate and replace uploads separately from generated media. */
+    fun listUploads(): List<File> = uploadStore?.list().orEmpty()
+    fun isUserUpload(name: String): Boolean = uploadStore?.directory?.let { File(it, name).isFile } == true
+    suspend fun restoreUpload(name: String, input: InputStream) {
+        (uploadStore ?: this).restore(name, input)
+    }
+    fun clearUploads() {
+        uploadStore?.clearAll()
     }
     /** Temporary media lives only in cache and never appears in Media Storage. */
     fun openTemporarySession(id: String, cacheDirectory: File? = null) {
@@ -100,12 +136,25 @@ class ToolFiles(val directory: File) {
         val temporary = synchronized(initialized) {
             temporarySessions[directory.canonicalPath]?.values?.toList().orEmpty()
         }
-        return (temporary.map { File(it.directory, name) } + File(directory, name)).firstOrNull {
-            it.isFile && it.canonicalFile.parentFile?.let { parent ->
-                parent in (temporary.map { session -> session.directory.canonicalFile } + directory.canonicalFile)
-            } == true
+        val permitted = temporary.map { it.directory.canonicalFile } +
+            listOfNotNull(uploadStore?.directory?.canonicalFile, directory.canonicalFile)
+        return permitted.asSequence().map { File(it, name) }.firstOrNull { candidate ->
+            candidate.isFile && candidate.canonicalFile.parentFile in permitted
         }
     }
+    /** Resolve the storage selected by the current chat, never a different temporary session. */
+    suspend fun resolveInCurrentSession(name: String): File? {
+        if (nameOf(name) != name) return null
+        val temporary = currentTemporaryFiles()
+        if (temporary != null) return temporary.resolveInCurrentSession(name)
+        // A different temporary chat can contain an identical hash. Only inspect permanent
+        // directories here, otherwise it would shadow the file owned by this conversation.
+        val roots = listOfNotNull(uploadStore?.directory, directory).map { it.canonicalFile }
+        return roots.asSequence().map { File(it, name) }.firstOrNull { candidate ->
+            candidate.isFile && candidate.canonicalFile.parentFile?.let { it in roots } == true
+        }
+    }
+
     /**
      * Name of the app-private file a stored reference points at, whether it is saved as `tool-file:<name>`,
      * a bare name, an absolute path or a `file:` URI. Returns null for anything outside this directory,
@@ -122,21 +171,79 @@ class ToolFiles(val directory: File) {
             val temporaryDirectories = synchronized(initialized) {
                 temporarySessions[directory.canonicalPath]?.values?.map { it.directory.canonicalFile }.orEmpty()
             }
-            if (parent == null || (parent != directory.canonicalFile && parent !in temporaryDirectories)) return null
+            if (parent == null || (parent != directory.canonicalFile &&
+                    parent != uploadStore?.directory?.canonicalFile && parent !in temporaryDirectories)) return null
             file.name
         } else path
         return name.takeIf { it.matches(Regex("[a-zA-Z0-9._-]+")) && !it.endsWith(".part") && !it.endsWith(".spill") }
     }
+    /** Imported copies of external user attachments; the original URI itself is never deletable. */
+    fun importedCopyNames(reference: String): Set<String> = index.provenance.importedCopies(reference)
+
+    suspend fun recordImportedAttachment(reference: String, name: String) {
+        if (currentCoroutineContext()[TemporaryChatFiles] != null) return
+        withContext(Dispatchers.IO) {
+            if (nameOf(name) == name && nameOf(reference) != name) {
+                index.provenance.recordImport(reference, name)
+            }
+        }
+    }
+
+    /** Generated output remains owned by MediaStorage even after its conversation is deleted. */
+    suspend fun markGeneratedMedia(references: Collection<String>) {
+        if (currentCoroutineContext()[TemporaryChatFiles] != null) return
+        withContext(Dispatchers.IO) {
+            index.provenance.markGenerated(references.mapNotNull(::nameOf)
+                .filter { File(directory, it).isFile && !isUserUpload(it) })
+        }
+    }
+
+    fun isGeneratedMedia(name: String): Boolean = index.provenance.isGenerated(name)
+
+    fun generatedMediaNames(): Set<String> = index.provenance.generatedNames()
+
+    fun importedMediaNames(): Map<String, List<String>> = index.provenance.importedNames()
+
+    fun replaceMediaProvenance(generated: Collection<String>, imports: Map<String, List<String>>) {
+        index.provenance.replace(generated, imports)
+    }
+
     fun list(): List<File> = directory.listFiles()?.filter {
         it.isFile && !it.name.endsWith(".part") && !it.name.endsWith(".spill")
     }?.sortedByDescending { it.lastModified() } ?: emptyList()
     fun delete(names: Collection<String>) {
         synchronized(index) {
+            val removed = mutableSetOf<String>()
             names.forEach { name ->
-                if (resolve(name)?.delete() == true) index.hashes.remove(name)
+                if (resolve(name)?.delete() == true) {
+                    index.hashes.remove(name)
+                    // A temporary file can share a name with a permanent file.
+                    if (!File(directory, name).isFile) removed += name
+                }
             }
+            index.provenance.forget(removed)
         }
         revision.update { it + 1 }
+    }
+
+    /** Delete only permanent user uploads; do not touch matching temporary-chat cache files. */
+    fun deletePermanentUploads(names: Collection<String>) {
+        synchronized(index) {
+            val removed = mutableSetOf<String>()
+            names.forEach { name ->
+                if (nameOf(name) != name) return@forEach
+                val userUpload = isUserUpload(name)
+                if (!userUpload && index.provenance.isGenerated(name)) return@forEach
+                val root = if (userUpload) uploadStore!!.directory else directory
+                val file = File(root, name)
+                if (file.isFile && file.canonicalFile.parentFile == root.canonicalFile && file.delete()) {
+                    removed += name
+                    index.hashes.remove(name)
+                }
+            }
+            index.provenance.forget(removed)
+            if (removed.isNotEmpty()) revision.update { it + 1 }
+        }
     }
 
     fun clearAll() = delete(list().map { it.name })
@@ -241,7 +348,9 @@ class ToolFiles(val directory: File) {
             val context = coroutineContext
             synchronized(index) {
                 context.ensureActive()
-                val existingFiles = list().mapNotNull { resolve(it.name) }
+                val existingFiles = list().asSequence()
+                    .filter { fileNamePrefix.isEmpty() || it.name.startsWith(fileNamePrefix) }
+                    .mapNotNull { resolve(it.name) }.toList()
                 index.hashes.keys.retainAll(existingFiles.map { it.name }.toSet())
                 val existing = existingFiles.firstOrNull { file ->
                     if (file.length() != temp.length()) return@firstOrNull false
@@ -268,7 +377,7 @@ class ToolFiles(val directory: File) {
                     context.ensureActive()
                     // Never overwrite an existing referenced file, even if a
                     // hash-named file was externally changed or is a symlink.
-                    val canonical = File(directory, "$hash.$ext")
+                    val canonical = File(directory, "$fileNamePrefix$hash.$ext")
                     val dest = if (canonical.exists()) File(directory, "${UUID.randomUUID()}.$ext") else canonical
                     check(temp.renameTo(dest)) { "Could not save media" }
                     index.hashes[dest.name] = CachedHash(dest.length(), dest.lastModified(), hash)

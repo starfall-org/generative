@@ -201,7 +201,7 @@ internal fun UserInputArea(
                                         .map { clip.description.getMimeType(it) }
                                         .firstOrNull { it.startsWith("image/") }
                                 context.contentResolver.openInputStream(uri)?.use { input ->
-                                    toolFiles.save(input, mime, MAX_CLIPBOARD_IMAGE_BYTES)
+                                    toolFiles.saveUpload(input, mime, MAX_CLIPBOARD_IMAGE_BYTES)
                                 }?.let { name -> toolFiles.resolve(name)?.absolutePath }
                             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                                 throw cancelled
@@ -351,7 +351,8 @@ internal fun UserInputArea(
     LaunchedEffect(mediaKind) {
         if (mediaKind != null) selectedSkillId = null
     }
-    val canSend = canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
+    var attachmentImporting by remember(clipboardSessionKey) { mutableStateOf(false) }
+    val canSend = !attachmentImporting && canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
     val showStop = isGenerating && editDraft == null && (mediaKind != null || !hasContent)
     val mediaHint = directMediaHint(textState, attachments, mediaKind, mediaModel, mediaModelId, mediaLabel)
 
@@ -587,6 +588,8 @@ internal fun UserInputArea(
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
+                        } else if (attachmentImporting) {
+                            org.starfall.generative.shared.ui.LoadingIndicator(Modifier.size(20.dp))
                         } else {
                             SharedIcon(
                                 imageVector = when (mediaKind) {
@@ -730,6 +733,8 @@ internal fun UserInputArea(
     if (foreground) BottomSheetsLink(
         sheets = bottomSheets,
         temporaryChatId = temporaryChatId,
+        attachmentSessionKey = clipboardSessionKey,
+        onAttachmentImportingChange = { attachmentImporting = it },
         mediaKind = mediaKind,
         onMediaKindChange = { mediaKind = it },
         onCancelEdit = onCancelEdit,

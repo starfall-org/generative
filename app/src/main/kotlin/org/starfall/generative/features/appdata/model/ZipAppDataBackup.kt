@@ -7,5 +7,6 @@ data class ZipAppDataBackup(
     val iconFiles: Map<String, File> = emptyMap(),
     val toolFiles: Map<String, File> = emptyMap(),
     val remoteIdentityFiles: Map<String, Pair<File, File?>> = emptyMap(),
-    val skillFiles: Map<String, File> = emptyMap()
+    val skillFiles: Map<String, File> = emptyMap(),
+    val uploadFiles: Map<String, File> = emptyMap()
 )

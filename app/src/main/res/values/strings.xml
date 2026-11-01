@@ -297,6 +297,7 @@
     <string name="attachment_remove_from_next">Remove image from next message</string>
     <string name="attachment_attach_to_next">Attach image to next message</string>
     <string name="attachment_fallback_name">Attachment</string>
+    <string name="attachment_reference_missing">Reference file not found</string>
     <string name="attachment_file_unavailable">File unavailable</string>
     <string name="attachment_cannot_save_file">Cannot save file</string>
     <string name="summary_send_as">Send summary as</string>

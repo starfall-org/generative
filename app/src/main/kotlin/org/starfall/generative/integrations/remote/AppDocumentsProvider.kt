@@ -32,7 +32,7 @@ import org.starfall.generative.shared.files.MediaStorageDocuments
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.RemoteMachine
 
-/** One DocumentsUI root containing MediaStorage and one SFTP folder for each Remote Machine. */
+/** One DocumentsUI root containing MediaStorage, UploadCaches and remote SFTP folders. */
 class AppDocumentsProvider : DocumentsProvider() {
     private val service: RemoteMachineService by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         val app = requireNotNull(context) { "Provider not attached" }.applicationContext
@@ -40,6 +40,13 @@ class AppDocumentsProvider : DocumentsProvider() {
     }
 
     private val media by lazy { MediaStorageDocuments(requireNotNull(context)) }
+    private val uploads by lazy {
+        val app = requireNotNull(context)
+        MediaStorageDocuments(app, MediaStorageDocuments.UPLOAD_ROOT_ID,
+            "UploadCaches", ToolFiles.uploadStorageDirectory(app))
+    }
+    private fun localDocuments(id: String) = if (id == MediaStorageDocuments.UPLOAD_ROOT_ID ||
+        id.startsWith("${MediaStorageDocuments.UPLOAD_ROOT_ID}/")) uploads else media
     private val notifications = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val observingMachines = AtomicBoolean(false)
 
@@ -89,6 +96,13 @@ class AppDocumentsProvider : DocumentsProvider() {
             addIfPresent(columns, DocumentsContract.Document.COLUMN_FLAGS,
                 DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE)
         }
+        cursor.newRow().apply {
+            addIfPresent(columns, DocumentsContract.Document.COLUMN_DOCUMENT_ID, MediaStorageDocuments.UPLOAD_ROOT_ID)
+            addIfPresent(columns, DocumentsContract.Document.COLUMN_DISPLAY_NAME, "UploadCaches")
+            addIfPresent(columns, DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.MIME_TYPE_DIR)
+            addIfPresent(columns, DocumentsContract.Document.COLUMN_FLAGS,
+                DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE)
+        }
         service.state.value.machines.forEach { machine ->
             includeSftpRootDocument(cursor, columns, sftpRootId(machine.id), sftpFolderName(machine))
         }
@@ -121,7 +135,7 @@ class AppDocumentsProvider : DocumentsProvider() {
                 }
             }
         }
-        if (!id.startsWith("machine:")) return media.queryDocument(id, columns)
+        if (!id.startsWith("machine:")) return localDocuments(id).queryDocument(id, columns)
         val cursor = MatrixCursor(columns)
         val rootId = sftpRootIdOfDocument(id)
         val machine = machineForRoot(rootId)
@@ -142,7 +156,7 @@ class AppDocumentsProvider : DocumentsProvider() {
     ): Cursor {
         val parentId = parentDocumentId ?: missingSftpDocument()
         if (parentId == AppDocumentsLocation.ROOT_ID) return queryRootChildren(projection)
-        if (!parentId.startsWith("machine:")) return media.queryChildDocuments(parentId, projection, sortOrder)
+        if (!parentId.startsWith("machine:")) return localDocuments(parentId).queryChildDocuments(parentId, projection, sortOrder)
         val columns = projection ?: DOCUMENT_PROJECTION
         val cursor = MatrixCursor(columns)
         val rootId = sftpRootIdOfDocument(parentId)
@@ -186,7 +200,7 @@ class AppDocumentsProvider : DocumentsProvider() {
     ): ParcelFileDescriptor {
         val id = documentId ?: missingSftpDocument()
         if (id == AppDocumentsLocation.ROOT_ID) missingSftpDocument("The app root is not a file.")
-        if (!id.startsWith("machine:")) return media.openDocument(id, mode, signal)
+        if (!id.startsWith("machine:")) return localDocuments(id).openDocument(id, mode, signal)
         val rootId = sftpRootIdOfDocument(id)
         val machine = machineForRoot(rootId)
         val relative = sftpRelativePathOf(rootId, id)
@@ -218,7 +232,7 @@ class AppDocumentsProvider : DocumentsProvider() {
         val parentId = parentDocumentId ?: missingSftpDocument()
         if (!parentId.startsWith("machine:")) {
             if (parentId == AppDocumentsLocation.ROOT_ID) missingSftpDocument("Cannot add folders to the app root.")
-            return media.createDocument(parentId, mimeType, displayName)
+            return localDocuments(parentId).createDocument(parentId, mimeType, displayName)
         }
         val rootId = sftpRootIdOfDocument(parentId)
         val machine = machineForRoot(rootId)
@@ -241,7 +255,7 @@ class AppDocumentsProvider : DocumentsProvider() {
         val id = documentId ?: missingSftpDocument()
         if (!id.startsWith("machine:")) {
             if (id == AppDocumentsLocation.ROOT_ID) missingSftpDocument("Cannot delete the app root.")
-            media.deleteDocument(id)
+            localDocuments(id).deleteDocument(id)
             return
         }
         val rootId = sftpRootIdOfDocument(id)
@@ -262,7 +276,7 @@ class AppDocumentsProvider : DocumentsProvider() {
 
     override fun renameDocument(documentId: String?, displayName: String?): String {
         val id = documentId ?: missingSftpDocument()
-        if (!id.startsWith("machine:")) missingSftpDocument("Renaming MediaStorage entries is not supported.")
+        if (!id.startsWith("machine:")) missingSftpDocument("Renaming local storage entries is not supported.")
         val rootId = sftpRootIdOfDocument(id)
         val machine = machineForRoot(rootId)
         val relative = sftpRelativePathOf(rootId, id)
@@ -282,14 +296,17 @@ class AppDocumentsProvider : DocumentsProvider() {
             documentId == AppDocumentsLocation.ROOT_ID) return false
         if (parentDocumentId == AppDocumentsLocation.ROOT_ID) {
             return documentId == MediaStorageDocuments.ROOT_ID ||
+                documentId == MediaStorageDocuments.UPLOAD_ROOT_ID ||
                 (documentId.startsWith("machine:") && runCatching {
                     val rootId = sftpRootIdOfDocument(documentId)
                     machineForRoot(rootId)
                     sftpRelativePathOf(rootId, documentId)
-                }.isSuccess) || media.isChildDocument(MediaStorageDocuments.ROOT_ID, documentId)
+                }.isSuccess) || media.isChildDocument(MediaStorageDocuments.ROOT_ID, documentId) ||
+                uploads.isChildDocument(MediaStorageDocuments.UPLOAD_ROOT_ID, documentId)
         }
         if (!parentDocumentId.startsWith("machine:")) {
-            return !documentId.startsWith("machine:") && media.isChildDocument(parentDocumentId, documentId)
+            return !documentId.startsWith("machine:") &&
+                localDocuments(parentDocumentId).isChildDocument(parentDocumentId, documentId)
         }
         if (!documentId.startsWith("machine:")) return false
         return try {

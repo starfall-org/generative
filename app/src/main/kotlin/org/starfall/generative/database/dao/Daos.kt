@@ -223,9 +223,22 @@ interface ConversationDao {
     @Query("""
         SELECT f.reference FROM message_version_files f
         INNER JOIN messages m ON m.conversationId = f.conversationId AND m.id = f.messageId
-        WHERE m.role != 'user'
+        WHERE m.role != 'user' AND NOT EXISTS (
+            SELECT 1 FROM tool_activity_files sent
+            INNER JOIN tool_activities t ON t.conversationId = sent.conversationId
+                AND t.messageId = sent.messageId AND t.versionIndex = sent.versionIndex
+                AND t.activityIndex = sent.activityIndex
+            WHERE sent.conversationId = f.conversationId AND sent.messageId = f.messageId
+                AND sent.versionIndex = f.versionIndex AND t.wireName = 'send_file'
+                AND (sent.reference = f.reference OR sent.reference = 'tool-file:' || f.reference
+                    OR f.reference = 'tool-file:' || sent.reference)
+        )
         UNION ALL
-        SELECT reference FROM tool_activity_files
+        SELECT sent.reference FROM tool_activity_files sent
+        INNER JOIN tool_activities t ON t.conversationId = sent.conversationId
+            AND t.messageId = sent.messageId AND t.versionIndex = sent.versionIndex
+            AND t.activityIndex = sent.activityIndex
+        WHERE t.wireName != 'send_file'
     """)
     suspend fun getGeneratedFileReferences(): List<String>
 }

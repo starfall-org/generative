@@ -3,12 +3,7 @@ package org.starfall.generative.navigation
 import android.content.Intent
 import android.content.Context
 import android.net.Uri
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlin.coroutines.EmptyCoroutineContext
-import org.starfall.generative.shared.files.TemporaryChatFiles
 import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.AttachmentResolver
 
 /** One external share is a composer draft, never a request to send a message. */
 internal data class ExternalShare(val text: String?, val streams: List<Uri>, val fallbackMime: String?)
@@ -42,23 +37,13 @@ internal fun parseExternalShare(intent: Intent): ExternalShare? {
     return ExternalShare(text, streams, intent.type)
 }
 
-/** Copy a transient Android share grant into the app's normal attachment storage. */
+/** Snapshot a shared file while the sender still grants us access. */
 internal suspend fun stageSharedAttachment(
     context: Context,
     files: ToolFiles,
     uri: Uri,
     fallbackMime: String?,
     temporaryChatId: String?
-): String = withContext(Dispatchers.IO + (temporaryChatId?.let(::TemporaryChatFiles) ?: EmptyCoroutineContext)) {
-    // MIME metadata is advisory; some share providers allow reading but reject queries.
-    val contentMime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
-    val guessedMime = runCatching { AttachmentResolver(context).metadata(uri.toString())?.mimeType }.getOrNull()
-    val mime = contentMime?.takeUnless { it == "application/octet-stream" || it == "*/*" }
-        ?: guessedMime?.takeUnless { it == "application/octet-stream" }
-        ?: fallbackMime
-    val input = context.contentResolver.openInputStream(uri) ?: error("Cannot read shared attachment")
-    input.use { source ->
-        val name = files.save(source, mime)
-        files.resolve(name)?.absolutePath ?: error("Shared attachment was not saved")
-    }
-}
+): String = org.starfall.generative.shared.files.importUserAttachment(
+    context, files, uri, fallbackMime, temporaryChatId
+)

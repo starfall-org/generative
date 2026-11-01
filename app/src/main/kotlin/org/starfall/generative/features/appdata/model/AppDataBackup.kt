@@ -26,6 +26,10 @@ data class AppDataBackup(
     val speechServices: List<SpeechService> = emptyList(),
     val conversations: List<Conversation> = emptyList(),
     val storedFileNames: List<String> = emptyList(),
+    val uploadFileNames: List<String> = emptyList(),
+    /** Output ownership and imported attachment copies must survive a portable restore. */
+    val generatedMediaNames: List<String> = emptyList(),
+    val importedMediaNames: Map<String, List<String>> = emptyMap(),
     val profiles: List<ChatProfile> = emptyList(),
     @SerialName("appState")
     val appPreferences: AppPreferences = AppPreferences(),

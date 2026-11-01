@@ -260,6 +260,7 @@
     <string name="attachment_remove_from_next">Gỡ ảnh khỏi tin nhắn tiếp theo</string>
     <string name="attachment_attach_to_next">Đính kèm ảnh vào tin nhắn tiếp theo</string>
     <string name="attachment_fallback_name">Tệp đính kèm</string>
+    <string name="attachment_reference_missing">Không tìm thấy tệp tham chiếu</string>
     <string name="attachment_file_unavailable">Không có tệp</string>
     <string name="attachment_cannot_save_file">Không thể lưu tệp</string>
     <string name="summary_send_as">Gửi bản tóm tắt dưới dạng</string>

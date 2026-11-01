@@ -261,6 +261,7 @@
     <string name="attachment_remove_from_next">从下一条消息移除图片</string>
     <string name="attachment_attach_to_next">将图片附加到下一条消息</string>
     <string name="attachment_fallback_name">附件</string>
+    <string name="attachment_reference_missing">找不到引用的文件</string>
     <string name="attachment_file_unavailable">文件不可用</string>
     <string name="attachment_cannot_save_file">无法保存文件</string>
     <string name="summary_send_as">发送摘要的形式</string>

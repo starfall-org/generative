@@ -699,6 +699,13 @@ class ToolChatViewModel internal constructor(
                         } else {
                             prepareGenericToolResult(result)
                         }
+                        // A tool's output is independent media, even when its chat is later deleted
+                        // or its visual MediaBlock is removed. send_file only reuses existing files.
+                        if (!isError && name != SEND_FILE_TOOL_NAME) {
+                            http.requireFiles().markGeneratedMedia(
+                                summary.files + contentApiMedia?.files.orEmpty()
+                            )
+                        }
                         // Keep the complete processed result as tool content; the preview below is UI metadata only.
                         val completeResponse = result.toString()
                         result = summary.content
