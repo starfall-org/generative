@@ -7,7 +7,6 @@ import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonPrimitive
@@ -54,10 +53,9 @@ class McpRepository(
         return cleared
     }
 
-    private val stored: Flow<List<McpInfo>> = dao.getAllServers().map { entities ->
-        db.withTransaction { entities.map { entityToMetadata(it) } }
-    }
-    private val state = ImmediateState(stored)
+    private val state = ImmediateState(load = {
+        db.withTransaction { dao.getAllServers().map { entityToMetadata(it) } }
+    })
     val allServers: Flow<List<McpInfo>> = state.flow
 
     suspend fun getById(id: String): McpInfo? = withContext(Dispatchers.IO) {
@@ -77,7 +75,7 @@ class McpRepository(
     }
 
     suspend fun loadServersForExport(): List<McpInfo> = withContext(Dispatchers.IO) {
-        db.withTransaction { dao.getAllServers().first().map { selected(it) } }
+        db.withTransaction { dao.getAllServers().map { selected(it) } }
     }
 
     internal fun exportOAuthTokens(): Map<String, JsonObject> = oauth?.exportTokens().orEmpty()
@@ -88,7 +86,7 @@ class McpRepository(
 
     /** Replaces every MCP server during a full application restore. */
     suspend fun replaceAll(servers: List<McpInfo>) {
-        dao.getAllServers().first().map { it.id }.forEach { deleteServer(it) }
+        dao.getAllServers().map { it.id }.forEach { deleteServer(it) }
         servers.forEach { saveServer(it) }
     }
 

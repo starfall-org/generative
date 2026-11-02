@@ -8,11 +8,22 @@ import org.junit.Test
 import org.starfall.generative.shared.storage.ImmediateState
 
 class ImmediateStateTest {
+    @Test fun reactivePreferencesStillObserveExternalChanges() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val preferences = MutableStateFlow("light")
+            val state = ImmediateState(preferences, scope)
+            assertEquals("light", state.flow.first())
+            preferences.value = "dark"
+            assertEquals("dark", withTimeout(3_000) { state.flow.first { it == "dark" } })
+        } finally { scope.cancel() }
+    }
+
     @Test fun queuedEditsAreVisibleBeforeDiskAndNeverRebound() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val disk = MutableStateFlow(listOf("a", "b", "c"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             assertEquals(disk.value, state.flow.first())
             val gate = CompletableDeferred<Unit>()
             val first = async(start = CoroutineStart.UNDISPATCHED) {
@@ -41,7 +52,7 @@ class ImmediateStateTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val disk = MutableStateFlow(mapOf("theme" to "light", "layout" to "list"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             val gate = CompletableDeferred<Unit>()
             val failure = async(start = CoroutineStart.UNDISPATCHED) {
@@ -64,7 +75,7 @@ class ImmediateStateTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val disk = MutableStateFlow(0)
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             val gate = CompletableDeferred<Unit>()
             val caller = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -83,7 +94,7 @@ class ImmediateStateTest {
             val disk = MutableStateFlow(0)
             val invalidations = MutableSharedFlow<Int>(extraBufferCapacity = 4)
             val source = flow { emit(disk.value); emitAll(invalidations) }
-            val state = ImmediateState(source, scope)
+            val state = ImmediateState({ source.first() }, scope)
             state.flow.first()
             state.mutate({ 1 }) { disk.value = 1 }
             invalidations.emit(0)
@@ -93,11 +104,33 @@ class ImmediateStateTest {
         } finally { scope.cancel() }
     }
 
+    @Test fun changesToStorageNeverPublishToActiveConsumers() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val disk = MutableStateFlow(listOf("first", "second"))
+            var snapshotReads = 0
+            val state = ImmediateState({
+                snapshotReads++
+                disk.value
+            }, scope)
+            assertEquals(listOf("first", "second"), state.flow.first())
+            disk.value = listOf("second", "first")
+            delay(100)
+            assertEquals("A passive storage change must not reorder an active view",
+                listOf("first", "second"), state.value)
+            state.mutate({ listOf("first", "second", "third") }) {
+                disk.value = listOf("first", "second", "third")
+            }
+            assertEquals(listOf("first", "second", "third"), state.value)
+            assertEquals("Only the bootstrap may read storage", 1, snapshotReads)
+        } finally { scope.cancel() }
+    }
+
     @Test fun enqueuedReordersPublishImmediatelyAndPersistInSubmissionOrder() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         try {
             val disk = MutableStateFlow(listOf("a", "b", "c"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             val entered = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
@@ -120,7 +153,7 @@ class ImmediateStateTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         try {
             val disk = MutableStateFlow(listOf("a", "b"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             state.enqueue({ it.reversed() }) { throw IOException("no space") }
             withTimeout(3_000) { state.flow.first { it == listOf("a", "b") } }
@@ -136,7 +169,7 @@ class ImmediateStateTest {
             val gate = CompletableDeferred<Unit>()
             val disk = MutableStateFlow(listOf("existing"))
             val source = flow { gate.await(); emitAll(disk) }
-            val state = ImmediateState(source, scope)
+            val state = ImmediateState({ source.first() }, scope)
             val write = async(start = CoroutineStart.UNDISPATCHED) {
                 state.mutate({ it + "new" }) { disk.value += "new" }
             }

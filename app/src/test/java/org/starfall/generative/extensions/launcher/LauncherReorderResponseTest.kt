@@ -38,6 +38,9 @@ class LauncherReorderResponseTest {
             state.putTarget(target(Any(), "second"))
             state.move(Offset(51f, 50f))
         }
+        // Let the newly selected target restart its LaunchedEffect dwell timer
+        // before advancing the synthetic Compose frame clock.
+        compose.waitForIdle()
         advance(150)
         compose.runOnIdle { assertEquals(2, calls); state.cancel() }
     }

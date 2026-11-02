@@ -985,4 +985,6 @@
     <string name="settings_repair_provider_result">%1$d 件のプロバイダー記録を修復しました。</string>
     <string name="settings_repair_provider_warning">読み取れない JSON メタデータを削除し、影響を受けたプロバイダーの破損した OAuth 認証情報のみリセットします。モデルやその他のプロバイダーは保持されます。再ログインが必要になる場合があります。</string>
     <string name="settings_repair_provider_failed">プロバイダーの修復に失敗しました：%1$s</string>
+    <string name="providers_demo_title">ProvidersScreen デモ</string>
+        <string name="providers_demo_editor_title">デモ用プロバイダー</string>
 </resources>
