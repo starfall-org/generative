@@ -7,7 +7,6 @@ import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -75,25 +74,6 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         }
     }
 
-    private val storedProviders: Flow<List<ModelProvider>> = providerDao.getAllProviders().map { entities ->
-        // A single malformed legacy model/JSON record must not poison the entire Flow,
-        // prevent the writer's initial snapshot, or block deletion of unrelated providers.
-        db.withTransaction {
-            entities.map { entity ->
-                try { mapper.metadata(entity) }
-                catch (e: CancellationException) { throw e }
-                catch (e: Exception) {
-                    Log.e("ModelRepository", "Failed to decode provider metadata ${entity.id}", e)
-                    mapper.unreadableMetadata(entity)
-                }
-            }
-        }
-    }
-
-    private val storedGroups: Flow<List<ProviderGroup>> = groupDao.getAllGroups().map { groups ->
-        groups.map { ProviderGroup(it.id, it.name, it.sortOrder, it.icon) }
-    }
-
     private data class Catalog(val providers: List<ModelProvider>, val groups: List<ProviderGroup>)
     private val providerOrder = compareBy<ModelProvider> { it.sortOrder }.thenBy { it.id }
 
@@ -122,8 +102,8 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         else copy(providers = providers.upsert(provider) { it.id }.sortedWith(providerOrder))
     }
 
-    private suspend fun readCatalog() = Catalog(
-        providerDao.getAllProviders().first().map { entity ->
+    private suspend fun readCatalog() = db.withTransaction { Catalog(
+        providerDao.getAllProviders().map { entity ->
             try { mapper.metadata(entity) }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -132,7 +112,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             }
         },
         groupDao.getAllGroupsOnce().map { ProviderGroup(it.id, it.name, it.sortOrder, it.icon) }
-    )
+    ) }
 
     private suspend fun persistDestinationOrder(catalog: Catalog, groupId: String?) {
         catalog.providers.filter { it.groupId == groupId }.forEach {
@@ -141,7 +121,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         if (groupId == null) catalog.groups.forEach { groupDao.updateSortOrder(it.id, it.sortOrder) }
     }
 
-    private val state = ImmediateState(combine(storedProviders, storedGroups, ::Catalog))
+    private val state = ImmediateState(load = { readCatalog() })
     val allProviders: Flow<List<ModelProvider>> = state.flow.map { it.providers }.distinctUntilChanged()
     val allGroups: Flow<List<ProviderGroup>> = state.flow.map { it.groups }.distinctUntilChanged()
 
@@ -163,7 +143,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     }
 
     suspend fun loadProvidersForExport(): List<ModelProvider> = withContext(Dispatchers.IO) {
-        db.withTransaction { providerDao.getAllProviders().first().map { mapper.selected(it) } }
+        db.withTransaction { providerDao.getAllProviders().map { mapper.selected(it) } }
     }
 
     internal fun exportAccountCredentials(): Map<String, Map<String, JsonObject>> = service.exportAccountCredentials()
@@ -368,14 +348,23 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         val accountId = resolved.oauthCredentialId
         // Blocking migration-backed token removal must not run on the repository's writer.
         withContext(Dispatchers.IO) { service.clearAccountCredentials(resolved.type, accountId) }
-        state.mutate({ it }) {
+        val cleared = resolved.removeOAuthAccount(accountId)
+        val visibleMetadata = cleared.metadata()
+        state.mutate({ catalog ->
+            catalog.copy(providers = catalog.providers.map { current ->
+                if (current.id == provider.id && current.type == cleared.type) current.copy(
+                    auth = visibleMetadata.auth,
+                    config = current.config.copy(oauthAccounts = visibleMetadata.config.oauthAccounts)
+                ) else current
+            })
+        }) {
             db.withTransaction {
                 providerDao.getProviderById(provider.id)?.let { mapper.selected(it) }?.let { persisted ->
                     if (persisted.type == resolved.type) mapper.persist(persisted.removeOAuthAccount(accountId))
                 }
             }
         }
-        resolved.removeOAuthAccount(accountId)
+        cleared
     }
 
     /** Credential replacement/deletion remains possible when the old encrypted record is damaged. */
@@ -392,7 +381,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
     suspend fun repairCorruptProviders(): ProviderRepairResult = withContext(Dispatchers.IO) {
         var repaired = 0
         val failed = mutableListOf<String>()
-        val rows = providerDao.getAllProviders().first()
+        val rows = providerDao.getAllProviders()
         for (entity in rows) {
             val broken = try { mapper.selected(entity); false }
                 catch (e: CancellationException) { throw e }
@@ -400,7 +389,12 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             if (!broken) continue
             try {
                 var resetCredentials = false
-                state.mutate({ it }) {
+                var repairedMetadata: ModelProvider? = null
+                state.mutate({ catalog ->
+                    repairedMetadata?.let { updated ->
+                        catalog.copy(providers = catalog.providers.upsert(updated) { it.id }.sortedWith(providerOrder))
+                    } ?: catalog
+                }) {
                     db.withTransaction {
                         val row = providerDao.getProviderById(entity.id) ?: return@withTransaction
                         // Remove only malformed document graphs; never overwrite healthy model rows.
@@ -422,9 +416,11 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
                                 resetCredentials = true
                             }
                         }
-                        check(providerDao.getProviderById(entity.id)?.let { mapper.selected(it) } != null) {
+                        val repaired = providerDao.getProviderById(entity.id)
+                        check(repaired?.let { mapper.selected(it) } != null) {
                             "Unable to repair provider ${entity.id}"
                         }
+                        repairedMetadata = mapper.metadata(requireNotNull(repaired))
                     }
                 }
                 if (resetCredentials) {
@@ -519,7 +515,7 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
 
     /** Replaces the complete provider catalog during a full application restore. */
     suspend fun replaceAll(providers: List<ModelProvider>, groups: List<ProviderGroup>) {
-        providerDao.getAllProviders().first().map { it.id }.forEach { deleteProvider(it) }
+        providerDao.getAllProviders().map { it.id }.forEach { deleteProvider(it) }
         groupDao.getAllGroupsOnce().map { it.id }.forEach { deleteGroup(it) }
         importProviders(providers, groups)
     }

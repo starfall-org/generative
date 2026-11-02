@@ -49,6 +49,12 @@ jobs:
           --tests 'org.starfall.generative.ProviderDatabaseConflictTest'
           --tests 'org.starfall.generative.ChatGenerationTest'
           --tests 'org.starfall.generative.ChatActionsMediaRegressionTest'
+          --tests 'org.starfall.generative.Immediate*'
+          --tests 'org.starfall.generative.SidebarStorageTest'
+          --tests 'org.starfall.generative.TemporaryConversationPersistenceTest'
+          --tests 'org.starfall.generative.Phase4StorageTest'
+          --tests 'org.starfall.generative.SpeechServiceStorageTest'
+          --tests 'org.starfall.generative.FullBackupRestoreResilienceTest'
       - name: Upload app and instrumented test APKs
         if: always()
         uses: actions/upload-artifact@v4

@@ -6,12 +6,15 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** One application-lifetime writer. UI mutations are visible before persistence starts.
- * Pending transforms stay over the committed snapshot until read-back, including while
- * Room emits older invalidations. Failed writes remove only their own transform.
+/** Application-owned RAM state, initialized from one storage snapshot.
+ *
+ * Storage is passive: its invalidations and completed writes NEVER re-read or
+ * replace a running screen's state. Only explicit application mutations publish
+ * to collectors. Writes are serialized, and failed mutations roll back their
+ * own overlay without undoing newer accepted changes.
  */
 internal class ImmediateState<T : Any>(
-    private val source: Flow<T>,
+    private val load: suspend () -> T,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler),
 ) {
     private class Write<T>(val transform: (T) -> T, val persist: suspend () -> Unit, val reportFailure: Boolean) {
@@ -30,15 +33,13 @@ internal class ImmediateState<T : Any>(
     init {
         scope.launch {
             try {
-                var firstEmission = true
-                source.collect { emitted ->
-                    disk.withLock {
-                        // First emission is already the committed snapshot (writes wait on `ready`), so skip
-                        // the second full decrypt/decode. Later emissions re-read under the writer lock: they may be stale.
-                        val latest = if (firstEmission) { firstEmission = false; emitted } else source.first()
-                        synchronized(guard) { committed = latest; publish() }
-                        ready.complete(Unit)
+                disk.withLock {
+                    val initial = load()
+                    synchronized(guard) {
+                        committed = initial
+                        publish()
                     }
+                    ready.complete(Unit)
                 }
             } catch (e: Throwable) {
                 ready.completeExceptionally(e)
@@ -47,26 +48,22 @@ internal class ImmediateState<T : Any>(
         }
         scope.launch {
             for (write in writes) {
-                val initialized = runCatching { ready.await() }
-                disk.withLock {
-                    val result = runCatching {
-                        initialized.getOrThrow()
-                        write.persist()
-                        source.first()
-                    }
-                    synchronized(guard) {
-                        result.getOrNull()?.let { committed = it }
-                        pending.remove(write)
-                        publish()
-                    }
-                    result.fold(
-                        onSuccess = { write.result.complete(Unit) },
-                        onFailure = {
-                            write.result.completeExceptionally(it)
-                            if (write.reportFailure) LocalWriteErrors.report()
-                        }
-                    )
+                val result = runCatching {
+                    ready.await()
+                    disk.withLock { write.persist() }
                 }
+                synchronized(guard) {
+                    if (result.isSuccess) committed = write.transform(checkNotNull(committed))
+                    pending.remove(write)
+                    publish()
+                }
+                result.fold(
+                    onSuccess = { write.result.complete(Unit) },
+                    onFailure = {
+                        write.result.completeExceptionally(it)
+                        if (write.reportFailure) LocalWriteErrors.report()
+                    }
+                )
             }
         }
     }
@@ -75,7 +72,7 @@ internal class ImmediateState<T : Any>(
         committed?.let { base -> visible.value = pending.fold(base) { value, write -> write.transform(value) } }
     }
 
-    /** Use from a drop callback: publish to RAM synchronously, never await Room on the UI path. */
+    /** Accept a UI action synchronously; the storage writer never blocks the caller. */
     fun enqueue(transform: (T) -> T, persist: suspend () -> Unit): Deferred<Unit> {
         val write = Write(transform, persist, reportFailure = true)
         submit(write)
