@@ -18,6 +18,12 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 
 internal val LocalStreamingTextFade = compositionLocalOf { false }
+
+/**
+ * Read in the draw phase only. While it returns true (the user is dragging or flinging the list)
+ * the fade is skipped: clipPath + saveLayer per range on every scroll frame made scrolling stutter.
+ */
+internal val LocalStreamingFadePaused = compositionLocalOf<() -> Boolean> { { false } }
 internal const val STREAM_FADE_DURATION_MS = 120L
 
 internal data class StreamingFadeRange(val start: Int, val end: Int, val startedAt: Long)
@@ -58,6 +64,7 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
         return StreamingTextPresentation(Modifier, {})
     }
 
+    val fadePaused = LocalStreamingFadePaused.current
     val tracker = remember { StreamingFadeTracker() }
     val ranges = remember(text) { tracker.update(text, SystemClock.uptimeMillis()) }
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -92,6 +99,10 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
         val paint = Paint()
         val featherPx = 12.dp.toPx()
         onDrawWithContent {
+            if (fadePaused()) {
+                drawContent()
+                return@onDrawWithContent
+            }
             if (pendingLayout) {
                 if (oldPrefixPath != null) clipPath(oldPrefixPath) { this@onDrawWithContent.drawContent() }
                 return@onDrawWithContent

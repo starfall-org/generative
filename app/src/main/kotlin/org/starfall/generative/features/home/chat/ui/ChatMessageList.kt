@@ -37,6 +37,7 @@ import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.ui.text.LocalStreamingFadePaused
 
 /** False while the retained chat page is offscreen. */
 internal val LocalChatForeground = compositionLocalOf { true }
@@ -269,7 +270,14 @@ internal fun ChatMessageList(
                     )
             }
         }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides insetRelocation) {
+        // User drag or fling only: programmatic follow also scrolls, but it keeps the fade.
+        val fadePaused = remember(state, userDrag) {
+            { userDrag.value || (listState.isScrollInProgress && state.request == null) }
+        }
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides insetRelocation,
+            LocalStreamingFadePaused provides fadePaused
+        ) {
             LazyColumn(
                 state = listState,
                 reverseLayout = false,
@@ -304,14 +312,18 @@ internal fun ChatMessageList(
                                     .onVisibilityChanged(viewportBounds = readableBounds) {
                                         state.endVisibility(message.id, it, currentLatestId)
                                     }
-                                    .onGloballyPositioned { coordinates ->
-                                        if (message.id == currentLatestId) {
-                                            // Relative to the message column: ordinary list scrolling
-                                            // does not move this marker, but rendered content growth does.
-                                            state.contentEndPosition(message.id,
-                                                coordinates.positionInParent().y.toInt(), canFollow())
+                                    .then(if (autoScroll && message.id == latestId) {
+                                        // Only content-follow needs rendered growth; skip the callback
+                                        // on every layout of the growing message when auto-scroll is off.
+                                        Modifier.onGloballyPositioned { coordinates ->
+                                            if (message.id == currentLatestId) {
+                                                // Relative to the message column: ordinary list scrolling
+                                                // does not move this marker, but rendered content growth does.
+                                                state.contentEndPosition(message.id,
+                                                    coordinates.positionInParent().y.toInt(), canFollow())
+                                            }
                                         }
-                                    })
+                                    } else Modifier))
                             }
                         }
                         if (index == turns.lastIndex) footer?.invoke()
