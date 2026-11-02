@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -211,19 +214,52 @@ class ConfigurationViewModel(
         }
     }
 
+    // Submitting to ImmediateState can copy/replay large pending catalogs. Keep that work off
+    // Main while preserving click -> reorder ordering with one FIFO queue for model-list edits.
+    private val modelListWrites = Channel<suspend () -> Unit>(Channel.UNLIMITED)
+
+    init {
+        viewModelScope.launch(Dispatchers.Default + LocalWriteErrors.handler) {
+            for (write in modelListWrites) {
+                try {
+                    write()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // A failed submission must not permanently stop processing later clicks.
+                    LocalWriteErrors.report()
+                }
+            }
+        }
+    }
+
+    private fun queueModelListWrite(write: suspend () -> Unit) {
+        if (modelListWrites.trySend(write).isFailure) LocalWriteErrors.report()
+    }
+
     fun reorderProviderModels(providerId: String, modelIds: List<String>) {
-        modelRepo.queueReorderProviderModels(providerId, modelIds)
+        queueModelListWrite { modelRepo.queueReorderProviderModels(providerId, modelIds) }
     }
 
     fun saveProviderModels(providerId: String, modelConfigs: Map<String, ModelConfiguration>) {
-        // Queue the catalog edit before returning to the model editor. A quick reorder must
-        // never overtake the model selection it follows; Room work still runs off-thread.
-        viewModelScope.launch(LocalWriteErrors.handler, start = CoroutineStart.UNDISPATCHED) {
-            val modelIds = modelConfigs.keys.toList()
-            modelRepo.saveProviderModels(providerId, modelConfigs)
-            val prefs = appPreferences.value
-            if (prefs.selectedModel.providerId == providerId && prefs.selectedModel.modelId !in modelIds) {
-                prefsRepo.setSelectedModel(providerId, modelIds.firstOrNull().orEmpty())
+        // The editor already changed its Compose state; the click only submits a FIFO message.
+        // RAM publication and the (much slower) Room transaction run on background dispatchers.
+        queueModelListWrite {
+            val pending = modelRepo.queueSaveProviderModels(providerId, modelConfigs)
+            viewModelScope.launch(Dispatchers.IO + LocalWriteErrors.handler) {
+                try {
+                    pending.await()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // ImmediateState already reports write failures through LocalWriteErrors.
+                    return@launch
+                }
+                val modelIds = modelConfigs.keys
+                val prefs = appPreferences.value
+                if (prefs.selectedModel.providerId == providerId && prefs.selectedModel.modelId !in modelIds) {
+                    prefsRepo.setSelectedModel(providerId, modelIds.firstOrNull().orEmpty())
+                }
             }
         }
     }
@@ -330,8 +366,9 @@ class ConfigurationViewModel(
     fun queueProviderPlacementTracked(placement: ProviderPlacement, done: (Result<Unit>) -> Unit) =
         observeReorderWrite(modelRepo.queueProviderPlacement(placement), done)
 
-    fun reorderProviderModelsTracked(providerId: String, ids: List<String>, done: (Result<Unit>) -> Unit) =
-        observeReorderWrite(modelRepo.queueReorderProviderModels(providerId, ids), done)
+    fun reorderProviderModelsTracked(providerId: String, ids: List<String>, done: (Result<Unit>) -> Unit) {
+        queueModelListWrite { observeReorderWrite(modelRepo.queueReorderProviderModels(providerId, ids), done) }
+    }
 
     fun reorderProviderRootItemsTracked(items: List<ProviderRootOrderItem>, done: (Result<Unit>) -> Unit) =
         observeReorderWrite(modelRepo.queueReorderRootItems(items), done)

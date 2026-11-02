@@ -544,17 +544,32 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
         )
     }
 
-    /** Bulk model selection updates the RAM catalog immediately and persists only model tables. */
-    suspend fun saveProviderModels(providerId: String, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>) {
-        val modelIds = modelConfigs.keys.toList()
-        state.mutate({ catalog -> catalog.copy(providers = catalog.providers.map { provider ->
+    private fun Catalog.withSavedModels(providerId: String, modelIds: List<String>, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>) =
+        copy(providers = providers.map { provider ->
             if (provider.id == providerId) provider.copy(config = provider.config.copy(
                 modelIds = modelIds, modelConfigs = modelConfigs)) else provider
-        }) }) {
-            db.withTransaction {
-                check(providerDao.getProviderById(providerId) != null) { "Provider $providerId no longer exists" }
-                mapper.persistModels(providerId, modelIds, modelConfigs)
-            }
+        })
+
+    private suspend fun persistSavedModels(providerId: String, modelIds: List<String>, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>) {
+        db.withTransaction {
+            check(providerDao.getProviderById(providerId) != null) { "Provider $providerId no longer exists" }
+            mapper.persistModels(providerId, modelIds, modelConfigs)
+        }
+    }
+
+    /** Used by the editor's background queue; even the RAM catalog projection runs off Main. */
+    fun queueSaveProviderModels(providerId: String, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>): kotlinx.coroutines.Deferred<Unit> {
+        val modelIds = modelConfigs.keys.toList()
+        return state.enqueue({ it.withSavedModels(providerId, modelIds, modelConfigs) }) {
+            persistSavedModels(providerId, modelIds, modelConfigs)
+        }
+    }
+
+    /** Awaitable counterpart for callers that need to confirm the database commit. */
+    suspend fun saveProviderModels(providerId: String, modelConfigs: Map<String, org.starfall.generative.shared.model.language.ModelConfiguration>) {
+        val modelIds = modelConfigs.keys.toList()
+        state.mutate({ it.withSavedModels(providerId, modelIds, modelConfigs) }) {
+            persistSavedModels(providerId, modelIds, modelConfigs)
         }
     }
 
