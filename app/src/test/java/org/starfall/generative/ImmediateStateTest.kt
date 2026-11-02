@@ -8,6 +8,17 @@ import org.junit.Test
 import org.starfall.generative.shared.storage.ImmediateState
 
 class ImmediateStateTest {
+    @Test fun reactivePreferencesStillObserveExternalChanges() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val preferences = MutableStateFlow("light")
+            val state = ImmediateState(preferences, scope)
+            assertEquals("light", state.flow.first())
+            preferences.value = "dark"
+            assertEquals("dark", withTimeout(3_000) { state.flow.first { it == "dark" } })
+        } finally { scope.cancel() }
+    }
+
     @Test fun queuedEditsAreVisibleBeforeDiskAndNeverRebound() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
