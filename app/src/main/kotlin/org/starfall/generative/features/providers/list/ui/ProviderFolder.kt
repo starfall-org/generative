@@ -352,6 +352,11 @@ internal fun ProviderFolderOverlay(
                             ),
                             horizontalSpacing = 12.dp,
                             verticalSpacing = 12.dp,
+                            // A one-column folder has roughly twice the scroll distance
+                            // of the grid for the same number of providers. Keep its
+                            // top/bottom-edge drag traversal responsive without changing
+                            // the reusable Launcher's default scroll speed.
+                            autoScrollSpeed = if (isGrid) 640.dp else 960.dp,
                             enabled = visible
                         ) { provider, itemModifier, slot ->
                             val key = "provider_${provider.id}"

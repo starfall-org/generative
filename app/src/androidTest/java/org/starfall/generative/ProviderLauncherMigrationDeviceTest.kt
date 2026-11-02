@@ -262,7 +262,16 @@ class ProviderLauncherMigrationDeviceTest {
                     break
                 }
             }
-            assertTrue("Holding the drag near the folder's top must scroll up to the first item", reachedTop)
+            if (!reachedTop) {
+                val firstVisible = (0 until longFolder.size).firstOrNull {
+                    found("provider_folder_provider_m$it")
+                }
+                assertTrue(
+                    "Holding at the folder top must reach the first item (first visible=$firstVisible, " +
+                        "shadow visible=${found("dragged_provider")})",
+                    reachedTop
+                )
+            }
 
             // A small downward finger correction remains in the TOP edge zone.
             // Reordering the newly visible first row must not move the viewport
