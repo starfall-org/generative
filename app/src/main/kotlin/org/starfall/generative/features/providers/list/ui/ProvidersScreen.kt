@@ -315,7 +315,9 @@ fun ProvidersScreen(
     // Merge provider metadata and actual membership changes, but NEVER rebuild an open
     // screen's item order from incoming sort ranks. The drag/scroll viewport belongs
     // exclusively to the local Launcher state until this screen is disposed.
-    LaunchedEffect(providers, providerGroups, draggedProviderId, draggedGroupId) {
+    // Do not key this effect on drag lifecycle: finishing a drop must never
+    // replay unchanged upstream parameters and undo an optimistic placement.
+    LaunchedEffect(providers, providerGroups) {
         if (draggedProviderId != null || draggedGroupId != null) return@LaunchedEffect
 
         val incomingById = providers.associateBy { it.id }
