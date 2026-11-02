@@ -493,7 +493,17 @@ fun ProvidersScreen(
                                 else "provider_${drag.item.data.id}"
                             if (rootItems.any { it.cellKey() == key }) {
                                 rootItems.firstOrNull()?.cellKey()
-                                    ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                                    ?.takeIf { it != key }?.let { firstKey ->
+                                        // This top-edge fallback bypasses Launcher target-enter
+                                        // callbacks. Preserve the viewport by index here too:
+                                        // LazyGrid otherwise follows the old first key down
+                                        // when the dragged item is inserted at index zero.
+                                        gridState.requestScrollToItem(
+                                            gridState.firstVisibleItemIndex,
+                                            gridState.firstVisibleItemScrollOffset
+                                        )
+                                        moveRootItem(key, firstKey)
+                                    }
                             }
                         }
                         LazyVerticalGrid(

@@ -119,6 +119,62 @@ class ProviderLauncherMigrationDeviceTest {
         assertEquals("p45", writes.single().providerId)
     }
 
+    @Test fun rootGridCanDropAtTheFirstSlotAfterAutoScrollingFromTheEnd() =
+        rootCanDropAtTheFirstSlotAfterAutoScrollingFromTheEnd(grid = true)
+
+    @Test fun rootListCanDropAtTheFirstSlotAfterAutoScrollingFromTheEnd() =
+        rootCanDropAtTheFirstSlotAfterAutoScrollingFromTheEnd(grid = false)
+
+    private fun rootCanDropAtTheFirstSlotAfterAutoScrollingFromTheEnd(grid: Boolean) {
+        val entries = (0 until 48).map { provider("p$it", index = it) }
+        show(entries, grid = grid)
+        val list = compose.onNodeWithTag("provider_list", useUnmergedTree = true)
+        list.performScrollToIndex(42)
+        compose.waitForIdle()
+        val bounds = list.fetchSemanticsNode().boundsInRoot
+        val rootOrigin = compose.onRoot().fetchSemanticsNode().boundsInRoot.topLeft
+        val nearTop = Offset(
+            bounds.left + bounds.width * 0.25f,
+            bounds.top + 12f * compose.activity.resources.displayMetrics.density
+        ) - rootOrigin
+
+        compose.mainClock.autoAdvance = false
+        try {
+            start("provider_p42")
+            compose.onRoot().performTouchInput { moveTo(nearTop) }
+            var reachedTop = false
+            for (frame in 0 until 200) {
+                compose.mainClock.advanceTimeBy(80)
+                compose.waitForIdle()
+                if (found("provider_p0")) {
+                    reachedTop = true
+                    break
+                }
+            }
+            assertTrue("Dragging toward the start must auto-scroll all the way to index zero", reachedTop)
+            // Correcting the finger without leaving the top edge must not
+            // cause LazyGrid's key anchoring to jump back to the source's old row.
+            compose.onRoot().performTouchInput {
+                moveTo(nearTop + Offset(0f, 8f * compose.activity.resources.displayMetrics.density))
+            }
+            compose.mainClock.advanceTimeBy(480)
+            compose.waitForIdle()
+            assertTrue("First item must remain visible during the final insertion", found("provider_p0"))
+            assertTrue("The drag session must remain active", found("dragged_provider"))
+            assertTrue("Hovering must not write before release", writes.isEmpty())
+            compose.onRoot().performTouchInput { up() }
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            assertEquals("A top-edge release persists exactly once", 1, writes.size)
+            val order = writes.single().rootOrder
+            assertEquals("The dragged item must occupy the first root slot", "p42", order.first().id)
+            assertEquals(entries.size, order.size)
+            assertEquals(entries.size, order.map { it.id }.toSet().size)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
+
     @Test fun cancellationAfterHoverNeverWritesAndRestoresOriginalPosition() {
         show(rootProviders)
         val original = center("provider_a")
@@ -170,7 +226,16 @@ class ProviderLauncherMigrationDeviceTest {
     @Test fun gridFolderAutoScrollStaysAtTopAfterSmallDownwardCorrection() =
         folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid = true)
 
-    private fun folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid: Boolean) {
+    @Test fun listFolderCanDropOntoFirstSlotAfterScrollingUpFromEnd() =
+        folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid = false, commit = true)
+
+    @Test fun gridFolderCanDropOntoFirstSlotAfterScrollingUpFromEnd() =
+        folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(grid = true, commit = true)
+
+    private fun folderAutoScrollStaysAtTopAfterSmallDownwardCorrection(
+        grid: Boolean,
+        commit: Boolean = false
+    ) {
         val longFolder = (0 until 48).map { provider("m$it", "group-a", it) }
         show(longFolder, listOf(group), grid = grid)
         compose.onNodeWithTag("provider_group_group-a", useUnmergedTree = true).performClick()
@@ -210,9 +275,20 @@ class ProviderLauncherMigrationDeviceTest {
                 found("provider_folder_provider_m0"))
             assertTrue("The active drag must survive the scroll and correction", found("dragged_provider"))
             assertTrue("Preview reorders must not write to storage", writes.isEmpty())
-            compose.onRoot().performTouchInput { cancel() }
-            compose.mainClock.advanceTimeByFrame()
-            assertTrue("Cancelling the drag must not persist reorders", writes.isEmpty())
+            if (commit) {
+                compose.onRoot().performTouchInput { up() }
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+                assertEquals("A drop at the first slot should persist exactly once", 1, writes.size)
+                val order = writes.single().groupOrders.getValue("group-a")
+                assertEquals("No member must be lost", longFolder.size, order.size)
+                assertEquals("No member must be duplicated", longFolder.size, order.toSet().size)
+                assertEquals("The first item must yield to the dragged member", "m41", order.first())
+            } else {
+                compose.onRoot().performTouchInput { cancel() }
+                compose.mainClock.advanceTimeByFrame()
+                assertTrue("Cancelling the drag must not persist reorders", writes.isEmpty())
+            }
         } finally {
             compose.mainClock.autoAdvance = true
         }
@@ -288,12 +364,13 @@ class ProviderLauncherMigrationDeviceTest {
         assertTrue(found("provider_folder_screen_group-a"))
     }
 
-    private fun folderEdgePoint(left: Boolean): Offset {
+    private fun folderEdgePoint(left: Boolean, insetDp: Float = 2f): Offset {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val grid = compose.onNodeWithTag("provider_folder_grid_group-a", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
-        val inset = 28f * compose.activity.resources.displayMetrics.density
-        return Offset(if (left) inset else root.width - inset, grid.center.y - root.top)
+        val inset = insetDp * compose.activity.resources.displayMetrics.density
+        return Offset(if (left) root.left + inset else root.right - inset, grid.center.y) -
+            root.topLeft
     }
 
     private fun dismissSwipe(from: Offset, to: Offset) {
@@ -390,4 +467,25 @@ class ProviderLauncherMigrationDeviceTest {
         dragMemberToSideAndAssertExit(left = false)
     }
 
+    private fun dragMemberNearSideWithoutExit(left: Boolean) {
+        openTestFolder()
+        start("provider_folder_provider_m1")
+        // Side escape is 5dp, not the much wider swipe-to-dismiss region (56dp).
+        // At 28dp from the edge the item must remain inside the open folder.
+        hover(folderEdgePoint(left, insetDp = 28f), 450)
+        assertTrue("Dragging outside the 5dp side band must keep the folder open",
+            found("provider_folder_screen_group-a"))
+        assertTrue(found("dragged_provider"))
+        assertTrue(writes.isEmpty())
+        cancel()
+        assertTrue("Cancelling an internal folder drag must not persist", writes.isEmpty())
+    }
+
+    @Test fun draggingInsideLeftSideDoesNotAccidentallyExitFolder() {
+        dragMemberNearSideWithoutExit(left = true)
+    }
+
+    @Test fun draggingInsideRightSideDoesNotAccidentallyExitFolder() {
+        dragMemberNearSideWithoutExit(left = false)
+    }
 }

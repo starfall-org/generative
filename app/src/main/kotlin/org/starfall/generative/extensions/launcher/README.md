@@ -168,8 +168,10 @@ Android's platform `dragAndDropSource/Target` for exchanging `ClipData` with
 other apps. It also does not persist entities, create folders, or impose a
 particular grid span/occupancy policy: callers own those product-specific rules.
 
-This directory is an independent reusable foundation. It has **not** replaced
-the ongoing `ProvidersScreen` drag-and-drop implementation.
+This directory is an independent reusable foundation. Production
+`ProvidersScreen` and its developer-only RAM-backed demo both use the
+`Launcher` interaction facade; the host retains ownership of provider
+layout, UI, and persistence.
 
 ## Manual device sandbox
 
