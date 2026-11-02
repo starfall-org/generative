@@ -8,12 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 
@@ -103,11 +101,7 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
         } else null
         val layerPaint = Paint()
         val featherPx = 12.dp.toPx()
-        // Ranges are appended in time order, so the still-fading ones are always a suffix. The
-        // union they cover only changes when the oldest one expires; rebuild it only then.
-        var activeFrom = -1
-        var activeUnion = Path()
-        var activeBounds = Rect.Zero
+        val nodeBounds = size.toRect()
         onDrawWithContent {
             if (pendingLayout) {
                 if (oldPrefixPath != null) clipPath(oldPrefixPath) { this@onDrawWithContent.drawContent() }
@@ -119,22 +113,11 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
                 drawContent()
                 return@onDrawWithContent
             }
-            if (first != activeFrom) {
-                activeFrom = first
-                activeUnion = Path().apply { for (i in first until rangePaths.size) addPath(rangePaths[i]) }
-                activeBounds = activeUnion.getBounds()
-            }
-            if (activeBounds.width <= 0f || activeBounds.height <= 0f) {
-                drawContent()
-                return@onDrawWithContent
-            }
-            // Settled text: drawn once, untouched.
-            clipPath(activeUnion, ClipOp.Difference) { this@onDrawWithContent.drawContent() }
-            // Fading text: one layer and one content pass for all active ranges together.
-            // Each range is then masked in place with a feathered edge that advances right,
-            // carrying that range's own opacity in the mask colour.
-            drawContext.canvas.saveLayer(activeBounds, layerPaint)
-            clipPath(activeUnion) { this@onDrawWithContent.drawContent() }
+            // The text is rendered exactly once, into one layer. The fresh ranges are then
+            // masked in place (DstIn) with a feathered edge that advances right and carries the
+            // range's own opacity in the mask colour. Settled text lies outside every mask clip.
+            drawContext.canvas.saveLayer(nodeBounds, layerPaint)
+            drawContent()
             for (i in first until rangePaths.size) {
                 val bounds = rangeBounds[i]
                 if (bounds.width <= 0f || bounds.height <= 0f) continue

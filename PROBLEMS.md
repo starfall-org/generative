@@ -84,12 +84,13 @@ Use Profile GPU Rendering or Perfetto while the jank happens.
 
 ## Notes
 
-- Fix 1 changed: instead of pausing the fade while scrolling (a workaround that only
-  hid the cost), the fade draw path was restructured. All active ranges now share one
-  layer and one content pass (was one layer and one content pass per range), the union
-  path is rebuilt only when the oldest range expires, and nothing is allocated per frame
-  except the mask gradients. Not profiled yet.
-
+- Fix 1 changed twice. Pausing the fade while scrolling only hid the cost, so it was
+  dropped. The fade is now drawn with a single content pass: the text is rendered once
+  into one layer and the fresh ranges are masked in place (DstIn), instead of being
+  drawn once outside the fading region and once more inside it. Per-range path and
+  bounds are built once per text update; nothing is allocated per frame except the
+  mask gradients. Trade-off: while fading, the layer is the size of the text node.
+  Not profiled yet.
 - `STREAM_FADE_DURATION_MS` is currently 120 ms in the code, which differs from
   the 480 ms mentioned earlier. Check which value is intended.
 - `plans/streaming-markdown-chunking.md` was not found in this checkout.
