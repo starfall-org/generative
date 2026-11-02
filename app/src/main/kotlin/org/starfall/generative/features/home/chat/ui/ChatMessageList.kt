@@ -318,18 +318,14 @@ internal fun ChatMessageList(
                                     .onVisibilityChanged(viewportBounds = readableBounds) {
                                         state.endVisibility(message.id, it, currentLatestId)
                                     }
-                                    .then(if (autoScroll && message.id == latestId) {
-                                        // Only content-follow needs rendered growth; skip the callback
-                                        // on every layout of the growing message when auto-scroll is off.
-                                        Modifier.onGloballyPositioned { coordinates ->
-                                            if (message.id == currentLatestId) {
-                                                // Relative to the message column: ordinary list scrolling
-                                                // does not move this marker, but rendered content growth does.
-                                                state.contentEndPosition(message.id,
-                                                    coordinates.positionInParent().y.toInt(), canFollow())
-                                            }
+                                    .onGloballyPositioned { coordinates ->
+                                        if (message.id == currentLatestId) {
+                                            // Relative to the message column: ordinary list scrolling
+                                            // does not move this marker, but rendered content growth does.
+                                            state.contentEndPosition(message.id,
+                                                coordinates.positionInParent().y.toInt(), canFollow())
                                         }
-                                    } else Modifier))
+                                    })
                             }
                         }
                         if (index == turns.lastIndex) footer?.invoke()

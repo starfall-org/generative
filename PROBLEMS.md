@@ -91,6 +91,15 @@ Use Profile GPU Rendering or Perfetto while the jank happens.
   bounds are built once per text update; nothing is allocated per frame except the
   mask gradients. Trade-off: while fading, the layer is the size of the text node.
   Not profiled yet.
+- Fix 3 (skip the follow-position callback when auto-scroll is off) was dropped. It broke
+  following when auto-scroll is switched on while the reply is growing: the first callback
+  after attaching only records a baseline, so that growth was never followed. Caught by
+  `ChatStreamingScrollPerformanceRegressionTest`. The callback is cheap, so it stays.
+- Fix 5 (cheaper `showJumpToLatest`) landed in `a70001b8`.
+- Unit tests: no new failures. 9 tests in 6 classes fail the same way on `c40ca041`
+  (`IncrementalMarkdownParserTest`, `ChatTextSelectionDismissalTest`, `ContentApiMediaTest`,
+  `ConversationDrawerGeneratingIndicatorTest`, `ConversationMinimapSideBarTest`,
+  `CrashReportDialogUiTest`), so they are not caused by this branch.
 - `STREAM_FADE_DURATION_MS` is currently 120 ms in the code, which differs from
   the 480 ms mentioned earlier. Check which value is intended.
 - `plans/streaming-markdown-chunking.md` was not found in this checkout.
