@@ -13,17 +13,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 
 internal val LocalStreamingTextFade = compositionLocalOf { false }
 
-/**
- * Read in the draw phase only. While it returns true (the user is dragging or flinging the list)
- * the fade is skipped: clipPath + saveLayer per range on every scroll frame made scrolling stutter.
- */
-internal val LocalStreamingFadePaused = compositionLocalOf<() -> Boolean> { { false } }
 internal const val STREAM_FADE_DURATION_MS = 120L
 
 internal data class StreamingFadeRange(val start: Int, val end: Int, val startedAt: Long)
@@ -49,6 +44,14 @@ internal class StreamingFadeTracker {
     }
 }
 
+/** Index of the oldest range still fading at [now], or -1. Ranges are in start-time order. */
+internal fun firstFadingRange(ranges: List<StreamingFadeRange>, limit: Int, now: Long): Int {
+    for (i in 0 until minOf(limit, ranges.size)) {
+        if (now - ranges[i].startedAt < STREAM_FADE_DURATION_MS) return i
+    }
+    return -1
+}
+
 internal data class StreamingTextPresentation(
     val modifier: Modifier,
     val onTextLayout: (TextLayoutResult) -> Unit
@@ -64,7 +67,6 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
         return StreamingTextPresentation(Modifier, {})
     }
 
-    val fadePaused = LocalStreamingFadePaused.current
     val tracker = remember { StreamingFadeTracker() }
     val ranges = remember(text) { tracker.update(text, SystemClock.uptimeMillis()) }
     val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -86,9 +88,12 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
     val modifier = Modifier.drawWithCache {
         val layout = layoutResult.value
         val layoutReady = layout?.layoutInput?.text?.text == text
-        val paths = if (layoutReady) {
-            ranges.map { range -> range to layout.getPathForRange(range.start, range.end) }
+        // Everything that depends only on text and layout is built here, once per update.
+        // The per-frame draw below only reads the clock and issues draw calls.
+        val rangePaths = if (layoutReady) {
+            ranges.map { range -> layout.getPathForRange(range.start, range.end) }
         } else emptyList()
+        val rangeBounds = rangePaths.map { it.getBounds() }
         // A new Markdown layout can take another frame. Never show the unmasked new text in
         // that frame: preserve only the already measured prefix until its layout is ready.
         val pendingLayout = !layoutReady && ranges.isNotEmpty()
@@ -96,52 +101,62 @@ internal fun rememberStreamingTextPresentation(text: String): StreamingTextPrese
             val prefixEnd = minOf(ranges.minOf { it.start }, layout.layoutInput.text.length)
             if (prefixEnd > 0) layout.getPathForRange(0, prefixEnd) else null
         } else null
-        val paint = Paint()
+        val layerPaint = Paint()
         val featherPx = 12.dp.toPx()
+        // Ranges are appended in time order, so the still-fading ones are always a suffix. The
+        // union they cover only changes when the oldest one expires; rebuild it only then.
+        var activeFrom = -1
+        var activeUnion = Path()
+        var activeBounds = Rect.Zero
         onDrawWithContent {
-            if (fadePaused()) {
-                drawContent()
-                return@onDrawWithContent
-            }
             if (pendingLayout) {
                 if (oldPrefixPath != null) clipPath(oldPrefixPath) { this@onDrawWithContent.drawContent() }
                 return@onDrawWithContent
             }
             val now = frameTime.longValue
-            val active = paths.filter { (range, _) -> now - range.startedAt < STREAM_FADE_DURATION_MS }
-            if (active.isEmpty()) {
+            val first = firstFadingRange(ranges, rangePaths.size, now)
+            if (first < 0) {
                 drawContent()
-            } else {
-                val fadingPath = Path().apply { active.forEach { (_, path) -> addPath(path) } }
-                clipPath(fadingPath, ClipOp.Difference) { this@onDrawWithContent.drawContent() }
-                active.forEach { (range, path) ->
-                    val progress = FastOutSlowInEasing.transform(
-                        ((now - range.startedAt).toFloat() / STREAM_FADE_DURATION_MS).coerceIn(0f, 1f)
+                return@onDrawWithContent
+            }
+            if (first != activeFrom) {
+                activeFrom = first
+                activeUnion = Path().apply { for (i in first until rangePaths.size) addPath(rangePaths[i]) }
+                activeBounds = activeUnion.getBounds()
+            }
+            if (activeBounds.width <= 0f || activeBounds.height <= 0f) {
+                drawContent()
+                return@onDrawWithContent
+            }
+            // Settled text: drawn once, untouched.
+            clipPath(activeUnion, ClipOp.Difference) { this@onDrawWithContent.drawContent() }
+            // Fading text: one layer and one content pass for all active ranges together.
+            // Each range is then masked in place with a feathered edge that advances right,
+            // carrying that range's own opacity in the mask colour.
+            drawContext.canvas.saveLayer(activeBounds, layerPaint)
+            clipPath(activeUnion) { this@onDrawWithContent.drawContent() }
+            for (i in first until rangePaths.size) {
+                val bounds = rangeBounds[i]
+                if (bounds.width <= 0f || bounds.height <= 0f) continue
+                val progress = FastOutSlowInEasing.transform(
+                    ((now - ranges[i].startedAt).toFloat() / STREAM_FADE_DURATION_MS).coerceIn(0f, 1f)
+                )
+                val revealRight = bounds.left + bounds.width * progress
+                val feather = (featherPx * (1f - progress)).coerceAtLeast(0.5f)
+                clipPath(rangePaths[i]) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            0f to Color.Black.copy(alpha = progress), 1f to Color.Transparent,
+                            startX = revealRight - feather,
+                            endX = revealRight
+                        ),
+                        topLeft = bounds.topLeft,
+                        size = bounds.size,
+                        blendMode = BlendMode.DstIn
                     )
-                    val bounds = path.getBounds()
-                    if (bounds.width <= 0f || bounds.height <= 0f) return@forEach
-                    val revealRight = bounds.left + bounds.width * progress
-                    val feather = (featherPx * (1f - progress)).coerceAtLeast(0.5f)
-                    paint.alpha = progress
-                    clipPath(path) {
-                        clipRect(left = bounds.left, top = bounds.top, right = revealRight, bottom = bounds.bottom) {
-                            drawContext.canvas.saveLayer(bounds, paint)
-                            this@onDrawWithContent.drawContent()
-                            // An advancing feathered edge reveals the new text; it is masked from
-                            // its very first frame, instead of popping into place before fading.
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0f to Color.Black, 1f to Color.Transparent,
-                                    startX = revealRight - feather,
-                                    endX = revealRight
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                            drawContext.canvas.restore()
-                        }
-                    }
                 }
             }
+            drawContext.canvas.restore()
         }
     }
     return StreamingTextPresentation(modifier) { layoutResult.value = it }

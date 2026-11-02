@@ -37,7 +37,6 @@ import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.ui.text.LocalStreamingFadePaused
 
 /** False while the retained chat page is offscreen. */
 internal val LocalChatForeground = compositionLocalOf { true }
@@ -270,14 +269,7 @@ internal fun ChatMessageList(
                     )
             }
         }
-        // User drag or fling only: programmatic follow also scrolls, but it keeps the fade.
-        val fadePaused = remember(state, userDrag) {
-            { userDrag.value || (listState.isScrollInProgress && state.request == null) }
-        }
-        CompositionLocalProvider(
-            LocalBringIntoViewSpec provides insetRelocation,
-            LocalStreamingFadePaused provides fadePaused
-        ) {
+        CompositionLocalProvider(LocalBringIntoViewSpec provides insetRelocation) {
             LazyColumn(
                 state = listState,
                 reverseLayout = false,

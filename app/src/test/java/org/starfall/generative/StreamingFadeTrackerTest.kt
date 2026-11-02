@@ -6,6 +6,7 @@ import org.junit.Test
 import org.starfall.generative.shared.ui.text.StreamingFadeRange
 import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.generative.shared.ui.text.StreamingFadeTracker
+import org.starfall.generative.shared.ui.text.firstFadingRange
 import org.starfall.generative.shared.ui.text.shouldRevealStreamingText
 
 class StreamingFadeTrackerTest {
@@ -62,5 +63,22 @@ class StreamingFadeTrackerTest {
         val tracker = StreamingFadeTracker()
         tracker.update("Hello", 0)
         assertTrue(tracker.update("Hello", 300).isEmpty())
+    }
+
+    @Test
+    fun fadingRangesAreAlwaysASuffixOfTheTimeOrderedList() {
+        val d = STREAM_FADE_DURATION_MS
+        val ranges = listOf(
+            StreamingFadeRange(0, 5, 0),
+            StreamingFadeRange(5, 9, d / 2),
+            StreamingFadeRange(9, 12, d)
+        )
+        assertEquals(0, firstFadingRange(ranges, ranges.size, d - 1))
+        assertEquals(1, firstFadingRange(ranges, ranges.size, d + 1))
+        assertEquals(2, firstFadingRange(ranges, ranges.size, d / 2 + d))
+        assertEquals(-1, firstFadingRange(ranges, ranges.size, 2 * d))
+        assertEquals(-1, firstFadingRange(emptyList(), 0, 0))
+        // Ranges without a measured path yet are never reported.
+        assertEquals(-1, firstFadingRange(ranges, 0, 0))
     }
 }
