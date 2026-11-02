@@ -25,11 +25,11 @@ class AssistantMessageCopyTextTest {
     }
 
     @Test
-    fun hiddenInternalToolCallStillProducesCopyableContent() {
+    fun hiddenInternalToolCallDoesNotProducePhantomContent() {
         val message = StoredMessage("internal", ChatRole.MODEL, listOf(
             MessageVersion(toolActivity = listOf(ToolActivity(id = "internal", name = "remote: connect")))
         ))
-        assertEquals("[ActionsBlock1]", assistantCopyText(message))
+        assertEquals("", assistantCopyText(message))
     }
 
     @Test
@@ -47,7 +47,7 @@ class AssistantMessageCopyTextTest {
         ))
         assertEquals("[MediaBlock1]", assistantCopyText(sendFile))
         assertEquals("[MediaBlock1]", assistantCopyText(attached))
-        assertEquals("[ActionsBlock1]", assistantCopyText(unfinishedSendFile))
+        assertEquals("", assistantCopyText(unfinishedSendFile))
     }
 
     @Test
