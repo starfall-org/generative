@@ -25,9 +25,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest already contains Android command-line tools. Avoid setup-android's
+      # legacy `sdkmanager tools` install (the package no longer exists).
       - name: Install project Android SDK
-        run: sdkmanager --install 'platforms;android-37.0' 'build-tools;36.0.0'
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --install 'platforms;android-37.0' 'build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug app and instrumentation APK
         run: >
