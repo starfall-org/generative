@@ -77,3 +77,21 @@ For the long unfinished paragraph, the original debug capture showed
 p95 23ms and 39.56% jank without new chunks versus p95 800ms and 80% jank
 while streaming. This one-shot result predates the overflow scroll gate.
 All four scenarios must be repeated against the latest code.
+
+
+## Three-run focused overflow results (2026-11-03)
+
+The updated normal debug Activity waited 15 seconds before beginning
+the 500-chunk stream (one chunk every 55ms), logged window focus,
+and logged publication counts. Repeated 8-swipe static vs live workloads:
+
+- Static: p95 25/21/18 ms, p99 28/25/23 ms; median p95 21ms, p99 25ms.
+- Live: p95 20/21/20 ms, p99 750/700/700 ms; median p95 20ms,
+  p99 700ms. All three live runs confirmed more than 100
+  publications during the swipe measurement.
+- Frame counts differed across runs and static vs live. The large
+  differences in p99 are reproducible, but do not isolate whether
+  selection registration, Text layout, GC or GPU compositing dominates.
+- These are not an old binary vs new binary measurement. A real
+  trace and previous-version baseline are still required to quantify
+  benefits before PR #61 is ready.

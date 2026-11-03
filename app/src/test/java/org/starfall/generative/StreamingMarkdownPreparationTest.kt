@@ -171,6 +171,31 @@ class StreamingMarkdownPreparationTest {
         compose.onNodeWithText("Opening paragraph.", useUnmergedTree = true).assertExists()
     }
 
+    @Test fun finalizedMarkdownBlocksKeepTheirTextAfterManyLaterStreamRevisions() {
+        var source by mutableStateOf(StreamTextSnapshot.of("# First heading\n\nFirst paragraph.\n\n"))
+        compose.setContent { MaterialTheme {
+            StreamingMarkdownRenderer(
+                content = "",
+                streamSnapshot = source,
+                streamGenerationId = 7L,
+                streamMessageId = "reply"
+            )
+        } }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("First paragraph.", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        var appended = source
+        repeat(70) { i -> appended = appended.append("Block $i.\n\n", (i + 2).toLong()) }
+        compose.runOnIdle { source = appended }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Block 69.", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("First paragraph.", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("First heading", useUnmergedTree = true).assertExists()
+    }
+
     @Test fun coldStreamingRowCoalescesUnseenPublicationsInsteadOfReplayingEveryChunk() {
         var source = StreamTextSnapshot.of("")
         repeat(200) { index -> source = source.append("Block ${index + 1}\n\n", index + 1L) }

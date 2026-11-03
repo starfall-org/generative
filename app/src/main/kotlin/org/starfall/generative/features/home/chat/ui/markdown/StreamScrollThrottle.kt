@@ -4,6 +4,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -13,6 +15,13 @@ import kotlinx.coroutines.withTimeoutOrNull
  * draw of the live tail for every published token during a scroll frame.
  */
 internal const val SCROLL_STREAM_APPLY_INTERVAL_MS = 120L
+
+/**
+ * Pathological single-Text overflow needs a quiet interval between manual gestures:
+ * a full relayout in the 300ms gap between two swipes still causes a visible freeze.
+ * Normal incremental Markdown never uses this longer interval.
+ */
+internal const val OVERFLOW_SCROLL_SETTLE_MS = 850L
 
 private val NotScrolling: State<Boolean> = mutableStateOf(false)
 
@@ -37,4 +46,25 @@ internal suspend fun awaitStreamApplySlot(
     withTimeoutOrNull(intervalMs) {
         snapshotFlow { scrolling.value }.first { !it }
     }
+}
+
+
+/**
+ * Coalesce pathological full-Text updates until the user has stopped scrolling
+ * for an uninterrupted quiet interval. Continuous small swipes must not restart
+ * a large text layout between gestures. Even while idle this limits expensive
+ * full-node relayout, without deleting source or preventing terminal flushes.
+ */
+@OptIn(FlowPreview::class)
+internal suspend fun awaitOverflowQuietPeriod(
+    scrolling: State<Boolean>,
+    quietMillis: Long = OVERFLOW_SCROLL_SETTLE_MS
+) {
+    if (quietMillis <= 0L) {
+        snapshotFlow { scrolling.value }.first { !it }
+        return
+    }
+    snapshotFlow { scrolling.value }
+        .debounce(quietMillis)
+        .first { !it }
 }

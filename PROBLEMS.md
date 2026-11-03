@@ -225,3 +225,52 @@ streamed Text nodes disable offscreen fade layers, and active reasoning
 materialization is sampled at 100ms. Speculative Markdown/TeX parsing now
 uses a nonblocking parser permit. The remaining selectable single-Text
 fallback and per-turn non-lazy Markdown layout are not solved.
+
+
+## Repeated foreground overflow measurements (2026-11-03; commit 1e9a7d36)
+
+To eliminate the ambiguous 5-second publisher from the earlier preliminary
+results, the debug Activity now waits 15 seconds before starting 500
+55ms-spaced chunks and logs its own foreground focus and publication counts.
+The ADB workflow captured **3 static** and **3 actively streaming** trials,
+all with the real benchmark Activity focused. Stream runs logged between
+101 and 151 published chunks by the end of the swipe interval; a genuine
+stream/scroll overlap was therefore observed.
+
+| Trial | Focused workload | Frames | Janky | p50 | p95 | p99 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Static #1 | long unfinished paragraph | 1027 | 66.21% | 17ms | 25ms | 28ms |
+| Static #2 | long unfinished paragraph | 1147 | 53.53% | 17ms | 21ms | 25ms |
+| Static #3 | long unfinished paragraph | 1068 | 49.91% | 16ms | 18ms | 23ms |
+| Stream #1 | same paragraph, new chunks during swipes | 601 | 25.46% | 11ms | 20ms | 750ms |
+| Stream #2 | same paragraph, new chunks during swipes | 622 | 66.72% | 17ms | 21ms | 700ms |
+| Stream #3 | same paragraph, new chunks during swipes | 686 | 54.23% | 17ms | 20ms | 700ms |
+
+Median p95: static **21ms**, stream **20ms** (sample ranges
+18-25ms versus 20-21ms). Median p99: static **25ms**, stream **700ms**.
+This confirms pathological tail latency persists. Jank percentages vary
+wildly and total frame counts differ, so these are NOT proof of a
+performance improvement, only measurements of remaining outliers.
+
+The source now also pins the append-only source snapshot for each finalized
+stable AST block, so those blocks do not receive new source handles solely
+because a later block is growing. This preserves source, copy/selection and
+actual measured geometry; it does not solve eager composition of every stable
+block or the unbounded single Text overflow layout.
+
+The original 4-case table above used a producer that started too early and
+did not reliably overlap with the device scroll interval. Prefer the
+six focused samples in this section when discussing streaming jank. Even
+these are same-build static-vs-stream samples, NOT a previous-version vs
+current-version CPU/GPU regression profile.
+
+## Latest narrow mitigation (pending device profile)
+
+With the three-run p99 streaming overflow spike persisting around 700-750ms,
+the pathological fallback now waits for an 850ms uninterrupted scroll-free
+interval before doing another huge Text relayout. This specifically avoids
+the relayout during the 300ms gap between successive swipes; it deliberately
+does NOT impose that delay on normal Markdown. The behavior is covered by
+two targeted unit tests; a new isolated debug APK still needs to be measured
+to determine whether the device p99 improves. The single-Text unbounded
+layout issue is NOT solved.

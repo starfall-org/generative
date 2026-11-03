@@ -1,6 +1,8 @@
 package org.starfall.generative.features.home.chat.ui
 
 import android.os.Bundle
+import android.os.SystemClock
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,7 +39,11 @@ class StreamPerformanceBenchmarkActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i("StreamPerfBenchmark", "activity_created uptimeMs=" + SystemClock.uptimeMillis())
         val streamed = intent.getStringExtra("mode") == "stream"
+        val warmupMs = intent.getIntExtra("warmupMs", 15_000).coerceIn(0, 45_000)
+        val chunkDelayMs = intent.getIntExtra("chunkDelayMs", 55).coerceIn(20, 500)
+        val chunkCount = intent.getIntExtra("chunkCount", 500).coerceIn(1, 1_000)
         val scenario = intent.getStringExtra("scenario") ?: "blocks"
         val seed = when (scenario) {
             "overflow" -> buildString {
@@ -65,17 +71,22 @@ class StreamPerformanceBenchmarkActivity : ComponentActivity() {
         )
         val list = ChatMessageListState(initialMessages = messages)
 
-        // Warm up the initial Markdown parser before the sampled 14-second publication window.
+        // The remote device can need more than 10 seconds to open a very long Text.
+        // Start well AFTER foreground focus and keep streaming for the full measurement.
         if (streamed) lifecycleScope.launch(Dispatchers.Default) {
-            delay(5_000)
-            repeat(280) { i ->
-                delay(50)
+            delay(warmupMs.toLong())
+            Log.i("StreamPerfBenchmark", "producer_started uptimeMs=" + SystemClock.uptimeMillis())
+            repeat(chunkCount) { i ->
+                delay(chunkDelayMs.toLong())
                 val chunk = if (scenario == "overflow")
                     " A small appended token group should not cause the whole long response to re-layout."
                 else "- Live line ${i + 1}: **streamed Markdown** with more content.\n"
                 snapshot = snapshot.append(chunk, (i + 2).toLong())
                 stream.value = newState(snapshot, (i + 2).toLong())
+                if (i % 50 == 0) Log.i("StreamPerfBenchmark", "published=" + (i + 1) +
+                    " uptimeMs=" + SystemClock.uptimeMillis())
             }
+            Log.i("StreamPerfBenchmark", "producer_finished uptimeMs=" + SystemClock.uptimeMillis())
         }
 
         setContent {
@@ -108,6 +119,12 @@ class StreamPerformanceBenchmarkActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        Log.i("StreamPerfBenchmark", "focus=" + hasFocus +
+            " uptimeMs=" + SystemClock.uptimeMillis())
     }
 
     private fun newState(text: StreamTextSnapshot, revision: Long) = ActiveChatStreamState(

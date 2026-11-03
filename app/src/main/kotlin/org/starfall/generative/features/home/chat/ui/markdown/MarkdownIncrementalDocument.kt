@@ -39,7 +39,15 @@ internal fun RenderIncrementalMarkdownDocument(
     Column(modifier.fillMaxWidth()) {
         stableNodes.forEachIndexed { index, node ->
             key(incrementalBlockSlot("stable", index, node)) {
-                StreamingMarkdownSourceBlock(node, source, stable = true, components = components, latexEnabled = latexEnabled)
+                // Stable AST spans never change after this block is finalized. Pin the
+                // source handle to its first stable publication, instead of passing
+                // every newer whole-answer snapshot into every completed block.
+                // No characters are copied: snapshots share append-only segments.
+                val stableSource = remember(node) { source }
+                StreamingMarkdownSourceBlock(
+                    node, stableSource, stable = true,
+                    components = components, latexEnabled = latexEnabled
+                )
             }
         }
         if (overflowStart == null) {

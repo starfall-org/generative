@@ -39,6 +39,13 @@ Detailed findings and first device data: app/docs/stream-hardware-audit.md.
       frame timings without Compose Test's virtual frame clock.
 - [x] Build the modified debug APK and pass 25/25 focused unit tests.
 
+- [x] Add an 850ms overflow quiet interval so short pauses between successive
+      swipes do not trigger a full single-Text relayout. New tests cover a
+      short two-swipe gap; normal Markdown follow/stream cadence is unchanged.
+- [x] Re-run 28/28 focused JVM tests successfully with the quiet-period gate.
+- [ ] Measure this new gate on the physical Star 4; the earlier 3+3 results
+      predate the quiet-period variant.
+
 ## Outstanding hardware-cost tasks
 
 - [-] **P0 — growing overflow:** large text copying and UI-frame work have been
@@ -64,11 +71,18 @@ Detailed findings and first device data: app/docs/stream-hardware-audit.md.
 - [x] Real foreground Android gfxinfo: Star 4, 60Hz, 120 Markdown blocks,
       baseline and streaming, plus long unfinished paragraph baseline/streaming.
       First one-shot data is recorded in PROBLEMS.md and the audit.
-- [ ] Rerun the newly gated overflow stream build on the device; the recorded
-      80% jank / p95 800ms is from before the overflow scroll gate.
-- [ ] Record at least three reproducible before/after runs per scenario and
-      compare p50/p95 frame times, jank, allocations, CPU and GPU/Perfetto
-      on a normal foreground Activity; do not infer smoothness from one run.
+- [x] Repeat the newly gated overflow benchmark in a normal foreground
+      Activity with 3 static + 3 streaming runs and logged publication overlap.
+      Median p95 was 21ms static vs 20ms live, but p99 was **25ms static vs
+      700ms live**: severe stream outliers remain (full data in PROBLEMS.md).
+- [x] Pin immutable source snapshots per finalized Markdown AST block and add
+      a regression test that older paragraphs survive many later publications.
+- [ ] Record a **prior-version vs modified-version** matched Perfetto
+      comparison (CPU/main-thread, memory allocation, GPU and frame timing).
+      The current 3+3 runs compared static vs streaming on the same modified
+      code, not an unoptimized baseline.
+- [ ] Eliminate or account for observed 700-750ms p99 spikes on long
+      overflow Text while actively streaming.
 - [ ] Run the three chat scroll Android regression cases again against the
       current build, plus Select All/copy regressions and broader lint/tests.
 - [ ] Address remaining P0/P1 design problems, then re-run all checks.

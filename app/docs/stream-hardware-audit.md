@@ -78,3 +78,44 @@ that gate; they do not prove the subsequent patch fixes the problem.
 Naively dividing the large Text into several selectable Text children would
 change how Compose selects all text, so it is not used as a quick workaround.
 The debug-only benchmark Activity provides a repeatable starting point.
+
+
+## Repeated overflow measurement with verified stream overlap
+
+The ordinary debug Activity was extended to log window focus and when
+the publisher actually started and emitted chunk numbers. On Star 4, three
+static and three stream runs with eight native swipes each yielded:
+
+| Metric | Static: median (range) | Stream: median (range) |
+| --- | --- | --- |
+| p50 frame time | 17ms (16-17) | 17ms (11-17) |
+| p95 frame time | 21ms (18-25) | 20ms (20-21) |
+| p99 frame time | 25ms (23-28) | 700ms (700-750) |
+| Janky fraction | 53.53% (49.91-66.21) | 54.23% (25.46-66.72) |
+| Counted frames | 1068 (1027-1147) | 622 (601-686) |
+
+Each live run logged 101-151 publications during the measurement, while
+the Activity held window focus. Thus the p99 spike is not merely a
+virtual-clock or offscreen-test artifact. The current 120ms/240ms
+throttles and overflow scroll gate do not eliminate the costly full
+single-Text layout. This measurement does not compare against the
+pre-optimization binary and cannot establish speedup.
+
+Additional optimization: each finalized stable AST block now remembers
+its own immutable source snapshot. Future publications to the active
+tail must not replace that snapshot or re-slice settled text. The
+pre-existing per-turn Column still eagerly composes every stable block.
+
+**Still open:** performant, selection-preserving, measured block
+virtualization; bounded display layout for a huge selectable overflow;
+CPU/GPU/allocations Perfetto traces with a separate prior-version
+baseline; current-revision Android instrumentation and broader lint.
+
+## Latest mitigation awaiting device measurements
+
+The special-case fallback has an 850ms quiet period before a full growing
+Text relayout, so short pauses between repeated manual swipes do not cause
+an expensive text measure. An additional JVM test checks that the renderer
+does not pass a short inter-swipe pause as genuinely idle. This is a
+*partial mitigation*, not bounded text layout or proven p99 improvement;
+reprofiling is outstanding.

@@ -401,18 +401,12 @@ private suspend fun collectIncrementalMarkdownUpdates(
         if (streamFreezeSignal?.isFrozen == true) return@collect
         val activeOverflowStart = renderSnapshot.value.overflowStart
         if (activeOverflowStart != null) {
-            // The single selectable fallback Text may grow past the parser's 8k budget.
-            // Do not relayout that entire node while a finger is scrolling; preserve
-            // every segment in the stream and catch up on release. This applies only
-            // to pathological overflow, not the normal incremental Markdown path.
-            if (listScrolling.value) {
-                snapshotFlow { listScrolling.value }.first { !it }
-            } else {
-                // Even when idle, cap full-node relayout to roughly four updates/s.
-                delay(240L)
-            }
+            // A single huge selectable Text can take hundreds of milliseconds to
+            // relayout. Short pauses between consecutive finger swipes are not
+            // truly idle. Require a quiet interval before applying the latest
+            // overflow snapshot; normal incremental Markdown is unaffected.
+            awaitOverflowQuietPeriod(listScrolling)
             if (streamFreezeSignal?.isFrozen == true) return@collect
-            if (listScrolling.value) snapshotFlow { listScrolling.value }.first { !it }
             val current = latestSnapshot.value
             val end = current.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
             val prepared = withContext(Dispatchers.Default) {
