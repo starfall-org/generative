@@ -77,7 +77,7 @@ internal fun TerminalAppBar(
                 IconButton(enabled = bridge != null, onClick = { inputMenuOpen = true }) {
                     val description = stringResource(R.string.remote_terminal_input_mode) + ": " + modeLabel
                     if (mode == TerminalInputMode.LOCAL) SharedIcon(Icons.Outlined.Edit, description)
-                    else SharedIcon(Icons.Outlined.Terminal, description)
+                    else SharedIcon(Icons.Outlined.Computer, description)
                 }
                 DropdownMenu(expanded = inputMenuOpen, onDismissRequest = { inputMenuOpen = false }) {
                     TerminalInputMode.entries.forEach { option ->

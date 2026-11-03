@@ -184,11 +184,11 @@ internal fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
                         }
                     }
                     KeyColumn(
-                        { TerminalKey("Esc", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b") } },
+                        { TerminalKey("Esc", Modifier.fillMaxWidth()) { bridge.sendSpecial("\u001b", forceRemote = true) } },
                         { TerminalKey("Ctrl", Modifier.fillMaxWidth(), active = bridge.ctrlActive) { bridge.ctrlActive = !bridge.ctrlActive } }
                     )
                     KeyColumn(
-                        { TerminalKey("Tab", Modifier.fillMaxWidth()) { bridge.sendSpecial("\t") } },
+                        { TerminalKey("Tab", Modifier.fillMaxWidth()) { bridge.sendSpecial("\t", forceRemote = true) } },
                         { TerminalKey("Alt", Modifier.fillMaxWidth(), active = bridge.altActive) { bridge.altActive = !bridge.altActive } }
                     )
                     KeyColumn(
@@ -200,7 +200,7 @@ internal fun TerminalExtraKeys(bridge: RemoteTerminalBridge) {
                         { TerminalKey("↓", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[B", forceRemote = true) } }
                     )
                     KeyColumn(
-                        { TerminalKey("/", Modifier.fillMaxWidth()) { bridge.sendChar('/') } },
+                        { TerminalKey("/", Modifier.fillMaxWidth()) { bridge.sendChar('/', forceRemote = true) } },
                         { TerminalKey("→", Modifier.fillMaxWidth(), repeat = true) { bridge.sendSpecial("\u001b[C", forceRemote = true) } }
                     )
                     KeyColumn(

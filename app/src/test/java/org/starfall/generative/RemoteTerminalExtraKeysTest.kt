@@ -6,6 +6,8 @@ import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -15,6 +17,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.remote.TerminalInputMode
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.features.machines.shared.ui.terminal.TerminalExtraKeys
@@ -26,6 +33,52 @@ private val DpRect.center: Offset
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)
 class RemoteTerminalExtraKeysTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test
+    fun toolbarKeysReachRemoteInBothModesWithoutChangingTheLocalDraft() {
+        val outputBytes = ByteArrayOutputStream()
+        val terminal = object : RemoteTerminalSession {
+            override val id = "toolbar-test"
+            override val input: InputStream = ByteArrayInputStream(byteArrayOf())
+            override val output: OutputStream = outputBytes
+            override val isOpen = true
+            override val exitStatus = 0
+            override fun resize(columns: Int, rows: Int) = Unit
+            override fun close() = Unit
+        }
+        val bridge = RemoteTerminalBridge(
+            ApplicationProvider.getApplicationContext<Context>(),
+            TerminalInputMode.LOCAL
+        )
+        try {
+            bridge.attachRemote(terminal)
+            bridge.updateLocalImeDraft("pending command", 4)
+            compose.setContent {
+                GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                    TerminalExtraKeys(bridge)
+                }
+            }
+            for (mode in TerminalInputMode.entries) {
+                compose.runOnIdle {
+                    bridge.setInputMode(mode)
+                    outputBytes.reset()
+                }
+                compose.onNodeWithText("Esc").performTouchInput { click() }
+                compose.onNodeWithText("Tab").performTouchInput { click() }
+                compose.onNodeWithText("/").performTouchInput { click() }
+                compose.onNodeWithText("←").performTouchInput { click() }
+                compose.waitUntil(3_000) {
+                    outputBytes.toString("UTF-8") == "\u001b\t/\u001b[D"
+                }
+                compose.runOnIdle {
+                    assertEquals("pending command", bridge.localInputForIme)
+                    assertEquals(4, bridge.localCursorForIme)
+                }
+            }
+        } finally {
+            bridge.close()
+        }
+    }
 
     @Test
     fun extraKeysKeepTerminalControlsAndPlaceUpAboveTheOtherArrows() {
