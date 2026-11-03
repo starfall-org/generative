@@ -22,9 +22,18 @@ handling were split into focused helpers without changing update order.
 
 `main` was integrated with its own root TODO preserved, and two stale Compose
 imports were corrected. Code-level architecture/extension checks pass. The
-first local Gradle build exposed the imports; the subsequent resource-capped
-attempt reached Kotlin compilation but timed out without a complete build,
-unit-test or lint result. **Do not claim those checks passed.**
+initial local Gradle attempts found stale imports and hit resource timeouts.
+A later bounded run completed Kotlin/Java compilation and test compilation;
+45 focused post-merge JVM cases were verified with zero failures (34 Markdown,
+scroll, fade, speculation and batcher tests, plus 11 splitter tests). The
+final targeted Gradle invocation returned `BUILD SUCCESSFUL`.
+
+The combined `:app:lintDebug` job **did not finish** within its 720-second
+resource cap; analysis tasks started, but no complete Android lint result
+was produced. CodeFactor and SonarCloud passed on the reviewed PR head.
+Per the user's request, merge assessment emphasizes source code and
+correctness checks rather than FPS thresholds from a low-end test phone.
+The incomplete full lint run remains documented and is not called passed.
 
 ## Isolated chunk-producer hardware benchmark — scoped conclusion (2026-11-03)
 
