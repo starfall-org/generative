@@ -74,28 +74,31 @@ and accessibility, and collect UI feedback before treating the refactor as compl
 - [x] Migrate representative list BottomSheets to headerless `ItemListSheet`, including speech pickers and stable `ItemCard` entries.
 - [x] Replace repeated search expansion/focus logic with `ExpandableSearchField`, and repeated Key/Value input layouts with `KeyValueField`.
 - [x] Apply `ComponentGroup` to the `AppMenuScreen` reference and shared appearance shape calculation.
-- [ ] Remove duplicate implementations once migrated; preserve existing functionality, navigation, feature-specific state, accessibility, and appearance policies.
-- [ ] Coordinate with the separate `refactor/feature-screens` work so screen templates and these components can compose cleanly without duplicate responsibilities.
+- [x] Remove duplicate implementations once migrated; preserve existing functionality, navigation, feature-specific state, accessibility, and appearance policies.
+- [x] Coordinate with the separate `refactor/feature-screens` work so screen templates and these components can compose cleanly without duplicate responsibilities.
 
 ## Verification and integration notes (follow-up worktree)
 
-- Static checks performed: `git diff --check` and `python3 scripts/check_extensions.py` pass.
+- Static checks performed: `git diff --check`, `python3 scripts/check_extensions.py`, and
+  `python3 scripts/check_architecture.py` pass. Action-oriented `DropdownMenu` callers now use
+  `ContextMenuSheet`; remaining dropdowns are attribute/field selectors or autocomplete menus.
 - The localization checker reports pre-existing missing translations in Tier 2 resources; no
   new translatable string was introduced. The HTTP header example is now a canonical
   non-translatable string resource.
-- The sibling `refactor/shared` draft touches 14 files also edited by this refactor.
-  Resolve these overlapping changes at integration time, without changing the other
-  worktree or merging draft branches into each other prematurely.
+- `refactor/shared` is an ancestor of this worktree, so its package moves and architecture
+  checks are already integrated. `refactor/feature-screens` has no source overlap with these
+  components; its only divergence is its separate planning `TODO.md`. Neither sibling worktree
+  was changed.
 - This is a behavior-preserving refactor: new Robolectric/Android UI tests and device runs are
   not required for acceptance. Compilation has **not been run**; resolve any discovered API,
   import, syntax or type errors before marking the refactor ready.
 
 ## 3. Verify and collect UI feedback
 
-- [ ] Perform static checks for layer/dependency boundaries, leftover duplicate UI patterns, and incorrect component usage.
+- [x] Perform static checks for layer/dependency boundaries, leftover duplicate UI patterns, and incorrect component usage.
 - [x] Preserve the existing focused Robolectric coverage in the PR branch; no additional test work is required for this refactor.
 - [x] Statically review search expansion/collapse, text retention, and editable key autocomplete behavior.
 - [x] Statically review `ComponentGroup`'s zero/one/multiple-item shape policy and stable keys.
-- [ ] Statically verify that migrated sheets preserve BottomSheet configuration, insets, input behavior, context-action dispatch, and accessibility semantics.
-- [ ] Resolve compilation/API errors if a build check is later approved; avoid unnecessary Gradle builds.
-- [ ] Complete final static error review and integration conflict check before marking the PR ready.
+- [x] Statically verify that migrated sheets preserve BottomSheet configuration, insets, input behavior, context-action dispatch, and accessibility semantics.
+- [x] Resolve compilation/API errors if a build check is later approved; avoid unnecessary Gradle builds. Static API/import review found no unresolved local imports or stale moved-component references; compilation was intentionally not run.
+- [x] Complete final static error review and integration conflict check before marking the PR ready.

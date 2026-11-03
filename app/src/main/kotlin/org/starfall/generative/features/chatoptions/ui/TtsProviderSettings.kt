@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,6 +77,7 @@ internal fun TtsProviderSettings(
                 )
                 if (expanded) {
                     ItemListSheet(
+                        title = stringResource(R.string.tts_service),
                         onDismissRequest = { expanded = false },
                         items = speechServices.map { service ->
                             val provider = providers.firstOrNull { it.id == service.provider }

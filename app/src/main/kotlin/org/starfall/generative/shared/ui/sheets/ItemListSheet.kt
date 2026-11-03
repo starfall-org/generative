@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,7 +56,8 @@ class ItemListSheetSection<T>(
 )
 
 /**
- * Headerless sheet for collections of [ItemCard] entries.
+ * Headerless sheet for collections of [ItemCard] entries. An optional title is inline content,
+ * rather than a [BottomSheet] header, so titleless callers do not reserve header space.
  *
  * Search and filter controls live inside the sheet, while filtering and feature actions remain
  * owned by the caller. Stable keys are required so list updates retain scroll and item identity.
@@ -64,6 +66,7 @@ class ItemListSheetSection<T>(
 fun <T> ItemListSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String? = null,
     items: List<ItemListSheetItem<T>> = emptyList(),
     sections: List<ItemListSheetSection<T>> = emptyList(),
     searchQuery: String = "",
@@ -90,7 +93,17 @@ fun <T> ItemListSheet(
         fixedHeightFraction = fixedHeightFraction,
         expandOnOpen = expandOnOpen
     ) {
-        Column(Modifier.fillMaxWidth().imePadding()) {
+        Column(
+            Modifier.fillMaxWidth().imePadding()
+                .then(if (contentBehindNavigationBar) Modifier.navigationBarsPadding() else Modifier)
+        ) {
+            title?.let {
+                Text(
+                    text = it,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
             if (onSearchQueryChange != null || filterContent != null) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),

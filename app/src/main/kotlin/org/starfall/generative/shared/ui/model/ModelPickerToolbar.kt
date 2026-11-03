@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,7 +83,10 @@ internal fun ModelPickerToolbar(
             testTag = "model-picker-search"
         )
             if (onOpenSelectedModel != null) {
-                androidx.compose.foundation.layout.Box(Modifier, contentAlignment = Alignment.CenterEnd) {
+                androidx.compose.foundation.layout.Box(
+                    Modifier.widthIn(max = 180.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
                     Surface(
                         onClick = {
                             if (searchExpanded) searchExpanded = false

@@ -2,10 +2,12 @@ package org.starfall.generative
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -34,6 +36,7 @@ class SharedComponentsUiTest {
                     onValueChange = { query = it },
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
+                    onSearch = {},
                     placeholder = "Search",
                     testTag = "shared-search"
                 )
@@ -41,11 +44,13 @@ class SharedComponentsUiTest {
         }
         compose.onNodeWithTag("shared-search-button").performClick()
         compose.onNodeWithTag("shared-search").performTextInput("alpha")
-        compose.runOnIdle { expanded = false }
+        compose.onNodeWithTag("shared-search").performImeAction()
         compose.runOnIdle {
             check(query == "alpha")
             check(!expanded)
         }
+        compose.onNodeWithTag("shared-search-button").performClick()
+        compose.onNodeWithTag("shared-search").assertTextContains("alpha")
     }
 
     @Test fun keyValueFieldShowsEditableKeySuggestions() {

@@ -95,6 +95,7 @@ internal fun SpeechEnginePickerSheet(
         }
     }
     ItemListSheet(
+        title = stringResource(R.string.speech_platform_picker_title),
         items = options.map { option ->
             ItemListSheetItem(
                 key = option.key,

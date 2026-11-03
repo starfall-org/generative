@@ -2,14 +2,11 @@ package org.starfall.generative.features.speech.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import androidx.compose.ui.res.stringResource
@@ -65,6 +62,7 @@ internal fun SpeechVoiceSheet(
         }
         DisposableEffect(Unit) { onDispose { pageJob?.cancel() } }
         ItemListSheet(
+            title = stringResource(R.string.speech_choose_voice),
             items = voices.map { voice ->
                 val selected = voice.id == service.voice
                 ItemListSheetItem(

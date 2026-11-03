@@ -237,6 +237,7 @@ internal fun DrawerQuickShortcuts(
 
     if (pickerOpen) {
         ItemListSheet(
+            title = stringResource(R.string.remote_server_selection_title),
             onDismissRequest = { pickerOpen = false },
             items = machines.map { machine ->
                 val selected = selectedMachine?.id == machine.id

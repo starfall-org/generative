@@ -66,7 +66,10 @@ internal fun ModelCatalogSheet(
     LaunchedEffect(visible) {
         // This composable also exists while closed: never clear an editor field's focus
         // just because the model catalog has not been opened yet.
-        if (!visible) searchExpanded = false
+        if (!visible) {
+            searchExpanded = false
+            query = ""
+        }
     }
     val context = LocalContext.current
     val localizedResources = LocalResources.current
