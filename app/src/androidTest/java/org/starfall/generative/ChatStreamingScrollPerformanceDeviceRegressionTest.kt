@@ -66,15 +66,26 @@ class ChatStreamingScrollPerformanceDeviceRegressionTest {
         compose.waitForIdle()
         assertEquals("Disabled auto-scroll cannot emit a follow request", baseline, state.requestCount)
 
+        val positionBeforeFollowing = state.listState.firstVisibleItemIndex to
+            state.listState.firstVisibleItemScrollOffset
         compose.runOnIdle { autoScroll = true; replyHeight = 560.dp; live.value = stream("more text", 3L) }
-        compose.waitUntil(10_000) { state.requestCount > baseline }
-        val followed = state.requestCount
+        compose.waitUntil(10_000) {
+            val position = state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset
+            position != positionBeforeFollowing
+        }
         compose.waitForIdle()
-        assertEquals("No idle ticker should issue redundant follow requests", followed, state.requestCount)
+        val followedRequests = state.requestCount
+        val followedPosition = state.listState.firstVisibleItemIndex to
+            state.listState.firstVisibleItemScrollOffset
+        assertEquals("Native anchoring should not enqueue one animation per growth frame",
+            baseline, followedRequests)
 
         compose.runOnIdle { autoScroll = false; replyHeight = 640.dp; live.value = stream("off again", 4L) }
         compose.waitForIdle()
-        assertEquals("Switching auto-scroll off stops future relocations", followed, state.requestCount)
+        assertEquals("Switching auto-scroll off stops further native scroll movement",
+            followedPosition, state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset)
 
         compose.runOnIdle {
             streaming = false
@@ -82,7 +93,9 @@ class ChatStreamingScrollPerformanceDeviceRegressionTest {
             replyHeight = 700.dp
         }
         compose.waitForIdle()
-        assertEquals("Stream completion and final relayout must never auto-scroll", followed, state.requestCount)
+        assertEquals("Completion must not move the list after auto-scroll is disabled",
+            followedPosition, state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset)
     }
 
     @Test fun aManualDragDisablesFollowUntilTheUserReturnsToLatest() {

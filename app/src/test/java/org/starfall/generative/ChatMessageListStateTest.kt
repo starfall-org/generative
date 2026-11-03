@@ -98,6 +98,7 @@ class ChatMessageListStateTest {
         assertEquals(0L, state.requestCount)
         state.contentEndPosition("reply", 140, enabled = false) // Auto-scroll disabled in settings.
         assertEquals(0L, state.requestCount)
+        state.endVisibility("reply", true, "reply") // Only a visible latest can start following.
         state.contentEndPosition("reply", 180, enabled = true)
         assertEquals(ChatListAction.Follow, state.request?.action)
         assertEquals(1L, state.requestCount)
@@ -107,10 +108,67 @@ class ChatMessageListStateTest {
         state.contentEndPosition("reply", 230, enabled = true)
         assertEquals("Manual drag pauses automatic follow", 1L, state.requestCount)
         state.resume()
+        state.endVisibility("reply", true, "reply") // Manual return to the visible latest.
         state.contentEndPosition("reply", 250, enabled = true)
         assertEquals(2L, state.requestCount)
         state.contentEndPosition("another-reply", 10, enabled = true)
         assertEquals("New messages establish a new layout baseline", 2L, state.requestCount)
+    }
+
+    @Test fun nativeGrowthAnchoringSkipsDuplicateAnimatedFollowRequests() {
+        val state = ChatMessageListState()
+        val applied = mutableListOf<Int>()
+        state.endVisibility("reply", true, "reply")
+        state.contentEndPosition("reply", 100, enabled = true) { delta -> applied += delta; true }
+        state.contentEndPosition("reply", 145, enabled = true) { delta -> applied += delta; true }
+        state.contentEndPosition("reply", 175, enabled = true) { delta -> applied += delta; true }
+        assertEquals(listOf(45, 30), applied)
+        assertEquals("Measured growth has no extra animation intent", 0L, state.requestCount)
+
+        state.manualScroll(towardsEnd = false)
+        state.contentEndPosition("reply", 210, enabled = true) { delta -> applied += delta; true }
+        assertEquals("Manual scroll detaches native anchoring", listOf(45, 30), applied)
+        state.resume()
+        state.send("user")
+        state.contentEndPosition("reply", 245, enabled = true) { delta -> applied += delta; true }
+        assertEquals("A send/navigation request is never overridden", listOf(45, 30), applied)
+        assertEquals(ChatListAction.Send("user"), state.request?.action)
+    }
+
+    @Test fun growthNeverPinsOffscreenHistoryAndLosesPinOnManualScroll() {
+        val state = ChatMessageListState()
+        val offsets = mutableListOf<Int>()
+        fun growth(y: Int) = state.contentEndPosition("reply", y, enabled = true) { delta ->
+            offsets += delta
+            true
+        }
+        growth(100)
+        growth(150) // Auto-scroll preference is on, but the user has not reached latest.
+        assertTrue("Offscreen latest may not initiate an anchor", offsets.isEmpty())
+        assertEquals(0L, state.requestCount)
+        assertFalse(state.isLatestPinned("reply"))
+
+        state.endVisibility("older", true, "reply")
+        growth(190)
+        assertTrue(offsets.isEmpty())
+        state.endVisibility("reply", true, "reply")
+        growth(220)
+        assertEquals(listOf(30), offsets)
+        assertTrue(state.isLatestPinned("reply"))
+
+        // The moving edge may briefly leave the viewport. Keep the pin until user interaction.
+        state.endVisibility("reply", false, "reply")
+        growth(250)
+        assertEquals(listOf(30, 30), offsets)
+        state.manualScroll(towardsEnd = false)
+        growth(300)
+        assertEquals(listOf(30, 30), offsets)
+        state.resume() // An explicit resume alone is not proof of latest visibility.
+        growth(330)
+        assertEquals(listOf(30, 30), offsets)
+        state.endVisibility("reply", true, "reply")
+        growth(350)
+        assertEquals(listOf(30, 30, 20), offsets)
     }
 
     @Test fun freezeCancelsOnlyAutomaticFollowNotExplicitNavigation() {

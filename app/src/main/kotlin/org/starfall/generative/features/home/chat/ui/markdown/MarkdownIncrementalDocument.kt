@@ -16,7 +16,6 @@ import com.mikepenz.markdown.compose.components.MarkdownComponents
 import org.intellij.markdown.ast.ASTNode
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import org.starfall.generative.features.home.chat.logic.markdown.MathSplitter
-import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
 
 /**
  * Incremental AST rendering with real Compose measurement. Stable nodes keep their composition slots;
@@ -65,9 +64,7 @@ internal fun RenderIncrementalMarkdownDocument(
             }
             if (overflow.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                CompositionLocalProvider(LocalStreamingTextFade provides false) {
-                    OverflowPlainText(overflow)
-                }
+                OverflowPlainText(overflow)
             }
         }
     }
@@ -111,7 +108,6 @@ private fun StreamingMarkdownSourceBlock(
         }
     }
     CompositionLocalProvider(
-        LocalStreamingTextFade provides !stable,
         LocalMarkdownContentFingerprint provides fingerprint
     ) {
         MarkdownElement(

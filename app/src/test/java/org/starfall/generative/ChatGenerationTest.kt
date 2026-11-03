@@ -562,6 +562,33 @@ class ChatGenerationTest {
         assertEquals("Answer", complete.messages.last().content)
     }
 
+    @Test fun finalRamPublicationPrecedesStreamReleaseAndBusyReset() = runBlocking {
+        val events = mutableListOf<String>()
+        lateinit var runner: ChatGeneration
+        runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = { snapshot ->
+                if (snapshot.messages.last().content == "Complete response" &&
+                    snapshot.messages.last().activeVersion.processingFinishedAt != null) {
+                    assertTrue(runner.busy.value)
+                    events += "final"
+                }
+            },
+            publishStream = { _, state ->
+                if (state == null) {
+                    assertTrue("Stream release cannot precede the final RAM message", "final" in events)
+                    assertTrue("Busy must still be true when the stream is released", runner.busy.value)
+                    events += "cleared"
+                }
+            }
+        )
+        runner.start(conversation(), "a1", flowOf("Complete response"))
+        runner.awaitCompletion()
+        assertEquals(listOf("final", "cleared"), events)
+        assertFalse(runner.busy.value)
+    }
+
     @Test fun consecutiveGenerationsUseFreshIdsAndDoNotReuseThePreviousDisplaySnapshot() = runBlocking {
         val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
         val runner = ChatGeneration(
