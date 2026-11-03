@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ConversationSummaryRequest
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheetTitle
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Slider default; a custom target can still go above [MAX_SLIDER_TARGET_TOKENS]. */
@@ -29,7 +30,10 @@ fun ConversationSummarySheet(
     onStart: (ConversationSummaryRequest) -> Boolean,
     onDismiss: () -> Unit
 ) {
-    BottomSheet(onDismissRequest = onDismiss) {
+    ContentSheet(
+        onDismissRequest = onDismiss,
+        title = { ContentSheetTitle(stringResource(R.string.conversation_summarization_title)) }
+    ) {
         ConversationSummarySheetContent(onStart = onStart, onDismiss = onDismiss)
     }
 }
@@ -71,10 +75,12 @@ internal fun ConversationSummarySheetContent(
             .padding(bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        QuickActionsSubpageHeader(
-            title = stringResource(R.string.conversation_summarization_title),
-            onBack = onBack
-        )
+        if (onBack != null) {
+            QuickActionsSubpageHeader(
+                title = stringResource(R.string.conversation_summarization_title),
+                onBack = onBack
+            )
+        }
 
         Text(stringResource(R.string.conversation_summary_target_size, targetTokens ?: 0), style = MaterialTheme.typography.titleMedium)
         val targetSliderState = remember {

@@ -23,6 +23,8 @@ import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.text.ApiKeyField
 import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.ui.inputs.KeyValueField
+import org.starfall.generative.shared.ui.inputs.KeyValueValueType
 
 @Composable
 internal fun mcpAuthenticationLabel(method: McpAuthMethod) = stringResource(when (method) {
@@ -97,10 +99,16 @@ internal fun McpConnectionSettings(
         }
         headers.forEachIndexed { index, header ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(header.first, { value -> onHeadersChange(headers.toMutableList().also { it[index] = value to header.second }) },
-                    label = { Text(stringResource(R.string.common_key)) }, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(header.second, { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
-                    label = { Text(stringResource(R.string.common_value)) }, singleLine = true, modifier = Modifier.weight(1f))
+                KeyValueField(
+                    keyValue = header.first,
+                    onKeyChange = { value -> onHeadersChange(headers.toMutableList().also { it[index] = value to header.second }) },
+                    value = header.second,
+                    onValueChange = { value -> onHeadersChange(headers.toMutableList().also { it[index] = header.first to value }) },
+                    keyLabel = { Text(stringResource(R.string.common_key)) },
+                    valueLabel = { Text(stringResource(R.string.common_value)) },
+                    valueType = KeyValueValueType.Literal,
+                    modifier = Modifier.weight(1f)
+                )
                 IconButton(onClick = { onHeadersChange(headers.filterIndexed { i, _ -> i != index }) }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_remove)) }
             }
         }

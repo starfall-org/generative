@@ -48,8 +48,8 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.dialogs.Dialog
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 /** App-wide customization: colors, component opacity, profile image and backgrounds. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -434,15 +434,29 @@ private fun CustomizationActionRow(
 
 @Composable
 private fun SlotMenu(expanded: Boolean, hasImage: Boolean, onDismiss: () -> Unit,
-                     onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        DropdownMenuItem(text = { Text(stringResource(R.string.user_profile_photos_gallery)) }, onClick = onGallery,
-            leadingIcon = { SharedIcon(Icons.Outlined.Image, null) })
-        DropdownMenuItem(text = { Text(stringResource(R.string.storage_media_storage)) }, onClick = onStorage,
-            leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) })
-        DropdownMenuItem(text = { Text(stringResource(R.string.common_remove)) }, enabled = hasImage, onClick = onRemove,
-            leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
-    }
+                      onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit) {
+    if (expanded) ContextMenuSheet(
+        actions = listOf(
+            ContextMenuAction(
+                label = stringResource(R.string.user_profile_photos_gallery),
+                onClick = onGallery,
+                icon = Icons.Outlined.Image
+            ),
+            ContextMenuAction(
+                label = stringResource(R.string.storage_media_storage),
+                onClick = onStorage,
+                icon = Icons.Outlined.Folder
+            ),
+            ContextMenuAction(
+                label = stringResource(R.string.common_remove),
+                onClick = onRemove,
+                icon = Icons.Outlined.Delete,
+                enabled = hasImage,
+                destructive = true
+            )
+        ),
+        onDismissRequest = onDismiss
+    )
 }
 
 @Composable

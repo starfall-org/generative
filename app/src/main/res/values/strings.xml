@@ -211,6 +211,8 @@
     <string name="connection_testing_unavailable">Connection testing is unavailable.</string>
     <string name="refresh_models">Refresh models</string>
     <string name="search_models">Search models</string>
+    <string name="shared_search">Search</string>
+    <string name="shared_no_items">No items</string>
     <string name="select_all_visible_models">Select all visible models</string>
     <string name="model_discovery_unavailable">Model discovery is unavailable</string>
     <string name="provider_deselect_visible_models">Deselect visible models</string>

@@ -184,6 +184,8 @@
     <string name="connection_testing_unavailable">接続テストは利用できません。</string>
     <string name="refresh_models">モデルを更新</string>
     <string name="search_models">モデルを検索</string>
+    <string name="shared_search">検索</string>
+    <string name="shared_no_items">項目がありません</string>
     <string name="select_all_visible_models">表示中のモデルをすべて選択</string>
     <string name="model_discovery_unavailable">モデル検索は利用できません</string>
     <string name="provider_deselect_visible_models">表示中のモデルの選択を解除</string>
