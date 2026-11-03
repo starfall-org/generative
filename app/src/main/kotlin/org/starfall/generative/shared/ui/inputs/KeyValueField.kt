@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /** Value input modes shared by headers, parameters, credentials and other key/value editors. */
 enum class KeyValueValueType { Plain, Literal, Secret, Multiline }

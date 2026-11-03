@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.isImeVisible
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 /**
  * Search control that owns its collapsed button, editor focus, IME actions and width transition.
