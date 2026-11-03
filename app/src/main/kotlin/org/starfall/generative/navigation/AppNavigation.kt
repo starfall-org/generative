@@ -49,6 +49,7 @@ import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
 import org.starfall.generative.features.providers.list.ui.ProvidersScreen
+import org.starfall.generative.features.providers.list.ui.ProvidersDemoScreen
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
@@ -130,6 +131,7 @@ enum class AppDestination(val route: String) {
     APP_SETTINGS("AppSettings"),
     DEVELOPER_OPTIONS("developer_options"),
     LAUNCHER_DRAG_TEST("launcher_drag_test"),
+    PROVIDERS_DEMO("providers_demo"),
     ICONS("Icons"),
     APP_DATA("AppData"),
     ABOUT("About"),
@@ -1264,12 +1266,17 @@ internal fun AppNavigation(
                             onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
                             onDebugLogLevelChange = settingsViewModel::setDebugLogLevel,
                             onOpenLauncherDragTest = { openConfiguration(AppDestination.LAUNCHER_DRAG_TEST) },
+                            onOpenProvidersDemo = { openConfiguration(AppDestination.PROVIDERS_DEMO) },
                             onBack = { navController.popBackStack() }
                         )
                     }
 
                     composable(AppDestination.LAUNCHER_DRAG_TEST.route) {
                         LauncherDragTestScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(AppDestination.PROVIDERS_DEMO.route) {
+                        ProvidersDemoScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(AppDestination.ICONS.route) {

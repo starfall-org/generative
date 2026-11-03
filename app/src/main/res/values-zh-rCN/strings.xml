@@ -986,4 +986,6 @@
     <string name="settings_repair_provider_result">已修复 %1$d 条提供商记录。</string>
     <string name="settings_repair_provider_warning">仅丢弃无法读取的 JSON 元数据，并重置受影响提供商的损坏 OAuth 凭据。模型和其他提供商均会保留。你可能需要重新登录。</string>
     <string name="settings_repair_provider_failed">修复提供商失败：%1$s</string>
+    <string name="providers_demo_title">ProvidersScreen 演示</string>
+        <string name="providers_demo_editor_title">演示提供商</string>
 </resources>

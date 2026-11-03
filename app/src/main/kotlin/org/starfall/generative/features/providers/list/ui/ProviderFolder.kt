@@ -15,9 +15,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import androidx.compose.material3.*
@@ -40,6 +37,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import org.starfall.generative.extensions.launcher.Launcher
+import org.starfall.generative.shared.ui.lists.LauncherCollection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -338,11 +336,13 @@ internal fun ProviderFolderOverlay(
                             )
                         }
                     } else {
-                        LazyVerticalGrid(
-                            state = gridState,
-                            columns = GridCells.Fixed(if (isGrid) 2 else 1),
+                        LauncherCollection(
+                            items = providers,
+                            key = { "provider_${it.id}" },
+                            state = dndState,
+                            gridState = gridState,
+                            columns = if (isGrid) 2 else 1,
                             modifier = Modifier.weight(1f).fillMaxWidth()
-                                .autoScroll(dndState, gridState)
                                 .dropTarget(dndState, "folder-grid:${group.id}", priority = -10,
                                     enabled = visible, onDrop = { false })
                                 .testTag("provider_folder_grid_${group.id}"),
@@ -350,45 +350,47 @@ internal fun ProviderFolderOverlay(
                                 start = 16.dp, top = 8.dp, end = 16.dp,
                                 bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                             ),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(providers, key = { "provider_${it.id}" }) { provider ->
-                                ProviderFolderProviderTile(
-                                    provider = provider,
-                                    isGrid = isGrid,
-                                    onEdit = { onEditProvider(provider) },
-                                    onMoveToGroup = { onMoveProvider(provider) },
-                                    onDelete = { onDeleteProvider(provider.id) },
-                                    modifier = Modifier.animateItem()
-                                        .dragSource(
-                                            state = dndState,
-                                            key = "provider_${provider.id}",
-                                            data = ProviderRootOrderItem(provider.id, false),
-                                            priority = 30,
-                                            enabled = visible && fraction >= 0.999f,
-                                            onDragStart = { onBeginDrag("provider_${provider.id}") },
-                                            onDragEnd = { outcome -> onEndDrag("provider_${provider.id}", outcome) }
-                                        )
-                                        .dropTarget(
-                                            state = dndState,
-                                            key = "folder-source:${provider.id}",
-                                            priority = 31, enabled = visible && fraction >= 0.999f,
-                                            accepts = { it.key == "provider_${provider.id}" },
-                                            onDrop = { onDropMember() }
-                                        )
-                                        .dropTarget(
-                                            state = dndState,
-                                            key = "folder-slot:${provider.id}",
-                                            priority = 30, enabled = visible && fraction >= 0.999f,
-                                            accepts = { !it.data.isGroup && it.data.id != provider.id },
-                                            onDragEnter = { drag ->
-                                                onReorderMember(drag.item.data.id, provider.id)
-                                            },
-                                            onDrop = { onDropMember(); true }
-                                        )
+                            horizontalSpacing = 12.dp,
+                            verticalSpacing = 12.dp,
+                            // A one-column folder has roughly twice the scroll distance
+                            // of the grid for the same number of providers. Keep its
+                            // top/bottom-edge drag traversal responsive without changing
+                            // the reusable Launcher's default scroll speed.
+                            autoScrollSpeed = if (isGrid) 640.dp else 960.dp,
+                            enabled = visible
+                        ) { provider, itemModifier, slot ->
+                            val key = "provider_${provider.id}"
+                            ProviderFolderProviderTile(
+                                provider = provider,
+                                isGrid = isGrid,
+                                onEdit = { onEditProvider(provider) },
+                                onMoveToGroup = { onMoveProvider(provider) },
+                                onDelete = { onDeleteProvider(provider.id) },
+                                modifier = itemModifier.folderMember(
+                                    state = dndState,
+                                    sourceKey = key,
+                                    data = ProviderRootOrderItem(provider.id, false),
+                                    targetKey = "folder-slot:${provider.id}",
+                                    sourcePriority = 30,
+                                    targetPriority = 30,
+                                    sourceEnabled = visible && fraction >= 0.999f,
+                                    targetEnabled = visible && fraction >= 0.999f,
+                                    policy = Launcher.DropPolicy(
+                                        reorderHitTest = Launcher.Collision.Pointer
+                                    ),
+                                    hitBounds = slot,
+                                    acceptsReorder = { !it.data.isGroup && it.data.id != provider.id },
+                                    selfTargetKey = "folder-source:${provider.id}",
+                                    selfPriority = 31,
+                                    onSelfDrop = { onDropMember() },
+                                    onDragStart = { onBeginDrag(key) },
+                                    onDragEnd = { outcome -> onEndDrag(key, outcome) },
+                                    onReorderEnter = { drag ->
+                                        onReorderMember(drag.item.data.id, provider.id)
+                                    },
+                                    onReorderDrop = { onDropMember(); true }
                                 )
-                            }
+                            )
                         }
                     }
                 }

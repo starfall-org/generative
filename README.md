@@ -106,8 +106,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing guidance.
 ### Localization
 
 - **Tier 1:** English (source)
-- **Tier 2:** Vietnamese, Japanese, Chinese (Simplified)
-- **Tier 3:** Korean, Chinese (Traditional), German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil)
+- **Tier 2:** Vietnamese
+- **Tier 3:** Japanese, Chinese (Simplified), Chinese (Traditional), Korean, German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil)
+
+> Contact us if you would like to contribute the translations.
 
 ## License
 

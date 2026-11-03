@@ -77,7 +77,6 @@ fun ProvidersScreen(
     val dialogs = rememberProviderListDialogs()
     var orderedProviders by remember { mutableStateOf(providers) }
     var rootItems by remember { mutableStateOf(providerRootItems(providers, providerGroups)) }
-    var pendingProviderOrder by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     var pendingRootOrder by remember { mutableStateOf<List<ProviderRootOrderItem>?>(null) }
     var pendingGridLayout by remember { mutableStateOf<ProviderDragLayout?>(null) }
     var collapsedSections by remember { mutableStateOf(collapsedSectionsState) }
@@ -227,11 +226,13 @@ fun ProvidersScreen(
             if (onPlaceProviderTracked != null) {
                 // Enqueue synchronously, then acknowledge on Main only after the background write.
                 onPlaceProviderTracked(placement) { result ->
-                    if (result.isFailure && pendingGridLayout == layout) {
+                    if (pendingGridLayout == layout) {
                         pendingGridLayout = null
-                        orderedProviders = previousProviders
-                        rootItems = previousRoot
-                        setCollapsedSections(previousCollapsed)
+                        if (result.isFailure) {
+                            orderedProviders = previousProviders
+                            rootItems = previousRoot
+                            setCollapsedSections(previousCollapsed)
+                        }
                     }
                 }
             } else if (onPlaceProviderImmediately != null) {
@@ -275,9 +276,9 @@ fun ProvidersScreen(
                 pendingRootOrder = order
                 if (onReorderRootItemsTracked != null) {
                     onReorderRootItemsTracked(order) { result ->
-                        if (result.isFailure && pendingRootOrder == order) {
+                        if (pendingRootOrder == order) {
                             pendingRootOrder = null
-                            rootItems = before
+                            if (result.isFailure) rootItems = before
                         }
                     }
                 } else onReorderRootItems(order)
@@ -310,55 +311,30 @@ fun ProvidersScreen(
         dndState.cancel()
     }
 
-    LaunchedEffect(providers, providerGroups, draggedProviderId, draggedGroupId) {
+    // Repository flows report explicit application actions from RAM, never Room invalidations.
+    // Merge provider metadata and actual membership changes, but NEVER rebuild an open
+    // screen's item order from incoming sort ranks. The drag/scroll viewport belongs
+    // exclusively to the local Launcher state until this screen is disposed.
+    // Do not key this effect on drag lifecycle: finishing a drop must never
+    // replay unchanged upstream parameters and undo an optimistic placement.
+    LaunchedEffect(providers, providerGroups) {
         if (draggedProviderId != null || draggedGroupId != null) return@LaunchedEffect
 
-        val incomingProvidersById = providers.associateBy { it.id }
-        pendingGridLayout?.let { preview ->
-            val incomingRoot = providerRootItems(providers, providerGroups).map { it.toOrderItem() }
-            val sameCatalog = preview.providers.map { it.id }.toSet() == providers.map { it.id }.toSet() &&
-                preview.root.filter { it.isGroup }.map { it.id }.toSet() == providerGroups.map { it.id }.toSet()
-            val acknowledged = incomingRoot == preview.root && preview.providers.all { p ->
-                incomingProvidersById[p.id]?.groupId == p.groupId
-            } && providerGroups.all { g ->
-                providers.filter { it.groupId == g.id }.map { it.id } == preview.providers.filter { it.groupId == g.id }.map { it.id }
-            }
-            if (sameCatalog && !acknowledged) return@LaunchedEffect
-            pendingGridLayout = null
+        val incomingById = providers.associateBy { it.id }
+        val currentIds = orderedProviders.mapTo(hashSetOf()) { it.id }
+        val incomingIds = providers.mapTo(hashSetOf()) { it.id }
+        val membershipChanged = currentIds != incomingIds || orderedProviders.any { current ->
+            incomingById[current.id]?.groupId != current.groupId
         }
-        val pendingProvider = pendingProviderOrder
-        if (pendingProvider == null) {
-            orderedProviders = providers
-        } else {
-            val (groupId, expectedOrder) = pendingProvider
-            val actualOrder = providers.filter { it.groupId == groupId }.map { it.id }
-            // A folder move/add/delete changes membership, so an old drag order
-            // can no longer be acknowledged and must not keep the old positions.
-            if (actualOrder == expectedOrder || actualOrder.toSet() != expectedOrder.toSet()) {
-                pendingProviderOrder = null
-                orderedProviders = providers
-            } else {
-                val currentIds = orderedProviders.mapTo(hashSetOf()) { it.id }
-                orderedProviders =
-                    orderedProviders.mapNotNull { incomingProvidersById[it.id] } +
-                        providers.filter { it.id !in currentIds }
-            }
-        }
+        orderedProviders = if (membershipChanged) providers else
+            orderedProviders.mapNotNull { incomingById[it.id] }
 
-        val incomingRootItems = providerRootItems(providers, providerGroups)
-        val pendingRoot = pendingRootOrder
-        if (pendingRoot == null) {
-            rootItems = incomingRootItems
-        } else if (incomingRootItems.map { it.toOrderItem() } == pendingRoot ||
-            incomingRootItems.map { it.toOrderItem() }.toSet() != pendingRoot.toSet()) {
-            pendingRootOrder = null
-            rootItems = incomingRootItems
-        } else {
-            val incomingByKey = incomingRootItems.associateBy { it.toOrderItem() }
-            val currentKeys = rootItems.mapTo(hashSetOf()) { it.toOrderItem() }
-            rootItems =
-                rootItems.mapNotNull { incomingByKey[it.toOrderItem()] } +
-                    incomingRootItems.filter { it.toOrderItem() !in currentKeys }
+        val incomingRoot = providerRootItems(providers, providerGroups)
+        val currentRootKeys = rootItems.mapTo(hashSetOf()) { it.toOrderItem() }
+        val incomingRootKeys = incomingRoot.mapTo(hashSetOf()) { it.toOrderItem() }
+        rootItems = if (membershipChanged || currentRootKeys != incomingRootKeys) incomingRoot else {
+            val incomingRootByKey = incomingRoot.associateBy { it.toOrderItem() }
+            rootItems.mapNotNull { incomingRootByKey[it.toOrderItem()] }
         }
     }
 
@@ -493,7 +469,17 @@ fun ProvidersScreen(
                                 else "provider_${drag.item.data.id}"
                             if (rootItems.any { it.cellKey() == key }) {
                                 rootItems.firstOrNull()?.cellKey()
-                                    ?.takeIf { it != key }?.let { moveRootItem(key, it) }
+                                    ?.takeIf { it != key }?.let { firstKey ->
+                                        // This top-edge fallback bypasses Launcher target-enter
+                                        // callbacks. Preserve the viewport by index here too:
+                                        // LazyGrid otherwise follows the old first key down
+                                        // when the dragged item is inserted at index zero.
+                                        gridState.requestScrollToItem(
+                                            gridState.firstVisibleItemIndex,
+                                            gridState.firstVisibleItemScrollOffset
+                                        )
+                                        moveRootItem(key, firstKey)
+                                    }
                             }
                         }
                         LazyVerticalGrid(
@@ -529,7 +515,7 @@ fun ProvidersScreen(
                                         } else false
                                     }
                                 )
-                                .autoScroll(dndState, gridState)
+                                .autoScroll(dndState, gridState, enabled = openGroupId == null)
                                 .onGloballyPositioned {
                                     if (gridMode == isGridView) rootGridWindowBounds = it.boundsInWindow()
                                 }

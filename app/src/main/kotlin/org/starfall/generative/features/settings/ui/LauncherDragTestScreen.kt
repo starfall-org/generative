@@ -346,15 +346,13 @@ private fun TestDragTile(
                 positions[targetKey] = slotBounds ?: it.boundsInWindow()
                 if (isFolder) positions[joinKey] = it.boundsInWindow()
             }
-            .dragSource(
-                state = state, key = item, data = item,
-                enabled = sourceEnabled, priority = if (container != Workspace) 30 else 0,
+            .folderMember(
+                state = state, sourceKey = item, data = item, targetKey = targetKey,
+                sourceEnabled = sourceEnabled, targetEnabled = targetEnabled,
+                sourcePriority = if (container != Workspace) 30 else 0,
+                targetPriority = if (container != Workspace) 30 else 6,
                 onDragStart = { onBegin() }, onDragEnd = onEnd,
-                returnBounds = if (container != Workspace) ({ positions[folderDropKey(if (container == SecondFolder) SecondFolderItem else FolderItem)] }) else null
-            )
-            .itemDropTarget(
-                state, targetKey, priority = if (container != Workspace) 30 else 6,
-                enabled = targetEnabled,
+                returnBounds = if (container != Workspace) ({ positions[folderDropKey(if (container == SecondFolder) SecondFolderItem else FolderItem)] }) else null,
                 policy = Launcher.DropPolicy(
                     joinHitTest = if (isFolder && folderJoinEnabled)
                         Launcher.Collision.Center(folderHitFraction, folderHitFraction) else null

@@ -57,7 +57,7 @@ class Phase5SyntheticMeasurementTest {
     private suspend fun measure(database: AppDatabase, selectedId: String): Metrics {
         var metadataRows = 0
         val metadataNanos = measureNanoTime {
-            metadataRows = database.conversationDao().getConversationListItems().first().size
+            metadataRows = database.conversationDao().getConversationListItems().size
         }
         var selectedHistoryRows = 0
         val selectedNanos = measureNanoTime {

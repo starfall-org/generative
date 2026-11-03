@@ -55,7 +55,7 @@ Preserve the Room schema history under `app/schemas/`; package-only moves must n
 
 - Use Jetpack Preferences DataStore for application settings, customization and other reusable preference state. Migrate existing SharedPreferences values without loss.
 - Store dynamic, capability-specific data in Room/SQLite, including credentials, model providers, MCP servers, speech services, Feature Tools profiles and instructions. Keep database access in `database/` and encrypt credentials before persistence.
-- Keep one application-scoped instance for each database and DataStore; share repositories and stores through application wiring. Read and observe data as needed, and propagate edits to active consumers.
+- Keep one application-scoped instance for each database and DataStore; share repositories and stores through application wiring. Read one Room snapshot to initialize an application-owned memory catalog. Room/SQLite is passive persistence and must not publish invalidations or re-read/reorder active UI after writes; repositories explicitly publish RAM edits immediately, then persist through their serial writers. DataStore preferences retain their reactive flow.
 - Migrate existing installations and backup/restore paths without silently discarding data. Retain the legacy source until the destination has been written successfully; make migration safe to retry.
 
 ## Maintaining the architecture

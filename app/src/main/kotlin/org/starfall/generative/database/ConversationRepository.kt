@@ -4,8 +4,16 @@ import androidx.room.withTransaction
 import java.io.File
 import org.starfall.generative.shared.logging.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -49,15 +57,53 @@ class ConversationRepository @JvmOverloads constructor(
     private val dao = db.conversationDao()
     private val writeLock = Mutex()
 
-    /**
-     * Compatibility full-history flow. It is cold on purpose: constructing a repository no
-     * longer starts decoding every conversation. New UI code must use [conversationList] and
-     * [loadById] instead.
-     */
-    val allConversations: Flow<List<Conversation>> = dao.getAllConversations()
-        .map { entities -> entities.map { entityToModel(it) } }
-        .flowOn(Dispatchers.IO)
-    val conversationList: Flow<List<ConversationListItem>> = dao.getConversationListItems()
+    // Room is never observed. Bootstrap the lightweight history index exactly once,
+    // and publish subsequent changes only when an application action changes it.
+    // The same lock protects the first read against concurrent saves and restores.
+    private val listScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val listState = MutableStateFlow<List<ConversationListItem>?>(null)
+    init {
+        listScope.launch {
+            writeLock.withLock {
+                listState.value = dao.getConversationListItems()
+            }
+        }
+    }
+    val conversationList: Flow<List<ConversationListItem>> = listState.filterNotNull().distinctUntilChanged()
+
+    /** Compatibility full-history flow. Only explicit history-list changes trigger a load. */
+    val allConversations: Flow<List<Conversation>> = conversationList.map { entries ->
+        entries.mapNotNull { loadById(it.id) }
+    }.flowOn(Dispatchers.IO)
+
+    private fun publishList(edit: (List<ConversationListItem>) -> List<ConversationListItem>) {
+        // When the initial read is still pending, it will include this completed
+        // write because the same writeLock guards both code paths.
+        listState.update { current -> current?.let(edit) }
+    }
+
+    private fun publishSaved(conversation: Conversation) {
+        val item = ConversationListItem(
+            id = conversation.id,
+            title = conversation.title,
+            createdAt = conversation.createdAt,
+            updatedAt = conversation.updatedAt,
+            tokenCount = conversation.tokenCount,
+            providerId = conversation.providerId,
+            modelId = conversation.modelId,
+            profileId = conversation.profileId,
+            reasoningEffort = conversation.reasoningEffort,
+            hasMessages = conversation.messages.isNotEmpty(),
+            hasSummary = conversation.summary?.throughMessageId?.let { id ->
+                conversation.messages.any { it.id == id }
+            } ?: false,
+            hasMigrationIssue = listState.value?.firstOrNull { it.id == conversation.id }?.hasMigrationIssue ?: false
+        )
+        publishList { existing ->
+            (existing.filterNot { it.id == item.id } + item)
+                .sortedWith(compareByDescending<ConversationListItem> { it.updatedAt }.thenBy { it.id })
+        }
+    }
 
     /** Full-history lookup retained for callers that predate [loadById]. */
     suspend fun getById(id: String): Conversation? = loadById(id)
@@ -121,6 +167,7 @@ class ConversationRepository @JvmOverloads constructor(
         }
         // Persist output ownership separately from chat history. It must survive chat deletion.
         toolFiles?.let { it.markGeneratedMedia(conversation.generatedFileNames(it)) }
+        publishSaved(conversation)
     }
 
     suspend fun renameConversation(id: String, title: String) {
@@ -132,6 +179,10 @@ class ConversationRepository @JvmOverloads constructor(
                     // REPLACE deletes the parent first and cascades into its history.
                     dao.renameConversation(id, title, now)
                 }
+                publishList { items ->
+                    items.map { if (it.id == id) it.copy(title = title, updatedAt = now) else it }
+                        .sortedWith(compareByDescending<ConversationListItem> { it.updatedAt }.thenBy { it.id })
+                }
             }
         }
     }
@@ -141,6 +192,7 @@ class ConversationRepository @JvmOverloads constructor(
             writeLock.withLock {
                 journal?.remove(id)
                 db.withTransaction { dao.deleteById(id) }
+                publishList { it.filterNot { item -> item.id == id } }
             }
         }
     }
@@ -150,6 +202,8 @@ class ConversationRepository @JvmOverloads constructor(
             writeLock.withLock {
                 ids.forEach { journal?.remove(it) }
                 db.withTransaction { ids.chunked(500).forEach { dao.deleteByIds(it) } }
+                val removed = ids.toSet()
+                publishList { it.filterNot { item -> item.id in removed } }
             }
         }
     }
@@ -159,6 +213,7 @@ class ConversationRepository @JvmOverloads constructor(
             writeLock.withLock {
                 journal?.clear()
                 db.withTransaction { dao.deleteAll() }
+                publishList { emptyList() }
             }
         }
     }
