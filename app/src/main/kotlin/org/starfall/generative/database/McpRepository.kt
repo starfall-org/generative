@@ -235,6 +235,7 @@ class McpRepository(
         copy(url = resolvedUrl(contentApiMcpUrl))
 
     private fun McpInfo.withoutConfiguredEndpoint(): McpInfo =
-        if (isContentApiPreset() && contentApiMcpUrl != null &&
-            resolvedUrl() == contentApiMcpUrl) copy(url = null) else this
+        // The bundled endpoint belongs to the build, never to UI, Room, or exported backups.
+        // Also remove URLs imported from backups made with a different build endpoint.
+        if (isContentApiPreset()) copy(url = null) else this
 }

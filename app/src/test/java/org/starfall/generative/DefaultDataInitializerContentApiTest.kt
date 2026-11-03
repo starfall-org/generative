@@ -76,12 +76,20 @@ class DefaultDataInitializerContentApiTest {
         assertNull(repository.loadServersForExport().single().url)
         assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
 
-        // An explicitly configured, different URL remains a user-owned endpoint.
-        val customUrl = "https://custom.example.test/mcp"
-        repository.saveServer(preset.copy(url = customUrl))
-        assertEquals(customUrl, repository.allServers.first().single().url)
-        assertEquals(customUrl, repository.getById(preset.id)?.url)
-        assertEquals(customUrl, repository.loadServersForExport().single().url)
+        // Old backups may contain another embedded URL from an earlier build.
+        // Never persist or re-export such URLs for the bundled preset.
+        val oldEmbeddedUrl = "https://old-build.example.test/mcp"
+        repository.saveServer(preset.copy(url = oldEmbeddedUrl))
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+
+        // Ordinary MCP servers still retain their user-supplied URLs.
+        val custom = McpInfo(id = "custom", name = "Custom", url = oldEmbeddedUrl)
+        repository.saveServer(custom)
+        assertEquals(oldEmbeddedUrl, repository.allServers.first().single { it.id == custom.id }.url)
+        assertEquals(oldEmbeddedUrl, repository.loadServersForExport().single { it.id == custom.id }.url)
     }
 
     @Test(timeout = 20_000)
