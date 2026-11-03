@@ -9,6 +9,18 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "app" / "src" / "main" / "kotlin" / "org" / "starfall" / "generative"
 IMPORT = re.compile(r"^\s*import\s+([\w.*]+)", re.MULTILINE)
+UPWARD_PREFIXES = (
+    "org.starfall.generative.database.",
+    "org.starfall.generative.features.",
+    "org.starfall.generative.navigation.",
+    "org.starfall.generative.appwiring.",
+)
+COMPOSE_PREFIXES = (
+    "androidx.compose.foundation.",
+    "androidx.compose.material.",
+    "androidx.compose.material3.",
+    "androidx.compose.ui.",
+)
 
 
 def package_area(path: Path) -> tuple[str, str | None]:
@@ -29,49 +41,76 @@ def imports(path: Path) -> list[tuple[int, str]]:
     ]
 
 
+def shared_dependency_violation(area: str, imported: str, location: str) -> str | None:
+    if area not in {"shared", "integrations"}:
+        return None
+    prohibited = imported.startswith(UPWARD_PREFIXES) or imported in {
+        "org.starfall.generative.MainActivity",
+        "org.starfall.generative.GenerativeApplication",
+        "org.starfall.generative.BuildConfig",
+    }
+    if prohibited:
+        return f"{location}: {area} imports upward dependency {imported}"
+    return None
+
+
+def compose_dependency_violation(area: str, imported: str, location: str) -> str | None:
+    if area in {"database", "integrations"} and imported.startswith(COMPOSE_PREFIXES):
+        return f"{location}: {area} imports Compose rendering {imported}"
+    return None
+
+
+def imported_feature(imported: str) -> tuple[str, str] | None:
+    if not imported.startswith("org.starfall.generative.features."):
+        return None
+    parts = imported.split(".")
+    if len(parts) <= 4:
+        return None
+    return parts[4], ".".join(parts[5:])
+
+
+def cross_feature_violation(
+    area: str, feature: str | None, imported: str, location: str
+) -> str | None:
+    target = imported_feature(imported)
+    if area == "features" and feature and target and target[0] != feature:
+        return f"{location}: feature {feature} imports feature {target[0]}"
+    return None
+
+
+def model_boundary_violation(
+    area: str, feature: str | None, imported: str, location: str
+) -> str | None:
+    target = imported_feature(imported)
+    if area != "features" or not feature or not target or target[0] != feature:
+        return None
+    if target[1].startswith("model.") and (".ui." in target[1] or ".logic." in target[1]):
+        return f"{location}: feature model imports UI/logic {imported}"
+    return None
+
+
+def import_violations(
+    area: str, feature: str | None, imported: str, location: str
+) -> list[str]:
+    violations: list[str] = []
+    checks = (
+        shared_dependency_violation(area, imported, location),
+        compose_dependency_violation(area, imported, location),
+        cross_feature_violation(area, feature, imported, location),
+        model_boundary_violation(area, feature, imported, location),
+    )
+    violations.extend(check for check in checks if check is not None)
+    return violations
+
+
 def main() -> int:
     errors: list[str] = []
     files = sorted(SOURCE_ROOT.rglob("*.kt"))
     for path in files:
         area, feature = package_area(path)
         for line, imported in imports(path):
-            if area in {"shared", "integrations"} and (
-                imported.startswith("org.starfall.generative.database.")
-                or imported.startswith("org.starfall.generative.features.")
-                or imported.startswith("org.starfall.generative.navigation.")
-                or imported.startswith("org.starfall.generative.appwiring.")
-                or imported in {
-                    "org.starfall.generative.MainActivity",
-                    "org.starfall.generative.GenerativeApplication",
-                }
-                or imported == "org.starfall.generative.BuildConfig"
-            ):
-                errors.append(f"{path.relative_to(ROOT)}:{line}: {area} imports upward dependency {imported}")
-
-            if area in {"database", "integrations"} and (
-                imported.startswith("androidx.compose.foundation.")
-                or imported.startswith("androidx.compose.material.")
-                or imported.startswith("androidx.compose.material3.")
-                or imported.startswith("androidx.compose.ui.")
-            ):
-                errors.append(f"{path.relative_to(ROOT)}:{line}: {area} imports Compose rendering {imported}")
-
-            if area == "features" and feature and imported.startswith("org.starfall.generative.features."):
-                imported_parts = imported.split(".")
-                imported_feature = imported_parts[4] if len(imported_parts) > 4 else None
-                if imported_feature and imported_feature != feature:
-                    errors.append(
-                        f"{path.relative_to(ROOT)}:{line}: feature {feature} imports feature {imported_feature}"
-                    )
-
-            if area == "features" and feature and imported.startswith("org.starfall.generative.features."):
-                imported_parts = imported.split(".")
-                imported_feature = imported_parts[4] if len(imported_parts) > 4 else None
-                imported_package = ".".join(imported_parts[5:])
-                if imported_feature == feature and imported_package.startswith("model.") and (
-                    ".ui." in imported_package or ".logic." in imported_package
-                ):
-                    errors.append(f"{path.relative_to(ROOT)}:{line}: feature model imports UI/logic {imported}")
+            location = f"{path.relative_to(ROOT)}:{line}"
+            errors.extend(import_violations(area, feature, imported, location))
 
     if errors:
         print("Architecture dependency violations:")
