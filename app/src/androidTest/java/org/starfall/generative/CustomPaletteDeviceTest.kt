@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import kotlin.math.abs
@@ -97,6 +98,33 @@ class CustomPaletteDeviceTest {
         compose.onNodeWithTag("customization-enabled-switch").assertIsOn()
         compose.onNodeWithTag("customization-disabled-overlay").assertDoesNotExist()
         compose.onNodeWithTag("customization-list").assertExists()
+    }
+
+    @Test fun appearanceModeAndAmoledSwitchWorkWithCustomizationDisabled() {
+        var preferences by mutableStateOf(AppPreferences(
+            customizationEnabled = false, themeMode = "DARK", useAmoled = true
+        ))
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            AppearanceSettingsView(
+                appPreferences = preferences,
+                onThemeChange = { preferences = preferences.copy(themeMode = it) },
+                onAmoledChange = { preferences = preferences.copy(useAmoled = it) }
+            )
+        } }
+
+        compose.onNode(hasText(context.getString(R.string.settings_amoled)) and hasClickAction())
+            .assertIsEnabled().performClick()
+        compose.runOnIdle { assertFalse(preferences.useAmoled) }
+
+        compose.onNode(hasText(context.getString(R.string.settings_theme)) and hasClickAction())
+            .assertIsEnabled().performClick()
+        compose.onNode(hasText(context.getString(R.string.settings_theme_light)) and hasClickAction())
+            .performClick()
+        compose.runOnIdle {
+            assertEquals("LIGHT", preferences.themeMode)
+            assertFalse(preferences.customizationEnabled)
+        }
     }
 
     @Test fun paletteMixerOpensFromCustomizationAndDraggingChangesSavedAccent() {
