@@ -95,3 +95,18 @@ and logged publication counts. Repeated 8-swipe static vs live workloads:
 - These are not an old binary vs new binary measurement. A real
   trace and previous-version baseline are still required to quantify
   benefits before PR #61 is ready.
+
+
+## Focused quiet-period rerun, 2026-11-03
+
+The same Star 4 normal-Activity benchmark was repeated three times
+after adding an 850ms uninterrupted scroll-free gate for giant
+selectable Text overflow. It logged focus and actual overlapping
+published chunk counts. p95 was 26/17/18ms, p99 69/48/600ms.
+The three previous same-device live runs were p95 20/21/20ms and
+p99 750/700/700ms. Median p99 fell from 700ms to 69ms, but a 600ms
+outlier remains. Full results appear in the audit and PROBLEMS.md.
+
+Current branch Android regression results: 3/3 passed in 13.954s,
+using direct instrumentation of the isolated streamperf test package.
+These results test correctness rather than sustained GPU/CPU efficiency.

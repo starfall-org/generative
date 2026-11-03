@@ -274,3 +274,33 @@ does NOT impose that delay on normal Markdown. The behavior is covered by
 two targeted unit tests; a new isolated debug APK still needs to be measured
 to determine whether the device p99 improves. The single-Text unbounded
 layout issue is NOT solved.
+
+
+## Verified 850ms quiet-period results and latest Android tests
+
+The newest isolated benchmark app, built with the 850ms uninterrupted
+scroll-free interval for a pathological selectable single-Text overflow,
+was exercised again in three normal-Activity stream tests using the SAME
+eight-swipes, 55ms publisher and delayed 15s start. Focus was confirmed
+in all three runs; publication log confirmed 101-151 chunks during swipes.
+
+| Trial | Frames | Janky | p50 | p95 | p99 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Quiet gate #1 | 944 | 669 (70.87%) | 17ms | 26ms | 69ms |
+| Quiet gate #2 | 910 | 134 (14.73%) | 9ms | 17ms | 48ms |
+| Quiet gate #3 | 883 | 194 (21.97%) | 10ms | 18ms | 600ms |
+
+The **median p99** of this three-run set is **69ms** (range 48-600ms),
+compared with **700ms** (range 700-750ms) in the three pre-quiet-gate
+stream runs. Median p95 is 18ms (range 17-26ms), compared with 20ms
+(range 20-21ms) before. These indicate that avoiding large layout work
+between swipes helps, but a **600ms p99 outlier still occurs**.
+Frame counts and jank percentages vary strongly; this is not a
+controlled CPU/GPU/energy benchmark and is NOT a complete fix.
+
+The latest isolated test build also ran
+ChatStreamingScrollPerformanceDeviceRegressionTest on Star 4 with
+the display awake: **3/3 passed** in **13.954s**. These regressions
+cover no extra card recomposition, manual drag pausing auto-follow,
+and auto-scroll off behavior. Main user debug APK
+1.2.788-fix/launcher and 60000ms screen timeout were preserved.

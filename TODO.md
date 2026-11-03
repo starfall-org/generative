@@ -43,8 +43,10 @@ Detailed findings and first device data: app/docs/stream-hardware-audit.md.
       swipes do not trigger a full single-Text relayout. New tests cover a
       short two-swipe gap; normal Markdown follow/stream cadence is unchanged.
 - [x] Re-run 28/28 focused JVM tests successfully with the quiet-period gate.
-- [ ] Measure this new gate on the physical Star 4; the earlier 3+3 results
-      predate the quiet-period variant.
+- [x] Re-measure the 850ms quiet-period gate on Star 4 with 3 focused
+      streaming runs and verified publication overlap: p99 69/48/600ms.
+      Median improved versus previous stream trials, but a 600ms stall
+      still prevents claiming full resolution.
 
 ## Outstanding hardware-cost tasks
 
@@ -81,10 +83,14 @@ Detailed findings and first device data: app/docs/stream-hardware-audit.md.
       comparison (CPU/main-thread, memory allocation, GPU and frame timing).
       The current 3+3 runs compared static vs streaming on the same modified
       code, not an unoptimized baseline.
-- [ ] Eliminate or account for observed 700-750ms p99 spikes on long
-      overflow Text while actively streaming.
-- [ ] Run the three chat scroll Android regression cases again against the
-      current build, plus Select All/copy regressions and broader lint/tests.
+- [ ] Eliminate or account for remaining severe p99 spikes: the 850ms
+      quiet gate reduced the three-run median from 700ms to 69ms, but
+      one of the new samples still hit 600ms. Profile CPU/GPU/allocation
+      during the outlier to find the actual remaining cause.
+- [x] Re-run all three ChatStreamingScrollPerformanceDeviceRegressionTest
+      Android cases on the new isolated Star 4 app: 3/3 passed in 13.954s.
+- [ ] Verify Select All/copy on large overflow with device interaction,
+      and run broader lint/complete unit coverage.
 - [ ] Address remaining P0/P1 design problems, then re-run all checks.
 - [x] Keep branch and PR synchronized: commit and push source, tests and
       reports before checking off work in Draft PR #61.

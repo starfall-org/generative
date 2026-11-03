@@ -119,3 +119,26 @@ an expensive text measure. An additional JVM test checks that the renderer
 does not pass a short inter-swipe pause as genuinely idle. This is a
 *partial mitigation*, not bounded text layout or proven p99 improvement;
 reprofiling is outstanding.
+
+
+## 850ms quiet-period comparison, real device
+
+The new interval is deliberately isolated to an overflow Text whose
+full layout can be expensive; ordinary incremental Markdown continues
+to render normally. Three real-Activity streaming runs after the gate:
+
+| Metric | Pre-quiet gate, 3 live runs | New gate, 3 live runs |
+| --- | --- | --- |
+| p95 median (range) | 20ms (20-21) | 18ms (17-26) |
+| p99 median (range) | 700ms (700-750) | 69ms (48-600) |
+| Janky fraction median (range) | 54.23% (25.46-66.72) | 21.97% (14.73-70.87) |
+| Frame count median (range) | 622 (601-686) | 910 (883-944) |
+
+The new benchmark confirmed foreground focus and at least 101 published
+chunks during each measurement. Median latency is lower, but the
+600ms p99 sample still violates the 16.67ms 60Hz frame budget badly.
+Scheduling/device-thermal variance was not controlled, and no Perfetto
+CPU/GPU/allocation trace proves where those stalls occur. Treat this as
+evidence of mitigation, not completion of the unbounded Text or long-turn
+layout tasks. A legitimate Select All is more important than an
+incorrectly chunked fallback.
