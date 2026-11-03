@@ -60,7 +60,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
@@ -359,7 +359,7 @@ fun MediaRequestProfileEditor(
 
     editingStep?.let { selectedIndex ->
         val index = selectedIndex.coerceIn(0, draft.chain.steps.lastIndex)
-        BottomSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
+        ContentSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -483,7 +483,7 @@ fun MediaRequestProfileEditor(
     }
 
     if (editingFinalResponse) {
-        BottomSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
+        ContentSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)

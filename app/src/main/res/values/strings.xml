@@ -211,6 +211,8 @@
     <string name="connection_testing_unavailable">Connection testing is unavailable.</string>
     <string name="refresh_models">Refresh models</string>
     <string name="search_models">Search models</string>
+    <string name="shared_search">Search</string>
+    <string name="shared_no_items">No items</string>
     <string name="select_all_visible_models">Select all visible models</string>
     <string name="model_discovery_unavailable">Model discovery is unavailable</string>
     <string name="provider_deselect_visible_models">Deselect visible models</string>
@@ -1044,6 +1046,7 @@
     <string name="media_chain_provider_auth_note">Provider authentication is added automatically. Add only extra headers.</string>
     <string name="media_chain_add_header">Add header</string>
     <string name="media_chain_header_name">Name</string>
+    <string name="media_chain_header_name_hint" translatable="false">X-Request-ID</string>
     <string name="media_chain_header_value">Value</string>
     <string name="media_chain_header_empty">No extra headers. Tap + to add one.</string>
     <string name="media_chain_header_invalid">Use a unique, valid HTTP header name and a single-line value.</string>

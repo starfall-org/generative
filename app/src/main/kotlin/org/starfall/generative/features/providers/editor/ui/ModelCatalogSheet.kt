@@ -1,22 +1,12 @@
 package org.starfall.generative.features.providers.editor.ui
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,10 +17,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
@@ -41,12 +30,12 @@ import org.starfall.generative.features.providers.shared.logic.formatCatalogMeta
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.inputs.ExpandableSearchField
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -69,44 +58,20 @@ internal fun ModelCatalogSheet(
     var models by remember(discoveryIdentity) { mutableStateOf<List<DiscoveredModel>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
-    var refresh by remember { mutableStateOf(0) }
+    var refresh by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
-    var searchFocused by remember { mutableStateOf(false) }
-    val searchFocus = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
     // Keep the final selectable model clear of the system gesture region.
     val navigationBottomPadding = with(LocalDensity.current) {
         WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).getBottom(this).toDp()
     }
-    fun collapseSearch() {
-        // Losing focus only closes the search editor; the query keeps filtering the catalog.
-        // The trailing clear icon is the only action that resets the filter.
-        searchExpanded = false
-        searchFocused = false
-        focusManager.clearFocus(force = true)
-        keyboard?.hide()
-    }
-    LaunchedEffect(searchExpanded, visible) {
-        if (searchExpanded && visible) {
-            withFrameNanos { }
-            searchFocus.requestFocus()
-        }
-    }
-    val imeVisible = WindowInsets.isImeVisible
-    var imeWasVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(imeVisible) {
-        if (imeVisible) imeWasVisible = true
-        else if (imeWasVisible) {
-            imeWasVisible = false
-            if (searchExpanded) collapseSearch()
-        }
-    }
     LaunchedEffect(visible) {
         // This composable also exists while closed: never clear an editor field's focus
         // just because the model catalog has not been opened yet.
-        if (!visible && (searchExpanded || query.isNotEmpty())) collapseSearch()
+        if (!visible) {
+            searchExpanded = false
+            query = ""
+        }
     }
     val context = LocalContext.current
     val localizedResources = LocalResources.current
@@ -149,75 +114,28 @@ internal fun ModelCatalogSheet(
                 .then(if (loading) Modifier.fillMaxHeight() else Modifier)
                 .imePadding()
                 .pointerInput(searchExpanded) {
-                    // Like ConversationSideDrawer, tapping an unoccupied area dismisses search.
-                    if (searchExpanded) detectTapGestures(onTap = { collapseSearch() })
+                    if (searchExpanded) {
+                        detectTapGestures(onTap = { searchExpanded = false })
+                    }
                 }
         ) {
             // Match ModelPickerSheet: the compact toolbar stays above the results.
-            BoxWithConstraints(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-                    .testTag("provider-model-catalog-toolbar")
-            ) {
-                val searchWidth by animateDpAsState(
-                    targetValue = if (searchExpanded) (maxWidth - 104.dp).coerceAtLeast(40.dp) else 40.dp,
-                    label = "catalogSearchWidth"
-                )
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                        .heightIn(min = 56.dp).testTag("provider-model-catalog-toolbar"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Keep the field mounted until its collapse animation finishes.
-                    Box(Modifier.width(searchWidth).clipToBounds(), contentAlignment = Alignment.CenterStart) {
-                        if (searchExpanded || searchWidth > 41.dp) {
-                            OutlinedTextField(
-                                value = query,
-                                onValueChange = { query = it },
-                                singleLine = true,
-                                placeholder = {
-                                    Text(stringResource(R.string.search_models), maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis)
-                                },
-                                leadingIcon = { SharedIcon(Icons.Outlined.Search, contentDescription = null) },
-                                trailingIcon = if (query.isNotEmpty()) {
-                                    {
-                                        IconButton(onClick = { query = "" }) {
-                                            SharedIcon(Icons.Default.Close, stringResource(R.string.common_clear))
-                                        }
-                                    }
-                                } else null,
-                                keyboardOptions = KeyboardOptions(
-                                    capitalization = KeyboardCapitalization.Sentences,
-                                    imeAction = ImeAction.Search
-                                ),
-                                keyboardActions = KeyboardActions(onSearch = {
-                                    collapseSearch()
-                                }),
-                                shape = RoundedCornerShape(28.dp),
-                                modifier = Modifier.fillMaxWidth()
-                                    .focusRequester(searchFocus)
-                                    .testTag("provider_model_catalog_search")
-                                    .onFocusChanged {
-                                        if (!it.isFocused && searchFocused && searchExpanded) collapseSearch()
-                                        searchFocused = it.isFocused
-                                    }
-                            )
-                        } else {
-                            FilledTonalIconButton(
-                                onClick = { searchExpanded = true },
-                                modifier = Modifier.size(40.dp)
-                                    .testTag("provider_model_catalog_search_button")
-                            ) {
-                                SharedIcon(
-                                    Icons.Outlined.Search,
-                                    stringResource(R.string.search_models),
-                                    tint = if (query.isNotBlank()) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
+                    ExpandableSearchField(
+                        value = query,
+                        onValueChange = { query = it },
+                        expanded = searchExpanded,
+                        onExpandedChange = { searchExpanded = it },
+                        placeholder = stringResource(R.string.search_models),
+                        modifier = Modifier.weight(1f),
+                        testTag = "provider_model_catalog_search",
+                        buttonTestTag = "provider_model_catalog_search_button"
+                    )
                     FilledTonalIconButton(
                         onClick = { refresh++ },
                         enabled = !loading,
@@ -234,7 +152,6 @@ internal fun ModelCatalogSheet(
                             .semantics { contentDescription = selectionDescription }
                     )
                 }
-            }
             if (loading) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
             loadError?.let { error ->
                 ErrorContainer(

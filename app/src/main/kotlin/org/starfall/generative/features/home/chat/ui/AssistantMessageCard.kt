@@ -1,22 +1,19 @@
 package org.starfall.generative.features.home.chat.ui
 
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontFamily
@@ -27,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.features.home.chat.logic.service.AssistantTimelineItem
 import org.starfall.generative.features.home.chat.logic.service.buildAssistantActionBlocks
 import org.starfall.generative.features.home.chat.logic.service.AssistantBlockKind
@@ -42,7 +38,6 @@ import org.starfall.generative.shared.ui.AlertSeverity
 import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -238,27 +233,13 @@ fun AssistantMessageCard(
                     ) {
                         SharedIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
-                    DropdownMenu(
-                        expanded = foreground && showMoreMenu,
+                    if (foreground && showMoreMenu) ContextMenuSheet(
+                        actions = listOf(
+                            ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
+                            ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)
+                        ),
                         onDismissRequest = { showMoreMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_edit)) },
-                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
-                            onClick = {
-                                showMoreMenu = false
-                                onEdit()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_delete)) },
-                            leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null) },
-                            onClick = {
-                                showMoreMenu = false
-                                onDelete()
-                            }
-                        )
-                    }
+                    )
                 }
 
                 if (generatedModelName.isNotBlank()) {

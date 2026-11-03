@@ -1,14 +1,12 @@
 package org.starfall.generative.features.speech.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
-import org.starfall.generative.shared.ui.lists.ItemSurface
-import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import androidx.compose.ui.res.stringResource
@@ -22,8 +20,8 @@ import org.starfall.generative.integrations.speech.VoicePage
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.ui.sheets.BottomSheet
-import org.starfall.generative.shared.ui.inputs.OutlinedTextField
+import org.starfall.generative.shared.ui.sheets.ItemListSheet
+import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 
 @Composable
 internal fun SpeechVoiceSheet(
@@ -63,46 +61,63 @@ internal fun SpeechVoiceSheet(
             fetch(null, false)
         }
         DisposableEffect(Unit) { onDispose { pageJob?.cancel() } }
-        BottomSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.8f) {
-            Column(Modifier.fillMaxWidth().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.speech_choose_voice), style = MaterialTheme.typography.titleLarge)
-                OutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.speech_search_voices)) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (service.engine != SpeechEngine.ELEVENLABS) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(owned, { owned = it })
+        ItemListSheet(
+            title = stringResource(R.string.speech_choose_voice),
+            items = voices.map { voice ->
+                val selected = voice.id == service.voice
+                ItemListSheetItem(
+                    key = voice.id,
+                    value = voice,
+                    onClick = { onChoose(voice) },
+                    selected = selected,
+                    icon = {
+                        SharedIcon(
+                            Icons.Outlined.RecordVoiceOver,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    actions = {
+                        if (selected) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
+                    },
+                    content = {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(voice.name, style = MaterialTheme.typography.titleSmall)
+                            val subtitle = listOf(voice.description, voice.languages.joinToString())
+                                .filter { it.isNotBlank() }.joinToString(" · ")
+                            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else null
+                )
+            },
+            onDismissRequest = onDismiss,
+            searchQuery = query,
+            onSearchQueryChange = { query = it },
+            searchPlaceholder = stringResource(R.string.speech_search_voices),
+            filterContent = if (service.engine != SpeechEngine.ELEVENLABS) {
+                @Composable {
+                    Checkbox(checked = owned, onCheckedChange = { checked -> owned = checked })
                     Text(stringResource(R.string.speech_owned_voices))
                 }
-                if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                error?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = { retry++ }) { Text(stringResource(R.string.common_retry)) }
+            } else null,
+            loading = loading,
+            error = error,
+            onRetry = { retry++ },
+            emptyMessage = stringResource(R.string.speech_no_voices),
+            footer = if (cursor != null) {
+                @Composable {
+                    TextButton(
+                        enabled = !loading,
+                        onClick = { pageJob = scope.launch { fetch(cursor, true) } },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(stringResource(R.string.speech_load_more)) }
                 }
-                LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (!loading && error == null && voices.isEmpty()) item { Text(stringResource(R.string.speech_no_voices)) }
-                    items(voices, key = { it.id }) { voice ->
-                        val selected = voice.id == service.voice
-                        ItemSurface(isGrid = false, onClick = { onChoose(voice) },
-                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else prominentContainerColor()) {
-                            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(voice.name, style = MaterialTheme.typography.titleSmall)
-                                    val subtitle = listOf(voice.description, voice.languages.joinToString())
-                                        .filter { it.isNotBlank() }.joinToString(" · ")
-                                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                if (selected) SharedIcon(Icons.Default.Check, stringResource(R.string.common_selected))
-                            }
-                        }
-                    }
-                    if (cursor != null) item {
-                        TextButton(enabled = !loading, onClick = { pageJob = scope.launch { fetch(cursor, true) } }) {
-                            Text(stringResource(R.string.speech_load_more))
-                        }
-                    }
-                }
-            }
-        }
+            } else null,
+            contentBehindNavigationBar = true,
+            fixedHeightFraction = 0.8f
+        )
     }
 }

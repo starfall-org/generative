@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.media.mediaMimeType
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 
 /** Pick an image from the app's Media Storage without filtering or extra sheet controls. */
 @Composable
@@ -35,7 +35,7 @@ internal fun MediaStoragePhotoSheet(onDismiss: () -> Unit, onSelected: (File) ->
             ToolFiles(context).list().filter { mediaMimeType(it.name).startsWith("image/") }
         }
     }
-    BottomSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.82f) {
+    ContentSheet(onDismissRequest = onDismiss, fixedHeightFraction = 0.82f) {
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             if (photos.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {

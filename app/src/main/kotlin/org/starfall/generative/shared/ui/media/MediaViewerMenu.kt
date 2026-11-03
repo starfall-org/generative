@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.ui.media
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,9 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +24,8 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 internal data class MediaViewerAction(
     val label: String,
@@ -72,27 +70,19 @@ internal fun MediaViewerMenu(
                         )
                     }
                 }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    actions.forEach { action ->
-                        val contentColor = action.tint ?: Color.Unspecified
-                        DropdownMenuItem(
-                            text = { Text(action.label, color = contentColor) },
-                            leadingIcon = {
-                                SharedIcon(
-                                    action.icon,
-                                    contentDescription = null,
-                                    tint = action.tint ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            onClick = {
-                                expanded = false
-                                action.onClick()
-                            }
-                        )
-                    }
+                if (expanded) {
+                    ContextMenuSheet(
+                        actions = actions.map { action ->
+                            ContextMenuAction(
+                                label = action.label,
+                                onClick = action.onClick,
+                                icon = action.icon,
+                                destructive = action.tint != null,
+                                destructiveColor = action.tint
+                            )
+                        },
+                        onDismissRequest = { expanded = false }
+                    )
                 }
             }
         }

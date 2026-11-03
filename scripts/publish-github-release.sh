@@ -90,6 +90,11 @@ if [[ "$is_prerelease" == true ]]; then
   # Branch builds retain the existing, stream-specific end-user notes.
   python3 "$PWD/scripts/generate-release-notes.py" \
     --tag "$tag" --repo "$repo" --output "$notes_file"
+elif [[ -n "${RELEASE_NOTES_FILE:-}" ]]; then
+  # A reviewed notes file overrides generated stable-release notes as it does
+  # for branch releases, including when an existing release is edited.
+  python3 "$PWD/scripts/generate-release-notes.py" \
+    --tag "$tag" --repo "$repo" --output "$notes_file"
 else
   previous_stable="$(
     gh api --paginate "repos/$repo/releases?per_page=100" \

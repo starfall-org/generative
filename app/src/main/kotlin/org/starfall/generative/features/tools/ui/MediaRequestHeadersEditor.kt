@@ -92,7 +92,7 @@ internal fun MediaRequestHeadersEditor(
                                 value = row.name,
                                 onValueChange = { value -> update(rows.map { if (it.id == row.id) it.copy(name = value) else it }) },
                                 label = { Text(stringResource(R.string.media_chain_header_name)) },
-                                placeholder = { Text("X-Request-ID") },
+                                placeholder = { Text(stringResource(R.string.media_chain_header_name_hint)) },
                                 keyboardOptions = mediaLiteralKeyboardOptions,
                                 singleLine = true,
                                 modifier = Modifier.weight(1f).testTag("media-header-name-${row.id}")

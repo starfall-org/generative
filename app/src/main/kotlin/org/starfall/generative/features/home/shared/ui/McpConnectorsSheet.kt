@@ -25,12 +25,12 @@ import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun McpConnectorsSheet(onDismiss: () -> Unit) {
-    BottomSheet(onDismissRequest = onDismiss) {
+    ContentSheet(onDismissRequest = onDismiss) {
         McpConnectorsSheetContent()
     }
 }

@@ -24,8 +24,8 @@ import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemSurface
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 /** A reusable profile library. Selection belongs to the tool's model dropdown, not this list. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,27 +123,31 @@ fun MediaRequestChainSettings(
                             IconButton(onClick = { menuExpanded = true }) {
                                 SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                             }
-                            DropdownMenu(menuExpanded, { menuExpanded = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_edit)) },
-                                    leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) },
-                                    onClick = { menuExpanded = false; onOpenProfile(profile.id) }
-                                )
-                                if (music) DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.music_duplicate_profile)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        val id = java.util.UUID.randomUUID().toString()
-                                        persist(profiles + (id to profile.copy(id = id, name = "${profile.name} (copy)")))
-                                        onOpenProfile(id)
-                                    }
-                                )
-                                if (canDelete) DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_remove), color = MaterialTheme.colorScheme.error) },
-                                    leadingIcon = { SharedIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                                    onClick = { menuExpanded = false; deletingProfileId = profile.id }
-                                )
-                            }
+                             if (menuExpanded) ContextMenuSheet(
+                                 actions = buildList {
+                                     add(ContextMenuAction(
+                                         label = stringResource(R.string.common_edit),
+                                         onClick = { onOpenProfile(profile.id) },
+                                         icon = Icons.Outlined.Edit
+                                     ))
+                                     if (music) add(ContextMenuAction(
+                                         label = stringResource(R.string.music_duplicate_profile),
+                                         onClick = {
+                                             val id = java.util.UUID.randomUUID().toString()
+                                             persist(profiles + (id to profile.copy(id = id, name = "${profile.name} (copy)")))
+                                             onOpenProfile(id)
+                                         },
+                                         icon = Icons.Outlined.ContentCopy
+                                     ))
+                                     if (canDelete) add(ContextMenuAction(
+                                         label = stringResource(R.string.common_remove),
+                                         onClick = { deletingProfileId = profile.id },
+                                         icon = Icons.Outlined.Delete,
+                                         destructive = true
+                                     ))
+                                 },
+                                 onDismissRequest = { menuExpanded = false }
+                             )
                         }
                     }
                 }

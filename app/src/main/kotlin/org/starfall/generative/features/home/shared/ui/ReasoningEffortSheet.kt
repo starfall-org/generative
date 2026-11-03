@@ -14,8 +14,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
-import org.starfall.generative.shared.ui.sheets.BottomSheet
-import org.starfall.generative.shared.ui.inputs.OutlinedTextField
+import org.starfall.generative.shared.ui.sheets.ContentSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheetTitle
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
@@ -37,8 +37,9 @@ fun ReasoningEffortSheet(
         reasoningEffortOptions(supportedEfforts, reasoningLabels)
     }
 
-    BottomSheet(
+    ContentSheet(
         onDismissRequest = onDismiss
+        ,title = { ContentSheetTitle(stringResource(R.string.reasoning_effort_title)) }
     ) {
         Column(
             modifier = Modifier
@@ -48,7 +49,6 @@ fun ReasoningEffortSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.reasoning_effort_title), style = MaterialTheme.typography.titleLarge)
             Text(
                 stringResource(R.string.reasoning_effort_description),
                 style = MaterialTheme.typography.bodyMedium,

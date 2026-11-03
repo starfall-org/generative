@@ -77,7 +77,7 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_machine_options_machine-1").assertDoesNotExist()
         compose.onNodeWithTag("drawer_machine_options_machine-2").assertDoesNotExist()
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
-        compose.onNodeWithText("Choose a server for AI tools").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_item_machine-2").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_item_machine-2").performClick()
         compose.runOnIdle {
             assertEquals(production.id, settings.selectedMachineId)

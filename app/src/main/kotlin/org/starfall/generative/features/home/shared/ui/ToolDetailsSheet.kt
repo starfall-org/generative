@@ -1,8 +1,5 @@
 package org.starfall.generative.features.home.shared.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,7 +34,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
@@ -87,7 +84,7 @@ internal fun ToolDetailsSheet(
     }
     val canDownload = responseText.isNotBlank()
 
-    BottomSheet(
+    ContentSheet(
         onDismissRequest = onDismiss
     ) {
         Column(
