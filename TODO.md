@@ -2,6 +2,25 @@
 
 Branch: `fix/stream-performance` — [draft PR #61](https://github.com/starfall-org/generative/pull/61).
 
+## Chunk-production cost — complete, no production changes required
+
+- [x] Inspect `StreamResponseTextSplitter`, `StreamCharBatcher`,
+      `StreamTextSnapshot.append` and `ChatStreamDisplay` for repeated whole-answer
+      copies, token-by-token persistence, busy loops and unbounded work.
+- [x] Run an independent source-level stress benchmark (20,000 fragments,
+      280,000 characters) on the JVM and on Star 4 Android 11, including a
+      1,000-flush worst-case and fragmented reasoning input.
+- [x] Confirm negligible chunk-stage CPU/allocation relative to 60 Hz frame
+      budgets: Star 4 whole-display pipeline 64–68ms CPU and ~5.3MiB allocated
+      **for all 20,000 fragments**, not per fragment.
+- [x] Preserve a reproducible benchmark in `scripts/benchmarks/` and metrics
+      in `app/docs/stream-hardware-audit.md`. No changes to production
+      chunk-generation logic are warranted by these measurements.
+
+The downstream Markdown/Compose tasks below are **separate rendering concerns**,
+not evidence that producing the chunks is expensive; they do not block closing
+this scoped chunk-production cost investigation.
+
 ## Implemented and checked on this branch
 
 - [x] Rework streaming-text fade to one content pass and cached paths.

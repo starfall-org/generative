@@ -6,6 +6,48 @@ Star 4 has now provided preliminary Android gfxinfo frame results; see
 PROBLEMS.md. These are single samples, not repeated before/after traces.
 No CPU %, GPU utilization, battery saving, or FPS improvement is claimed.
 
+## Isolated chunk-producer hardware benchmark — scoped conclusion (2026-11-03)
+
+**Result: the chunk-processing stage is not a material CPU or allocation
+bottleneck; leave production chunk logic unchanged.** This is a separate,
+scoped answer from the downstream Markdown/Compose rendering problems below.
+Measured the actual Kotlin source classes in a process without Compose,
+Markdown, network or Room; the benchmark sources and reproduction procedure are
+in [`scripts/benchmarks/`](../../scripts/benchmarks/README.md).
+
+The stress workload used 20,000 fragments of 14 characters each (280,000
+characters), plus a fragmented `<think>` reasoning scenario. Each value is
+the median of seven samples after three warm-up runs:
+
+| Scenario | Star 4 Android 11 thread CPU | Star 4 allocation | JVM 25 thread CPU | JVM allocation |
+| --- | ---: | ---: | ---: | ---: |
+| Plain-text splitter (20k fragments) | 27.1 ms | 3.36 MiB | 6.4 ms | 3.66 MiB |
+| Reasoning / `</think>` splitter (15,712 fragments) | 108.7 ms | 7.91 MiB | 13.2 ms | 7.91 MiB |
+| Character batcher, flush every 5 fragments | 29.6 ms | 1.64 MiB | 4.8 ms | 1.27 MiB |
+| Append-only snapshots (20k appends) | 7.3 ms | 1.83 MiB | 2.0 ms | 1.98 MiB |
+| Whole stream display (20k fragments, 50 ms pacing setting) | 64.2 ms | 5.28 MiB | 10.0 ms | 4.82 MiB |
+| Whole stream display with 1,000 forced flushes | 68.2 ms | 5.15 MiB | 10.1 ms | 4.88 MiB |
+
+The whole-display stress case uses roughly **3.4 microseconds of thread CPU
+and 270 bytes of allocation per fragment** on Star 4, including the highly
+unrealistic forced-flush load. Even at 20 fragments/s it corresponds to roughly
+0.068 ms CPU and ~5.4 KiB allocation *per second of stream*, excluding
+network/graphics; this is a simple workload extrapolation, not a battery or
+end-to-end power measurement. Reasoning-only parsing is a little more costly,
+but also measured in microseconds per fragment. The production code performs
+bounded local tag probing, Unicode scanning over newly appended characters,
+small immutable state publications, and append-only snapshot links. There is no
+full-answer Markdown parse or full-answer copy in the chunk producer on each
+publication, and persistence is not scheduled per token.
+
+**Decision:** no production change is justified in
+`StreamCharBatcher`, `StreamResponseTextSplitter`, `ChatStreamDisplay`, or the
+snapshot append mechanism. Existing 600ms frame stalls must not be attributed
+to chunk production: the isolated chunk CPU work is orders of magnitude
+smaller, while the UI rendering pipeline performs substantial layout/draw work.
+Direct on-device per-process GPU/power consumption was not measured; the
+inference is limited to isolated thread CPU and allocation.
+
 ## What already avoids unnecessary work
 
 - `logic/ChatStreamDisplay.kt` batches visible publications with
