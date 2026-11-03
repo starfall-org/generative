@@ -45,7 +45,9 @@ data class McpInfo(
 )
 
 fun String.isContentApiName(): Boolean =
-    trim().lowercase().replace("-", "").replace(" ", "") == "contentapi"
+    trim().lowercase().filter(Char::isLetterOrDigit).let {
+        it == "contentapi" || it == "mcpcontentapi" || it == "contentapimcp"
+    }
 
 fun McpInfo.isContentApiPreset(): Boolean = id == "content-api" || name.isContentApiName()
 

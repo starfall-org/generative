@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,6 +49,7 @@ internal fun ModelPickerToolbar(
     onSearchBoundsChange: (Rect?) -> Unit = {}
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     val modelName = selectedModel?.displayName?.takeIf { it.isNotBlank() }
         ?: selectedModelId.ifBlank { stringResource(R.string.select_model) }
     val openSelectedDescription = stringResource(R.string.open_selected_model)
@@ -89,7 +91,10 @@ internal fun ModelPickerToolbar(
                 ) {
                     Surface(
                         onClick = {
-                            if (searchExpanded) searchExpanded = false
+                            if (searchExpanded) {
+                                searchExpanded = false
+                                focusManager.clearFocus()
+                            }
                             onOpenSelectedModel()
                         },
                         modifier = Modifier.height(40.dp)

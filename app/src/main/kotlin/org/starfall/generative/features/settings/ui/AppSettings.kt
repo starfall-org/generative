@@ -109,11 +109,10 @@ fun AppearanceSettingsView(
                         SettingsChoice("LIGHT", stringResource(R.string.settings_theme_light)),
                         SettingsChoice("DARK", stringResource(R.string.settings_theme_dark))
                     ),
-                    onSelected = onThemeChange,
-                    enabled = appPreferences.customizationEnabled
+                    onSelected = onThemeChange
                 )
                 PreferenceToggle(stringResource(R.string.settings_amoled), null,
-                    appPreferences.useAmoled, onAmoledChange, enabled = appPreferences.customizationEnabled)
+                    appPreferences.useAmoled, onAmoledChange)
             }
         }
         item {

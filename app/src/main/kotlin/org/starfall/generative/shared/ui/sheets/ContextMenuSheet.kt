@@ -31,7 +31,8 @@ data class ContextMenuAction(
     @DrawableRes val iconRes: Int? = null,
     val enabled: Boolean = true,
     val destructive: Boolean = false,
-    val destructiveColor: Color? = null
+    val destructiveColor: Color? = null,
+    val trailingContent: (@Composable () -> Unit)? = null
 ) {
     init {
         require(icon != null || iconRes != null) { "ContextMenuAction requires an icon" }
@@ -80,7 +81,13 @@ fun ContextMenuSheet(
                     ) {
                         action.icon?.let { SharedIcon(it, null, tint = displayedColor) }
                         action.iconRes?.let { Icon(painterResource(it), null, tint = displayedColor) }
-                        Text(action.label, color = displayedColor, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            action.label,
+                            modifier = Modifier.weight(1f),
+                            color = displayedColor,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        action.trailingContent?.invoke()
                     }
                 }
             }

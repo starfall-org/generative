@@ -5,13 +5,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,6 +25,10 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.drawer.ui.DrawerQuickShortcuts
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.withSelectedRemoteMachine
+import org.starfall.generative.shared.model.withRemoteMachineEnabled
+import org.starfall.generative.shared.model.remoteMachineToolEnabled
+import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.theme.GenerativeTheme
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
@@ -34,7 +43,7 @@ class DrawerRemoteMachineContextMenuTest {
         val staging = RemoteMachine("machine-1", "Staging")
         val production = RemoteMachine("machine-2", "Production")
         val machines = listOf(staging, production)
-        var selectedId by mutableStateOf<String?>(null)
+        var settings by mutableStateOf(ToolSettings(selectedMachineId = ""))
         var forwarded: RemoteMachine? = null
         var terminal: RemoteMachine? = null
         var toolsSaved: RemoteMachine? = null
@@ -44,11 +53,11 @@ class DrawerRemoteMachineContextMenuTest {
                 CompositionLocalProvider(
                     LocalToolControls provides ToolControls(
                         machines = machines,
-                        settings = ToolSettings(
-                            machinesEnabled = selectedId != null,
-                            enabledMachines = machines.associate { it.id to (it.id == selectedId) }
-                        ),
-                        selectMachine = { selectedId = it }
+                        settings = settings,
+                        selectMachine = { settings = settings.withSelectedRemoteMachine(it, machines.map { machine -> machine.id }) },
+                        setMachine = { id, enabled ->
+                            settings = settings.withRemoteMachineEnabled(id, enabled, machines.map { machine -> machine.id })
+                        }
                     )
                 ) {
                     DrawerQuickShortcuts(
@@ -70,9 +79,22 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_machine_picker_item_machine-2").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_item_machine-2").performClick()
-        compose.runOnIdle { assertEquals(production.id, selectedId) }
+        compose.runOnIdle {
+            assertEquals(production.id, settings.selectedMachineId)
+            assertTrue("Selection must not enable a server", settings.enabledMachines.values.none { it })
+        }
 
         compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOff().performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOn()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOff()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOn()
+        compose.runOnIdle {
+            assertEquals(setOf(production.id), settings.enabledMachines.filterValues { it }.keys)
+            assertEquals(production.id, settings.selectedMachineId)
+        }
         compose.onNodeWithText("Open terminal").assertIsDisplayed()
         compose.onNodeWithText("Port Forward").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(production, forwarded) }
@@ -86,26 +108,47 @@ class DrawerRemoteMachineContextMenuTest {
         compose.runOnIdle { assertEquals(production, terminal) }
 
         compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
-        compose.onNodeWithText("Unset").performClick()
-        compose.runOnIdle { assertNull(selectedId) }
+        compose.onNodeWithText("Unset").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals("", settings.selectedMachineId)
+            assertTrue("Unset must persistently disable tools", settings.enabledMachines.values.none { it })
+            assertFalse(settings.machinesEnabled)
+            assertFalse(remoteMachineToolEnabled(settings, production, REMOTE_TOOL_EXECUTE))
+        }
         compose.onNodeWithTag("drawer_machine_options_machine-2").assertDoesNotExist()
         compose.onNodeWithText("Select server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_item_machine-2").performClick()
+        compose.runOnIdle {
+            assertEquals("machine-2", settings.selectedMachineId)
+            assertTrue("Previously enabled server must restore its switch",
+                remoteMachineToolEnabled(settings, production, REMOTE_TOOL_EXECUTE))
+            assertFalse(remoteMachineToolEnabled(settings, staging, REMOTE_TOOL_EXECUTE))
+        }
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOn().performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-2").assertIsOff()
+        compose.runOnIdle { assertEquals(false, settings.rememberedEnabledMachines["machine-2"]) }
         compose.runOnIdle { assertNull(toolsSaved) }
     }
 
     @Test
     fun selectingAnotherMachineReplacesTheCurrentSelection() {
         val machines = listOf(RemoteMachine("machine-a", "Alpha"), RemoteMachine("machine-b", "Beta"))
-        var selectedId by mutableStateOf<String?>("machine-a")
+        var settings by mutableStateOf(ToolSettings(
+            selectedMachineId = "machine-a",
+            machinesEnabled = true,
+            enabledMachines = mapOf("machine-a" to true, "machine-b" to false)
+        ))
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 CompositionLocalProvider(LocalToolControls provides ToolControls(
                     machines = machines,
-                    settings = ToolSettings(
-                        machinesEnabled = true,
-                        enabledMachines = machines.associate { it.id to (it.id == selectedId) }
-                    ),
-                    selectMachine = { selectedId = it }
+                    settings = settings,
+                    selectMachine = { settings = settings.withSelectedRemoteMachine(it, machines.map { machine -> machine.id }) },
+                    setMachine = { id, enabled ->
+                        settings = settings.withRemoteMachineEnabled(id, enabled, machines.map { machine -> machine.id })
+                    }
                 )) {
                     DrawerQuickShortcuts(
                         onOpenMediaStorage = {},
@@ -120,8 +163,25 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_machine_options_machine-a").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_machine_picker_item_machine-b").performClick()
-        compose.runOnIdle { assertEquals("machine-b", selectedId) }
+        compose.runOnIdle {
+            assertEquals("machine-b", settings.selectedMachineId)
+            assertTrue("Switching server must disable A", settings.enabledMachines.values.none { it })
+            assertFalse(settings.machinesEnabled)
+            assertFalse(remoteMachineToolEnabled(settings, machines[0], REMOTE_TOOL_EXECUTE))
+        }
         compose.onNodeWithTag("drawer_machine_options_machine-a").assertDoesNotExist()
         compose.onNodeWithTag("drawer_machine_options_machine-b").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_options_machine-b").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-b").assertIsOff()
+        compose.onNodeWithText("Open terminal").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_item_machine-a").performClick()
+        compose.runOnIdle {
+            assertTrue("A must recover its previously enabled state",
+                remoteMachineToolEnabled(settings, machines[0], REMOTE_TOOL_EXECUTE))
+            assertFalse(remoteMachineToolEnabled(settings, machines[1], REMOTE_TOOL_EXECUTE))
+        }
+        compose.onNodeWithTag("drawer_machine_options_machine-a").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_machine-a").assertIsOn()
     }
 }

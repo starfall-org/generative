@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +17,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +113,11 @@ internal fun ModelCatalogSheet(
             Modifier.fillMaxWidth()
                 .then(if (loading) Modifier.fillMaxHeight() else Modifier)
                 .imePadding()
+                .pointerInput(searchExpanded) {
+                    if (searchExpanded) {
+                        detectTapGestures(onTap = { searchExpanded = false })
+                    }
+                }
         ) {
             // Match ModelPickerSheet: the compact toolbar stays above the results.
             Row(

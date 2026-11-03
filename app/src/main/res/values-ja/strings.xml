@@ -654,6 +654,8 @@
     <string name="remote_server_selection_title">AI ツールで使うサーバーを選択</string>
     <string name="remote_server_none_selected">サーバー未選択</string>
     <string name="remote_server_unset_action">選択を解除</string>
+    <string name="remote_server_enable_action">AI ツールを有効にする</string>
+    <string name="remote_server_disable_action">AI ツールを無効にする</string>
     <string name="remote_servers_description">SSH と Google Cloud Shell の接続</string>
     <string name="remote_servers_empty">リモートサーバーがありません</string>
     <string name="remote_server_empty_hint">SSH または Google Cloud Shell の接続を追加すると、ターミナルやファイル閲覧を利用できます。</string>

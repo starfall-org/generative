@@ -25,6 +25,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,12 +38,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.model.selectedRemoteMachine
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -162,19 +166,51 @@ internal fun DrawerQuickShortcuts(
                                         stringResource(R.string.common_more_options),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                if (machineMenu) ContextMenuSheet(
-                                    actions = listOf(
-                                        ContextMenuAction(stringResource(R.string.remote_server_open_terminal),
-                                            onClick = { onOpenTerminal(selectedMachine) }, icon = Icons.Outlined.Terminal),
-                                        ContextMenuAction(stringResource(R.string.remote_port_forward),
-                                            onClick = { onPortForward(selectedMachine) }, icon = Icons.Outlined.Hub),
-                                        ContextMenuAction(stringResource(R.string.common_tools),
-                                            onClick = { toolsMachine = selectedMachine }, icon = FluentUi.Regular.WrenchScrewdriver),
-                                        ContextMenuAction(stringResource(R.string.remote_server_unset_action),
-                                            onClick = { controls.selectMachine(null) }, icon = Icons.Outlined.LinkOff)
-                                    ),
-                                    onDismissRequest = { machineMenu = false }
-                                )
+                                if (machineMenu) {
+                                    val checked = remoteMachineEnabled(controls.settings, selectedMachine)
+                                    val toggleLabel = stringResource(
+                                        if (checked) R.string.remote_server_disable_action
+                                        else R.string.remote_server_enable_action
+                                    )
+                                    ContextMenuSheet(
+                                        actions = listOf(
+                                            ContextMenuAction(
+                                                label = toggleLabel,
+                                                onClick = { controls.setMachine(selectedMachine.id, !checked) },
+                                                icon = Icons.Outlined.Computer,
+                                                trailingContent = {
+                                                    Switch(
+                                                        checked = checked,
+                                                        onCheckedChange = { controls.setMachine(selectedMachine.id, it) },
+                                                        modifier = Modifier.testTag("drawer_machine_switch_" + selectedMachine.id)
+                                                            .semantics { contentDescription = toggleLabel }
+                                                    )
+                                                }
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_server_open_terminal),
+                                                onClick = { onOpenTerminal(selectedMachine) },
+                                                icon = Icons.Outlined.Terminal
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_port_forward),
+                                                onClick = { onPortForward(selectedMachine) },
+                                                icon = Icons.Outlined.Hub
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.common_tools),
+                                                onClick = { toolsMachine = selectedMachine },
+                                                icon = FluentUi.Regular.WrenchScrewdriver
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_server_unset_action),
+                                                onClick = { controls.selectMachine(null) },
+                                                icon = Icons.Outlined.LinkOff
+                                            )
+                                        ),
+                                        onDismissRequest = { machineMenu = false }
+                                    )
+                                }
                             }
                         }
                     }
@@ -274,6 +310,7 @@ internal fun DrawerQuickShortcuts(
                     }
                 )
             },
+            listMaxHeight = 420.dp,
             emptyMessage = stringResource(R.string.remote_servers_none_configured)
         )
     }

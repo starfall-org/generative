@@ -45,7 +45,7 @@ class McpRepository(
         val authorized = (oauth ?: error("MCP OAuth is unavailable")).authorize(resolveServer(server))
             .copy(credentialState = CredentialLoadState.LOADED)
         if (dao.getServerById(server.id) != null) saveServer(authorized)
-        authorized
+        authorized.withoutConfiguredEndpoint()
     }
 
     suspend fun clearOAuth(server: McpInfo): McpInfo {
@@ -53,11 +53,12 @@ class McpRepository(
         oauth?.clear(server.id)
         val cleared = resolved.copy(auth = resolved.auth.copy(value = null, oauthAuthorized = false))
         if (dao.getServerById(server.id) != null) saveServer(cleared)
-        return cleared
+        return cleared.withoutConfiguredEndpoint()
     }
 
     private val state = ImmediateState(load = {
-        db.withTransaction { dao.getAllServers().map { entityToMetadata(it).withConfiguredEndpoint() } }
+        // The build-configured endpoint is transport-only; never publish it to UI state.
+        db.withTransaction { dao.getAllServers().map { entityToMetadata(it).withoutConfiguredEndpoint() } }
     })
     val allServers: Flow<List<McpInfo>> = state.flow
 
@@ -95,8 +96,8 @@ class McpRepository(
 
     suspend fun saveServer(server: McpInfo) {
         requireSavableCredentials(server.credentialState)
-        val visibleServer = server.withConfiguredEndpoint()
-        val storageServer = server.withoutConfiguredEndpoint()
+        val visibleServer = server.withoutConfiguredEndpoint()
+        val storageServer = visibleServer
         state.mutate({ it.upsert(visibleServer.metadata()) { item -> item.id }.sortedBy { it.sortOrder } }) {
             db.withTransaction {
                 val previous = dao.getServerById(storageServer.id)
@@ -209,7 +210,8 @@ class McpRepository(
     }
 
     private suspend fun selected(entity: McpServerEntity): McpInfo =
-        entityToMetadata(entity).withConfiguredEndpoint().let { if (entity.authId == null) it else resolveSecrets(it, entity) }
+        entityToMetadata(entity).let { if (entity.authId == null) it else resolveSecrets(it, entity) }
+            .withoutConfiguredEndpoint()
 
     private suspend fun resolveSecrets(server: McpInfo, entity: McpServerEntity): McpInfo {
         check(server.protocol.name == entity.protocol) { "MCP server ${server.id} changed protocol. Reload before resolving credentials." }
@@ -233,5 +235,7 @@ class McpRepository(
         copy(url = resolvedUrl(contentApiMcpUrl))
 
     private fun McpInfo.withoutConfiguredEndpoint(): McpInfo =
-        if (isContentApiPreset() && resolvedUrl() == contentApiMcpUrl) copy(url = null) else this
+        // The bundled endpoint belongs to the build, never to UI, Room, or exported backups.
+        // Also remove URLs imported from backups made with a different build endpoint.
+        if (isContentApiPreset()) copy(url = null) else this
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.inputs.ExpandableSearchField
@@ -80,6 +82,8 @@ fun <T> ItemListSheet(
     footer: (@Composable () -> Unit)? = null,
     contentBehindNavigationBar: Boolean = false,
     fixedHeightFraction: Float? = null,
+    listModifier: Modifier = Modifier,
+    listMaxHeight: Dp? = null,
     expandOnOpen: Boolean = false
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
@@ -140,7 +144,10 @@ fun <T> ItemListSheet(
             }
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                modifier = Modifier.fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .then(listMaxHeight?.let { Modifier.heightIn(max = it) } ?: Modifier)
+                    .then(listModifier),
                 contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {

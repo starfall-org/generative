@@ -304,7 +304,8 @@ class AppPreferencesRepository(private val context: Context) {
         includeCustomization: Boolean = preferences[PreferenceKeys.CUSTOMIZATION_ENABLED] ?: true
     ): AppPreferences {
         val defaults = AppPreferences()
-        val storedThemeMode = if (includeCustomization) preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM" else defaults.themeMode
+        // Theme mode and AMOLED are general appearance settings, not Customization overrides.
+        val storedThemeMode = preferences[PreferenceKeys.THEME_MODE] ?: "SYSTEM"
         val legacyAmoled = storedThemeMode == "AMOLED"
         return AppPreferences(
             chatRelations = decodeChatRelations(preferences),
@@ -312,7 +313,7 @@ class AppPreferencesRepository(private val context: Context) {
             selectedSpeechServiceId = preferences[PreferenceKeys.SELECTED_SPEECH_SERVICE_ID],
             customizationEnabled = preferences[PreferenceKeys.CUSTOMIZATION_ENABLED] ?: true,
             themeMode = if (legacyAmoled) "DARK" else storedThemeMode,
-            useAmoled = if (includeCustomization) preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled else defaults.useAmoled,
+            useAmoled = preferences[PreferenceKeys.USE_AMOLED] ?: legacyAmoled,
             useDynamicColor = if (includeCustomization) preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true else defaults.useDynamicColor,
             colorSchemeName = when (if (includeCustomization) preferences[PreferenceKeys.COLOR_SCHEME_NAME] else null) {
                 "ORANGE", "SUNSET" -> "ORANGE"
@@ -611,8 +612,6 @@ class AppPreferencesRepository(private val context: Context) {
             else AppPreferences().let { defaults ->
                 current.copy(
                     customizationEnabled = false,
-                    themeMode = defaults.themeMode,
-                    useAmoled = defaults.useAmoled,
                     useDynamicColor = defaults.useDynamicColor,
                     colorSchemeName = defaults.colorSchemeName,
                     customPalette = defaults.customPalette,

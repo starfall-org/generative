@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.withSelectedRemoteMachine
+import org.starfall.generative.shared.model.withRemoteMachineEnabled
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
 
@@ -91,18 +92,12 @@ internal class ChatToolSettingsActions(
     fun setMachineEnabled(machineId: String, enabled: Boolean, knownMachineIds: List<String> = emptyList()) {
         scope.launch(LocalWriteErrors.handler) {
             store.update { settings ->
-                val initialSwitches = if (settings.enabledMachines.isEmpty() && knownMachineIds.isNotEmpty()) {
-                    knownMachineIds.associateWith { settings.machinesEnabled }
-                } else settings.enabledMachines
-                settings.copy(
-                    enabledMachines = initialSwitches + (machineId to enabled),
-                    machinesEnabled = settings.machinesEnabled || enabled
-                )
+                settings.withRemoteMachineEnabled(machineId, enabled, knownMachineIds)
             }
         }
     }
 
-    /** Single atomic selection; Unset disables all remote tools, including legacy master settings. */
+    /** Drawer selection is separate from the server activation switch. */
     fun selectMachine(machineId: String?, knownMachineIds: List<String>) {
         scope.launch(LocalWriteErrors.handler) {
             store.update { it.withSelectedRemoteMachine(machineId, knownMachineIds) }

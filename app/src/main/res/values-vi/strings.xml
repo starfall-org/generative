@@ -649,6 +649,8 @@
     <string name="remote_server_selection_title">Chọn máy chủ cho công cụ AI</string>
     <string name="remote_server_none_selected">Chưa chọn máy chủ</string>
     <string name="remote_server_unset_action">Bỏ chọn</string>
+    <string name="remote_server_enable_action">Bật công cụ AI</string>
+    <string name="remote_server_disable_action">Tắt công cụ AI</string>
     <string name="remote_servers_description">Kết nối SSH và Google Cloud Shell</string>
     <string name="remote_servers_empty">Chưa có Remote Server nào</string>
     <string name="remote_server_empty_hint">Thêm kết nối SSH hoặc Google Cloud Shell để mở terminal và duyệt tệp.</string>

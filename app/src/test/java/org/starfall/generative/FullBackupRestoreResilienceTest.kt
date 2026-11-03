@@ -41,7 +41,6 @@ import org.robolectric.annotation.LooperMode
 import org.starfall.generative.features.appdata.logic.AppDataTransferService
 import org.starfall.generative.features.appdata.logic.writeZipBackup
 import org.starfall.generative.features.appdata.model.AppDataBackup
-import org.starfall.generative.features.home.chat.logic.ChatGeneration
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.chat.logic.service.ConversationTitleGenerator
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
@@ -323,7 +322,6 @@ class FullBackupRestoreResilienceTest {
                     currentConversation = currentConversation,
                     configuredTextModel = { provider to SystemToolConfig(providerId = provider.id, modelId = "gpt-test") },
                     existingGeneration = { null },
-                    generationFor = { ChatGeneration(scope, harness.conversations::saveConversation, publish = {}) },
                     isRestoreInProgress = { restoring.get() },
                     withRestoreGuard = { if (!restoring.get()) it() },
                     writeConversation = { block ->

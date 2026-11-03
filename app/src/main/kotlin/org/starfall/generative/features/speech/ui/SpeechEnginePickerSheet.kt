@@ -138,6 +138,6 @@ internal fun SpeechEnginePickerSheet(
             )
         },
         onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("speech-platform-list")
+        listModifier = Modifier.testTag("speech-platform-list")
     )
 }

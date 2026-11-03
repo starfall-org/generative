@@ -303,9 +303,9 @@ internal class RemoteTerminalBridge(
         syncLocalImeDraft()
     }
 
-    fun sendChar(char: Char) {
+    fun sendChar(char: Char, forceRemote: Boolean = false) {
         inputView?.finishImeComposition()
-        input.sendChar(char)
+        input.sendChar(char, forceRemote)
         syncLocalImeDraft()
     }
 
