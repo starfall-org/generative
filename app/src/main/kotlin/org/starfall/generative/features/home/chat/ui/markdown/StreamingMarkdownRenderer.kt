@@ -32,8 +32,6 @@ import org.starfall.generative.features.home.chat.model.StreamFreezeSignal
 import org.starfall.generative.features.home.chat.ui.MarkdownParseCache
 import org.starfall.generative.features.home.chat.ui.TrackPendingWork
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
-import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
-import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 @Composable
@@ -46,7 +44,8 @@ internal fun StreamingMarkdownRenderer(
     streamMessageId: String? = null,
     streamStartOffset: Int = 0,
     cacheIdentity: MarkdownRenderCacheIdentity? = null,
-    streamFreezeSignal: StreamFreezeSignal? = null
+    streamFreezeSignal: StreamFreezeSignal? = null,
+    streamGrowthActive: Boolean = isStreaming
 ) {
     val truncationLabel = stringResource(R.string.chat_response_truncated)
     if (isStreaming && streamSnapshot != null && streamGenerationId != null && streamMessageId != null) {
@@ -62,22 +61,25 @@ internal fun StreamingMarkdownRenderer(
             MarkdownRenderer(frozenText, modifier, isStreaming = false, cacheIdentity = cacheIdentity)
             return
         }
-        IncrementalStreamingMarkdown(
-            streamSnapshot = streamSnapshot,
-            generationId = streamGenerationId,
-            messageId = streamMessageId,
-            sourceStartOffset = streamStartOffset,
-            modifier = modifier,
-            cacheIdentity = cacheIdentity,
-            streamFreezeSignal = streamFreezeSignal
-        )
+        key(streamGenerationId, streamMessageId, streamStartOffset) {
+            StreamGrowthViewport(modifier, active = streamGrowthActive) {
+                IncrementalStreamingMarkdown(
+                    streamSnapshot = streamSnapshot,
+                    generationId = streamGenerationId,
+                    messageId = streamMessageId,
+                    sourceStartOffset = streamStartOffset,
+                    modifier = Modifier,
+                    cacheIdentity = cacheIdentity,
+                    streamFreezeSignal = streamFreezeSignal
+                )
+            }
+        }
         return
     }
 
     val latestContent = rememberUpdatedState(content)
     val displayContent = remember(streamGenerationId, streamMessageId, cacheIdentity) { mutableStateOf(content) }
     val oversizedPreview = remember(streamGenerationId, streamMessageId, cacheIdentity) { mutableStateOf<String?>(null) }
-    val finishingFade = remember { mutableStateOf(isStreaming) }
     val settled = remember { mutableStateOf(!isStreaming) }
     ObserveOversizedStreamingPreview(
         latestContent = latestContent,
@@ -92,21 +94,26 @@ internal fun StreamingMarkdownRenderer(
         content = content,
         latestContent = latestContent,
         displayContent = displayContent,
-        finishingFade = finishingFade,
         settled = settled,
         cacheIdentity = cacheIdentity
     )
-    RenderStreamingMarkdown(
-        displayContent = displayContent.value,
-        oversizedPreview = oversizedPreview.value,
-        truncationLabel = truncationLabel,
-        modifier = modifier,
-        isStreaming = isStreaming,
-        finishingFade = finishingFade.value,
-        settled = settled.value,
-        cacheIdentity = cacheIdentity,
-        streamGenerationId = streamGenerationId
-    )
+    val document: @Composable (Modifier) -> Unit = { documentModifier ->
+        RenderStreamingMarkdown(
+            displayContent = displayContent.value,
+            oversizedPreview = oversizedPreview.value,
+            truncationLabel = truncationLabel,
+            modifier = documentModifier,
+            isStreaming = isStreaming,
+            settled = settled.value,
+            cacheIdentity = cacheIdentity,
+            streamGenerationId = streamGenerationId
+        )
+    }
+    if (isStreaming) {
+        StreamGrowthViewport(modifier) { document(Modifier) }
+    } else {
+        document(modifier)
+    }
 }
 
 @Composable
@@ -139,21 +146,15 @@ private fun ObserveStreamingMarkdownLifecycle(
     content: String,
     latestContent: androidx.compose.runtime.State<String>,
     displayContent: MutableState<String>,
-    finishingFade: MutableState<Boolean>,
     settled: MutableState<Boolean>,
     cacheIdentity: MarkdownRenderCacheIdentity?
 ) {
     LaunchedEffect(isStreaming, if (isStreaming) null else content) {
         if (isStreaming) {
             settled.value = false
-            finishingFade.value = true
             collectStreamingMarkdownChunks(latestContent, displayContent)
         } else {
             displayContent.value = latestContent.value
-            if (finishingFade.value) {
-                delay(STREAM_FADE_DURATION_MS + 32)
-                finishingFade.value = false
-            }
             if (!settled.value) {
                 val finalText = latestContent.value
                 cacheFinalMarkdownIfNeeded(finalText, cacheIdentity)
@@ -198,26 +199,22 @@ private fun RenderStreamingMarkdown(
     truncationLabel: String,
     modifier: Modifier,
     isStreaming: Boolean,
-    finishingFade: Boolean,
     settled: Boolean,
     cacheIdentity: MarkdownRenderCacheIdentity?,
     streamGenerationId: Long?
 ) {
-    CompositionLocalProvider(LocalStreamingTextFade provides (isStreaming || finishingFade)) {
-        when {
-            // This is only a live-stream safety preview. Once generation stops, let the complete
-            // source reach MarkdownRenderer, which falls back to bounded plain-text nodes if needed.
-            isStreaming && !oversizedPreview.isNullOrEmpty() -> StreamingMarkdownPreview(oversizedPreview, modifier)
-            isStreaming && displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(displayContent, modifier)
-            else -> RenderStreamingMarkdownDocument(
-                displayContent = displayContent,
-                modifier = modifier,
-                isStreaming = isStreaming,
-                settled = settled,
-                cacheIdentity = cacheIdentity,
-                streamGenerationId = streamGenerationId
-            )
-        }
+    when {
+        // Once generation stops, the complete source reaches MarkdownRenderer.
+        isStreaming && !oversizedPreview.isNullOrEmpty() -> StreamingMarkdownPreview(oversizedPreview, modifier)
+        isStreaming && displayContent.length > MAX_MARKDOWN_RENDER_CHARS -> StreamingMarkdownPreview(displayContent, modifier)
+        else -> RenderStreamingMarkdownDocument(
+            displayContent = displayContent,
+            modifier = modifier,
+            isStreaming = isStreaming,
+            settled = settled,
+            cacheIdentity = cacheIdentity,
+            streamGenerationId = streamGenerationId
+        )
     }
 }
 
@@ -523,19 +520,17 @@ private fun RenderIncrementalMarkdown(
 ) {
     val preferences = LocalCodeRenderingPreferences.current
     val typography = messageMarkdownTypography()
-    CompositionLocalProvider(LocalStreamingTextFade provides true) {
-        RenderIncrementalMarkdownDocument(
-            parser = parser,
-            renderSnapshot = renderSnapshot,
-            renderedSource = renderedSource,
-            renderedOverflow = renderedOverflow,
-            truncationLabel = truncationLabel,
-            modifier = modifier,
-            cacheIdentity = cacheIdentity,
-            preferences = preferences,
-            typography = typography
-        )
-    }
+    RenderIncrementalMarkdownDocument(
+        parser = parser,
+        renderSnapshot = renderSnapshot,
+        renderedSource = renderedSource,
+        renderedOverflow = renderedOverflow,
+        truncationLabel = truncationLabel,
+        modifier = modifier,
+        cacheIdentity = cacheIdentity,
+        preferences = preferences,
+        typography = typography
+    )
 }
 
 @Composable

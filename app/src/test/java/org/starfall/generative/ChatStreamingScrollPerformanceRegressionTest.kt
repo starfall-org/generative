@@ -68,15 +68,26 @@ class ChatStreamingScrollPerformanceRegressionTest {
         compose.waitForIdle()
         assertEquals("Disabled auto-scroll cannot emit a follow request", baseline, state.requestCount)
 
+        val positionBeforeFollowing = state.listState.firstVisibleItemIndex to
+            state.listState.firstVisibleItemScrollOffset
         compose.runOnIdle { autoScroll = true; replyHeight = 560.dp; live.value = stream("more text", 3L) }
-        compose.waitUntil(10_000) { state.requestCount > baseline }
-        val followed = state.requestCount
+        compose.waitUntil(10_000) {
+            val position = state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset
+            position != positionBeforeFollowing
+        }
         compose.waitForIdle()
-        assertEquals("No idle ticker should issue redundant follow requests", followed, state.requestCount)
+        val followedRequests = state.requestCount
+        val followedPosition = state.listState.firstVisibleItemIndex to
+            state.listState.firstVisibleItemScrollOffset
+        assertEquals("Native anchoring should not enqueue one animation per growth frame",
+            baseline, followedRequests)
 
         compose.runOnIdle { autoScroll = false; replyHeight = 640.dp; live.value = stream("off again", 4L) }
         compose.waitForIdle()
-        assertEquals("Switching auto-scroll off stops future relocations", followed, state.requestCount)
+        assertEquals("Switching auto-scroll off stops further native scroll movement",
+            followedPosition, state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset)
 
         compose.runOnIdle {
             streaming = false
@@ -84,7 +95,9 @@ class ChatStreamingScrollPerformanceRegressionTest {
             replyHeight = 700.dp
         }
         compose.waitForIdle()
-        assertEquals("Stream completion and final relayout must never auto-scroll", followed, state.requestCount)
+        assertEquals("Completion must not move the list after auto-scroll is disabled",
+            followedPosition, state.listState.firstVisibleItemIndex to
+                state.listState.firstVisibleItemScrollOffset)
     }
 
     @Test fun aManualDragDisablesFollowUntilTheUserReturnsToLatest() {
@@ -106,6 +119,132 @@ class ChatStreamingScrollPerformanceRegressionTest {
         compose.runOnIdle { state.jump() }
         compose.waitUntil(10_000) { !state.detached }
         assertTrue(state.requestCount > afterDrag)
+    }
+
+    private fun waitForReplyText(text: String) {
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText(text, substring = true, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test fun completionWhileChatIsParkedExtendsMountedBlocksWithoutFullReparse() {
+        val live = MutableStateFlow<ActiveChatStreamState?>(stream("Opening paragraph.\n\n", 1L))
+        var message by mutableStateOf(messages().last())
+        var generating by mutableStateOf(true)
+        var foreground by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            CompositionLocalProvider(LocalChatForeground provides foreground) {
+                AssistantMessageCard(message, generating, {}, {}, onEdit = {}, onDelete = {},
+                    onRead = {}, onSwitchVersion = {}, conversationId = "chat",
+                    streamStateFlow = live, cacheEnabled = false)
+            }
+        } }
+        waitForReplyText("Opening paragraph.")
+        val fullParsesBefore = MarkdownParseCache.metrics().fullParseCount
+        compose.runOnIdle {
+            foreground = false
+            message = message.copy(versions = listOf(MessageVersion(
+                content = "Opening paragraph.\n\nFinal content written while chat was hidden."
+            )))
+            generating = false
+            // The old published stream is deliberately not cleared before completion.
+        }
+        waitForReplyText("Final content written while chat was hidden.")
+        compose.runOnIdle {
+            assertEquals("The append-only handoff must not trigger a full-document parse",
+                fullParsesBefore, MarkdownParseCache.metrics().fullParseCount)
+            foreground = true
+        }
+        compose.onNodeWithText("Opening paragraph.", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("Final content written while chat was hidden.", substring = true,
+            useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test fun completedSourceOverridesStaleStreamAndSubsequentEdits() {
+        val live = MutableStateFlow<ActiveChatStreamState?>(stream("Stale streamed content.", 1L))
+        var message by mutableStateOf(messages().last())
+        var generating by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(message, generating, {}, {}, onEdit = {}, onDelete = {},
+                onRead = {}, onSwitchVersion = {}, conversationId = "chat", streamStateFlow = live)
+        } }
+        waitForReplyText("Stale streamed content.")
+        compose.runOnIdle {
+            message = message.copy(versions = listOf(MessageVersion(content = "Canonical persisted answer.")))
+            generating = false // StateFlow still publishes the old stream.
+        }
+        waitForReplyText("Canonical persisted answer.")
+        compose.onNodeWithText("Stale streamed content.", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
+        compose.runOnIdle {
+            message = message.copy(versions = listOf(MessageVersion(content = "Edited canonical answer.")))
+        }
+        waitForReplyText("Edited canonical answer.")
+        compose.onNodeWithText("Canonical persisted answer.", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test fun rowRemountedAfterOffscreenCompletionStartsFromNewestStoredVersion() {
+        val live = MutableStateFlow<ActiveChatStreamState?>(stream("Previously visible.", 1L))
+        var message by mutableStateOf(messages().last())
+        var generating by mutableStateOf(true)
+        var mounted by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            if (mounted) AssistantMessageCard(message, generating, {}, {}, onEdit = {},
+                onDelete = {}, onRead = {}, onSwitchVersion = {}, conversationId = "chat",
+                streamStateFlow = live)
+        } }
+        waitForReplyText("Previously visible.")
+        compose.runOnIdle { mounted = false }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            live.value = null
+            message = message.copy(versions = listOf(MessageVersion(content = "Finished while unmounted.")))
+            generating = false
+            mounted = true
+        }
+        waitForReplyText("Finished while unmounted.")
+        compose.onNodeWithText("Previously visible.", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test fun frozenStopKeepsVisibleContentAndDoesNotResumeParser() {
+        val live = MutableStateFlow<ActiveChatStreamState?>(stream("Frozen visible paragraph.\n\n", 1L))
+        var message by mutableStateOf(messages().last())
+        var generating by mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(message, generating, {}, {}, onEdit = {}, onDelete = {},
+                onRead = {}, onSwitchVersion = {}, conversationId = "chat", streamStateFlow = live)
+        } }
+        waitForReplyText("Frozen visible paragraph.")
+        compose.runOnIdle {
+            freeze.freeze()
+            message = message.copy(versions = listOf(MessageVersion(content = "Frozen visible paragraph.\n\n")))
+            generating = false
+            live.value = null
+        }
+        compose.onNodeWithText("Frozen visible paragraph.", substring = true, useUnmergedTree = true)
+            .assertExists()
+    }
+
+    @Test fun toolTurnGapDoesNotEraseLastVisibleTextOfPreviousMessage() {
+        val live = MutableStateFlow<ActiveChatStreamState?>(stream("Earlier turn survives.", 1L))
+        compose.setContent { MaterialTheme {
+            AssistantMessageCard(messages().last(), true, {}, {}, onEdit = {}, onDelete = {},
+                onRead = {}, onSwitchVersion = {}, conversationId = "chat", streamStateFlow = live)
+        } }
+        waitForReplyText("Earlier turn survives.")
+        compose.runOnIdle {
+            live.value = ActiveChatStreamState("chat", "next-assistant", 1L, 2L,
+                ChatStreamStatus.STREAMING, StreamTextSnapshot.of("Next tool turn"),
+                StreamTextSnapshot.of(), freeze, null, StreamMetricsSnapshot())
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Earlier turn survives.", substring = true, useUnmergedTree = true)
+            .assertExists()
+        compose.onNodeWithText("Next tool turn", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
     }
 
     @Test fun dozensOfStreamPublicationsDoNotRecomposeTheUnchangedAssistantCardShell() {
