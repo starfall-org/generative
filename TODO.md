@@ -7,9 +7,18 @@ now reuse the existing `BottomSheet`, appearance, `ItemCard`, and input foundati
 callers have been migrated and focused Robolectric coverage was added for search text retention,
 key autocomplete, AppMenu grouping, model catalog search, and model picker behavior.
 
-The remaining work is intentionally tracked below: finish the broader caller migration and duplicate
-removal, coordinate with `refactor/feature-screens`, run supported device checks, and collect UI
-feedback before treating the refactor as complete.
+The follow-up integration now uses a separate worktree from the PR head and expands the migrations:
+contextual actions in provider, OAuth, chat, history, Remote SSH and drawer UI now use
+`ContextMenuSheet`; predefined-content settings/media sheets use `ContentSheet`; and the
+Remote SSH, TTS and Web Search pickers use typed `ItemListSheet` entries. All remaining
+feature `DropdownMenu` call sites were reviewed as attribute/field selectors rather than
+contextual actions. `KeyValueField` keeps the prior horizontal header-editor layout and
+`ItemListSheet` namespaces keys across sections. Static checks cover the
+layout structure, grouped-key separation and keyed group state in source.
+
+The remaining work is intentionally tracked below: coordinate with `refactor/feature-screens`
+and `refactor/shared`, run approved compilation and Android UI checks, validate appearance
+and accessibility, and collect UI feedback before treating the refactor as complete.
 
 ## 1. Create reusable UI components
 
@@ -68,12 +77,25 @@ feedback before treating the refactor as complete.
 - [ ] Remove duplicate implementations once migrated; preserve existing functionality, navigation, feature-specific state, accessibility, and appearance policies.
 - [ ] Coordinate with the separate `refactor/feature-screens` work so screen templates and these components can compose cleanly without duplicate responsibilities.
 
+## Verification and integration notes (follow-up worktree)
+
+- Static checks performed: `git diff --check` and `python3 scripts/check_extensions.py` pass.
+- The localization checker reports pre-existing missing translations in Tier 2 resources; no
+  new translatable string was introduced. The HTTP header example is now a canonical
+  non-translatable string resource.
+- The sibling `refactor/shared` draft touches 14 files also edited by this refactor.
+  Resolve these overlapping changes at integration time, without changing the other
+  worktree or merging draft branches into each other prematurely.
+- This is a behavior-preserving refactor: new Robolectric/Android UI tests and device runs are
+  not required for acceptance. Compilation has **not been run**; resolve any discovered API,
+  import, syntax or type errors before marking the refactor ready.
+
 ## 3. Verify and collect UI feedback
 
 - [ ] Perform static checks for layer/dependency boundaries, leftover duplicate UI patterns, and incorrect component usage.
-- [x] Add focused UI tests for expandable search text retention and key autocomplete; preserve existing AppMenu and ModelPicker UI coverage.
-- [x] Test search expansion/collapse, text retention, and key selection/autocomplete in `KeyValueField`.
-- [ ] Test `ComponentGroup` appearance and layout with zero, one, and multiple items, including light/dark/AMOLED themes.
-- [ ] Verify BottomSheet animation, content-driven height, scrolling, safe-area insets, keyboard interaction, context-action dismissal, and accessible touch targets on Android.
-- [ ] Run the agreed lint/tests/device checks when approved and supported by the environment; avoid repeated unnecessary Gradle builds.
-- [ ] Present the refactored interface for user evaluation and collect feedback before considering the refactor complete.
+- [x] Preserve the existing focused Robolectric coverage in the PR branch; no additional test work is required for this refactor.
+- [x] Statically review search expansion/collapse, text retention, and editable key autocomplete behavior.
+- [x] Statically review `ComponentGroup`'s zero/one/multiple-item shape policy and stable keys.
+- [ ] Statically verify that migrated sheets preserve BottomSheet configuration, insets, input behavior, context-action dispatch, and accessibility semantics.
+- [ ] Resolve compilation/API errors if a build check is later approved; avoid unnecessary Gradle builds.
+- [ ] Complete final static error review and integration conflict check before marking the PR ready.

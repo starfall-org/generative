@@ -3,14 +3,11 @@ package org.starfall.generative.features.chatoptions.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,7 +33,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.model.DefaultSelectionItem
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ItemListSheet
 
 /** Selects the saved speech service used when reading messages aloud. */
 @Composable
@@ -80,58 +77,45 @@ internal fun TtsProviderSettings(
                     onClick = { expanded = true }
                 )
                 if (expanded) {
-                    BottomSheet(onDismissRequest = { expanded = false }) {
-                        Text(
-                            stringResource(R.string.tts_service),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (speechServices.isEmpty()) item {
-                                Text(stringResource(R.string.tts_service_empty))
+                    ItemListSheet(
+                        onDismissRequest = { expanded = false },
+                        items = speechServices.map { service ->
+                            val provider = providers.firstOrNull { it.id == service.provider }
+                            val providerName = when (service.engine) {
+                                SpeechEngine.SYSTEM -> stringResource(R.string.speech_android_system_tts)
+                                SpeechEngine.PROVIDER -> provider?.name ?: service.provider
+                                SpeechEngine.ELEVENLABS -> "ElevenLabs"
+                                SpeechEngine.FISH_AUDIO -> "Fish Audio"
+                                SpeechEngine.CARTESIA -> "Cartesia"
+                                SpeechEngine.SPEECHIFY -> "Speechify"
                             }
-                            items(speechServices, key = { it.id }) { service ->
-                                val provider = providers.firstOrNull { it.id == service.provider }
-                                val providerName = when (service.engine) {
-                                    SpeechEngine.SYSTEM -> stringResource(R.string.speech_android_system_tts)
-                                    SpeechEngine.PROVIDER -> provider?.name ?: service.provider
-                                    SpeechEngine.ELEVENLABS -> "ElevenLabs"
-                                    SpeechEngine.FISH_AUDIO -> "Fish Audio"
-                                    SpeechEngine.CARTESIA -> "Cartesia"
-                                    SpeechEngine.SPEECHIFY -> "Speechify"
-                                }
-                                val voice = service.voiceName.ifBlank { service.voice }
-                                val detail = service.modelId?.let {
-                                    stringResource(R.string.speech_card_model_voice_line, it, voice)
-                                } ?: stringResource(R.string.speech_card_voice_line, voice)
-                                ChatOptionSelectionCard(
-                                    title = service.name,
-                                    subtitle = providerName,
-                                    detail = detail,
-                                    selected = service.id == selectedId,
-                                    icon = {
-                                        EntityIcon(
-                                            image = service.icon ?: provider?.icon?.takeUnless { service.engine.standalone },
-                                            modifier = Modifier.size(42.dp),
-                                            text = providerInitials(provider?.name ?: service.name),
-                                            fallback = Icons.Outlined.RecordVoiceOver,
-                                            matchName = service.engine.iconMatchName ?: provider?.name ?: service.name
-                                        )
-                                    },
-                                    onClick = {
-                                        onProviderChange(service.id)
-                                        expanded = false
-                                    },
-                                    modifier = Modifier.testTag("tts-service-option-${service.id}")
-                                )
-                            }
-                        }
-                    }
+                            val voice = service.voiceName.ifBlank { service.voice }
+                            val detail = service.modelId?.let {
+                                stringResource(R.string.speech_card_model_voice_line, it, voice)
+                            } ?: stringResource(R.string.speech_card_voice_line, voice)
+                            chatOptionSelectionItem(
+                                key = service.id, value = service,
+                                title = service.name,
+                                subtitle = providerName,
+                                detail = detail,
+                                selected = service.id == selectedId,
+                                icon = {
+                                    EntityIcon(
+                                        image = service.icon ?: provider?.icon?.takeUnless { service.engine.standalone },
+                                        modifier = Modifier.size(42.dp),
+                                        text = providerInitials(provider?.name ?: service.name),
+                                        fallback = Icons.Outlined.RecordVoiceOver,
+                                        matchName = service.engine.iconMatchName ?: provider?.name ?: service.name
+                                    )
+                                },
+                                onClick = { onProviderChange(service.id); expanded = false },
+                                modifier = Modifier.testTag("tts-service-option-${service.id}")
+                            )
+                        },
+                        emptyMessage = stringResource(R.string.tts_service_empty)
+                    )
                 }
+
             }
             if (speechServices.isEmpty()) {
                 Text(

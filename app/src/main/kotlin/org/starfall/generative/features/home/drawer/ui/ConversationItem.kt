@@ -2,7 +2,8 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -40,7 +41,6 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable
@@ -83,13 +83,16 @@ internal fun ConversationItem(
             }
             if (pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.conversation_pinned), Modifier.padding(end = 10.dp).size(14.dp))
             if (!selecting) {
-                DropdownMenu(expanded = menu, onDismissRequest = onContextMenuDismiss) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_select)) }, leadingIcon = { SharedIcon(Icons.Outlined.CheckCircle, null) }, onClick = onSelect)
-                    DropdownMenuItem(text = { Text(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { SharedIcon(Icons.Outlined.PushPin, null) }, onClick = { onContextMenuDismiss(); onPin() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_move_to_folder)) }, leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) }, onClick = { onContextMenuDismiss(); onMove() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) }, onClick = { onContextMenuDismiss(); onRename() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) }, onClick = { onContextMenuDismiss(); onDelete() })
-                }
+                if (menu) ContextMenuSheet(
+                    actions = listOf(
+                        ContextMenuAction(stringResource(R.string.sidebar_select), onSelect, Icons.Outlined.CheckCircle),
+                        ContextMenuAction(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin), onPin, Icons.Outlined.PushPin),
+                        ContextMenuAction(stringResource(R.string.sidebar_move_to_folder), onMove, Icons.Outlined.Folder),
+                        ContextMenuAction(stringResource(R.string.sidebar_rename), onRename, Icons.Outlined.Edit),
+                        ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)
+                    ),
+                    onDismissRequest = onContextMenuDismiss
+                )
             }
         }
     }

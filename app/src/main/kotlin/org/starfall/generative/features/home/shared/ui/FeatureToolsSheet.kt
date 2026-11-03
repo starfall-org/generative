@@ -26,12 +26,12 @@ import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeatureToolsSheet(onDismiss: () -> Unit) {
-    BottomSheet(onDismissRequest = onDismiss) {
+    ContentSheet(onDismissRequest = onDismiss) {
         FeatureToolsSheetContent()
     }
 }

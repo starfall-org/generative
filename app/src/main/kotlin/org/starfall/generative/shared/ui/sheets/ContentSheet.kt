@@ -3,6 +3,7 @@ package org.starfall.generative.shared.ui.sheets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -50,6 +51,7 @@ fun ContentSheet(
                         contentAlignment = Alignment.CenterStart
                     ) { it() }
                 }
+                if (title == null) Spacer(Modifier.weight(1f))
                 headerActions?.invoke(this)
             }
         }

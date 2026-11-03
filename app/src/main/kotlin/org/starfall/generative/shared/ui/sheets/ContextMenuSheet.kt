@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
+import org.starfall.generative.shared.ui.icons.SharedIcon
 
 /** One contextual action. Input selection and completion controls do not belong here. */
 data class ContextMenuAction(
@@ -52,10 +53,11 @@ fun ContextMenuSheet(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            actions.forEachIndexed { index, action ->
+            actions.forEach { action ->
                 val actionColor = if (action.destructive) {
                     action.destructiveColor ?: MaterialTheme.colorScheme.error
                 } else MaterialTheme.colorScheme.onSurface
+                val displayedColor = if (action.enabled) actionColor else actionColor.copy(alpha = 0.38f)
                 Surface(
                     onClick = {
                         onDismissRequest()
@@ -65,16 +67,16 @@ fun ContextMenuSheet(
                     modifier = Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp),
                     shape = RoundedCornerShape(12.dp),
                     color = Color.Transparent,
-                    contentColor = actionColor
+                    contentColor = displayedColor
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        action.icon?.let { androidx.compose.material3.Icon(it, null) }
-                        action.iconRes?.let { Icon(painterResource(it), null) }
-                        Text(action.label, color = actionColor, style = MaterialTheme.typography.bodyLarge)
+                        action.icon?.let { SharedIcon(it, null, tint = displayedColor) }
+                        action.iconRes?.let { Icon(painterResource(it), null, tint = displayedColor) }
+                        Text(action.label, color = displayedColor, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }

@@ -1,8 +1,9 @@
 package org.starfall.generative.shared.ui.inputs
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,11 +56,12 @@ fun KeyValueField(
     testTag: String? = null
 ) {
     var keyFocused by remember { mutableStateOf(false) }
+    var suggestionsDismissed by remember { mutableStateOf(false) }
     val visibleSuggestions = remember(keyValue, keySuggestions) {
         if (keyValue.isBlank()) keySuggestions
         else keySuggestions.filter { it.value.contains(keyValue, ignoreCase = true) }
     }
-    val menuExpanded = keyFocused && visibleSuggestions.isNotEmpty()
+    val menuExpanded = keyFocused && enabled && !suggestionsDismissed && visibleSuggestions.isNotEmpty()
     val literalKeyOptions = KeyboardOptions(
         capitalization = KeyboardCapitalization.None,
         autoCorrectEnabled = false,
@@ -80,14 +82,19 @@ fun KeyValueField(
         PasswordVisualTransformation()
     } else VisualTransformation.None
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
         ExposedDropdownMenuBox(
             expanded = menuExpanded,
-            onExpandedChange = { if (keySuggestions.isNotEmpty()) keyFocused = !keyFocused }
+            onExpandedChange = { suggestionsDismissed = !it },
+            modifier = Modifier.weight(1f)
         ) {
             OutlinedTextField(
                 value = keyValue,
-                onValueChange = onKeyChange,
+                onValueChange = { onKeyChange(it); suggestionsDismissed = false },
                 enabled = enabled,
                 label = keyLabel,
                 placeholder = keyPlaceholder,
@@ -98,11 +105,14 @@ fun KeyValueField(
                 modifier = Modifier.fillMaxWidth()
                     .then(testTag?.let { Modifier.testTag("$it-key") } ?: Modifier)
                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled = enabled)
-                    .onFocusChanged { keyFocused = it.isFocused }
+                    .onFocusChanged {
+                        keyFocused = it.isFocused
+                        if (!it.isFocused) suggestionsDismissed = false
+                    }
             )
             ExposedDropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { keyFocused = false }
+                onDismissRequest = { suggestionsDismissed = true }
             ) {
                 visibleSuggestions.forEach { suggestion ->
                     DropdownMenuItem(
@@ -114,7 +124,7 @@ fun KeyValueField(
                         },
                         onClick = {
                             onKeySuggestionSelected(suggestion.value)
-                            keyFocused = false
+                            suggestionsDismissed = true
                         }
                     )
                 }
@@ -132,7 +142,7 @@ fun KeyValueField(
             keyboardOptions = valueOptions,
             singleLine = valueType != KeyValueValueType.Multiline,
             maxLines = if (valueType == KeyValueValueType.Multiline) 6 else 1,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.weight(1f).then(testTag?.let { Modifier.testTag("$it-value") } ?: Modifier)
         )
     }
 }

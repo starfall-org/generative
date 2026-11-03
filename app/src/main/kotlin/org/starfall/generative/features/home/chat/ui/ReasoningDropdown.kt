@@ -13,7 +13,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -46,8 +45,8 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 @Composable
 fun ReasoningDropdown(
@@ -315,16 +314,15 @@ internal fun BlockContextPadding(
         .combinedClickable(onClick = { onTap?.invoke() }, onLongClick = {
             if (onDelete != null) menuOpen = true
         })) {
-        DropdownMenu(expanded = foreground && menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_delete)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null) },
-                onClick = {
-                    menuOpen = false
-                    onDelete?.invoke()
-                }
-            )
-        }
+        if (foreground && menuOpen && onDelete != null) ContextMenuSheet(
+            actions = listOf(ContextMenuAction(
+                stringResource(R.string.common_delete),
+                onClick = onDelete,
+                icon = Icons.Outlined.Delete,
+                destructive = true
+            )),
+            onDismissRequest = { menuOpen = false }
+        )
     }
 }
 

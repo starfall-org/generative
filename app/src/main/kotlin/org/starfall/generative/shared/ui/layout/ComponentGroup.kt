@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
@@ -50,7 +51,7 @@ fun ComponentGroup(
         items.forEachIndexed { index, item ->
             if (showSeparators && index > 0) HorizontalDivider()
             val shape = componentGroupItemShape(index, items.size)
-            item.content(Modifier.fillMaxWidth(), shape)
+            key(item.key) { item.content(Modifier.fillMaxWidth(), shape) }
         }
     }
 }

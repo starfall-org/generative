@@ -141,10 +141,10 @@ fun <T> ItemListSheet(
                         )
                     }
                 }
-                items(items, key = { it.key }) { item -> ItemListCard(item) }
+                items(items, key = { Pair("root", it.key) }) { item -> ItemListCard(item) }
                 sections.forEach { section ->
                     if (section.items.isNotEmpty()) {
-                        item(key = "section-${section.key}") {
+                        item(key = Pair("section-header", section.key)) {
                             Text(
                                 section.title,
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
@@ -152,7 +152,7 @@ fun <T> ItemListSheet(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        items(section.items, key = { it.key }) { item -> ItemListCard(item) }
+                        items(section.items, key = { Triple("section-item", section.key, it.key) }) { item -> ItemListCard(item) }
                     }
                 }
             }

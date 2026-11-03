@@ -73,6 +73,7 @@ fun ExpandableSearchField(
     var imeWasVisible by remember { mutableStateOf(false) }
 
     fun collapse() {
+        imeWasVisible = false
         focusManager.clearFocus(force = true)
         keyboard?.hide()
         if (clearOnCollapse && value.isNotEmpty()) onValueChange("")
@@ -81,7 +82,7 @@ fun ExpandableSearchField(
 
     LaunchedEffect(expanded) {
         if (expanded) focusRequester.requestFocus()
-        else onBoundsChange(null)
+        else { imeWasVisible = false; onBoundsChange(null) }
     }
     LaunchedEffect(imeVisible) {
         if (imeVisible) imeWasVisible = true

@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import org.starfall.generative.features.providers.list.logic.*
 
 import androidx.compose.foundation.BorderStroke
@@ -26,7 +27,6 @@ import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -48,24 +48,13 @@ internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
                 modifier = if (compact) Modifier.size(20.dp) else Modifier
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
-                onClick = { expanded = false; onEdit() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.delete_group), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = {
-                    SharedIcon(
-                        Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                onClick = { expanded = false; onDelete() }
-            )
-        }
+        if (expanded) ContextMenuSheet(
+            actions = listOf(
+                ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
+                ContextMenuAction(stringResource(R.string.delete_group), onDelete, Icons.Outlined.Delete, destructive = true)
+            ),
+            onDismissRequest = { expanded = false }
+        )
     }
 }
 

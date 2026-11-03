@@ -46,7 +46,7 @@ import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_WORDS
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 
 @Composable
@@ -79,7 +79,7 @@ internal fun HelperSettingsSheet(
     val parsedMinimumWords = minimumWords.toIntOrNull()
         ?.takeIf { it in MIN_TITLE_GENERATION_MIN_WORDS..MAX_TITLE_GENERATION_MIN_WORDS }
 
-    BottomSheet(
+    ContentSheet(
         onDismissRequest = onDismiss,
         fixedHeightFraction = 0.92f
     ) {

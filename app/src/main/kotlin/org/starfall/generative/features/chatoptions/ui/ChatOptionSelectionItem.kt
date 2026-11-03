@@ -18,11 +18,13 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 
-/** Entity-style selection row shared by the Chat Options speech and MCP pickers. */
+/** A styled ItemCard entry for Chat Options selection sheets. */
 @Composable
-internal fun ChatOptionSelectionCard(
+internal fun <T> chatOptionSelectionItem(
+    key: Any,
+    value: T,
     title: String,
     subtitle: String? = null,
     selected: Boolean,
@@ -30,9 +32,10 @@ internal fun ChatOptionSelectionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     detail: String? = null
-) {
-    ItemCard(
-        isGrid = false,
+): ItemListSheetItem<T> = ItemListSheetItem(
+        key = key,
+        value = value,
+        selected = selected,
         onClick = onClick,
         modifier = modifier,
         color = prominentContainerColor(opacityBoost = if (selected) 0.12f else 0f),
@@ -78,4 +81,3 @@ internal fun ChatOptionSelectionCard(
             }
         }
     )
-}

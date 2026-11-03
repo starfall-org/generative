@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import org.starfall.generative.features.providers.list.logic.*
 
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
@@ -9,7 +10,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -26,7 +26,6 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.icons.providerInitials
 
@@ -192,22 +191,13 @@ private fun ProviderContextMenu(
         IconButton(onClick = { expanded = true }) {
             SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_edit)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
-                onClick = { expanded = false; onEdit() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.move_to_group)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Folder, contentDescription = null) },
-                onClick = { expanded = false; onMoveToGroup() }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                onClick = { expanded = false; onDelete() }
-            )
-        }
+        if (expanded) ContextMenuSheet(
+            actions = listOf(
+                ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
+                ContextMenuAction(stringResource(R.string.move_to_group), onMoveToGroup, Icons.Outlined.Folder),
+                ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)
+            ),
+            onDismissRequest = { expanded = false }
+        )
     }
 }
