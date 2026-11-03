@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -17,6 +18,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -51,6 +53,35 @@ class DefaultDataInitializerContentApiTest {
     @After
     fun tearDown() {
         database.close()
+    }
+
+    @Test
+    fun buildEndpointIsUsedForTransportButHiddenFromUiAndBackup() = runBlocking {
+        val configuredUrl = "https://hidden.example.test/mcp"
+        val repository = McpRepository(database, McpService(ToolHttp()),
+            contentApiMcpUrl = configuredUrl)
+        val preset = McpInfo(id = "content-api", name = "Content API")
+        repository.saveServer(preset)
+
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+        assertEquals(configuredUrl, repository.resolveServer(preset).url)
+
+        // An old record containing the configured endpoint is scrubbed on save.
+        repository.saveServer(preset.copy(url = configuredUrl))
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+
+        // An explicitly configured, different URL remains a user-owned endpoint.
+        val customUrl = "https://custom.example.test/mcp"
+        repository.saveServer(preset.copy(url = customUrl))
+        assertEquals(customUrl, repository.allServers.first().single().url)
+        assertEquals(customUrl, repository.getById(preset.id)?.url)
+        assertEquals(customUrl, repository.loadServersForExport().single().url)
     }
 
     @Test(timeout = 20_000)

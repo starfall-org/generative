@@ -76,7 +76,7 @@ fun ServerEditor(
             .filter { it.first.isNotEmpty() }.toMap().ifEmpty { null }, auth = currentAuth())
     val authValid = authValue.isBlank() || authKey.isBlank() || authMethod !in listOf(McpAuthMethod.BEARER_TOKEN, McpAuthMethod.QUERY_PARAM) ||
         (authKey.isNotBlank() && !authKey.contains(':') && authKey.none { it <= ' ' || it.code >= 127 })
-    val canSave = name.isNotBlank() && (url.isNotBlank() || name.isContentApiName()) && authValid && headers.all {
+    val canSave = name.isNotBlank() && (url.isNotBlank() || name.isContentApiName() || initialServer.id == "content-api") && authValid && headers.all {
         it.first.isNotBlank() && !it.first.contains(':') && !it.first.any { ch -> ch == '\r' || ch == '\n' } &&
             !it.second.any { ch -> ch == '\r' || ch == '\n' }
     }
