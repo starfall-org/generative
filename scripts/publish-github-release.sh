@@ -82,24 +82,43 @@ else
     -f ref="refs/tags/$tag" -f sha="$commit" >/dev/null
 fi
 
+# Generate the stable release's GitHub changelog against the most recent
+# earlier *stable* release, not a newer/adjacent pre-release.
+notes_file="$(mktemp)"
+trap 'rm -f "$notes_file"' EXIT
+if [[ "$is_prerelease" == true ]]; then
+  # Branch builds retain the existing, stream-specific end-user notes.
+  python3 "$PWD/scripts/generate-release-notes.py" \
+    --tag "$tag" --repo "$repo" --output "$notes_file"
+else
+  previous_stable="$(
+    gh api --paginate "repos/$repo/releases?per_page=100" \
+      --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' |
+      python3 "$PWD/scripts/previous-stable-release.py" "$tag"
+  )"
+  [[ -n "$previous_stable" ]] || {
+    echo "No earlier published stable release found for $tag; refusing to use a pre-release as notes baseline." >&2
+    exit 1
+  }
+  echo "Generating GitHub release notes for $tag since stable release $previous_stable."
+  gh api --method POST "repos/$repo/releases/generate-notes" \
+    -f tag_name="$tag" -f previous_tag_name="$previous_stable" \
+    --jq .body > "$notes_file"
+  [[ -s "$notes_file" ]] || {
+    echo "GitHub returned empty release notes for $tag; refusing to publish empty notes." >&2
+    exit 1
+  }
+fi
+
 if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   echo "Release $tag already exists; tag moved to $short_commit and matching artifacts will be replaced."
+  gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 else
   create_flags=(--latest)
   [[ "$is_prerelease" != true ]] || create_flags=(--prerelease --latest=false)
   gh release create "$tag" --repo "$repo" \
-    --title "v$tag" --generate-notes "${create_flags[@]}"
+    --title "v$tag" --notes-file "$notes_file" "${create_flags[@]}"
 fi
-
-# Use the same end-user release-note editor for stable and pre-release builds.
-# It considers the actual release range and falls back to concrete git changes;
-# RELEASE_NOTES_FILE can override AI notes with a reviewed Markdown document.
-notes_file="$(mktemp)"
-trap 'rm -f "$notes_file"' EXIT
-python3 "$PWD/scripts/generate-release-notes.py" \
-  --tag "$tag" --repo "$repo" --output "$notes_file"
-
-gh release edit "$tag" --repo "$repo" --title "v$tag" --notes-file "$notes_file"
 
 gh release upload "$tag" "${apks[@]}" "${checksums[@]}" --repo "$repo" --clobber
 if [[ "$is_prerelease" == true ]]; then
