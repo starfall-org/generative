@@ -42,13 +42,14 @@ import org.starfall.generative.features.machines.details.ui.RemoteMachineSetting
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.list.ui.PortForwardDialog
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.customization.ui.CustomizationScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
 import org.starfall.generative.features.providers.list.ui.ProvidersScreen
+import org.starfall.generative.features.providers.list.ui.ProvidersDemoScreen
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
@@ -86,13 +87,13 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
-import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
-import org.starfall.generative.shared.ui.LocalInstructionControls
-import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.ToolControls
+import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.layout.RetainedScreenContent
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
+import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 
 /** Stable route names are persisted by Navigation across Activity/process recreation. */
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
@@ -130,6 +131,7 @@ enum class AppDestination(val route: String) {
     APP_SETTINGS("AppSettings"),
     DEVELOPER_OPTIONS("developer_options"),
     LAUNCHER_DRAG_TEST("launcher_drag_test"),
+    PROVIDERS_DEMO("providers_demo"),
     ICONS("Icons"),
     APP_DATA("AppData"),
     ABOUT("About"),
@@ -1264,12 +1266,17 @@ internal fun AppNavigation(
                             onDebugLogCategoriesChange = settingsViewModel::setDebugLogCategories,
                             onDebugLogLevelChange = settingsViewModel::setDebugLogLevel,
                             onOpenLauncherDragTest = { openConfiguration(AppDestination.LAUNCHER_DRAG_TEST) },
+                            onOpenProvidersDemo = { openConfiguration(AppDestination.PROVIDERS_DEMO) },
                             onBack = { navController.popBackStack() }
                         )
                     }
 
                     composable(AppDestination.LAUNCHER_DRAG_TEST.route) {
                         LauncherDragTestScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(AppDestination.PROVIDERS_DEMO.route) {
+                        ProvidersDemoScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(AppDestination.ICONS.route) {

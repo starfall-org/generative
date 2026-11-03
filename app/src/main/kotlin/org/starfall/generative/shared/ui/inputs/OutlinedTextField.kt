@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.text
+package org.starfall.generative.shared.ui.inputs
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions

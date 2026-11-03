@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.terminal
+package org.starfall.generative.features.machines.shared.ui.terminal
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

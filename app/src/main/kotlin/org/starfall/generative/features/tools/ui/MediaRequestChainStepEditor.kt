@@ -27,7 +27,7 @@ import org.starfall.generative.shared.model.media.MediaValueKind
 import org.starfall.generative.shared.helpers.media.isValidMediaEndpointTemplate
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 

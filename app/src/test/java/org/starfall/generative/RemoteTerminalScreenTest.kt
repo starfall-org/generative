@@ -20,7 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)

@@ -1,119 +1,61 @@
-# Stream-performance follow-up
+# TODO — Shared Layer Reorganization
 
-Branch: `fix/stream-performance` — [draft PR #61](https://github.com/starfall-org/generative/pull/61).
+Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **responsibility, ownership, and real reuse**, without changing behavior. The branch starts from `main`. Do not implement the parallel screen/component API refactors here.
 
-## Chunk-production cost — complete, no production changes required
+## 1. Audit shared ownership and define the target structure
 
-- [x] Inspect `StreamResponseTextSplitter`, `StreamCharBatcher`,
-      `StreamTextSnapshot.append` and `ChatStreamDisplay` for repeated whole-answer
-      copies, token-by-token persistence, busy loops and unbounded work.
-- [x] Run an independent source-level stress benchmark (20,000 fragments,
-      280,000 characters) on the JVM and on Star 4 Android 11, including a
-      1,000-flush worst-case and fragmented reasoning input.
-- [x] Confirm negligible chunk-stage CPU/allocation relative to 60 Hz frame
-      budgets: Star 4 whole-display pipeline 64–68ms CPU and ~5.3MiB allocated
-      **for all 20,000 fragments**, not per fragment.
-- [x] Preserve a reproducible benchmark in `scripts/benchmarks/` and metrics
-      in `app/docs/stream-hardware-audit.md`. No changes to production
-      chunk-generation logic are warranted by these measurements.
+- [ ] Inventory every shared declaration and caller; the current baseline and completed ownership batches are recorded in `app/docs/shared-migration-map.md`.
+- [ ] Classify the remaining shared files; the migration map records owner, destination, reason and callers for the completed batches.
+- [ ] Enforce ownership rules:
+  - `shared/model/`: cross-feature data types/serialization, never UI, feature workflows, or `BuildConfig`.
+  - `shared/storage/`: app-wide state primitives and DataStore preferences; Room-backed repositories stay in `database/`.
+  - `shared/auth/`, `files/`, `icons/`, `logging/`, `media/`, `networking/`, `terminal/`, and `code/`: cohesive reusable non-screen capabilities; move external API clients to `integrations/` where applicable.
+  - `shared/ui/`: composable presentation and appearance primitives with no feature-owned flow, persistence or app navigation.
+  - `shared/subfeatures/`: larger, cohesive **actually reusable** experiences with their own UI/logic; retain `shared/subfeatures/explorer/` as the canonical Explorer.
+  - `features/<owner>/`: UI and state confined to that feature; use the feature's internal `shared/` only where its subfeatures reuse the code.
+  - `navigation/` / `appwiring/`: application routing, root Activity decisions and host configuration.
+- [ ] Establish concise `shared/ui/` categories. Evaluate `inputs/` (editable fields, switch/slider/completion), `text/` (display/Markdown/selection), `layout/` (layout only), `appearance/` or `theme/` (single visual-policy source), `screens/` (reusable shell/transition), `lists/`, `dialogs/`, `sheets/`, `menus/`, `icons/`, `code/`, and `media/`. Avoid empty or arbitrarily single-file packages.
+- [ ] Preserve explicitly shared and stable infrastructure (e.g. icon registry, `shared/ui/dialogs/`, `shared/ui/sheets/`, `shared/subfeatures/explorer/`). Do not move files just to make the directory tree symmetrical.
+- [ ] Record the baseline before changes: imports by layer, feature reuse per component, stray Compose dependencies, and any suspected unused code; distinguish confirmed dependency breaches from potential organizational improvements.
 
-The downstream Markdown/Compose tasks below are **separate rendering concerns**,
-not evidence that producing the chunks is expensive; they do not block closing
-this scoped chunk-production cost investigation.
+## 2. Reorganize shared in small, behavior-preserving batches
 
-## Implemented and checked on this branch
+- [x] **Fix confirmed upward dependencies.**
+  - `shared/auth/OAuthCallbackService.kt` now receives the app-return Intent from the host through `OAuthReturnIntentProvider`, without changing OAuth foreground service handling.
+  - `shared/model/McpInfo.kt` now accepts a host-provided Content API endpoint; explicit URL priority, preset fallback and credential handling are preserved.
+  - Note the related `features/home/shared/logic/ChatBackgroundService.kt` → `MainActivity` import for coordination; do not expand this branch into unrelated Home refactoring.
+- [ ] **Separate rendering from lower-level logic where genuinely mixed.**
+  - `shared/code/CodeSyntaxHighlighting.kt` keeps language detection/token ranges independent; Compose `Color` / `SpanStyle` / `AnnotatedString` mapping now lives in `shared/ui/code/CodeHighlighting.kt`.
+  - [x] `RemoteTerminalBridge.kt` no longer imports `DialogWindowProvider` or resolves Compose windows; Machines UI supplies the host `Window?`, while Termux bridge behavior, IME, sessions and input remain in shared terminal infrastructure.
+  - [x] Reviewed `shared/preview/CodePreviewActivity.kt` as an Android presentation entry point; it remains under `shared/preview` because the manifest and shared code header reference the complete preview capability.
+- [ ] **Move feature-specific state/components toward their real owner.**
+  - `InstructionControls.kt` and `ToolControls.kt` now live in `features/home/shared/ui/`; navigation still supplies the contracts from the outside.
+  - [x] Move `ChatAttachmentSelection` to `features/home/chat/ui/` and pass generic selection callbacks/parameters to shared media views; `MediaFileCard` no longer imports chat state.
+  - [x] Audited `MachineDialogTitle.kt` and `MachineToolsDialog.kt`; both are used by Machines and the Home drawer, so their existing machine-scoped shared package is retained.
+  - [x] Removed `shared/ui/ProfileMcpPermissions.kt` after a repository-wide search confirmed no production, test, manifest or reflection caller; `McpAccess` storage/model types remain unchanged.
+- [ ] **Move complete presentation capabilities out of generic primitive buckets when justified.**
+  - [x] Moved `RemoteTerminalScreen.kt`, `RemoteTerminalAppBar.kt`, `RemoteTerminalPanels.kt`, and `RemoteTerminalDialogs.kt` to `features/machines/shared/ui/terminal/`; navigation callbacks and screen lifecycle remain unchanged.
+  - [x] Audited `shared/ui/model/` as one Model Picker capability used by multiple features; retain it in shared UI to preserve one selection/search/scroll/animation implementation.
+  - Keep `shared/subfeatures/explorer/` centralized and independent of feature/database backends. Do not move its UI back into `extensions/`.
+  - [x] Audited `shared/ui/logging/` as a coherent global debug UI mounted by the app shell; retain the package intact.
+- [ ] **Normalize the generic `shared/ui/` structure.**
+  - Editable controls (`OutlinedTextField`, `EditorTextField`, `HeaderNameField`, `ApiKeyField`, `AppBarSearchField`) now live under `shared/ui/inputs/`; `text/` retains rendering, Markdown, selection, wrapping and streaming effects.
+  - Reclassify policy files mixed into `shared/ui/layout/` (`CardAppearance`, `ContainerTransparency`, `InputAreaAppearance`, `AmoledBorder`) without duplicating `shared/theme/` or existing Appearance/UserProfile helpers.
+  - Reclassify `ScreenCover`, `RetainedScreenContent`, `ScreenSlideMotion`, `SystemBars` and `EdgeToEdgeContent` according to shared screen/window responsibilities, coordinating with `refactor/feature-screens`.
+  - Review top-level `shared/ui/` files (`ErrorContainer`, `FeaturesLogo`, `LoadingIndicator`, `RuntimeAppLocale`, `ToolSwitch`) for intuitive ownership. Keep widely reused primitives discoverable; do not force renames without value.
+  - Preserve Fluent `ImageVector` sources and registration in `shared/ui/icons/fluentui/`; keep icon asset/storage services separate under `shared/icons/`.
+- [ ] **Respect the other planning branches.** `refactor/components` owns `ContentSheet`, `ContextMenuSheet`, `ItemListSheet`, `ExpandableSearchField`, `KeyValueField`, `ComponentGroup` and their behavior-driven migrations. `refactor/feature-screens` owns `ScreenTemplate`, the four `Content*` types, screen transitions and screen migrations. This branch owns **shared package boundaries and ownership**; coordinate naming, avoid duplicate APIs and do not implement the other branches' features.
+- [ ] Apply one cohesive migration per batch. Update package declarations, imports, references, tests, navigation, Android manifest registrations, reflection/serialization names and documentation. Do not leave duplicate wrappers just to conceal missed callers.
+- [ ] Preserve behavior: AMOLED/dynamic colors, appearance transparency, `ProfileBackground`, ChatAppBar independent gradient, dialog/sheet animation and insets, touch/keyboard/accessibility, chat scrolling/streaming, OAuth return flow, stored data and backup compatibility.
+- [ ] Do not change Room schemas, database names, credential keys, DataStore keys or serialization formats for package-only relocations. Keep `extensions/` isolated; generic Compose drag mechanics there are **not** automatically app-owned UI and are outside this branch's main scope.
 
-- [x] Rework streaming-text fade to one content pass and cached paths.
-- [x] Defer expensive Jump-to-latest visibility recomputation during manual scrolling.
-- [x] Use a scroll-aware 120 ms streaming Markdown application interval; coalesce stream
-      snapshots rather than pausing network input or persisting chunks.
-- [x] Flush a pending update immediately when scrolling stops.
-- [x] Inspect the incremental Markdown path: bounded unstable parser tail (8,000 chars),
-      bounded parser append (4,096 chars), and 120 ms fade as intended.
-- [x] Add four `StreamScrollThrottleTest` unit tests and run them successfully.
-- [x] Run three chat stream/scroll Android regression cases on Star 4: 3/3 passed.
-- [x] Restore the temporary test-only `build.gradle.kts` application ID and screen
-      timeout to their original values.
+## 3. Verify architecture and close the refactor
 
-## Implemented hardware-cost reductions
-
-Detailed findings and first device data: app/docs/stream-hardware-audit.md.
-
-- [x] Decouple network stream publication from the source presented to the measured
-      Markdown tree. Re-render accepted parser snapshots, not every network chunk.
-- [x] Prepare growing plain-text overflow in Dispatchers.Default rather than
-      slicing a large source on the Compose main thread. Coalesce to 240ms
-      while idle; defer relayout while a user manually scrolls and catch up
-      on release. Preserve the full source and single-node Select All.
-- [x] Skip decorative saveLayer/DstIn fade for Text nodes over 2048 chars,
-      while keeping the original reveal for normal paragraphs.
-- [x] Limit full reasoning-snapshot materialization to ten UI refreshes/s.
-- [x] Use a nonblocking parser permit for speculative offscreen Markdown/TeX
-      instead of queueing behind and competing with visible work.
-- [x] Skip re-scanning tiny offscreen unfinished-tail appends unless the
-      appended source contains paragraph/math boundary candidates.
-- [x] Eliminate per-publication SHA-256 for transient tail content and
-      eliminate growing substring allocation for fade prefix comparison.
-- [x] Build debug-only, normal foreground benchmark Activity to get real Android
-      frame timings without Compose Test's virtual frame clock.
-- [x] Build the modified debug APK and pass 25/25 focused unit tests.
-
-- [x] Add an 850ms overflow quiet interval so short pauses between successive
-      swipes do not trigger a full single-Text relayout. New tests cover a
-      short two-swipe gap; normal Markdown follow/stream cadence is unchanged.
-- [x] Re-run 28/28 focused JVM tests successfully with the quiet-period gate.
-- [x] Re-measure the 850ms quiet-period gate on Star 4 with 3 focused
-      streaming runs and verified publication overlap: p99 69/48/600ms.
-      Median improved versus previous stream trials, but a 600ms stall
-      still prevents claiming full resolution.
-
-## Outstanding hardware-cost tasks
-
-- [-] **P0 — growing overflow:** large text copying and UI-frame work have been
-      reduced, but a single selectable Text still grows without an upper layout
-      bound. Must not fragment it into independently selectable nodes and break
-      the existing Select All behavior.
-- [-] **P0 — large turns:** accepted source snapshots avoid per-publication
-      invalidations, but stable Markdown top-level nodes remain inside a
-      non-lazy Column in one turn-level LazyColumn item. Need renderer-owned
-      measured virtualization without guessed heights or lost selection/copy.
-- [-] **P1 — fade:** large nodes skip GPU layers; quantify GPU cost of the
-      remaining small-node animation before further algorithm changes.
-- [-] **P1 — thinking:** refresh is now bounded, but full reasoning layout
-      still scales with reasoning length. Preserve selection/copy while optimizing.
-- [-] **P1 — speculative parsing:** nonblocking admission and boundary-based
-      rescanning are implemented; a long speculative task that already holds
-      the permit cannot be preempted. Investigate true task prioritization.
-- [-] **P2 — hot path scans:** transient hashing and fade substring allocation
-      removed; inline annotation/math processing needs targeted profiling.
-
-## Device verification
-
-- [x] Real foreground Android gfxinfo: Star 4, 60Hz, 120 Markdown blocks,
-      baseline and streaming, plus long unfinished paragraph baseline/streaming.
-      First one-shot data is recorded in PROBLEMS.md and the audit.
-- [x] Repeat the newly gated overflow benchmark in a normal foreground
-      Activity with 3 static + 3 streaming runs and logged publication overlap.
-      Median p95 was 21ms static vs 20ms live, but p99 was **25ms static vs
-      700ms live**: severe stream outliers remain (full data in PROBLEMS.md).
-- [x] Pin immutable source snapshots per finalized Markdown AST block and add
-      a regression test that older paragraphs survive many later publications.
-- [ ] Record a **prior-version vs modified-version** matched Perfetto
-      comparison (CPU/main-thread, memory allocation, GPU and frame timing).
-      The current 3+3 runs compared static vs streaming on the same modified
-      code, not an unoptimized baseline.
-- [ ] Eliminate or account for remaining severe p99 spikes: the 850ms
-      quiet gate reduced the three-run median from 700ms to 69ms, but
-      one of the new samples still hit 600ms. Profile CPU/GPU/allocation
-      during the outlier to find the actual remaining cause.
-- [x] Re-run all three ChatStreamingScrollPerformanceDeviceRegressionTest
-      Android cases on the new isolated Star 4 app: 3/3 passed in 13.954s.
-- [ ] Verify Select All/copy on large overflow with device interaction,
-      and run broader lint/complete unit coverage.
-- [ ] Address remaining P0/P1 design problems, then re-run all checks.
-- [x] Keep branch and PR synchronized: commit and push source, tests and
-      reports before checking off work in Draft PR #61.
-- [ ] Mark PR #61 ready only once all performance/correctness criteria pass.
-
-The 25 passing unit tests and the previously passing 3/3 Android regressions
-are behavior checks, not evidence that the outstanding P0 issues are solved.
+- [x] Add `scripts/check_architecture.py` for cross-feature imports; upward `shared/` and `integrations/` dependencies; feature model boundaries; and Compose rendering inside `integrations/` and `database/`.
+- [x] Keep and run the existing `scripts/check_extensions.py` check. The new architecture check only rejects Compose rendering imports in `integrations/` and `database/`.
+- [ ] Search for orphaned/duplicated components and imports after each migration; verify apparent dead code with all entry points and tests before removal.
+- [ ] Perform fast static checks (`git diff --check`, architecture scripts) before expensive tests. Run Gradle/unit/Android tests only if approved, in cohesive batches rather than repeated builds.
+- [ ] When verification is permitted, regression-test OAuth notification reopening, Terminal screen and IME, Model Picker selection/search/scroll, Explorer adapters, Chat attachment selection, MCP permissions, Debug Log, and all relevant sheet/dialog/light/dark/AMOLED states.
+- [ ] Produce before/after dependency and directory inventories, with evidence of no feature import cycles or unintended shared-to-feature dependencies.
+- [ ] Update `AGENTS.md` and `app/docs/architecture.md` to the **implemented** layout only after the changes are verified. Remove obsolete paths/docs and retain migration notes for future contributors.
+- [ ] Review the final organization for unnecessary micro-packages, duplicate abstractions, behavior changes, and overlap with the two parallel refactor branches before marking the TODO complete.

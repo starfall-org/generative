@@ -21,8 +21,8 @@ import org.starfall.generative.features.home.drawer.ui.DrawerQuickShortcuts
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.ToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.ToolControls
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w420dp-h900dp-xhdpi", application = LibraryTestApplication::class)

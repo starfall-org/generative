@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.media.MediaRequestStep
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Cursor-aware completion shared by endpoint, request JSON and header-value editors. */
 @OptIn(ExperimentalMaterial3Api::class)

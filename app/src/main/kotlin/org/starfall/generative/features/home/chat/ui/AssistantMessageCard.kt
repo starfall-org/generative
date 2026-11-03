@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
@@ -39,14 +37,13 @@ import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
+import org.starfall.generative.shared.model.isEmptyResponse
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.AlertSeverity
 import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.layout.nestedContainerColor
-import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -81,6 +78,9 @@ fun AssistantMessageCard(
     val foreground = LocalChatForeground.current
     var showMoreMenu by remember(foreground) { mutableStateOf(false) }
     val storedVersion = message.activeVersion
+    // The UI must not allocate padding/toolbar for an abandoned assistant attempt.
+    // Keep a message with another non-empty version navigable if one exists.
+    if (!isStreaming && message.versions.all { it.isEmptyResponse() }) return
     // A card that streamed here keeps its incremental Markdown tree through Stop and natural
     // completion. Reopening the chat instead uses saved text, never a stale/frozen parser.
     val streamedInThisComposition = remember(message.id, message.activeVersionIndex) { booleanArrayOf(false) }
@@ -96,13 +96,11 @@ fun AssistantMessageCard(
     // version so the toolbar, media actions and tool sheet do not invalidate on every chunk.
     val activeVersion = storedVersion
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
-    val generationError = activeVersion.generationError.orEmpty()
     // Copy and Share use the same representation, including action/media placeholders.
     val toolbarText = remember(activeVersion) { assistantCopyText(message) }
-    val hasContent = activeVersion.content.isNotBlank() ||
-        !activeVersion.reasoningContent.isNullOrBlank() ||
-        activeVersion.toolActivity.isNotEmpty() || activeVersion.files.isNotEmpty() ||
-        generationError.isNotBlank()
+    // A toolbar belongs to an actual response block, never to a generated empty slot.
+    // Edit stays available in the More menu even when Content itself is absent.
+    val hasContent = !activeVersion.isEmptyResponse()
     val versionIndices = remember(message.versions, message.activeVersionIndex) {
         val counted = message.countedVersionIndices()
         if (message.activeVersionIndex in counted) counted
@@ -139,24 +137,6 @@ fun AssistantMessageCard(
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
-        // A response containing only thinking, tool actions or attachments still needs an
-        // editable answer slot. Keep it separate from the actions timeline and toolbar.
-        if (!isStreaming && hasContent && activeVersion.content.isBlank()) {
-            Surface(
-                onClick = onEdit,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                    .heightIn(min = 32.dp).testTag("assistant-empty-content"),
-                shape = RoundedCornerShape(10.dp),
-                color = nestedContainerColor(),
-                border = nestedContainerBorder()
-            ) {
-                Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.CenterStart) {
-                    SharedIcon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp))
-                }
-            }
-        }
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)

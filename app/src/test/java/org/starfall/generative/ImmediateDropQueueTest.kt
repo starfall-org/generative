@@ -20,7 +20,7 @@ class ImmediateDropQueueTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val disk = MutableStateFlow(listOf("a", "b", "c"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             val allowWrite = CompletableDeferred<Unit>()
             state.enqueue({ listOf("b", "a", "c") }) {
@@ -46,7 +46,7 @@ class ImmediateDropQueueTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             val disk = MutableStateFlow(listOf("a", "b"))
-            val state = ImmediateState(disk, scope)
+            val state = ImmediateState({ disk.value }, scope)
             state.flow.first()
             val allowFailure = CompletableDeferred<Unit>()
             state.enqueue({ listOf("b", "a") }) {

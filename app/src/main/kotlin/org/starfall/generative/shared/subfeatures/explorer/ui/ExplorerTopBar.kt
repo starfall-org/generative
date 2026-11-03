@@ -24,7 +24,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.lists.ListViewToggle
-import org.starfall.generative.shared.ui.text.AppBarSearchField
+import org.starfall.generative.shared.ui.inputs.AppBarSearchField
 
 /**
  * Explorer AppBar: title/breadcrumb, inline search, and the directory actions.

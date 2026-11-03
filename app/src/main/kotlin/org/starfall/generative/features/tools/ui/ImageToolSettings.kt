@@ -25,7 +25,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.model.media.ImageOptionField
 import org.starfall.generative.shared.helpers.media.imageOptionFields
 import org.starfall.generative.shared.helpers.media.validateImageOptions
