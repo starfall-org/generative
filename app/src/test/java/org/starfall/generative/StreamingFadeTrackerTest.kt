@@ -8,6 +8,8 @@ import org.starfall.generative.shared.ui.text.STREAM_FADE_DURATION_MS
 import org.starfall.generative.shared.ui.text.StreamingFadeTracker
 import org.starfall.generative.shared.ui.text.firstFadingRange
 import org.starfall.generative.shared.ui.text.shouldRevealStreamingText
+import org.starfall.generative.shared.ui.text.shouldAnimateStreamingTextNode
+import org.starfall.generative.shared.ui.text.STREAM_FADE_MAX_NODE_CHARS
 
 class StreamingFadeTrackerTest {
     @Test
@@ -81,4 +83,12 @@ class StreamingFadeTrackerTest {
         // Ranges without a measured path yet are never reported.
         assertEquals(-1, firstFadingRange(ranges, 0, 0))
     }
+    @Test
+    fun largeTextNodesStreamWithoutExpensiveOffscreenFadeLayers() {
+        assertTrue(shouldAnimateStreamingTextNode(true, true, STREAM_FADE_MAX_NODE_CHARS))
+        assertTrue(!shouldAnimateStreamingTextNode(true, true, STREAM_FADE_MAX_NODE_CHARS + 1))
+        assertTrue(!shouldAnimateStreamingTextNode(false, true, 12))
+        assertTrue(!shouldAnimateStreamingTextNode(true, false, 12))
+    }
+
 }

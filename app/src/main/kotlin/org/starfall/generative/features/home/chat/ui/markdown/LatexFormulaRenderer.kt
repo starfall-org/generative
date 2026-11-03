@@ -195,6 +195,8 @@ internal suspend fun prepareLatexDrawable(key: LatexCacheKey): Drawable = Markdo
 
 internal object LatexDrawables : EvictableCache {
     private const val MAX_CACHE_WEIGHT = 128_000
+    /** Number of actual TeX construction attempts (cache misses), not lookup requests. */
+    internal val constructionAttempts = java.util.concurrent.atomic.AtomicLong()
     private val cache = object : LruCache<LatexCacheKey, Result<Drawable>>(MAX_CACHE_WEIGHT) {
         override fun sizeOf(key: LatexCacheKey, value: Result<Drawable>): Int = key.formula.length.coerceAtLeast(1_024)
     }
@@ -217,6 +219,7 @@ internal object LatexDrawables : EvictableCache {
     // is being laid out: main-thread peek() must remain cheap during background preparation.
     fun getOrCreate(key: LatexCacheKey): Drawable {
         cache.get(key)?.let { return it.getOrThrow() }
+        constructionAttempts.incrementAndGet()
         val result = try {
             Result.success<Drawable>(JLatexMathDrawable.builder(key.formula)
                 .textSize(key.textSizePx.toFloat()).color(key.colorArgb).build())

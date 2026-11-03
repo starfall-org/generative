@@ -19,6 +19,12 @@ internal val LocalStreamingTextFade = compositionLocalOf { false }
 
 internal const val STREAM_FADE_DURATION_MS = 120L
 
+/**
+ * A single giant Text node requires an offscreen GPU layer of the entire node.
+ * Large paragraphs still stream immediately, but skip the decorative reveal mask.
+ */
+internal const val STREAM_FADE_MAX_NODE_CHARS = 2_048
+
 internal data class StreamingFadeRange(val start: Int, val end: Int, val startedAt: Long)
 
 /** Keep each chunk's original start time when a newer chunk arrives. */
@@ -27,7 +33,13 @@ internal class StreamingFadeTracker {
     private var ranges = emptyList<StreamingFadeRange>()
 
     fun update(text: String, now: Long): List<StreamingFadeRange> {
-        val commonLength = previousText.commonPrefixWith(text).length
+        // commonPrefixWith allocates a growing substring on every streamed chunk. Only an
+        // integer boundary is needed; retaining the two immutable texts is sufficient.
+        var commonLength = 0
+        val limit = minOf(previousText.length, text.length)
+        while (commonLength < limit && previousText[commonLength] == text[commonLength]) {
+            commonLength++
+        }
         ranges = ranges.mapNotNull { range ->
             val end = minOf(range.end, commonLength)
             if (range.start < end && now - range.startedAt < STREAM_FADE_DURATION_MS) {
@@ -58,10 +70,17 @@ internal data class StreamingTextPresentation(
 internal fun shouldRevealStreamingText(localEnabled: Boolean, systemAnimationsEnabled: Boolean): Boolean =
     localEnabled && systemAnimationsEnabled
 
+internal fun shouldAnimateStreamingTextNode(
+    enabled: Boolean,
+    systemAnimationsEnabled: Boolean,
+    textLength: Int
+): Boolean = shouldRevealStreamingText(enabled, systemAnimationsEnabled) &&
+    textLength <= STREAM_FADE_MAX_NODE_CHARS
+
 @Composable
 internal fun rememberStreamingTextPresentation(text: String): StreamingTextPresentation {
     val enabled = LocalStreamingTextFade.current
-    if (!shouldRevealStreamingText(enabled, ValueAnimator.areAnimatorsEnabled())) {
+    if (!shouldAnimateStreamingTextNode(enabled, ValueAnimator.areAnimatorsEnabled(), text.length)) {
         return StreamingTextPresentation(Modifier, {})
     }
 

@@ -8,8 +8,10 @@ With auto-scroll **off**, scrolling the chat by hand stutters while the AI is
 generating text. Auto-follow is not involved, so the cause is main-thread and
 GPU contention between streaming updates and user scrolling.
 
-Status: found by reading code only. Nothing has been profiled yet. The items
-below are suspects, ordered by how likely they are.
+Status: originally identified by source review. On 2026-11-03, normal
+foreground debug-only Android gfxinfo captures showed substantial frame jank,
+both while streaming and with a static long answer. See the hardware audit.
+The items below were the initial suspects.
 
 ## Suspects
 
@@ -192,3 +194,34 @@ Use Profile GPU Rendering or Perfetto while the jank happens.
   publisher and native scroll motion. Use Android FrameMetrics/Perfetto and
   compare like-for-like baseline vs streaming p95 and missed-frame counts.
   No conclusion that the scroll stutter is gone has been established.
+
+
+## Regular foreground Activity measurements — 2026-11-03
+
+Unlike the failed Compose Test experiments, a normal debug-only Activity
+successfully rendered a long chat answer under real Android frame scheduling.
+Model: Star 4, Android 11, 720x1560, refresh rate 60Hz, isolated package
+org.starfall.generative.streamperf; native adb input swipe gestures and
+Android dumpsys gfxinfo reset before each measurement.
+
+| Scenario | Frames | Janky frames | p50 | p95 | p99 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 120 blocks, static | 1118 | 714 (63.86%) | 18ms | 42ms | 61ms |
+| 120 blocks, streaming | 727 | 349 (48.01%) | 15ms | 44ms | 750ms |
+| Long unfinished paragraph, static | 541 | 214 (39.56%) | 13ms | 23ms | 73ms |
+| Long unfinished paragraph, streaming | 145 | 116 (80%) | 18ms | 800ms | 1600ms |
+
+These observations were captured BEFORE the final manual-scroll overflow gate.
+They are only one run per scenario with differing frame totals and no
+like-for-like old-version baseline; no FPS improvement claim is justified.
+The overflow spikes confirm that the growing single Text fallback needs
+more than a normal Markdown stream throttle.
+
+In follow-up local source changes the growing source is decoupled from
+per-publication Compose invalidation; giant overflow copies are prepared on
+Dispatchers.Default, idle overflow updates are coalesced to 240ms, and
+overflow presentation waits for a manual scroll to stop. Very large
+streamed Text nodes disable offscreen fade layers, and active reasoning
+materialization is sampled at 100ms. Speculative Markdown/TeX parsing now
+uses a nonblocking parser permit. The remaining selectable single-Text
+fallback and per-turn non-lazy Markdown layout are not solved.

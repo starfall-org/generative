@@ -1,9 +1,10 @@
 # Streaming hardware-cost audit — 2026-11-03
 
 Scope: branch `fix/stream-performance` (draft PR #61).
-This is a **source/complexity audit**, not an Android CPU/GPU allocation trace. A prior
-synthetic Compose test produced no valid overlapping scroll/stream frame measurements;
-see `../../PROBLEMS.md`. In particular, no CPU %, memory MB, or FPS improvement is claimed.
+This began as a source audit. A normal foreground debug-only Activity on
+Star 4 has now provided preliminary Android gfxinfo frame results; see
+PROBLEMS.md. These are single samples, not repeated before/after traces.
+No CPU %, GPU utilization, battery saving, or FPS improvement is claimed.
 
 ## What already avoids unnecessary work
 
@@ -51,6 +52,29 @@ see `../../PROBLEMS.md`. In particular, no CPU %, memory MB, or FPS improvement 
 5. Limit repeated full-reasoning materialization/layout and reduce offscreen speculative parser priority. Avoid DB writes and per-token UI updates. Re-run live-thinking tests and cross-tool-block tests.
 6. Compare p50/p95 frame time, jank ratio, layout/draw duration, allocation rate, `IncrementalMarkdownMetrics` and `ChatRenderMetrics` before/after each change, not only end-state FPS.
 
-No new Gradle build or device performance test was run for this audit. None of the P0/P1
-findings are marked as fixed. Keep draft PR #61 open until the measurements validate the
-changes. The implementation, tests, and audit are tracked in draft PR #61.
+The branch now includes reduced stream-to-Compose invalidations,
+background preparation of large overflow strings, overflow updates deferred
+during manual scrolling, no offscreen fades for giant text nodes, 100ms
+reasoning-snapshot sampling, nonblocking speculative Markdown/TeX work, and
+less transient hashing/prefix allocation. These reduce specific
+unnecessary operations, but do not fully solve long-turn virtualization or
+unbounded selectable Text layout. Keep PR #61 Draft.
+
+## Preliminary device gfxinfo observations
+
+Star 4, Android 11, 720x1560 at 60Hz, isolated normal debug Activity.
+One sample per scenario; native adb swipe events and gfxinfo reset.
+
+| Scenario | Frames | Jank | p50 / p95 / p99 | TOTAL PSS (KB) |
+| --- | ---: | ---: | --- | ---: |
+| 120 blocks, static | 1118 | 714 (63.86%) | 18 / 42 / 61 ms | 280225 |
+| 120 blocks, streaming | 727 | 349 (48.01%) | 15 / 44 / 750 ms | 281770 |
+| Long paragraph, static | 541 | 214 (39.56%) | 13 / 23 / 73 ms | 264356 |
+| Long paragraph, streaming | 145 | 116 (80.00%) | 18 / 800 / 1600 ms | 279503 |
+
+These measurements preceded the most recent overflow-scroll gate and are
+NOT repeated controlled comparisons. The large overflow outliers motivated
+that gate; they do not prove the subsequent patch fixes the problem.
+Naively dividing the large Text into several selectable Text children would
+change how Compose selects all text, so it is not used as a quick workaround.
+The debug-only benchmark Activity provides a repeatable starting point.

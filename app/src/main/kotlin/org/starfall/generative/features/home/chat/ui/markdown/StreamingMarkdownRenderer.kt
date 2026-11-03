@@ -274,6 +274,10 @@ private fun IncrementalStreamingMarkdown(
         val cancellationToken = remember { MarkdownParserCancellationToken() }
         val incrementalParser = remember { IncrementalMarkdownParser(cancellationToken) }
         val latestSnapshot = rememberUpdatedState(streamSnapshot)
+        // Network publications must not invalidate the whole measured Markdown tree.
+        // Only an accepted parser/overflow commit changes the source seen by the renderer.
+        val renderedSource = remember { mutableStateOf(streamSnapshot) }
+        val renderedOverflow = remember { mutableStateOf<String?>(null) }
         val renderSnapshot = remember { mutableStateOf(incrementalParser.currentSnapshot()) }
         val parsing = remember { mutableStateOf(false) }
         val listScrolling = LocalChatListScrolling.current
@@ -281,6 +285,8 @@ private fun IncrementalStreamingMarkdown(
         CollectIncrementalMarkdownStream(
             initialBaseText = initialBaseText,
             latestSnapshot = latestSnapshot,
+            renderedSource = renderedSource,
+            renderedOverflow = renderedOverflow,
             parser = incrementalParser,
             cancellationToken = cancellationToken,
             renderSnapshot = renderSnapshot,
@@ -301,7 +307,8 @@ private fun IncrementalStreamingMarkdown(
         RenderIncrementalMarkdown(
             parser = incrementalParser,
             renderSnapshot = visibleSnapshot,
-            latestSnapshot = latestSnapshot,
+            renderedSource = if (frozen) streamSnapshot else renderedSource.value,
+            renderedOverflow = if (frozen) null else renderedOverflow.value,
             truncationLabel = truncationLabel,
             modifier = modifier,
             cacheIdentity = cacheIdentity
@@ -313,6 +320,8 @@ private fun IncrementalStreamingMarkdown(
 private fun CollectIncrementalMarkdownStream(
     initialBaseText: String,
     latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
     parser: IncrementalMarkdownParser,
     cancellationToken: MarkdownParserCancellationToken,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
@@ -326,11 +335,14 @@ private fun CollectIncrementalMarkdownStream(
             try {
                 if (streamFreezeSignal?.isFrozen != true) {
                     appendInitialMarkdownBase(
-                        initialBaseText, parser, renderSnapshot, parsing, streamFreezeSignal
+                        initialBaseText, parser, renderSnapshot, renderedSource,
+                        renderedOverflow, parsing, streamFreezeSignal
                     )
                     if (streamFreezeSignal?.isFrozen != true) {
                         collectIncrementalMarkdownUpdates(
                             latestSnapshot = latestSnapshot,
+                            renderedSource = renderedSource,
+                            renderedOverflow = renderedOverflow,
                             parser = parser,
                             renderSnapshot = renderSnapshot,
                             parsing = parsing,
@@ -361,6 +373,8 @@ private suspend fun appendInitialMarkdownBase(
     initialBaseText: String,
     parser: IncrementalMarkdownParser,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
     parsing: MutableState<Boolean>,
     streamFreezeSignal: StreamFreezeSignal?
 ) {
@@ -368,13 +382,15 @@ private suspend fun appendInitialMarkdownBase(
     val initialContent = initialBaseText.take(MAX_MARKDOWN_RENDER_CHARS)
     if (initialContent.isEmpty()) return
     appendIncrementalMarkdown(
-        parser, initialContent, StreamTextSnapshot.of(initialBaseText), renderSnapshot, parsing,
-        streamFreezeSignal
+        parser, initialContent, StreamTextSnapshot.of(initialBaseText), renderSnapshot,
+        renderedSource, renderedOverflow, parsing, streamFreezeSignal
     )
 }
 
 private suspend fun collectIncrementalMarkdownUpdates(
     latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
     parser: IncrementalMarkdownParser,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
     parsing: MutableState<Boolean>,
@@ -383,7 +399,29 @@ private suspend fun collectIncrementalMarkdownUpdates(
 ) {
     snapshotFlow { latestSnapshot.value }.conflate().collect {
         if (streamFreezeSignal?.isFrozen == true) return@collect
-        if (renderSnapshot.value.overflowStart != null) {
+        val activeOverflowStart = renderSnapshot.value.overflowStart
+        if (activeOverflowStart != null) {
+            // The single selectable fallback Text may grow past the parser's 8k budget.
+            // Do not relayout that entire node while a finger is scrolling; preserve
+            // every segment in the stream and catch up on release. This applies only
+            // to pathological overflow, not the normal incremental Markdown path.
+            if (listScrolling.value) {
+                snapshotFlow { listScrolling.value }.first { !it }
+            } else {
+                // Even when idle, cap full-node relayout to roughly four updates/s.
+                delay(240L)
+            }
+            if (streamFreezeSignal?.isFrozen == true) return@collect
+            if (listScrolling.value) snapshotFlow { listScrolling.value }.first { !it }
+            val current = latestSnapshot.value
+            val end = current.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val prepared = withContext(Dispatchers.Default) {
+                current.slice(activeOverflowStart, end)
+            }
+            if (streamFreezeSignal?.isFrozen != true) {
+                renderedOverflow.value = prepared
+                renderedSource.value = current
+            }
             return@collect
         }
         // While the user scrolls, apply streamed text at a bounded rate instead of per publication,
@@ -400,7 +438,18 @@ private suspend fun collectIncrementalMarkdownUpdates(
                 val overflowSnapshot = withContext(Dispatchers.Default) {
                     parser.preserveUnstableTailAsPlainText()
                 }
-                if (streamFreezeSignal?.isFrozen != true) renderSnapshot.value = overflowSnapshot
+                if (streamFreezeSignal?.isFrozen != true) {
+                    val latest = latestSnapshot.value
+                    val start = overflowSnapshot.overflowStart ?: overflowSnapshot.parsedLength
+                    val overflow = withContext(Dispatchers.Default) {
+                        latest.slice(start, latest.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+                    }
+                    if (streamFreezeSignal?.isFrozen != true) {
+                        renderedOverflow.value = overflow
+                        renderedSource.value = latest
+                        renderSnapshot.value = overflowSnapshot
+                    }
+                }
             }
             return@collect
         }
@@ -410,7 +459,7 @@ private suspend fun collectIncrementalMarkdownUpdates(
         val end = current.length.coerceAtMost(MAX_MARKDOWN_RENDER_CHARS.toLong()).toInt()
         if (end > start) {
             appendIncrementalMarkdown(parser, current.slice(start, end), current,
-                renderSnapshot, parsing, streamFreezeSignal)
+                renderSnapshot, renderedSource, renderedOverflow, parsing, streamFreezeSignal)
         }
     }
 }
@@ -420,6 +469,8 @@ private suspend fun appendIncrementalMarkdown(
     text: String,
     source: StreamTextSnapshot,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
     parsing: MutableState<Boolean>,
     streamFreezeSignal: StreamFreezeSignal?
 ) {
@@ -438,7 +489,16 @@ private suspend fun appendIncrementalMarkdown(
         result.linkUpdates.forEach { (label, destination) ->
             parser.referenceLinkHandler.store(label, destination)
         }
-        if (streamFreezeSignal?.isFrozen != true) renderSnapshot.value = result.snapshot
+        val overflow = result.snapshot.overflowStart?.let { start ->
+            withContext(Dispatchers.Default) {
+                source.slice(start, source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+            }
+        }
+        if (streamFreezeSignal?.isFrozen != true) {
+            renderedOverflow.value = overflow
+            renderedSource.value = source
+            renderSnapshot.value = result.snapshot
+        }
     } finally {
         parsing.value = false
     }
@@ -448,7 +508,8 @@ private suspend fun appendIncrementalMarkdown(
 private fun RenderIncrementalMarkdown(
     parser: IncrementalMarkdownParser,
     renderSnapshot: IncrementalMarkdownSnapshot,
-    latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    renderedSource: StreamTextSnapshot,
+    renderedOverflow: String?,
     truncationLabel: String,
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?
@@ -459,7 +520,8 @@ private fun RenderIncrementalMarkdown(
         RenderIncrementalMarkdownDocument(
             parser = parser,
             renderSnapshot = renderSnapshot,
-            latestSnapshot = latestSnapshot,
+            renderedSource = renderedSource,
+            renderedOverflow = renderedOverflow,
             truncationLabel = truncationLabel,
             modifier = modifier,
             cacheIdentity = cacheIdentity,
@@ -473,7 +535,8 @@ private fun RenderIncrementalMarkdown(
 private fun RenderIncrementalMarkdownDocument(
     parser: IncrementalMarkdownParser,
     renderSnapshot: IncrementalMarkdownSnapshot,
-    latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    renderedSource: StreamTextSnapshot,
+    renderedOverflow: String?,
     truncationLabel: String,
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?,
@@ -501,8 +564,9 @@ private fun RenderIncrementalMarkdownDocument(
             RenderIncrementalMarkdownDocument(
                 stableNodes = renderSnapshot.stableNodes,
                 unstableNodes = renderSnapshot.unstableNodes,
-                source = latestSnapshot.value,
+                source = renderedSource,
                 overflowStart = renderSnapshot.overflowStart,
+                preparedOverflow = renderedOverflow,
                 components = components,
                 latexEnabled = !preferences.latexMode.equals("OFF", ignoreCase = true),
                 modifier = successModifier

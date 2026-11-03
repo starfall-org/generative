@@ -31,7 +31,8 @@ internal fun RenderIncrementalMarkdownDocument(
     overflowStart: Int?,
     components: MarkdownComponents,
     latexEnabled: Boolean,
-    modifier: Modifier
+    modifier: Modifier,
+    preparedOverflow: String? = null
 ) {
     val sourceLength = source.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
@@ -49,7 +50,9 @@ internal fun RenderIncrementalMarkdownDocument(
             }
         } else {
             val start = overflowStart.coerceIn(0, sourceLength)
-            val overflow = remember(source.latestSegment, source.length, start) {
+            // Active overflow is prepared on Dispatchers.Default before a UI commit.
+            // A frozen snapshot may still need the last unparsed suffix once at Stop.
+            val overflow = preparedOverflow ?: remember(source.latestSegment, source.length, start) {
                 source.slice(start, sourceLength)
             }
             if (overflow.isNotEmpty()) {
@@ -89,7 +92,11 @@ private fun StreamingMarkdownSourceBlock(
     }
     val renderedNode = fallback?.node ?: shiftedNode
     val renderedText = fallback?.text ?: text
-    val fingerprint = remember(renderedText) { markdownContentFingerprint(renderedText) }
+    // A changing tail used to SHA-256 the entire growing block on the UI thread for
+    // every publication. The fingerprint is only useful for reusable *settled* nodes;
+    // the transient tail has no persistent cache identity to store.
+    val fingerprint = if (stable) remember(renderedText) { markdownContentFingerprint(renderedText) }
+        else null
     SideEffect {
         if (!waitingForLatex) {
             lastSafeSource.value = LastSafeMarkdownSource.Value(shiftedNode, text)

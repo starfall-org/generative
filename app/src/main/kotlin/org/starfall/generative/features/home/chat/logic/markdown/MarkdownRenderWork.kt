@@ -12,4 +12,17 @@ internal object MarkdownRenderWork {
     suspend fun <T> run(work: suspend () -> T): T = permit.withPermit {
         withContext(Dispatchers.Default) { work() }
     }
+
+    /**
+     * Speculative preparation must never enqueue ahead of visible Markdown or TeX.
+     * A cache miss is harmless here: the visible renderer can prepare on demand.
+     */
+    suspend fun <T : Any> trySpeculative(work: suspend () -> T): T? {
+        if (!permit.tryAcquire()) return null
+        return try {
+            withContext(Dispatchers.Default) { work() }
+        } finally {
+            permit.release()
+        }
+    }
 }

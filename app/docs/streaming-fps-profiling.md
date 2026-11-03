@@ -1,6 +1,13 @@
 # Streaming FPS and Markdown profiling
 
-This document describes the repeatable measurements for the scalability work. Source-level counters, parser differential unit-test fixtures, and Compose virtualization instrumentation cases are in place, but **no device/profile results have been captured yet**. Do not claim an FPS improvement until the same build/device/scenario has been measured before and after. Java and the Android SDK are present in this workspace, but the Gradle wrapper distribution is not cached locally; project build, Gradle tests/lint, and device-profile checks were not run in this pass. Do not download tooling or dependencies in an isolated/offline environment.
+This document describes repeatable measurements for scalability work. A
+normal foreground debug-only Activity has now produced initial dumpsys
+gfxinfo data on Star 4 (2026-11-03); see stream-hardware-audit.md.
+The Compose instrumentation-frame experiments were invalid. The new device
+samples are NOT repeated controlled before/after comparisons and no
+Perfetto CPU/GPU/allocation profile exists yet. Cached Gradle and the
+Android SDK are available on the ModelScope machine; use offline,
+resource-limited Gradle commands rather than downloading new tools.
 
 ## Fixed scenarios
 
@@ -61,7 +68,12 @@ Use the repository's normal project-wide verification command from `AGENTS.md` a
 
 | Run | Commit | Device/build | Scenario | Median frame ms / janky % | Full-parse chars | Window mounts/disposals | Notes |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
-| Baseline | Not captured | — | — | — | — | — | Required before claiming improvement. |
-| Candidate | Not captured | — | — | — | — | — | Toolchain/device profiling has not been run in the current sandbox. |
+| 120 blocks static | Debug streamperf | Star 4 Android 11 60Hz | Manual scroll, no new chunks | p50 18ms / p95 42ms, 63.86% jank | Not captured | Not captured | One sample, not an old-version baseline. |
+| 120 blocks streaming | Debug streamperf | Star 4 Android 11 60Hz | Manual scroll with new chunks | p50 15ms / p95 44ms, 48.01% jank | Not captured | Not captured | One sample; p99 750ms. |
 
 A missing baseline or profile is an explicit verification gap, not a passing performance check. Keep this table updated with actual data; do not fill it with estimates.
+
+For the long unfinished paragraph, the original debug capture showed
+p95 23ms and 39.56% jank without new chunks versus p95 800ms and 80% jank
+while streaming. This one-shot result predates the overflow scroll gate.
+All four scenarios must be repeated against the latest code.

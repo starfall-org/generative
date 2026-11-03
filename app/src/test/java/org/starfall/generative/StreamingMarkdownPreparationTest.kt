@@ -99,14 +99,37 @@ class StreamingMarkdownPreparationTest {
         preparer.prepare(source.append("\n\nNext paragraph", 1L), false, "AUTO", 32f, 32f, 0xff000000.toInt(), false)
         assertSame(first, LatexDrawables.peek(key))
     }
+    @Test fun offscreenUnfinishedTailIsNotRescannedPerTinyFragment() = runBlocking {
+        val preparer = StreamingMarkdownPreparer()
+        var source = StreamTextSnapshot.of("An unfinished text paragraph")
+        preparer.prepare(source, false, "OFF", 32f, 32f, 0xff000000.toInt(), false)
+        val afterInitialScan = preparer.speculativeScanCount
+        repeat(45) { i ->
+            source = source.append("x", (i + 1).toLong())
+            preparer.prepare(source, false, "OFF", 32f, 32f, 0xff000000.toInt(), false)
+        }
+        assertEquals("An unclosed tail must not be rescanned for every token",
+            afterInitialScan, preparer.speculativeScanCount)
+        source = source.append("\n\nNext paragraph", 46L)
+        preparer.prepare(source, false, "OFF", 32f, 32f, 0xff000000.toInt(), false)
+        assertTrue("Closing a block should trigger a new speculative scan",
+            preparer.speculativeScanCount > afterInitialScan)
+    }
+
     @Test fun unsupportedFormulaDoesNotRepeatExpensiveConstruction() = runBlocking {
         val key = latexCacheKey("\\notARealTexCommandHere{1}", 32f, 0xff000000.toInt(), false)
+        val before = LatexDrawables.constructionAttempts.get()
         val first = runCatching { prepareLatexDrawable(key) }.exceptionOrNull()
         assertNotNull(first)
         assertTrue(LatexDrawables.isPrepared(key))
         assertNull(LatexDrawables.peek(key))
         val repeated = runCatching { prepareLatexDrawable(key) }.exceptionOrNull()
-        assertSame("A failed cache entry must be reused too", first, repeated)
+        // Coroutine stack-trace recovery may clone a thrown ParseException across
+        // withContext, so Throwable reference identity is not a reliable cache test.
+        assertEquals(first?.javaClass, repeated?.javaClass)
+        assertEquals(first?.message, repeated?.message)
+        assertEquals("Unsupported TeX must not be constructed a second time",
+            before + 1, LatexDrawables.constructionAttempts.get())
     }
 
     @Test fun rowFirstOpenedAfterStopUsesPreparedMarkdownInsteadOfPermanentPlainText() = runBlocking {
@@ -122,6 +145,30 @@ class StreamingMarkdownPreparationTest {
         compose.onNodeWithText("Prepared", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("**Prepared**", useUnmergedTree = true).assertDoesNotExist()
         assertEquals(before, MarkdownParseCache.metrics().fullParseCount)
+    }
+
+    @Test fun incrementalRendererPresentsAcceptedNewTextWithoutReplayingStaticBlocks() {
+        var source by mutableStateOf(StreamTextSnapshot.of("Opening paragraph.\n\n"))
+        compose.setContent { MaterialTheme {
+            StreamingMarkdownRenderer(
+                content = "",
+                streamSnapshot = source,
+                streamGenerationId = 5L,
+                streamMessageId = "reply"
+            )
+        } }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Opening paragraph.", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.runOnIdle {
+            source = source.append("Another paragraph.\n\n", 2L)
+        }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Another paragraph.", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Opening paragraph.", useUnmergedTree = true).assertExists()
     }
 
     @Test fun coldStreamingRowCoalescesUnseenPublicationsInsteadOfReplayingEveryChunk() {
