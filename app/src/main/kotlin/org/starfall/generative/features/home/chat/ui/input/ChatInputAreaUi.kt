@@ -78,7 +78,7 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
-import org.starfall.generative.shared.ui.text.selectAllOnTripleClick
+import org.starfall.generative.shared.ui.inputs.selectAllOnTripleClick
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
@@ -102,7 +102,7 @@ import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.LocalChatForeground
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
+import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.model.modelInitial
 
 @Composable

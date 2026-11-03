@@ -19,11 +19,11 @@ import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_CHANGEL
 import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
 import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
 import org.starfall.generative.shared.model.auth.AuthMethod
-import org.starfall.generative.shared.ui.text.ApiKeyField
+import org.starfall.generative.shared.ui.inputs.ApiKeyField
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 private val literalInputKeyboardOptions = KeyboardOptions(
     capitalization = KeyboardCapitalization.None,

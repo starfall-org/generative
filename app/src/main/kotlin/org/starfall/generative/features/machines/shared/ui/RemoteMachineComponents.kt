@@ -51,7 +51,7 @@ import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 
 /**

@@ -16,7 +16,7 @@ import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Create/rename dialog using the app's shared dialog and text field styles. */
 @Composable

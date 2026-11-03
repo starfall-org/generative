@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.terminal
+package org.starfall.generative.features.machines.shared.ui.terminal
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.DropdownMenu

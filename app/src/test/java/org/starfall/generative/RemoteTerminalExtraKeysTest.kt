@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.terminal.TerminalExtraKeys
+import org.starfall.generative.features.machines.shared.ui.terminal.TerminalExtraKeys
 
 private val DpRect.center: Offset
     get() = Offset((left.value + right.value) / 2f, (top.value + bottom.value) / 2f)

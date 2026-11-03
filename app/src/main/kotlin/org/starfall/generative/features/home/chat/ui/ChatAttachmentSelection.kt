@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.media
+package org.starfall.generative.features.home.chat.ui
 
 import androidx.compose.runtime.*
 

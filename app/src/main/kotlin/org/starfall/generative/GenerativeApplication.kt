@@ -17,10 +17,15 @@ import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
 import org.starfall.generative.shared.files.CrashReportStore
 import org.starfall.generative.shared.files.CrashRecordingHandler
+import org.starfall.generative.shared.auth.OAuthReturnIntentProvider
 import java.io.File
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 
-class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRecordStorageOwner, coil3.SingletonImageLoader.Factory {
+class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRecordStorageOwner,
+    OAuthReturnIntentProvider, coil3.SingletonImageLoader.Factory {
+    override fun createOAuthReturnIntent(context: android.content.Context): android.content.Intent =
+        android.content.Intent(context, MainActivity::class.java)
+
     override val oauthRecordStorage: OAuthRecordStorage by lazy {
         RoomOAuthRecordStorage(this, AppDatabase.getInstance(this))
     }
@@ -32,7 +37,9 @@ class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRec
 
     /** Shared with the SFTP DocumentsProvider, which Android may create before the UI. */
     override val remoteMachineService: RemoteMachineService get() = container.remoteMachineService
-    internal val crashReports by lazy { CrashReportStore(File(filesDir, "last_crash.json")) }
+    internal val crashReports by lazy {
+        CrashReportStore(File(filesDir, "last_crash.json"), "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+    }
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {

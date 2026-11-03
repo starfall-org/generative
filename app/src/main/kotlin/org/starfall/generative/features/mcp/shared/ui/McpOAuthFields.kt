@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
 import org.starfall.generative.integrations.mcp.McpOAuthService
 

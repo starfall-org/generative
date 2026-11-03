@@ -17,7 +17,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Manages a provider's custom HTTP headers; edits are applied to [rows] immediately. */
 @OptIn(ExperimentalMaterial3Api::class)

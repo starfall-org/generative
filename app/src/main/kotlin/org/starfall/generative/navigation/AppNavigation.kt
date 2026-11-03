@@ -42,7 +42,7 @@ import org.starfall.generative.features.machines.details.ui.RemoteMachineSetting
 import org.starfall.generative.features.machines.list.ui.RemoteMachinesScreen
 import org.starfall.generative.features.machines.list.ui.PortForwardDialog
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.customization.ui.CustomizationScreen
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
@@ -87,13 +87,13 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.theme.modalScrimColor
-import org.starfall.generative.shared.ui.InstructionControls
+import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
-import org.starfall.generative.shared.ui.LocalInstructionControls
-import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.ToolControls
+import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.layout.RetainedScreenContent
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
+import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 
 /** Stable route names are persisted by Navigation across Activity/process recreation. */
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)

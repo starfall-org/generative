@@ -16,7 +16,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 internal fun endpointFields(type: ModelApiType): List<Pair<String, String>> = when (type) {
     ModelApiType.ANTHROPIC -> listOf("catalog" to "Model catalog", "messages" to "Messages")
