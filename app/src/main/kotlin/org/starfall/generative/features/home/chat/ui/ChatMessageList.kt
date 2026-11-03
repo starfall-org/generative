@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
+import org.starfall.generative.features.home.chat.ui.markdown.LocalChatListScrolling
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 
@@ -51,11 +52,14 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
     internal val jumpViewportBounds = LayoutBoundsHolder()
     internal val latestContentBounds = LayoutBoundsHolder()
     // Button visibility only: these bounds/estimates never enter scroll intent or motion.
-    val showJumpToLatest by derivedStateOf {
-        val viewport = jumpViewportBounds.bounds ?: return@derivedStateOf false
+    var showJumpToLatest by mutableStateOf(false)
+        private set
+
+    internal fun calculateJumpVisibility(): Boolean {
+        val viewport = jumpViewportBounds.bounds ?: return false
         val layout = listState.layoutInfo
         val screenHeight = layout.viewportSize.height
-        if (screenHeight <= 0) return@derivedStateOf false
+        if (screenHeight <= 0) return false
         val contentEnd = latestContentBounds.bounds
         val distance = if (contentEnd != null) {
             contentEnd.boundsInRoot.bottom.toFloat() - viewport.boundsInRoot.bottom
@@ -63,13 +67,15 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
             // LazyColumn cannot measure virtualized history exactly. Use its native estimate,
             // excluding trailing list padding (including the 21% gap). The readable viewport
             // ends above the composer.
-            val indicator = listState.scrollIndicatorState ?: return@derivedStateOf false
+            val indicator = listState.scrollIndicatorState ?: return false
             val composerInset = screenHeight - layout.beforeContentPadding - viewport.height
             (indicator.contentSize.toLong() - indicator.scrollOffset - indicator.viewportSize -
                 layout.afterContentPadding + composerInset).toFloat()
         }
-        distance >= 2f * screenHeight
+        return distance >= 2f * screenHeight
     }
+
+    internal fun updateJumpVisibility(visible: Boolean) { showJumpToLatest = visible }
 
     internal val starts = mutableStateMapOf<String, BringIntoViewRequester>()
     internal val ends = mutableStateMapOf<String, BringIntoViewRequester>()
@@ -174,6 +180,15 @@ internal fun ChatMessageList(
             (stream.status == ChatStreamStatus.STREAMING && !stream.stopSignal.isFrozen))
     }
     val listState = state.listState
+    LaunchedEffect(state) {
+        // Avoid observing layout and bounds on every scroll frame. When scrolling ends,
+        // snapshotFlow reads the latest geometry and resumes observing growth and resizing.
+        snapshotFlow {
+            if (listState.isScrollInProgress) null else state.calculateJumpVisibility()
+        }.collect { visible ->
+            if (visible != null) state.updateJumpVisibility(visible)
+        }
+    }
     val userDrag = listState.interactionSource.collectIsDraggedAsState()
     val readableBounds = remember { LayoutBoundsHolder() }
     val scrollConnection = remember(state) {
@@ -269,7 +284,13 @@ internal fun ChatMessageList(
                     )
             }
         }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides insetRelocation) {
+        // A State, not a value: streaming rows read it inside coroutines, so a scroll starting or
+        // stopping never recomposes them. They use it to apply streamed text at a bounded rate.
+        val listScrolling = remember(listState) { derivedStateOf { listState.isScrollInProgress } }
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides insetRelocation,
+            LocalChatListScrolling provides listScrolling
+        ) {
             LazyColumn(
                 state = listState,
                 reverseLayout = false,

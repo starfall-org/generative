@@ -17,7 +17,7 @@ import org.starfall.generative.features.providers.list.logic.reorderRoot
 import org.starfall.generative.features.providers.list.logic.sampleProvidersDemoData
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** The real ProvidersScreen, wired to disposable RAM data rather than user repositories. */
 @Composable

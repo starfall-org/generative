@@ -1,6 +1,13 @@
 # Streaming FPS and Markdown profiling
 
-This document describes the repeatable measurements for the scalability work. Source-level counters, parser differential unit-test fixtures, and Compose virtualization instrumentation cases are in place, but **no device/profile results have been captured yet**. Do not claim an FPS improvement until the same build/device/scenario has been measured before and after. Java and the Android SDK are present in this workspace, but the Gradle wrapper distribution is not cached locally; project build, Gradle tests/lint, and device-profile checks were not run in this pass. Do not download tooling or dependencies in an isolated/offline environment.
+This document describes repeatable measurements for scalability work. A
+normal foreground debug-only Activity has now produced initial dumpsys
+gfxinfo data on Star 4 (2026-11-03); see stream-hardware-audit.md.
+The Compose instrumentation-frame experiments were invalid. The new device
+samples are NOT repeated controlled before/after comparisons and no
+Perfetto CPU/GPU/allocation profile exists yet. Cached Gradle and the
+Android SDK are available on the ModelScope machine; use offline,
+resource-limited Gradle commands rather than downloading new tools.
 
 ## Fixed scenarios
 
@@ -61,7 +68,45 @@ Use the repository's normal project-wide verification command from `AGENTS.md` a
 
 | Run | Commit | Device/build | Scenario | Median frame ms / janky % | Full-parse chars | Window mounts/disposals | Notes |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
-| Baseline | Not captured | — | — | — | — | — | Required before claiming improvement. |
-| Candidate | Not captured | — | — | — | — | — | Toolchain/device profiling has not been run in the current sandbox. |
+| 120 blocks static | Debug streamperf | Star 4 Android 11 60Hz | Manual scroll, no new chunks | p50 18ms / p95 42ms, 63.86% jank | Not captured | Not captured | One sample, not an old-version baseline. |
+| 120 blocks streaming | Debug streamperf | Star 4 Android 11 60Hz | Manual scroll with new chunks | p50 15ms / p95 44ms, 48.01% jank | Not captured | Not captured | One sample; p99 750ms. |
 
 A missing baseline or profile is an explicit verification gap, not a passing performance check. Keep this table updated with actual data; do not fill it with estimates.
+
+For the long unfinished paragraph, the original debug capture showed
+p95 23ms and 39.56% jank without new chunks versus p95 800ms and 80% jank
+while streaming. This one-shot result predates the overflow scroll gate.
+All four scenarios must be repeated against the latest code.
+
+
+## Three-run focused overflow results (2026-11-03)
+
+The updated normal debug Activity waited 15 seconds before beginning
+the 500-chunk stream (one chunk every 55ms), logged window focus,
+and logged publication counts. Repeated 8-swipe static vs live workloads:
+
+- Static: p95 25/21/18 ms, p99 28/25/23 ms; median p95 21ms, p99 25ms.
+- Live: p95 20/21/20 ms, p99 750/700/700 ms; median p95 20ms,
+  p99 700ms. All three live runs confirmed more than 100
+  publications during the swipe measurement.
+- Frame counts differed across runs and static vs live. The large
+  differences in p99 are reproducible, but do not isolate whether
+  selection registration, Text layout, GC or GPU compositing dominates.
+- These are not an old binary vs new binary measurement. A real
+  trace and previous-version baseline are still required to quantify
+  benefits before PR #61 is ready.
+
+
+## Focused quiet-period rerun, 2026-11-03
+
+The same Star 4 normal-Activity benchmark was repeated three times
+after adding an 850ms uninterrupted scroll-free gate for giant
+selectable Text overflow. It logged focus and actual overlapping
+published chunk counts. p95 was 26/17/18ms, p99 69/48/600ms.
+The three previous same-device live runs were p95 20/21/20ms and
+p99 750/700/700ms. Median p99 fell from 700ms to 69ms, but a 600ms
+outlier remains. Full results appear in the audit and PROBLEMS.md.
+
+Current branch Android regression results: 3/3 passed in 13.954s,
+using direct instrumentation of the isolated streamperf test package.
+These results test correctness rather than sustained GPU/CPU efficiency.
