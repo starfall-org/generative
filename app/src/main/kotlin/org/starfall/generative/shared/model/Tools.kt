@@ -162,10 +162,14 @@ data class ToolSettings(
     val mcpTools: Map<String, Map<String, Boolean>> = emptyMap(),
     /** Per-server, per-tool parameter visibility and optional default values. */
     val mcpToolParameters: Map<String, Map<String, Map<String, McpToolParameterConfig>>> = emptyMap(),
-    /** Master switch for Remote Machine tools in the chat tool picker. */
+    /** Legacy master flag retained for data compatibility; does not grant tool access by itself. */
     val machinesEnabled: Boolean = false,
-    /** Per-machine switches shown in Remote Machines. Entries override the legacy master switch. */
+    /** Effective server switches: only the selected server may be enabled. */
     val enabledMachines: Map<String, Boolean> = emptyMap(),
+    /** Only explicitly selected machines may provide tools. Null means legacy data without a selection. */
+    val selectedMachineId: String? = null,
+    /** Saved switch preferences for each server; these do not grant tool access by themselves. */
+    val rememberedEnabledMachines: Map<String, Boolean> = emptyMap(),
     /** Legacy per-machine tool switches retained for decoding older settings. */
     val machineTools: Map<String, Map<String, Boolean>> = emptyMap(),
     /** Lets the AI display files in chat through send_file. On unless the user turns it off. */
@@ -333,29 +337,49 @@ fun isWebSearchProvider(settings: ToolSettings, serverId: String): Boolean =
 fun mcpServerEnabled(settings: ToolSettings, serverId: String): Boolean =
     if (isWebSearchProvider(settings, serverId)) settings.webSearchEnabled else settings.quickMcp[serverId] != false
 
-fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.generative.shared.model.RemoteMachine): Boolean =
-    if (settings.enabledMachines.isNotEmpty()) {
-        settings.enabledMachines[machine.id] == true
-    } else {
-        settings.machinesEnabled && machine.aiToolsEnabled
-    }
+fun remoteMachineEnabled(settings: ToolSettings, machine: org.starfall.generative.shared.model.RemoteMachine): Boolean {
+    // A legacy enabled flag alone must never grant a server access without selection.
+    if (settings.selectedMachineId.isNullOrEmpty() || settings.selectedMachineId != machine.id) return false
+    return settings.enabledMachines[machine.id] == true
+}
 
 /**
- * Atomically replace the active Remote Machine for chat tools. Explicit false entries ensure that
- * deselecting also disables the older machinesEnabled fallback for every existing machine.
+ * Changing or clearing selection disables the old server, but remembers its switch so it
+ * can be restored when selected again. The saved preferences never grant tool access.
  */
 fun ToolSettings.withSelectedRemoteMachine(machineId: String?, knownMachineIds: List<String>): ToolSettings {
     require(machineId == null || machineId in knownMachineIds)
-    val ids = enabledMachines.keys + knownMachineIds
+    val previousId = selectedMachineId?.takeIf { it.isNotEmpty() }
+    val remembered = if (previousId == null) rememberedEnabledMachines else
+        rememberedEnabledMachines + (previousId to (enabledMachines[previousId] == true))
+    val restoreEnabled = machineId != null && remembered[machineId] == true
     return copy(
-        enabledMachines = ids.associateWith { it == machineId },
-        machinesEnabled = machineId != null
+        selectedMachineId = machineId ?: "",
+        rememberedEnabledMachines = remembered,
+        enabledMachines = (enabledMachines.keys + remembered.keys + knownMachineIds)
+            .associateWith { it == machineId && restoreEnabled },
+        machinesEnabled = restoreEnabled
     )
 }
 
-/** One machine is presented as selected in the drawer. Legacy multi-enabled settings show the first. */
+/** Only the explicitly selected server is shown, even if legacy flags are enabled. */
 fun selectedRemoteMachine(settings: ToolSettings, machines: List<RemoteMachine>): RemoteMachine? =
-    machines.firstOrNull { remoteMachineEnabled(settings, it) }
+    settings.selectedMachineId?.takeIf { it.isNotEmpty() }?.let { id ->
+        machines.firstOrNull { it.id == id }
+    }
+
+/** Persist the selected server's preference while keeping all other effective switches off. */
+fun ToolSettings.withRemoteMachineEnabled(
+    machineId: String, enabled: Boolean, knownMachineIds: List<String>
+): ToolSettings {
+    if (selectedMachineId.isNullOrEmpty() || machineId != selectedMachineId) return this
+    return copy(
+        rememberedEnabledMachines = rememberedEnabledMachines + (machineId to enabled),
+        enabledMachines = (enabledMachines.keys + rememberedEnabledMachines.keys + knownMachineIds + machineId)
+            .associateWith { it == machineId && enabled },
+        machinesEnabled = enabled
+    )
+}
 
 fun remoteMachineToolEnabled(
     settings: ToolSettings,

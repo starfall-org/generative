@@ -654,6 +654,8 @@
     <string name="remote_server_selection_title">选择供 AI 工具使用的服务器</string>
     <string name="remote_server_none_selected">未选择服务器</string>
     <string name="remote_server_unset_action">取消选择</string>
+    <string name="remote_server_enable_action">启用 AI 工具</string>
+    <string name="remote_server_disable_action">停用 AI 工具</string>
     <string name="remote_servers_description">SSH 和 Google Cloud Shell 连接</string>
     <string name="remote_servers_empty">没有远程服务器</string>
     <string name="remote_server_empty_hint">添加 SSH 或 Google Cloud Shell 连接后，即可使用终端或浏览文件。</string>

@@ -24,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,12 +37,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.model.selectedRemoteMachine
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -165,6 +169,24 @@ internal fun DrawerQuickShortcuts(
                                 }
                                 DropdownMenu(expanded = machineMenu,
                                     onDismissRequest = { machineMenu = false }) {
+                                    val checked = remoteMachineEnabled(controls.settings, selectedMachine)
+                                    val toggleLabel = stringResource(
+                                        if (checked) R.string.remote_server_disable_action
+                                        else R.string.remote_server_enable_action
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(toggleLabel) },
+                                        leadingIcon = { SharedIcon(Icons.Outlined.Computer, null) },
+                                        trailingIcon = {
+                                            Switch(
+                                                checked = checked,
+                                                onCheckedChange = { controls.setMachine(selectedMachine.id, it) },
+                                                modifier = Modifier.testTag("drawer_machine_switch_" + selectedMachine.id)
+                                                    .semantics { contentDescription = toggleLabel }
+                                            )
+                                        },
+                                        onClick = { controls.setMachine(selectedMachine.id, !checked) }
+                                    )
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.remote_server_open_terminal)) },
                                         leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },

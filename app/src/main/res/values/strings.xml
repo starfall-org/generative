@@ -832,6 +832,8 @@
     <string name="remote_server_selection_title">Choose a server for AI tools</string>
     <string name="remote_server_none_selected">No server selected</string>
     <string name="remote_server_unset_action">Unset</string>
+    <string name="remote_server_enable_action">Enable AI tools</string>
+    <string name="remote_server_disable_action">Disable AI tools</string>
     <string translatable="false" name="drawer_remote_services">Remote Services</string>
     <string name="remote_servers_description">SSH and Google Cloud Shell connections</string>
     <string translatable="false" name="remote_ssh_google_oauth">SSH &amp; Google OAuth</string>
