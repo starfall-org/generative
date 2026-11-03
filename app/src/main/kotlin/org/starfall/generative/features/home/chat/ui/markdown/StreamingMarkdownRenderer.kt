@@ -276,6 +276,7 @@ private fun IncrementalStreamingMarkdown(
         val latestSnapshot = rememberUpdatedState(streamSnapshot)
         val renderSnapshot = remember { mutableStateOf(incrementalParser.currentSnapshot()) }
         val parsing = remember { mutableStateOf(false) }
+        val listScrolling = LocalChatListScrolling.current
         TrackPendingWork(parsing.value)
         CollectIncrementalMarkdownStream(
             initialBaseText = initialBaseText,
@@ -284,7 +285,8 @@ private fun IncrementalStreamingMarkdown(
             cancellationToken = cancellationToken,
             renderSnapshot = renderSnapshot,
             parsing = parsing,
-            streamFreezeSignal = streamFreezeSignal
+            streamFreezeSignal = streamFreezeSignal,
+            listScrolling = listScrolling
         )
         val frozen = streamFreezeSignal?.frozen?.collectAsState()?.value == true
         // Stop cancels in-flight parsing. Keep all already rendered Markdown nodes, but expose
@@ -315,7 +317,8 @@ private fun CollectIncrementalMarkdownStream(
     cancellationToken: MarkdownParserCancellationToken,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
     parsing: MutableState<Boolean>,
-    streamFreezeSignal: StreamFreezeSignal?
+    streamFreezeSignal: StreamFreezeSignal?,
+    listScrolling: androidx.compose.runtime.State<Boolean>
 ) {
     LaunchedEffect(Unit) {
         val parserJob = launch {
@@ -331,7 +334,8 @@ private fun CollectIncrementalMarkdownStream(
                             parser = parser,
                             renderSnapshot = renderSnapshot,
                             parsing = parsing,
-                            streamFreezeSignal = streamFreezeSignal
+                            streamFreezeSignal = streamFreezeSignal,
+                            listScrolling = listScrolling
                         )
                     }
                 }
@@ -374,13 +378,19 @@ private suspend fun collectIncrementalMarkdownUpdates(
     parser: IncrementalMarkdownParser,
     renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
     parsing: MutableState<Boolean>,
-    streamFreezeSignal: StreamFreezeSignal?
+    streamFreezeSignal: StreamFreezeSignal?,
+    listScrolling: androidx.compose.runtime.State<Boolean>
 ) {
-    snapshotFlow { latestSnapshot.value }.conflate().collect { current ->
+    snapshotFlow { latestSnapshot.value }.conflate().collect {
         if (streamFreezeSignal?.isFrozen == true) return@collect
         if (renderSnapshot.value.overflowStart != null) {
             return@collect
         }
+        // While the user scrolls, apply streamed text at a bounded rate instead of per publication,
+        // then read the latest text so one step catches up on everything published meanwhile.
+        awaitStreamApplySlot(listScrolling)
+        if (streamFreezeSignal?.isFrozen == true) return@collect
+        val current = latestSnapshot.value
         if (current.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
             // Do not parse or lay out the whole answer again. Freeze the parser's stable prefix and
             // render only the remaining source as one Text node in the same selection/layout tree.

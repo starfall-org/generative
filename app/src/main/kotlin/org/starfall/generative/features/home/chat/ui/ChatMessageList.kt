@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
+import org.starfall.generative.features.home.chat.ui.markdown.LocalChatListScrolling
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 
@@ -283,7 +284,13 @@ internal fun ChatMessageList(
                     )
             }
         }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides insetRelocation) {
+        // A State, not a value: streaming rows read it inside coroutines, so a scroll starting or
+        // stopping never recomposes them. They use it to apply streamed text at a bounded rate.
+        val listScrolling = remember(listState) { derivedStateOf { listState.isScrollInProgress } }
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides insetRelocation,
+            LocalChatListScrolling provides listScrolling
+        ) {
             LazyColumn(
                 state = listState,
                 reverseLayout = false,
