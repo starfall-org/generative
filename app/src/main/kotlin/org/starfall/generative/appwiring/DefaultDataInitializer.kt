@@ -85,7 +85,7 @@ class DefaultDataInitializer(
 
     private suspend fun preloadContentApiTools() {
         val contentApi = mcpRepo.allServers.first().firstOrNull { it.isContentApiPreset() } ?: return
-        if (contentApi.cachedTools != null || contentApi.resolvedUrl() == null) return
+        if (contentApi.cachedTools != null || contentApi.resolvedUrl(BuildConfig.CONTENT_API_MCP_URL) == null) return
 
         try {
             mcpRepo.saveCachedTools(contentApi.id, mcpRepo.discoverTools(contentApi))

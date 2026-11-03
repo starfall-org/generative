@@ -27,10 +27,10 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.terminal.RemoteTerminalSessions
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.RuntimeAppLocale
-import org.starfall.generative.shared.ui.ToolControls
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
+import org.starfall.generative.features.home.shared.ui.ToolControls
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream

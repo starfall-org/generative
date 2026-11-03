@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
+import org.starfall.generative.shared.ui.inputs.withExternalText
 
 class TextFieldValueSyncTest {
     @Test

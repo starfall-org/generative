@@ -20,7 +20,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
 import org.starfall.generative.shared.ui.text.rememberGlyphTarget
-import org.starfall.generative.shared.ui.text.rememberStreamingTextPresentation
 import org.starfall.generative.shared.ui.text.glyphTarget
 
 @Composable
@@ -30,11 +29,10 @@ internal fun MarkdownClickableText(
     modifier: Modifier = Modifier,
     inlineContent: Map<String, InlineTextContent> = emptyMap()
 ) {
-    val presentation = rememberStreamingTextPresentation(text.text)
     val glyphTarget = rememberGlyphTarget()
     val mergedStyle = style.copy(color = if (style.color != Color.Unspecified) style.color else MaterialTheme.colorScheme.onSurface)
-    Text(text = text, style = mergedStyle, modifier = modifier.then(presentation.modifier).glyphTarget(glyphTarget),
-        inlineContent = inlineContent, onTextLayout = { presentation.onTextLayout(it); glyphTarget?.layout = it })
+    Text(text = text, style = mergedStyle, modifier = modifier.glyphTarget(glyphTarget),
+        inlineContent = inlineContent, onTextLayout = { glyphTarget?.layout = it })
 }
 
 @Composable

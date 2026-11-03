@@ -1,9 +1,5 @@
 package org.starfall.generative.shared.code
 
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-
 internal enum class CodeTokenKind { COMMENT, STRING, NUMBER, KEYWORD, TYPE, FUNCTION, TAG, ATTRIBUTE, OPERATOR }
 internal data class CodeToken(val start: Int, val end: Int, val kind: CodeTokenKind)
 
@@ -104,14 +100,4 @@ private fun String.indexOfFirstNonWhitespace(from: Int): Int? {
     var index = from
     while (index < length && this[index].isWhitespace()) index++
     return index.takeIf { it < length }
-}
-
-internal fun highlightedCode(language: String, source: String, dark: Boolean): AnnotatedString {
-    val colors = if (dark) listOf(0xFF8B949E, 0xFFA5D6FF, 0xFF79C0FF, 0xFFFF7B72, 0xFFFFA657, 0xFFD2A8FF, 0xFF7EE787, 0xFF79C0FF, 0xFFFF7B72)
-        else listOf(0xFF6E7781, 0xFF0A3069, 0xFF0550AE, 0xFFCF222E, 0xFF953800, 0xFF8250DF, 0xFF116329, 0xFF0550AE, 0xFFCF222E)
-    return AnnotatedString.Builder(source).apply {
-        codeTokens(language, source).forEach { token ->
-            addStyle(SpanStyle(color = Color(colors[token.kind.ordinal])), token.start, token.end)
-        }
-    }.toAnnotatedString()
 }

@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.text
+package org.starfall.generative.shared.ui.inputs
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

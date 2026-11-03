@@ -37,8 +37,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.ApiKeyField
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.ApiKeyField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Full-screen speech service editor. All configuration and preview actions are kept inline. */
 @OptIn(ExperimentalMaterial3Api::class)

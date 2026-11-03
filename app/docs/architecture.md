@@ -43,7 +43,9 @@ The app uses a customized feature-first architecture. Organize code by responsib
 - **`shared/`**: Components, data types, utilities, helpers and ancillary I/O reused across features or layers. Keep code close to its owner until it is genuinely shared; helpers prepare inputs or interpret outputs and do not import integrations.
 - **`extensions/`**: Highly complex, difficult-to-maintain capabilities that require strong isolation. Dependencies point into extensions only: an extension never imports `shared/`, `integrations/`, `database/`, `features/`, `navigation/` or `appwiring/`. Extensions do not access a database, filesystem backend or remote API; hosts implement extension-owned contracts. Extensions must not contain UI configuration code; reusable UI and configuration stay in `shared/subfeatures/` or with the owning feature.
 - **`shared/subfeatures/`**: Large reusable designs shared by multiple features, including their reusable presentation and behavior. Keep feature-specific configuration and host integrations with the owning feature or appropriate outer layer. The shared file explorer lives in `shared/subfeatures/explorer/`.
+- **`features/machines/shared/ui/terminal/`**: Machines-owned remote terminal presentation. Its reusable bridge, session and input infrastructure remains in `shared/terminal/`; the screen and its supporting app bar/panels/dialogs do not belong to generic shared UI.
 - **`shared/ui/`**: Highly reusable, specialized presentation components without feature behavior. Shared UI obtains appearance and profile policies from reusable shared components and helpers.
+- **`shared/ui/inputs/`**: Reusable editable controls and literal/text input behavior. Rendering-only text, Markdown, selection and streaming helpers remain under `shared/ui/text/`.
 
 `extensions/` and `shared/` are independent foundations. Application dependency direction remains `integrations` ← `database` ← `features` ← `navigation` ← `appwiring`; a layer can depend only on an appropriate foundation or an earlier application layer. `shared/` and `integrations/` must not import `database/` or `features/`; `database/` must not import `features/`. Screen transitions use callbacks wired by the navigation layer. Run `python3 scripts/check_extensions.py` after extension changes.
 
@@ -53,7 +55,7 @@ Preserve the Room schema history under `app/schemas/`; package-only moves must n
 
 - Use Jetpack Preferences DataStore for application settings, customization and other reusable preference state. Migrate existing SharedPreferences values without loss.
 - Store dynamic, capability-specific data in Room/SQLite, including credentials, model providers, MCP servers, speech services, Feature Tools profiles and instructions. Keep database access in `database/` and encrypt credentials before persistence.
-- Keep one application-scoped instance for each database and DataStore; share repositories and stores through application wiring. Read and observe data as needed, and propagate edits to active consumers.
+- Keep one application-scoped instance for each database and DataStore; share repositories and stores through application wiring. Read one Room snapshot to initialize an application-owned memory catalog. Room/SQLite is passive persistence and must not publish invalidations or re-read/reorder active UI after writes; repositories explicitly publish RAM edits immediately, then persist through their serial writers. DataStore preferences retain their reactive flow.
 - Migrate existing installations and backup/restore paths without silently discarding data. Retain the legacy source until the destination has been written successfully; make migration safe to retry.
 
 ## Maintaining the architecture

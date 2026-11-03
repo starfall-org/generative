@@ -20,17 +20,22 @@ internal fun looksLikeErrorText(content: String): Boolean {
     }
 }
 
+/** A transport handshake or a file-transfer call without visible media is not a chat block. */
+internal fun ToolActivity.hasVisibleAssistantBlock(): Boolean =
+    !name.endsWith(": connect") && (name != "send_file" ||
+        (responsePreviewLimit == 0 && files.any { !it.endsWith(".json", ignoreCase = true) }))
+
 /** Something the user can read or keep, excluding text that consists only of an error. */
 internal fun MessageVersion.hasResponseContent(): Boolean =
     (content.isNotBlank() && !looksLikeErrorText(content)) ||
         !reasoningContent.isNullOrBlank() || files.isNotEmpty() ||
-        toolActivity.any { !it.name.endsWith(": connect") }
+        toolActivity.any { it.hasVisibleAssistantBlock() }
 
 internal fun MessageVersion.isErrorOnly(): Boolean =
     !hasResponseContent() && (generationError != null || looksLikeErrorText(content))
 
 internal fun MessageVersion.isEmptyResponse(): Boolean =
-    generationError == null && !hasResponseContent() && !looksLikeErrorText(content)
+    generationError.isNullOrBlank() && !hasResponseContent() && !looksLikeErrorText(content)
 
 /** Versions the user can page through; error-only attempts are not counted. */
 internal fun StoredMessage.countedVersionIndices(): List<Int> =

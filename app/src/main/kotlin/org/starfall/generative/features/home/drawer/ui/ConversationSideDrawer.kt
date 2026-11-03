@@ -53,7 +53,7 @@ import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon

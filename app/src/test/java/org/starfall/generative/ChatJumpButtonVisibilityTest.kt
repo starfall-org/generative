@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.junit.Assert.*
@@ -71,6 +72,32 @@ class ChatJumpButtonVisibilityTest {
             assertFalse(state.showJumpToLatest)
             assertEquals("Button policy never emits scroll intents", 0L, state.requestCount)
             assertFalse(state.detached)
+        }
+    }
+
+    @Test fun visibilityCatchesUpWhenScrollingStops() {
+        val state = ChatMessageListState(messages)
+        val finishScroll = CompletableDeferred<Unit>()
+        show(state)
+        compose.runOnIdle {
+            assertFalse(state.showJumpToLatest)
+            scope.launch {
+                state.listState.scroll {
+                    scrollBy(-5000f)
+                    finishScroll.await()
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(state.listState.isScrollInProgress)
+            assertFalse("Visibility stays unchanged during scrolling", state.showJumpToLatest)
+            finishScroll.complete(Unit)
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertFalse(state.listState.isScrollInProgress)
+            assertTrue("Visibility catches up after scrolling", state.showJumpToLatest)
         }
     }
 

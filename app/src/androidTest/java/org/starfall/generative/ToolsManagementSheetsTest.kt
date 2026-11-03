@@ -23,8 +23,8 @@ import org.starfall.generative.features.home.shared.ui.McpConnectorsSheet
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.ToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.ToolControls
 
 class ToolsManagementSheetsTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

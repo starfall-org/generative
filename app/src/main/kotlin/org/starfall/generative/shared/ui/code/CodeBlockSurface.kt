@@ -30,18 +30,16 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.code.highlightedCode
 import org.starfall.generative.shared.storage.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.text.glyphTarget
 import org.starfall.generative.shared.ui.text.rememberGlyphTarget
-import org.starfall.generative.shared.ui.text.rememberStreamingTextPresentation
 
 /**
  * The one code block used across the app. Header (language, wrap toggle, preview, download, copy), font size,
  * highlighting and word wrap all follow [LocalCodeRenderingPreferences], so chat, tool details, the model editor
- * and file previews look and behave the same. Streaming fade and selection gating are no-ops outside chat.
+ * and file previews look and behave the same. Selection gating is a no-op outside chat.
  *
  * [code] is what is shown; [originalCode] is what copy, preview and download use (they differ only when the
  * visible text is truncated by the "extendable" display mode).
@@ -70,7 +68,6 @@ internal fun CodeBlockSurface(
         value = withContext(Dispatchers.Default) { highlightedCode(language, code, dark) }
     }
     val codeScrollState = rememberScrollState()
-    val codePresentation = rememberStreamingTextPresentation(code)
     val glyphTarget = rememberGlyphTarget()
     Surface(
         shape = RoundedCornerShape(10.dp),
@@ -93,8 +90,8 @@ internal fun CodeBlockSurface(
                 val bodyModifier = if (target == null) Modifier else Modifier.width(with(density) { target.toDp() } + 24.dp)
                 Box(Modifier.fillMaxWidth().then(if (mode == WordWrapMode.OFF || mode == WordWrapMode.COLUMN) Modifier.horizontalScroll(codeScrollState) else Modifier)) {
                     Text(highlighted, style = textStyle,
-                        softWrap = wrapCode, modifier = bodyModifier.padding(12.dp).then(codePresentation.modifier).glyphTarget(glyphTarget),
-                        onTextLayout = { codePresentation.onTextLayout(it); glyphTarget?.layout = it }, color = MaterialTheme.colorScheme.onSurface)
+                        softWrap = wrapCode, modifier = bodyModifier.padding(12.dp).glyphTarget(glyphTarget),
+                        onTextLayout = { glyphTarget?.layout = it }, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             onExpansionChange?.let { toggle ->

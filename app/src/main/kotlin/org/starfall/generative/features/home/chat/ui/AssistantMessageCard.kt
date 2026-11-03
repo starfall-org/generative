@@ -9,7 +9,6 @@ import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 import android.content.Intent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
@@ -31,17 +29,15 @@ import org.starfall.generative.features.home.chat.logic.service.buildAssistantAc
 import org.starfall.generative.features.home.chat.logic.service.AssistantBlockKind
 import org.starfall.generative.features.home.chat.logic.service.assistantVisibleBlocks
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
-import org.starfall.generative.features.home.chat.model.ChatStreamStatus
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import kotlinx.coroutines.flow.StateFlow
 import org.starfall.generative.shared.model.countedVersionIndices
+import org.starfall.generative.shared.model.isEmptyResponse
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.AlertSeverity
 import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.nestedContainerColor
-import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
@@ -76,14 +72,12 @@ fun AssistantMessageCard(
     val foreground = LocalChatForeground.current
     var showMoreMenu by remember(foreground) { mutableStateOf(false) }
     val storedVersion = message.activeVersion
-    // A card that streamed here keeps its incremental Markdown tree through Stop and natural
-    // completion. Reopening the chat instead uses saved text, never a stale/frozen parser.
-    val streamedInThisComposition = remember(message.id, message.activeVersionIndex) { booleanArrayOf(false) }
-    // Shared by the text subtrees so adding a tool block or clearing the published stream
-    // cannot discard the last incremental snapshot and remount all the Markdown at completion.
-    val retainedStream = remember(message.id, message.activeVersionIndex) { arrayOfNulls<ActiveChatStreamState>(1) }
-    if (isStreaming) streamedInThisComposition[0] = true
-    val keepStreamRendererMounted = streamedInThisComposition[0]
+    // The UI must not allocate padding/toolbar for an abandoned assistant attempt.
+    // Keep a message with another non-empty version navigable if one exists.
+    if (!isStreaming && message.versions.all { it.isEmptyResponse() }) return
+    // Each mounted message version can retain its already composed incremental blocks.
+    // A newly mounted row has no live memory and reads the latest completed version directly.
+    val liveTailMemory = remember(conversationId, message.id, message.activeVersionIndex) { LiveTailMemory() }
     val renderCacheIdentity = remember(conversationId, message.id, cacheEnabled) {
         conversationId?.takeIf { cacheEnabled }?.let { MarkdownRenderCacheIdentity(it, message.id) }
     }
@@ -91,13 +85,11 @@ fun AssistantMessageCard(
     // version so the toolbar, media actions and tool sheet do not invalidate on every chunk.
     val activeVersion = storedVersion
     val generatedModelName = activeVersion.modelDisplayName.ifBlank { activeVersion.modelId.ifBlank { fallbackModelName } }
-    val generationError = activeVersion.generationError.orEmpty()
     // Copy and Share use the same representation, including action/media placeholders.
     val toolbarText = remember(activeVersion) { assistantCopyText(message) }
-    val hasContent = activeVersion.content.isNotBlank() ||
-        !activeVersion.reasoningContent.isNullOrBlank() ||
-        activeVersion.toolActivity.isNotEmpty() || activeVersion.files.isNotEmpty() ||
-        generationError.isNotBlank()
+    // A toolbar belongs to an actual response block, never to a generated empty slot.
+    // Edit stays available in the More menu even when Content itself is absent.
+    val hasContent = !activeVersion.isEmptyResponse()
     val versionIndices = remember(message.versions, message.activeVersionIndex) {
         val counted = message.countedVersionIndices()
         if (message.activeVersionIndex in counted) counted
@@ -124,34 +116,15 @@ fun AssistantMessageCard(
             version = activeVersion,
             isStreaming = isStreaming,
             processingDurationMillis = processingDurationMillis.takeUnless { isStreaming },
-            animateStreamingContent = keepStreamRendererMounted,
+            liveTailMemory = liveTailMemory,
             selectedImageAttachments = selectedImageAttachments,
             onToggleChatImage = onToggleChatImage,
             onDeleteBlock = onDeleteBlock,
             renderCacheIdentity = renderCacheIdentity,
-            streamStateFlow = streamStateFlow?.takeIf { keepStreamRendererMounted },
-            retainedStream = retainedStream,
+            streamStateFlow = streamStateFlow,
             streamConversationId = conversationId,
             streamMessageId = message.id
         )
-        // A response containing only thinking, tool actions or attachments still needs an
-        // editable answer slot. Keep it separate from the actions timeline and toolbar.
-        if (!isStreaming && hasContent && activeVersion.content.isBlank()) {
-            Surface(
-                onClick = onEdit,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                    .heightIn(min = 32.dp).testTag("assistant-empty-content"),
-                shape = RoundedCornerShape(10.dp),
-                color = nestedContainerColor(),
-                border = nestedContainerBorder()
-            ) {
-                Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.CenterStart) {
-                    SharedIcon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.common_edit),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp))
-                }
-            }
-        }
         if (isStreaming) {
             GenerationLoadingIndicator(
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -297,60 +270,60 @@ private fun SmoothStreamingMarkdownMessage(
     StreamingMarkdownRenderer(content = content, isStreaming = isStreaming, cacheIdentity = cacheIdentity)
 }
 
-/** Collects live text below the assistant-card shell so static actions/media do not recompose per commit. */
+/** A composition-scoped handoff, not a second copy of the persisted message. */
+private class LiveTailMemory {
+    private var lastObserved: ActiveChatStreamState? = null
+    val hasObservedStream: Boolean get() = lastObserved != null
+    val lastStream: ActiveChatStreamState? get() = lastObserved
+
+    fun observe(stream: ActiveChatStreamState) {
+        lastObserved = stream
+    }
+}
+
+/** Observe live chunks only for the active message; completed cards do not collect the stream flow. */
 @Composable
 private fun StreamingAssistantText(
-    streamStateFlow: StateFlow<ActiveChatStreamState?>,
+    streamStateFlow: StateFlow<ActiveChatStreamState?>?,
+    isStreaming: Boolean,
     conversationId: String?,
     messageId: String,
     startOffset: Int,
     fallbackContent: String,
     cacheIdentity: MarkdownRenderCacheIdentity?,
-    retainedStream: Array<ActiveChatStreamState?>
+    liveTailMemory: LiveTailMemory
 ) {
-    val currentStream = streamStateFlow.collectAsState().value?.takeIf {
-        it.conversationId == conversationId && it.messageId == messageId
+    val currentStream = if (isStreaming) {
+        streamStateFlow?.collectAsState()?.value?.takeIf {
+            it.conversationId == conversationId && it.messageId == messageId
+        }
+    } else null
+    // Write only after a successful composition, not to a mutable array during composition.
+    SideEffect { currentStream?.let(liveTailMemory::observe) }
+    val stream = currentStream ?: liveTailMemory.lastStream
+    // The final stored version always wins. When it exactly extends the observed stream,
+    // supply its missing suffix to the SAME incremental renderer and preserve stable nodes.
+    val snapshot = remember(stream?.content, isStreaming, fallbackContent) {
+        if (isStreaming) stream?.content else stream?.content?.extendedTo(fallbackContent)
     }
-    if (currentStream != null) retainedStream[0] = currentStream
-    val stream = currentStream ?: retainedStream[0]
-    if (stream == null) {
+    if (stream == null || snapshot == null) {
         val fallback = fallbackContent.substring(startOffset.coerceIn(0, fallbackContent.length)).trimEnd()
         if (fallback.isNotBlank()) SmoothStreamingMarkdownMessage(fallback, false, cacheIdentity)
         return
     }
-    // Completion clears the shared stream, but final persistence can include an extra batch
-    // that its conflated UI collector never saw. Append only that suffix to the same parser.
-    val fullSnapshot = remember(stream.content, fallbackContent, currentStream) {
-        if (currentStream != null || stream.stopSignal.isFrozen || stream.status == ChatStreamStatus.CANCELLED) {
-            stream.content
-        } else {
-            val seenLength = stream.content.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val boundaryStart = (seenLength - 64).coerceAtLeast(0)
-            val boundary = stream.content.slice(boundaryStart, seenLength)
-            val prefix = stream.content.prefix(minOf(64, seenLength))
-            if (fallbackContent.length > seenLength && fallbackContent.startsWith(prefix) &&
-                fallbackContent.regionMatches(boundaryStart, boundary, 0, boundary.length)
-            ) {
-                stream.content.append(fallbackContent.substring(seenLength), stream.revision + 1)
-            } else stream.content
-        }
-    }
-    val streamTail = remember(fullSnapshot, startOffset) {
-        fullSnapshot.suffixFrom(startOffset)
-    }
+    val streamTail = remember(snapshot, startOffset) { snapshot.suffixFrom(startOffset) }
     if (streamTail.length > 0L) {
         StreamingMarkdownRenderer(
-            // The snapshot is the source of truth on this path; avoid copying the complete tail to a String
-            // on every stream publication just to satisfy the compatibility renderer's parameter.
             content = "",
             isStreaming = true,
-            // The conflated collector can drain every queued segment in order without dropping chunks.
             streamSnapshot = streamTail,
             streamGenerationId = stream.generationId,
             streamMessageId = stream.messageId,
             streamStartOffset = startOffset,
             cacheIdentity = cacheIdentity,
-            streamFreezeSignal = stream.stopSignal
+            streamFreezeSignal = stream.stopSignal,
+            // Retain the incremental parser on completion, but release its clipping boundary.
+            streamGrowthActive = isStreaming
         )
     }
 }
@@ -360,13 +333,12 @@ private fun CompletedAssistantContent(
     version: MessageVersion,
     isStreaming: Boolean,
     processingDurationMillis: Long?,
-    animateStreamingContent: Boolean,
+    liveTailMemory: LiveTailMemory,
     selectedImageAttachments: List<String>,
     onToggleChatImage: ((String) -> Unit)?,
     onDeleteBlock: ((Int) -> Unit)?,
     renderCacheIdentity: MarkdownRenderCacheIdentity? = null,
     streamStateFlow: StateFlow<ActiveChatStreamState?>? = null,
-    retainedStream: Array<ActiveChatStreamState?>,
     streamConversationId: String? = null,
     streamMessageId: String? = null
 ) {
@@ -410,17 +382,20 @@ private fun CompletedAssistantContent(
         }
     }
 
+    // Keep the same content slot through completion; only the source handed to it changes.
+    val useIncrementalText = (isStreaming && streamStateFlow != null) || liveTailMemory.hasObservedStream
     GatedSelectionContainer {
         Column {
-            if (numberedBlocks.isEmpty() && animateStreamingContent && streamStateFlow != null) {
+            if (numberedBlocks.isEmpty() && useIncrementalText) {
                 StreamingAssistantText(
                     streamStateFlow = streamStateFlow,
+                    isStreaming = isStreaming,
                     conversationId = streamConversationId,
                     messageId = streamMessageId.orEmpty(),
                     startOffset = 0,
                     fallbackContent = content,
                     cacheIdentity = renderCacheIdentity,
-                    retainedStream = retainedStream
+                    liveTailMemory = liveTailMemory
                 )
             } else {
                 var cursor = 0
@@ -488,15 +463,16 @@ private fun CompletedAssistantContent(
                     }
                     cursor = offset
                 }
-                if (animateStreamingContent && streamStateFlow != null) {
+                if (useIncrementalText) {
                     StreamingAssistantText(
                         streamStateFlow = streamStateFlow,
+                        isStreaming = isStreaming,
                         conversationId = streamConversationId,
                         messageId = streamMessageId.orEmpty(),
                         startOffset = cursor,
                         fallbackContent = content,
                         cacheIdentity = renderCacheIdentity?.forBlock("tail-$cursor"),
-                        retainedStream = retainedStream
+                        liveTailMemory = liveTailMemory
                     )
                 } else if (cursor < content.length) {
                     val remaining = content.substring(cursor)

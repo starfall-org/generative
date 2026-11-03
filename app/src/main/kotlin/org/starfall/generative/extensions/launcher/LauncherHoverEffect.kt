@@ -64,8 +64,11 @@ fun <T : Any> LauncherHoverActionEffect(
         if (!armed || dragKey == null || target == null) return@LaunchedEffect
         delay(delayMillis.coerceAtLeast(0L))
         val drag = state.session ?: return@LaunchedEffect
-        if (drag.item.key == dragKey && state.hoveredTargetKey == target && currentOnHover.value(target, drag)) {
-            lastAppliedPointer = drag.pointer
+        if (drag.item.key == dragKey && state.hoveredTargetKey == target) {
+            // Delayed hover mutations must receive the same scroll anchoring as
+            // immediate drop-target enter mutations.
+            state.preserveScrollViewportDuringReorder(drag.pointer)
+            if (currentOnHover.value(target, drag)) lastAppliedPointer = drag.pointer
         }
     }
 }

@@ -13,7 +13,7 @@ import org.starfall.generative.integrations.security.SecretCipher
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.ApiKeyMask
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** The persisted editor draft only receives encrypted envelopes, never a plaintext key. */
 @Composable

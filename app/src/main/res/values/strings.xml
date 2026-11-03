@@ -1277,4 +1277,6 @@
     <string name="settings_repair_provider_result">Repaired %1$d provider record(s).</string>
     <string name="settings_repair_provider_warning">Unreadable JSON metadata will be discarded and damaged OAuth credentials reset for affected providers only. Models and other providers are preserved. You may need to sign in again.</string>
     <string name="settings_repair_provider_failed">Failed to repair providers: %1$s</string>
+    <string name="providers_demo_title">ProvidersScreen demo</string>
+        <string name="providers_demo_editor_title">Demo provider</string>
 </resources>

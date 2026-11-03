@@ -25,7 +25,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.lists.ItemSurface
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 @Composable
 internal fun McpToolsTab(

@@ -1,101 +1,61 @@
-# TODO — Shared Component Refactor
+# TODO — Shared Layer Reorganization
 
-## Current implementation status
+Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **responsibility, ownership, and real reuse**, without changing behavior. The branch starts from `main`. Do not implement the parallel screen/component API refactors here.
 
-The first implementation slice is complete on `refactor/components`. The six shared primitives
-now reuse the existing `BottomSheet`, appearance, `ItemCard`, and input foundations. Representative
-callers have been migrated and focused Robolectric coverage was added for search text retention,
-key autocomplete, AppMenu grouping, model catalog search, and model picker behavior.
+## 1. Audit shared ownership and define the target structure
 
-The follow-up integration now uses a separate worktree from the PR head and expands the migrations:
-contextual actions in provider, OAuth, chat, history, Remote SSH and drawer UI now use
-`ContextMenuSheet`; predefined-content settings/media sheets use `ContentSheet`; and the
-Remote SSH, TTS and Web Search pickers use typed `ItemListSheet` entries. All remaining
-feature `DropdownMenu` call sites were reviewed as attribute/field selectors rather than
-contextual actions. `KeyValueField` keeps the prior horizontal header-editor layout and
-`ItemListSheet` namespaces keys across sections. Static checks cover the
-layout structure, grouped-key separation and keyed group state in source.
+- [ ] Inventory every shared declaration and caller; the current baseline and completed ownership batches are recorded in `app/docs/shared-migration-map.md`.
+- [ ] Classify the remaining shared files; the migration map records owner, destination, reason and callers for the completed batches.
+- [ ] Enforce ownership rules:
+  - `shared/model/`: cross-feature data types/serialization, never UI, feature workflows, or `BuildConfig`.
+  - `shared/storage/`: app-wide state primitives and DataStore preferences; Room-backed repositories stay in `database/`.
+  - `shared/auth/`, `files/`, `icons/`, `logging/`, `media/`, `networking/`, `terminal/`, and `code/`: cohesive reusable non-screen capabilities; move external API clients to `integrations/` where applicable.
+  - `shared/ui/`: composable presentation and appearance primitives with no feature-owned flow, persistence or app navigation.
+  - `shared/subfeatures/`: larger, cohesive **actually reusable** experiences with their own UI/logic; retain `shared/subfeatures/explorer/` as the canonical Explorer.
+  - `features/<owner>/`: UI and state confined to that feature; use the feature's internal `shared/` only where its subfeatures reuse the code.
+  - `navigation/` / `appwiring/`: application routing, root Activity decisions and host configuration.
+- [ ] Establish concise `shared/ui/` categories. Evaluate `inputs/` (editable fields, switch/slider/completion), `text/` (display/Markdown/selection), `layout/` (layout only), `appearance/` or `theme/` (single visual-policy source), `screens/` (reusable shell/transition), `lists/`, `dialogs/`, `sheets/`, `menus/`, `icons/`, `code/`, and `media/`. Avoid empty or arbitrarily single-file packages.
+- [ ] Preserve explicitly shared and stable infrastructure (e.g. icon registry, `shared/ui/dialogs/`, `shared/ui/sheets/`, `shared/subfeatures/explorer/`). Do not move files just to make the directory tree symmetrical.
+- [ ] Record the baseline before changes: imports by layer, feature reuse per component, stray Compose dependencies, and any suspected unused code; distinguish confirmed dependency breaches from potential organizational improvements.
 
-The remaining work is intentionally tracked below: coordinate with `refactor/feature-screens`
-and `refactor/shared`, run approved compilation and Android UI checks, validate appearance
-and accessibility, and collect UI feedback before treating the refactor as complete.
+## 2. Reorganize shared in small, behavior-preserving batches
 
-## 1. Create reusable UI components
+- [x] **Fix confirmed upward dependencies.**
+  - `shared/auth/OAuthCallbackService.kt` now receives the app-return Intent from the host through `OAuthReturnIntentProvider`, without changing OAuth foreground service handling.
+  - `shared/model/McpInfo.kt` now accepts a host-provided Content API endpoint; explicit URL priority, preset fallback and credential handling are preserved.
+  - Note the related `features/home/shared/logic/ChatBackgroundService.kt` → `MainActivity` import for coordination; do not expand this branch into unrelated Home refactoring.
+- [ ] **Separate rendering from lower-level logic where genuinely mixed.**
+  - `shared/code/CodeSyntaxHighlighting.kt` keeps language detection/token ranges independent; Compose `Color` / `SpanStyle` / `AnnotatedString` mapping now lives in `shared/ui/code/CodeHighlighting.kt`.
+  - [x] `RemoteTerminalBridge.kt` no longer imports `DialogWindowProvider` or resolves Compose windows; Machines UI supplies the host `Window?`, while Termux bridge behavior, IME, sessions and input remain in shared terminal infrastructure.
+  - [x] Reviewed `shared/preview/CodePreviewActivity.kt` as an Android presentation entry point; it remains under `shared/preview` because the manifest and shared code header reference the complete preview capability.
+- [ ] **Move feature-specific state/components toward their real owner.**
+  - `InstructionControls.kt` and `ToolControls.kt` now live in `features/home/shared/ui/`; navigation still supplies the contracts from the outside.
+  - [x] Move `ChatAttachmentSelection` to `features/home/chat/ui/` and pass generic selection callbacks/parameters to shared media views; `MediaFileCard` no longer imports chat state.
+  - [x] Audited `MachineDialogTitle.kt` and `MachineToolsDialog.kt`; both are used by Machines and the Home drawer, so their existing machine-scoped shared package is retained.
+  - [x] Removed `shared/ui/ProfileMcpPermissions.kt` after a repository-wide search confirmed no production, test, manifest or reflection caller; `McpAccess` storage/model types remain unchanged.
+- [ ] **Move complete presentation capabilities out of generic primitive buckets when justified.**
+  - [x] Moved `RemoteTerminalScreen.kt`, `RemoteTerminalAppBar.kt`, `RemoteTerminalPanels.kt`, and `RemoteTerminalDialogs.kt` to `features/machines/shared/ui/terminal/`; navigation callbacks and screen lifecycle remain unchanged.
+  - [x] Audited `shared/ui/model/` as one Model Picker capability used by multiple features; retain it in shared UI to preserve one selection/search/scroll/animation implementation.
+  - Keep `shared/subfeatures/explorer/` centralized and independent of feature/database backends. Do not move its UI back into `extensions/`.
+  - [x] Audited `shared/ui/logging/` as a coherent global debug UI mounted by the app shell; retain the package intact.
+- [ ] **Normalize the generic `shared/ui/` structure.**
+  - Editable controls (`OutlinedTextField`, `EditorTextField`, `HeaderNameField`, `ApiKeyField`, `AppBarSearchField`) now live under `shared/ui/inputs/`; `text/` retains rendering, Markdown, selection, wrapping and streaming effects.
+  - Reclassify policy files mixed into `shared/ui/layout/` (`CardAppearance`, `ContainerTransparency`, `InputAreaAppearance`, `AmoledBorder`) without duplicating `shared/theme/` or existing Appearance/UserProfile helpers.
+  - Reclassify `ScreenCover`, `RetainedScreenContent`, `ScreenSlideMotion`, `SystemBars` and `EdgeToEdgeContent` according to shared screen/window responsibilities, coordinating with `refactor/feature-screens`.
+  - Review top-level `shared/ui/` files (`ErrorContainer`, `FeaturesLogo`, `LoadingIndicator`, `RuntimeAppLocale`, `ToolSwitch`) for intuitive ownership. Keep widely reused primitives discoverable; do not force renames without value.
+  - Preserve Fluent `ImageVector` sources and registration in `shared/ui/icons/fluentui/`; keep icon asset/storage services separate under `shared/icons/`.
+- [ ] **Respect the other planning branches.** `refactor/components` owns `ContentSheet`, `ContextMenuSheet`, `ItemListSheet`, `ExpandableSearchField`, `KeyValueField`, `ComponentGroup` and their behavior-driven migrations. `refactor/feature-screens` owns `ScreenTemplate`, the four `Content*` types, screen transitions and screen migrations. This branch owns **shared package boundaries and ownership**; coordinate naming, avoid duplicate APIs and do not implement the other branches' features.
+- [ ] Apply one cohesive migration per batch. Update package declarations, imports, references, tests, navigation, Android manifest registrations, reflection/serialization names and documentation. Do not leave duplicate wrappers just to conceal missed callers.
+- [ ] Preserve behavior: AMOLED/dynamic colors, appearance transparency, `ProfileBackground`, ChatAppBar independent gradient, dialog/sheet animation and insets, touch/keyboard/accessibility, chat scrolling/streaming, OAuth return flow, stored data and backup compatibility.
+- [ ] Do not change Room schemas, database names, credential keys, DataStore keys or serialization formats for package-only relocations. Keep `extensions/` isolated; generic Compose drag mechanics there are **not** automatically app-owned UI and are outside this branch's main scope.
 
-- [x] **ContentSheet**
-  - Provide a shared BottomSheet template for content whose structure is predefined by its use case, rather than a generic list or a context menu.
-  - Support a configurable, optional Header: callers can show or hide it without having to reproduce sheet layout code.
-  - When shown, the Header can expose a title and appropriate actions; when hidden, do not reserve empty header space.
-  - Reuse the application's existing BottomSheet foundation, appearance policies, content-aware initial height, maximum height below the status bar, and inset/IME handling.
-  - Expose only the customization points required by the defined content, rather than implementing another unrestricted sheet wrapper.
+## 3. Verify architecture and close the refactor
 
-- [x] **ContextMenuSheet**
-  - Replace action-oriented `DropdownMenu` usages throughout the app with a shared context-menu BottomSheet.
-  - **No Header.** Present context actions directly, with consistent icons, labels, spacing, enabled/disabled states, and destructive styling where appropriate.
-  - Support contextual actions, dismissal, and placement/selection context without duplicating feature-owned action behavior.
-  - Preserve the distinction between action menus and input-selection dropdowns: `ExposedDropdownMenu` used for completions or field selection is not a context menu and must remain supported.
-
-- [x] **ItemListSheet**
-  - Provide a reusable BottomSheet specialized for lists. **No Header.**
-  - **Accept only a list of `ItemCard` entries**, with an API that enforces this contract rather than allowing arbitrary non-card list content.
-  - Treat `ModelPickerSheet` as the reference implementation for the most demanding behaviors and configuration needs.
-  - Offer optional, composable list controls where required: search (using `ExpandableSearchField`), filters, groups/sections, selection modes, selected-item indication, loading/error/empty states, and item actions.
-  - Preserve scroll position, item identity, dynamic list updates, keyboard dismissal, and BottomSheet sizing/expansion behavior.
-  - Keep item data and feature-specific actions outside the shared component; do not force every `ItemListSheet` caller to enable all advanced features.
-  - Do not add a sheet Header when optional search/filter controls are present; place them within the sheet content layout.
-
-- [x] **ExpandableSearchField**
-  - Extend the shared search component so callers no longer have to reimplement search expansion, collapse, and focus management.
-  - Own the collapsed search button, expanded input appearance, clear/close behavior, focus requests, keyboard/IME actions, and coherent animations/width transitions.
-  - Expose controlled search text, change callbacks, customization for placeholder/actions, and appropriate keyboard behavior without owning feature-specific filtering or data fetching.
-  - Preserve entered text when closing the keyboard unless the caller explicitly requests clearing it; make close/collapse rules predictable and configurable.
-  - Reuse in AppBars, BottomSheets, and other relevant layouts rather than maintaining separate implementations.
-
-- [x] **KeyValueField**
-  - Create a reusable template for a paired Key input and Value input with consistent layout, labels, spacing, and input/focus behavior.
-  - Support **Key autocomplete/completions through an `ExposedDropdownMenu`** (the expanded suggestion dropdown), with caller-supplied suggestions and selection callbacks.
-  - Support editable custom Keys alongside suggestions, without forcing a suggestion to be selected.
-  - Expose appropriate Value input variants (plain text, literal text, secret/masked text, or multiline where applicable) without embedding feature-specific storage or validation.
-  - Respect the app's literal-input IME policy for keys, tokens, URLs, and raw values; preserve editing state when suggestions open/close.
-  - Keep the autocomplete dropdown distinct from `ContextMenuSheet`, which is exclusively for contextual actions.
-
-- [x] **ComponentGroup**
-  - Provide a reusable way to group related UI components and features, with `AppMenuScreen` as the reference design.
-  - Centralize optional group title/description, item spacing, container styling, rounded corners (including single-item groups), separators, and consistent appearance/transparency.
-  - Support feature-defined children and optional group actions without coupling the component to `AppMenuScreen` or any particular feature's data.
-  - Make the component usable throughout the app for menus, settings, and other grouped interfaces; avoid feature-local copies of the same grouping layout.
-
-## 2. Integrate the shared components into the app
-
-- [x] Inventory current BottomSheets, `DropdownMenu` usages, search fields, Key/Value editors, and grouped UI; classify each use case before replacing it.
-- [x] Implement the six components in the appropriate shared UI layer, reusing existing foundations instead of creating parallel appearance or modal systems.
-- [x] Migrate representative predefined-content BottomSheets to `ContentSheet`, with the Header visible only where needed.
-- [x] Migrate representative action-oriented menus to headerless `ContextMenuSheet`; keep input completions and appropriate `ExposedDropdownMenu` fields intact.
-- [x] Migrate representative list BottomSheets to headerless `ItemListSheet`, including speech pickers and stable `ItemCard` entries.
-- [x] Replace repeated search expansion/focus logic with `ExpandableSearchField`, and repeated Key/Value input layouts with `KeyValueField`.
-- [x] Apply `ComponentGroup` to the `AppMenuScreen` reference and shared appearance shape calculation.
-- [ ] Remove duplicate implementations once migrated; preserve existing functionality, navigation, feature-specific state, accessibility, and appearance policies.
-- [ ] Coordinate with the separate `refactor/feature-screens` work so screen templates and these components can compose cleanly without duplicate responsibilities.
-
-## Verification and integration notes (follow-up worktree)
-
-- Static checks performed: `git diff --check` and `python3 scripts/check_extensions.py` pass.
-- The localization checker reports pre-existing missing translations in Tier 2 resources; no
-  new translatable string was introduced. The HTTP header example is now a canonical
-  non-translatable string resource.
-- The sibling `refactor/shared` draft touches 14 files also edited by this refactor.
-  Resolve these overlapping changes at integration time, without changing the other
-  worktree or merging draft branches into each other prematurely.
-- This is a behavior-preserving refactor: new Robolectric/Android UI tests and device runs are
-  not required for acceptance. Compilation has **not been run**; resolve any discovered API,
-  import, syntax or type errors before marking the refactor ready.
-
-## 3. Verify and collect UI feedback
-
-- [ ] Perform static checks for layer/dependency boundaries, leftover duplicate UI patterns, and incorrect component usage.
-- [x] Preserve the existing focused Robolectric coverage in the PR branch; no additional test work is required for this refactor.
-- [x] Statically review search expansion/collapse, text retention, and editable key autocomplete behavior.
-- [x] Statically review `ComponentGroup`'s zero/one/multiple-item shape policy and stable keys.
-- [ ] Statically verify that migrated sheets preserve BottomSheet configuration, insets, input behavior, context-action dispatch, and accessibility semantics.
-- [ ] Resolve compilation/API errors if a build check is later approved; avoid unnecessary Gradle builds.
-- [ ] Complete final static error review and integration conflict check before marking the PR ready.
+- [x] Add `scripts/check_architecture.py` for cross-feature imports; upward `shared/` and `integrations/` dependencies; feature model boundaries; and Compose rendering inside `integrations/` and `database/`.
+- [x] Keep and run the existing `scripts/check_extensions.py` check. The new architecture check only rejects Compose rendering imports in `integrations/` and `database/`.
+- [ ] Search for orphaned/duplicated components and imports after each migration; verify apparent dead code with all entry points and tests before removal.
+- [ ] Perform fast static checks (`git diff --check`, architecture scripts) before expensive tests. Run Gradle/unit/Android tests only if approved, in cohesive batches rather than repeated builds.
+- [ ] When verification is permitted, regression-test OAuth notification reopening, Terminal screen and IME, Model Picker selection/search/scroll, Explorer adapters, Chat attachment selection, MCP permissions, Debug Log, and all relevant sheet/dialog/light/dark/AMOLED states.
+- [ ] Produce before/after dependency and directory inventories, with evidence of no feature import cycles or unintended shared-to-feature dependencies.
+- [ ] Update `AGENTS.md` and `app/docs/architecture.md` to the **implemented** layout only after the changes are verified. Remove obsolete paths/docs and retain migration notes for future contributors.
+- [ ] Review the final organization for unnecessary micro-packages, duplicate abstractions, behavior changes, and overlap with the two parallel refactor branches before marking the TODO complete.

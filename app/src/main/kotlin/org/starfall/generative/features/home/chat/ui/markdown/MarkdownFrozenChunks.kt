@@ -8,7 +8,6 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import com.mikepenz.markdown.model.State
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
-import org.starfall.generative.shared.ui.text.LocalStreamingTextFade
 
 /** Parsed stable chunks and the current tail share one measured document tree. */
 @Composable
@@ -51,15 +50,12 @@ private fun frozenChunkSlot(index: Int, chunk: FrozenMarkdownChunk): String =
 
 @Composable
 private fun FrozenStreamingTailText(text: String) {
-    CompositionLocalProvider(LocalStreamingTextFade provides false) {
-        OverflowPlainText(text)
-    }
+    OverflowPlainText(text)
 }
 
 @Composable
 private fun FrozenMarkdownChunkRow(chunk: FrozenMarkdownChunk) {
     CompositionLocalProvider(
-        LocalStreamingTextFade provides false,
         LocalMarkdownContentFingerprint provides chunk.fingerprint
     ) {
         MarkdownRenderer(

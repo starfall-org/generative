@@ -54,10 +54,9 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
-import org.starfall.generative.shared.ui.text.rememberStreamingTextPresentation
 import org.starfall.generative.shared.ui.text.toComposeFontFamily
 
-/** Library primitives with app-owned code toolbar, error/LaTeX UI and streaming fades. */
+/** Library primitives with app-owned code toolbar, error and LaTeX UI. */
 @Composable
 fun MarkdownRenderer(
     content: String,
@@ -395,7 +394,7 @@ private fun Modifier.trimLeadingSpace(amount: androidx.compose.ui.unit.Dp): Modi
 }
 
 /**
- * Animated streaming version of markdown content.
+ * Renders markdown paragraphs and inline formatting without per-chunk animations.
  */
 @Composable
 private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fillMaxWidth: Boolean) {
@@ -421,7 +420,6 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
     val text = model.node.getTextInNode(model.content).toString()
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    val presentation = rememberStreamingTextPresentation(text)
     val isError = remember(text) { isErrorText(text) }
     // Null when the paragraph holds no math (or rendering is disabled): the plain Markdown path is kept.
     val mathPieces = remember(text, latexMode) {
@@ -447,8 +445,6 @@ private fun RenderParagraph(model: MarkdownComponentModel, latexMode: String, fi
                         GatedSelectionContainer {
                             Text(
                                 text = text,
-                                modifier = presentation.modifier,
-                                onTextLayout = presentation.onTextLayout,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                      fontFamily = messageFont,
                                      fontSize = bodySize,

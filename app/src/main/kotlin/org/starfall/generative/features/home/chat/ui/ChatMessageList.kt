@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import org.starfall.generative.features.home.chat.logic.SentMessageDetector
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.model.ChatStreamStatus
+import org.starfall.generative.features.home.chat.ui.markdown.LocalChatListScrolling
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 
@@ -51,11 +52,14 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
     internal val jumpViewportBounds = LayoutBoundsHolder()
     internal val latestContentBounds = LayoutBoundsHolder()
     // Button visibility only: these bounds/estimates never enter scroll intent or motion.
-    val showJumpToLatest by derivedStateOf {
-        val viewport = jumpViewportBounds.bounds ?: return@derivedStateOf false
+    var showJumpToLatest by mutableStateOf(false)
+        private set
+
+    internal fun calculateJumpVisibility(): Boolean {
+        val viewport = jumpViewportBounds.bounds ?: return false
         val layout = listState.layoutInfo
         val screenHeight = layout.viewportSize.height
-        if (screenHeight <= 0) return@derivedStateOf false
+        if (screenHeight <= 0) return false
         val contentEnd = latestContentBounds.bounds
         val distance = if (contentEnd != null) {
             contentEnd.boundsInRoot.bottom.toFloat() - viewport.boundsInRoot.bottom
@@ -63,13 +67,15 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
             // LazyColumn cannot measure virtualized history exactly. Use its native estimate,
             // excluding trailing list padding (including the 21% gap). The readable viewport
             // ends above the composer.
-            val indicator = listState.scrollIndicatorState ?: return@derivedStateOf false
+            val indicator = listState.scrollIndicatorState ?: return false
             val composerInset = screenHeight - layout.beforeContentPadding - viewport.height
             (indicator.contentSize.toLong() - indicator.scrollOffset - indicator.viewportSize -
                 layout.afterContentPadding + composerInset).toFloat()
         }
-        distance >= 2f * screenHeight
+        return distance >= 2f * screenHeight
     }
+
+    internal fun updateJumpVisibility(visible: Boolean) { showJumpToLatest = visible }
 
     internal val starts = mutableStateMapOf<String, BringIntoViewRequester>()
     internal val ends = mutableStateMapOf<String, BringIntoViewRequester>()
@@ -81,11 +87,14 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
     private var returningToEnd = false
     private var observedContentEndId: String? = null
     private var observedContentEndY: Int? = null
+    // Latched only after the actual end marker has entered the readable viewport.
+    // Growth can temporarily move that marker out of view before native anchoring catches up.
+    private var pinnedLatestId: String? = null
     internal var requestCount = 0L
         private set
 
     fun resume() { detached = false; returningToEnd = false }
-    fun detach() { detached = true; returningToEnd = false; request = null }
+    fun detach() { detached = true; returningToEnd = false; request = null; pinnedLatestId = null }
     fun send(id: String) { resume(); request = ChatListRequest(++requestCount, ChatListAction.Send(id)) }
     fun jump() { resume(); request = ChatListRequest(++requestCount, ChatListAction.Jump) }
     fun navigate(id: String, toEnd: Boolean = false) {
@@ -102,20 +111,45 @@ internal class ChatMessageListState(initialMessages: List<StoredMessage> = empty
     fun cancelFollow() { if (request?.action == ChatListAction.Follow) request = null }
     fun complete(completed: ChatListRequest) { if (request == completed) request = null }
     fun isLatestVisible(id: String?): Boolean = id != null && visibleEnds[id] == true
+    fun isLatestPinned(id: String?): Boolean = id != null && pinnedLatestId == id && !detached
     fun manualScroll(towardsEnd: Boolean) { detach(); returningToEnd = towardsEnd }
-    /** Follow actual rendered growth, not stream publications or movement of the LazyColumn. */
-    fun contentEndPosition(id: String, y: Int, enabled: Boolean) {
+    /**
+     * Streaming has two layout modes with auto-scroll enabled:
+     * - At latest: offset the LazyColumn by measured growth, keeping the invisible clip edge fixed.
+     * - Away from latest: do not move the LazyColumn; previously visible text stays stationary
+     *   while the renderer's actual clipping edge keeps growing downward with new content.
+     * The renderer always owns clipping; this method only decides whether the list follows it.
+     */
+    fun contentEndPosition(
+        id: String, y: Int, enabled: Boolean,
+        anchorMeasuredGrowth: (Int) -> Boolean = { false }
+    ) {
         if (observedContentEndId != id) {
             observedContentEndId = id
             observedContentEndY = y
+            pinnedLatestId = id.takeIf { isLatestVisible(it) && !detached }
         } else if (observedContentEndY != y) {
+            val growth = y - (observedContentEndY ?: y)
             observedContentEndY = y
-            follow(enabled)
+            if (!enabled || !isLatestPinned(id)) return
+            if (growth > 0 &&
+                (request == null || request?.action == ChatListAction.Follow) &&
+                anchorMeasuredGrowth(growth)
+            ) {
+                // Native anchoring follows each measured layout frame rather than scheduling
+                // another animated bring-into-view that trails the already moving edge.
+                cancelFollow()
+            } else {
+                follow(enabled)
+            }
         }
     }
     fun endVisibility(id: String, visible: Boolean, latestId: String?) {
         visibleEnds[id] = visible
-        if (visible && id == latestId && returningToEnd) resume()
+        if (visible && id == latestId) {
+            if (returningToEnd) resume()
+            if (!detached) pinnedLatestId = id
+        }
     }
 }
 
@@ -174,6 +208,15 @@ internal fun ChatMessageList(
             (stream.status == ChatStreamStatus.STREAMING && !stream.stopSignal.isFrozen))
     }
     val listState = state.listState
+    LaunchedEffect(state) {
+        // Avoid observing layout and bounds on every scroll frame. When scrolling ends,
+        // snapshotFlow reads the latest geometry and resumes observing growth and resizing.
+        snapshotFlow {
+            if (listState.isScrollInProgress) null else state.calculateJumpVisibility()
+        }.collect { visible ->
+            if (visible != null) state.updateJumpVisibility(visible)
+        }
+    }
     val userDrag = listState.interactionSource.collectIsDraggedAsState()
     val readableBounds = remember { LayoutBoundsHolder() }
     val scrollConnection = remember(state) {
@@ -231,7 +274,7 @@ internal fun ChatMessageList(
             state.cancelFollow()
         } else if (pausedOffscreen) {
             pausedOffscreen = false
-            state.follow(canFollow()) // One catch-up request for growth while away.
+            state.follow(canFollow() && state.isLatestPinned(currentLatestId)) // Resume only if latest was pinned.
         } else if (!autoScroll || !streaming) {
             state.cancelFollow()
         }
@@ -269,7 +312,13 @@ internal fun ChatMessageList(
                     )
             }
         }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides insetRelocation) {
+        // A State, not a value: streaming rows read it inside coroutines, so a scroll starting or
+        // stopping never recomposes them. They use it to apply streamed text at a bounded rate.
+        val listScrolling = remember(listState) { derivedStateOf { listState.isScrollInProgress } }
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides insetRelocation,
+            LocalChatListScrolling provides listScrolling
+        ) {
             LazyColumn(
                 state = listState,
                 reverseLayout = false,
@@ -309,7 +358,15 @@ internal fun ChatMessageList(
                                             // Relative to the message column: ordinary list scrolling
                                             // does not move this marker, but rendered content growth does.
                                             state.contentEndPosition(message.id,
-                                                coordinates.positionInParent().y.toInt(), canFollow())
+                                                coordinates.positionInParent().y.toInt(), canFollow()) { growth ->
+                                                // requestScrollToItem is a native LazyColumn anchor adjustment:
+                                                // no manual velocity, delta animation or stream-token tracking.
+                                                listState.requestScrollToItem(
+                                                    listState.firstVisibleItemIndex,
+                                                    listState.firstVisibleItemScrollOffset + growth
+                                                )
+                                                true
+                                            }
                                         }
                                     })
                             }

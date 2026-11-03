@@ -89,6 +89,20 @@ internal class StreamTextSnapshot private constructor(
         )
     }
 
+    /**
+     * Reconcile a streamed prefix with the authoritative completed message. Reuse the exact
+     * append-only segments only when every previously observed character still matches.
+     * A changed/truncated response must be rendered from the completed source instead.
+     * This is called at handoff, never for each network chunk.
+     */
+    fun extendedTo(completedText: String): StreamTextSnapshot? {
+        if (viewStartOffset != 0L || completedText.length.toLong() < length) return null
+        val streamedText = materialize()
+        if (!completedText.startsWith(streamedText)) return null
+        if (completedText.length == streamedText.length) return this
+        return append(completedText.substring(streamedText.length), (latestSegment?.sequence ?: 0L) + 1L)
+    }
+
     /** A zero-copy view used when rendering only the response tail after a tool/action block. */
     fun suffixFrom(startOffset: Int): StreamTextSnapshot {
         val relativeStart = startOffset.coerceAtLeast(0).toLong().coerceAtMost(length)

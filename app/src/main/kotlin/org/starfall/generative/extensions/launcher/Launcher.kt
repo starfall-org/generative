@@ -32,6 +32,7 @@ object Launcher {
 
     val defaults = LauncherDragDefaults
     val geometry = LauncherGridGeometry
+    val folderGeometry = LauncherFolderGeometry
 
     object Collision {
         val Pointer = LauncherHitTest.Pointer
@@ -122,6 +123,44 @@ object Launcher {
         joinKey, joinPriority, acceptsJoin, joinLandingBounds, onJoinDrop, onReorderEnter, onReorderDrop
     )
 
+    /** A customizable folder/workspace item with source, reorder, join and self-drop targets. */
+    fun <T : Any> Modifier.folderMember(
+        state: State<T>,
+        sourceKey: String,
+        data: T,
+        targetKey: String,
+        sourceEnabled: Boolean = true,
+        targetEnabled: Boolean = true,
+        sourcePriority: Int = 0,
+        targetPriority: Int = 0,
+        policy: DropPolicy = LauncherItemDropPolicy(),
+        hitBounds: Rect? = null,
+        acceptsReorder: (Item<T>) -> Boolean = { it.key != sourceKey },
+        joinKey: String = "$targetKey:join",
+        joinPriority: Int = targetPriority + 1,
+        acceptsJoin: (Item<T>) -> Boolean = { true },
+        joinLandingBounds: (() -> Rect?)? = null,
+        onJoinDrop: ((Session<T>) -> Boolean)? = null,
+        selfTargetKey: String? = null,
+        selfPriority: Int = targetPriority + 1,
+        onSelfDrop: ((Session<T>) -> Boolean)? = null,
+        dragRegion: Rect? = null,
+        handleBounds: Rect? = null,
+        hideWhileDragging: Boolean = true,
+        returnBounds: (() -> Rect?)? = null,
+        onDragStart: (Session<T>) -> Unit = {},
+        onDragEnd: (Outcome) -> Unit = {},
+        onReorderEnter: (Session<T>) -> Unit = {},
+        onReorderDrop: (Session<T>) -> Boolean
+    ): Modifier = launcherFolderMember(
+        state, sourceKey, data, targetKey, sourceEnabled, targetEnabled,
+        sourcePriority, targetPriority, policy, hitBounds, acceptsReorder,
+        joinKey, joinPriority, acceptsJoin, joinLandingBounds, onJoinDrop,
+        selfTargetKey, selfPriority, onSelfDrop,
+        dragRegion, handleBounds, hideWhileDragging, returnBounds,
+        onDragStart, onDragEnd, onReorderEnter, onReorderDrop
+    )
+
     @Composable
     fun <T : Any> Hover(
         state: State<T>,
@@ -162,6 +201,9 @@ object Launcher {
         edge: Dp = 48.dp,
         maxSpeed: Dp = 640.dp,
         horizontal: Boolean = false,
-        reverseLayout: Boolean = false
-    ): Modifier = launcherDragAutoScroll(state, scrollState, edge, maxSpeed, horizontal, reverseLayout)
+        reverseLayout: Boolean = false,
+        enabled: Boolean = true
+    ): Modifier = if (enabled) launcherDragAutoScroll(
+        state, scrollState, edge, maxSpeed, horizontal, reverseLayout
+    ) else this
 }

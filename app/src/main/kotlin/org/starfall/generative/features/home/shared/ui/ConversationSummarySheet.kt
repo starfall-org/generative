@@ -18,7 +18,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.sheets.ContentSheetTitle
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Slider default; a custom target can still go above [MAX_SLIDER_TARGET_TOKENS]. */
 private const val DEFAULT_TARGET_TOKENS = 6_000

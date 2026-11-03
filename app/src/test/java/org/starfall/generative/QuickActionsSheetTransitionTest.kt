@@ -36,8 +36,8 @@ import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.shared.ui.LocalToolControls
-import org.starfall.generative.shared.ui.ToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.ToolControls
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi")

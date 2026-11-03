@@ -1,6 +1,8 @@
 package org.starfall.generative.features.home.chat.logic
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 
@@ -124,6 +126,25 @@ class StreamResponseTextSplitterTest {
         }
         assertEquals("", snapshot.slice(source.length, source.length + 20))
         assertEquals(source, snapshot.materialize())
+    }
+
+    @Test
+    fun completedTextExtendsSharedStreamSegmentsWithoutChangingExistingSnapshot() {
+        val original = StreamTextSnapshot.of("base-").append("chunk", 3L)
+        assertSame(original, original.extendedTo("base-chunk"))
+        val completed = original.extendedTo("base-chunk and final suffix")!!
+        assertEquals("base-chunk and final suffix", completed.materialize())
+        assertEquals("base-chunk", original.materialize())
+        assertEquals(listOf(" and final suffix"), completed.segmentsAfter(3L).map { it.text })
+        assertEquals(" and final suffix", completed.suffixFrom(original.length.toInt()).materialize())
+    }
+
+    @Test
+    fun completedTextRejectsChangedOrShortenedSourceRegardlessOfMatchingBoundaries() {
+        val original = StreamTextSnapshot.of("A".repeat(90) + "before" + "Z".repeat(90))
+        assertNull(original.extendedTo("A".repeat(90) + "after" + "Z".repeat(90) + " extra"))
+        assertNull(original.extendedTo("short"))
+        assertNull(original.suffixFrom(1).extendedTo(original.materialize()))
     }
 
     private fun parse(input: String): StreamResponseText {

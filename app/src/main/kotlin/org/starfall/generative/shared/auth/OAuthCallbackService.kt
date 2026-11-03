@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
-import org.starfall.generative.MainActivity
 import org.starfall.generative.R
 
 /** Keeps browser callbacks and device-code polling active for the sign-in session. */
@@ -35,8 +34,12 @@ class OAuthCallbackService : Service() {
                 CHANNEL_ID, getString(R.string.notification_oauth_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = getString(R.string.notification_oauth_channel_description)
             })
+            val returnIntent = (application as? OAuthReturnIntentProvider)
+                ?.createOAuthReturnIntent(this)
+                ?: packageManager.getLaunchIntentForPackage(packageName)
+                ?: Intent().setPackage(packageName)
             val returnToApp = PendingIntent.getActivity(this, 0,
-                Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                returnIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             startForeground(NOTIFICATION_ID, NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_info_details)

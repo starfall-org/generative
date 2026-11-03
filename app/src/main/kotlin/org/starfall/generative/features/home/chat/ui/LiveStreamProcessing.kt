@@ -4,9 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 
 private const val ANSWER_PROBE_CHARS = 256
@@ -22,6 +24,7 @@ private fun ActiveChatStreamState?.forMessage(conversationId: String?, messageId
  * the reasoning snapshot (recomposing when its length changes, not for answer-text commits).
  * Returns null when the message is not streaming or the stream has no reasoning for it.
  */
+@OptIn(FlowPreview::class)
 @Composable
 internal fun rememberLiveStreamReasoning(
     streamStateFlow: StateFlow<ActiveChatStreamState?>?,
@@ -34,6 +37,10 @@ internal fun rememberLiveStreamReasoning(
         streamStateFlow
             .map { it.forMessage(conversationId, messageId)?.reasoning }
             .distinctUntilChanged { old, new -> old?.length == new?.length }
+            // Materializing a long reasoning snapshot is O(total reasoning length).
+            // Cap this work to ten UI updates/s; all intermediate text remains in the
+            // append-only stream and the final saved message retains the full reasoning.
+            .sample(100L)
     }.collectAsState(initial = null)
     val current = snapshot ?: return null
     return remember(current) { current.materialize() }

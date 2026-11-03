@@ -20,8 +20,8 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
-import org.starfall.generative.shared.ui.text.ApiKeyField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.ApiKeyField
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.inputs.KeyValueField
 import org.starfall.generative.shared.ui.inputs.KeyValueValueType
