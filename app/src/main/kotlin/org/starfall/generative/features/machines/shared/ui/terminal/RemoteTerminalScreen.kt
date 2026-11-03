@@ -1,5 +1,6 @@
-package org.starfall.generative.shared.ui.terminal
+package org.starfall.generative.features.machines.shared.ui.terminal
 
+import android.app.Activity
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -182,7 +183,11 @@ internal fun RemoteTerminalScreen(
                     opened.close()
                     throw CancellationException()
                 }
-                val newBridge = RemoteTerminalBridge(context.applicationContext, inputPreferences.mode).also { bridge ->
+                val newBridge = RemoteTerminalBridge(
+                    context.applicationContext,
+                    inputPreferences.mode,
+                    hostWindow = (context as? Activity)?.window
+                ).also { bridge ->
                     bridge.updateImeEnabled(inputPreferences.imeEnabled)
                     bridge.forceMouse = preferences[booleanPreferencesKey(REMOTE_TERMINAL_FORCE_MOUSE_KEY)] ?: false
                     bridge.attachRemote(opened)

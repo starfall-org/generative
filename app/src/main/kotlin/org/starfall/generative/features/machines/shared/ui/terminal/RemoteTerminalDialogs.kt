@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.terminal
+package org.starfall.generative.features.machines.shared.ui.terminal
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +21,7 @@ import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 @Composable
 internal fun RemoteTerminalSecretDialog(

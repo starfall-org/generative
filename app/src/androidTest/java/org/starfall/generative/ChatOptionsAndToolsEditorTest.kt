@@ -22,8 +22,8 @@ import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.RuntimeAppLocale
-import org.starfall.generative.shared.ui.InstructionControls
-import org.starfall.generative.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.shared.ui.InstructionControls
+import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
 
 class ChatOptionsAndToolsEditorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

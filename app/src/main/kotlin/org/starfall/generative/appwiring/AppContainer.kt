@@ -2,6 +2,7 @@ package org.starfall.generative.appwiring
 
 
 import android.content.Context
+import org.starfall.generative.BuildConfig
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,13 +52,13 @@ class AppContainer(context: Context) {
     private val aiService = AiService(appContext)
     val toolFiles = ToolFiles(appContext)
     private val toolHttp = ToolHttp(toolFiles)
-    private val mcpOAuth = McpOAuthService(appContext, toolHttp)
-    private val mcpService = McpService(toolHttp, mcpOAuth)
+    private val mcpOAuth = McpOAuthService(appContext, toolHttp, contentApiMcpUrl = BuildConfig.CONTENT_API_MCP_URL)
+    private val mcpService = McpService(toolHttp, mcpOAuth, contentApiMcpUrl = BuildConfig.CONTENT_API_MCP_URL)
     private val conversations = ConversationRepository(database, File(appContext.noBackupFilesDir, "pending-conversation-saves"), toolFiles)
     private val profiles = ProfileRepository(database)
     private val icons = IconStore(appContext)
     private val providers = ModelRepository(database, aiService, icons)
-    private val mcp = McpRepository(database, mcpService, icons, mcpOAuth)
+    private val mcp = McpRepository(database, mcpService, icons, mcpOAuth, BuildConfig.CONTENT_API_MCP_URL)
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)

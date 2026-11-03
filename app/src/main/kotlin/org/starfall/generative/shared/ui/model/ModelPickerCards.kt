@@ -75,7 +75,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.model.revealThinkingColor
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks

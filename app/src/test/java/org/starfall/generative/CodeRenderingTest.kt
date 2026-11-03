@@ -9,7 +9,7 @@ import org.starfall.generative.shared.preview.*
 import org.starfall.generative.shared.ui.code.codeWrapWidth
 import org.starfall.generative.shared.code.CodeTokenKind
 import org.starfall.generative.shared.code.codeTokens
-import org.starfall.generative.shared.code.highlightedCode
+import org.starfall.generative.shared.ui.code.highlightedCode
 
 class CodeRenderingTest {
     @Test fun wrapModesUseViewportColumnAndMinimumLikeVsCode() {

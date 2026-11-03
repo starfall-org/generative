@@ -15,7 +15,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.sheets.BottomSheet
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.model.ReasoningEffortControl
 import org.starfall.generative.shared.ui.model.reasoningEffortOptions
 import org.starfall.generative.shared.ui.model.reasoningEffortIndex

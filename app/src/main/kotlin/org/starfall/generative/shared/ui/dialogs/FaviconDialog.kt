@@ -31,7 +31,7 @@ import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.LoadingIndicator
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import androidx.compose.foundation.BorderStroke
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor

@@ -4,8 +4,8 @@ Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **res
 
 ## 1. Audit shared ownership and define the target structure
 
-- [ ] Inventory every file under `shared/`, its declarations, all callers (including tests, navigation, manifest, and reflection references), and whether it serves one feature, multiple features, or the application shell.
-- [ ] Classify files as reusable **model**, **storage/state**, **pure logic/helper**, **platform/integration adapter**, **generic UI primitive**, **reusable subfeature**, or **feature-owned UI/logic**. Make a migration map (`old path → owner → new path → reason → affected callers`) before moving files.
+- [ ] Inventory every shared declaration and caller; the current baseline and completed ownership batches are recorded in `app/docs/shared-migration-map.md`.
+- [ ] Classify the remaining shared files; the migration map records owner, destination, reason and callers for the completed batches.
 - [ ] Enforce ownership rules:
   - `shared/model/`: cross-feature data types/serialization, never UI, feature workflows, or `BuildConfig`.
   - `shared/storage/`: app-wide state primitives and DataStore preferences; Room-backed repositories stay in `database/`.
@@ -20,26 +20,26 @@ Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **res
 
 ## 2. Reorganize shared in small, behavior-preserving batches
 
-- [ ] **Fix confirmed upward dependencies.**
-  - `shared/auth/OAuthCallbackService.kt` references `MainActivity` when constructing its notification PendingIntent. Delegate the app-return Intent decision to an outer host/wiring boundary without breaking OAuth foreground service handling.
-  - `shared/model/McpInfo.kt` references `BuildConfig.CONTENT_API_MCP_URL` inside `resolvedUrl()`. Move build-specific fallback resolution to configuration/host code while preserving explicit URL priority, preset fallback and credential handling.
+- [x] **Fix confirmed upward dependencies.**
+  - `shared/auth/OAuthCallbackService.kt` now receives the app-return Intent from the host through `OAuthReturnIntentProvider`, without changing OAuth foreground service handling.
+  - `shared/model/McpInfo.kt` now accepts a host-provided Content API endpoint; explicit URL priority, preset fallback and credential handling are preserved.
   - Note the related `features/home/shared/logic/ChatBackgroundService.kt` → `MainActivity` import for coordination; do not expand this branch into unrelated Home refactoring.
 - [ ] **Separate rendering from lower-level logic where genuinely mixed.**
-  - `shared/code/CodeSyntaxHighlighting.kt`: keep language detection/token ranges independent and relocate Compose `Color` / `SpanStyle` / `AnnotatedString` mapping into `shared/ui/code/`.
-  - `shared/terminal/RemoteTerminalBridge.kt`: isolate Compose window handling (`DialogWindowProvider`) and presentation state where feasible, retaining Termux bridge behavior, IME, sessions and input.
-  - Review `shared/preview/CodePreviewActivity.kt` as an Android presentation entry point instead of an ordinary shared utility; keep preview models/renderers at their correct ownership boundary.
+  - `shared/code/CodeSyntaxHighlighting.kt` keeps language detection/token ranges independent; Compose `Color` / `SpanStyle` / `AnnotatedString` mapping now lives in `shared/ui/code/CodeHighlighting.kt`.
+  - [x] `RemoteTerminalBridge.kt` no longer imports `DialogWindowProvider` or resolves Compose windows; Machines UI supplies the host `Window?`, while Termux bridge behavior, IME, sessions and input remain in shared terminal infrastructure.
+  - [x] Reviewed `shared/preview/CodePreviewActivity.kt` as an Android presentation entry point; it remains under `shared/preview` because the manifest and shared code header reference the complete preview capability.
 - [ ] **Move feature-specific state/components toward their real owner.**
-  - Audit `shared/ui/InstructionControls.kt` and `shared/ui/ToolControls.kt`: both currently support Home UI and are provided through navigation. Move Home-specific contracts/state closer to `features/home/shared/`, keeping the app wiring external.
-  - Audit `shared/ui/media/ChatAttachmentSelection.kt` and its indirect users such as `MediaFileCard`. Keep chat-specific selection state with `features/home/chat/`; pass generic callbacks/parameters to shared media views rather than making them import a feature.
-  - Audit `shared/ui/machines/MachineDialogTitle.kt` and `MachineToolsDialog.kt`: return machine-specific UI to its owner only where no cross-feature consumer exists; preserve multi-feature reuse when genuine.
-  - Audit `shared/ui/ProfileMcpPermissions.kt` (no direct production call found in the initial scan). Confirm indirect/test usage before moving or deleting; do not remove based on grep alone.
+  - `InstructionControls.kt` and `ToolControls.kt` now live in `features/home/shared/ui/`; navigation still supplies the contracts from the outside.
+  - [x] Move `ChatAttachmentSelection` to `features/home/chat/ui/` and pass generic selection callbacks/parameters to shared media views; `MediaFileCard` no longer imports chat state.
+  - [x] Audited `MachineDialogTitle.kt` and `MachineToolsDialog.kt`; both are used by Machines and the Home drawer, so their existing machine-scoped shared package is retained.
+  - [x] Removed `shared/ui/ProfileMcpPermissions.kt` after a repository-wide search confirmed no production, test, manifest or reflection caller; `McpAccess` storage/model types remain unchanged.
 - [ ] **Move complete presentation capabilities out of generic primitive buckets when justified.**
-  - Assess `shared/ui/terminal/RemoteTerminalScreen.kt`, `RemoteTerminalAppBar.kt`, `RemoteTerminalPanels.kt`, and `RemoteTerminalDialogs.kt`. Prefer the owning Machines feature if single-purpose, or a cohesive reusable terminal subfeature if truly shared; preserve navigation callbacks and screen lifecycle.
-  - Treat `shared/ui/model/` as one Model Picker capability (used by multiple features). Consider `shared/subfeatures/model-picker/` for its full picker workflow, but keep small reusable model-related UI primitives reusable; preserve selection, search, scroll, animations and state.
+  - [x] Moved `RemoteTerminalScreen.kt`, `RemoteTerminalAppBar.kt`, `RemoteTerminalPanels.kt`, and `RemoteTerminalDialogs.kt` to `features/machines/shared/ui/terminal/`; navigation callbacks and screen lifecycle remain unchanged.
+  - [x] Audited `shared/ui/model/` as one Model Picker capability used by multiple features; retain it in shared UI to preserve one selection/search/scroll/animation implementation.
   - Keep `shared/subfeatures/explorer/` centralized and independent of feature/database backends. Do not move its UI back into `extensions/`.
-  - Review `shared/ui/logging/` as a coherent global debug UI, rather than scattering it among unrelated Settings and app-shell files.
+  - [x] Audited `shared/ui/logging/` as a coherent global debug UI mounted by the app shell; retain the package intact.
 - [ ] **Normalize the generic `shared/ui/` structure.**
-  - Move truly editable controls from `shared/ui/text/` (`OutlinedTextField`, `EditorTextField`, `HeaderNameField`, `ApiKeyField`, `AppBarSearchField`) toward `inputs/` where suitable. Reserve `text/` for rendering, Markdown, selection, wrapping and streaming effects.
+  - Editable controls (`OutlinedTextField`, `EditorTextField`, `HeaderNameField`, `ApiKeyField`, `AppBarSearchField`) now live under `shared/ui/inputs/`; `text/` retains rendering, Markdown, selection, wrapping and streaming effects.
   - Reclassify policy files mixed into `shared/ui/layout/` (`CardAppearance`, `ContainerTransparency`, `InputAreaAppearance`, `AmoledBorder`) without duplicating `shared/theme/` or existing Appearance/UserProfile helpers.
   - Reclassify `ScreenCover`, `RetainedScreenContent`, `ScreenSlideMotion`, `SystemBars` and `EdgeToEdgeContent` according to shared screen/window responsibilities, coordinating with `refactor/feature-screens`.
   - Review top-level `shared/ui/` files (`ErrorContainer`, `FeaturesLogo`, `LoadingIndicator`, `RuntimeAppLocale`, `ToolSwitch`) for intuitive ownership. Keep widely reused primitives discoverable; do not force renames without value.
@@ -51,8 +51,8 @@ Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **res
 
 ## 3. Verify architecture and close the refactor
 
-- [ ] Extend or add lightweight static architecture checks for cross-feature imports; unexpected subfeature imports; `shared/` and `integrations/` depending on `database/`, `features/`, `navigation/`, `appwiring/` or a concrete root Activity; feature model → UI/logic; Compose rendering inside `integrations/` and `database/`; and extension boundary violations.
-- [ ] Keep the existing `scripts/check_extensions.py` check. Distinguish acceptable Compose runtime/state types and generic Compose interaction infrastructure from actual Material3/Compose rendering in the wrong layer.
+- [x] Add `scripts/check_architecture.py` for cross-feature imports; upward `shared/` and `integrations/` dependencies; feature model boundaries; and Compose rendering inside `integrations/` and `database/`.
+- [x] Keep and run the existing `scripts/check_extensions.py` check. The new architecture check only rejects Compose rendering imports in `integrations/` and `database/`.
 - [ ] Search for orphaned/duplicated components and imports after each migration; verify apparent dead code with all entry points and tests before removal.
 - [ ] Perform fast static checks (`git diff --check`, architecture scripts) before expensive tests. Run Gradle/unit/Android tests only if approved, in cohesive batches rather than repeated builds.
 - [ ] When verification is permitted, regression-test OAuth notification reopening, Terminal screen and IME, Model Picker selection/search/scroll, Explorer adapters, Chat attachment selection, MCP permissions, Debug Log, and all relevant sheet/dialog/light/dark/AMOLED states.

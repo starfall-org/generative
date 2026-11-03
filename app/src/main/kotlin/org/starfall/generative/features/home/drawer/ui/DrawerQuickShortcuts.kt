@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.selectedRemoteMachine
-import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons

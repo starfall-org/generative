@@ -7,7 +7,6 @@ import android.util.AtomicFile
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.starfall.generative.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -133,7 +132,7 @@ internal fun coreStackTrace(stackTrace: String, maxFrames: Int = MAX_FRAMES_PER_
 }
 
 /** Synchronous, atomic storage: the process may be terminated immediately after the handler returns. */
-internal class CrashReportStore(file: File) {
+internal class CrashReportStore(file: File, private val appVersion: String = "unknown") {
     private val file = AtomicFile(file)
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -144,7 +143,7 @@ internal class CrashReportStore(file: File) {
         val report = CrashReport(
             id = UUID.randomUUID().toString(),
             timestamp = System.currentTimeMillis(),
-            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            appVersion = appVersion,
             device = "${Build.MANUFACTURER} ${Build.MODEL}",
             androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             thread = thread.name,

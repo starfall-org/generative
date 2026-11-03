@@ -26,7 +26,7 @@ import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 @Composable
 internal fun RenameConversationDialog(

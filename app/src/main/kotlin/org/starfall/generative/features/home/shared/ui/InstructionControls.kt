@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui
+package org.starfall.generative.features.home.shared.ui
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import org.starfall.generative.shared.model.InstructionLibrary

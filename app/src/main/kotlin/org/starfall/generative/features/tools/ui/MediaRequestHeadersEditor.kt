@@ -18,7 +18,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Hold incomplete edits locally so an unfinished header name never corrupts the saved request. */
 internal data class EditableHeader(val id: Int, val name: String, val value: String)

@@ -29,14 +29,15 @@ class McpOAuthService(
         withContext(Dispatchers.Main) {
             OAuthBrowser.open(context.applicationContext, url)
         }
-    }
+    },
+    private val contentApiMcpUrl: String? = null
 ) {
     private val appContext = context.applicationContext
     private val store = McpOAuthTokenStore(appContext)
 
     suspend fun authorize(info: McpInfo): McpInfo {
         require(info.auth.method == McpAuthMethod.OAUTH2) { "MCP server is not configured for OAuth." }
-        val endpoint = info.resolvedUrl() ?: error("MCP URL is missing")
+        val endpoint = info.resolvedUrl(contentApiMcpUrl) ?: error("MCP URL is missing")
         val mcpEndpoint = canonicalResource(endpoint)
         val discovery = discover(endpoint, mcpEndpoint)
         val resource = discovery.resource
@@ -118,7 +119,7 @@ class McpOAuthService(
             return info.auth.value?.takeIf { it.isNotBlank() }
                 ?: error("MCP OAuth credentials are missing. Authorize this server again.")
         }
-        val endpoint = canonicalResource(info.resolvedUrl() ?: error("MCP URL is missing"))
+        val endpoint = canonicalResource(info.resolvedUrl(contentApiMcpUrl) ?: error("MCP URL is missing"))
         require(sameUri(current.mcpEndpoint ?: current.resource, endpoint)) {
             "MCP server URL changed after OAuth authorization. Authorize this server again."
         }

@@ -23,7 +23,7 @@ import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.ui.sheets.BottomSheet
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 @Composable
 internal fun SpeechVoiceSheet(

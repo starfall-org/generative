@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.text
+package org.starfall.generative.shared.ui.inputs
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.IconButton
@@ -11,6 +11,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.text.ApiKeyMask
 
 /** Shared credential input with explicit visibility and literal keyboard input. */
 @Composable

@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.model
 
-import org.starfall.generative.BuildConfig
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -50,6 +49,9 @@ fun String.isContentApiName(): Boolean =
 
 fun McpInfo.isContentApiPreset(): Boolean = id == "content-api" || name.isContentApiName()
 
-/** Explicit MCP URLs win; the Content API preset uses the build-configured endpoint. */
+/** Returns the explicit endpoint stored on this server, if one is present. */
 fun McpInfo.resolvedUrl(): String? = url?.trim()?.takeIf(String::isNotEmpty)
-    ?: BuildConfig.CONTENT_API_MCP_URL.trim().takeIf { name.isContentApiName() && it.isNotEmpty() }
+
+/** Applies a host-provided endpoint for the bundled Content API preset without changing the model. */
+fun McpInfo.resolvedUrl(contentApiEndpoint: String?): String? =
+    resolvedUrl() ?: contentApiEndpoint?.trim()?.takeIf { isContentApiPreset() && it.isNotEmpty() }
