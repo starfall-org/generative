@@ -374,7 +374,7 @@ fun toolAllowed(
 
 const val DEFAULT_TITLE_GENERATION_PROMPT = "Generate a concise title for this conversation. Return only the title, without quotation marks or extra commentary. Keep it under 8 words."
 const val DEFAULT_CHAT_SUMMARY_PROMPT = "Summarize the conversation faithfully for use as future context. Preserve user goals, decisions, constraints, important facts, code or technical details, unresolved issues, and commitments. Remove repetition and incidental chatter. Do not invent information."
-const val DEFAULT_TITLE_GENERATION_MIN_MESSAGES = 5
+const val DEFAULT_TITLE_GENERATION_MIN_MESSAGES = 3
 const val MIN_TITLE_GENERATION_MIN_MESSAGES = 1
 const val MAX_TITLE_GENERATION_MIN_MESSAGES = 50
 const val DEFAULT_TITLE_GENERATION_MIN_WORDS = 10

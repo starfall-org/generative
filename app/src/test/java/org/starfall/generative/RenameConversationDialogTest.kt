@@ -87,7 +87,8 @@ class RenameConversationDialogTest {
         compose.onNodeWithTag("rename-chat-generate-title").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("rename-chat-title").assertTextContains("Original title")
-        compose.onNodeWithText("Could not generate a title. Check the Title Generation model and try again.")
-            .assertIsDisplayed()
+        compose.onNodeWithText(
+            "Could not generate a title. Check the Title Generation model and try again.\nService unavailable"
+        ).assertIsDisplayed()
     }
 }

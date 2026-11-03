@@ -349,7 +349,6 @@ class ChatViewModel(
         currentConversation = _currentConversation,
         configuredTextModel = modelContext::configuredTextModel,
         existingGeneration = ::existingGeneration,
-        generationFor = ::generationFor,
         isRestoreInProgress = { isRestoreInProgress },
         withRestoreGuard = { block -> conversationCoordinator.withRestoreGuard(onRejected = {}, block = block) },
         writeConversation = { block -> conversationCoordinator.writeConversation(serialize = true, block = block) },
