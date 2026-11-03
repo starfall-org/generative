@@ -6,6 +6,26 @@ Star 4 has now provided preliminary Android gfxinfo frame results; see
 PROBLEMS.md. These are single samples, not repeated before/after traces.
 No CPU %, GPU utilization, battery saving, or FPS improvement is claimed.
 
+## Current source-review disposition after integrating `main`
+
+The scoped producer-cost investigation is **complete**: no changes to
+`StreamCharBatcher`, `StreamResponseTextSplitter`, `ChatStreamDisplay` or
+append-only snapshot publication are justified. Rendering architecture
+concerns should be tracked separately, rather than made mandatory CPU/FPS
+thresholds from a slow test device.
+
+The PR branch now avoids rescanning huge offscreen Markdown tails through a
+16,384-character budget for **optional speculative preparation only**.
+Visible Markdown parsing, full response text, Stop behavior and selection
+remain authoritative. The collector's overflow transition and active-overflow
+handling were split into focused helpers without changing update order.
+
+`main` was integrated with its own root TODO preserved, and two stale Compose
+imports were corrected. Code-level architecture/extension checks pass. The
+first local Gradle build exposed the imports; the subsequent resource-capped
+attempt reached Kotlin compilation but timed out without a complete build,
+unit-test or lint result. **Do not claim those checks passed.**
+
 ## Isolated chunk-producer hardware benchmark — scoped conclusion (2026-11-03)
 
 **Result: the chunk-processing stage is not a material CPU or allocation

@@ -399,56 +399,23 @@ private suspend fun collectIncrementalMarkdownUpdates(
 ) {
     snapshotFlow { latestSnapshot.value }.conflate().collect {
         if (streamFreezeSignal?.isFrozen == true) return@collect
-        val activeOverflowStart = renderSnapshot.value.overflowStart
-        if (activeOverflowStart != null) {
-            // A single huge selectable Text can take hundreds of milliseconds to
-            // relayout. Short pauses between consecutive finger swipes are not
-            // truly idle. Require a quiet interval before applying the latest
-            // overflow snapshot; normal incremental Markdown is unaffected.
-            awaitOverflowQuietPeriod(listScrolling)
-            if (streamFreezeSignal?.isFrozen == true) return@collect
-            val current = latestSnapshot.value
-            val end = current.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val prepared = withContext(Dispatchers.Default) {
-                current.slice(activeOverflowStart, end)
-            }
-            if (streamFreezeSignal?.isFrozen != true) {
-                renderedOverflow.value = prepared
-                renderedSource.value = current
-            }
+        val overflowStart = renderSnapshot.value.overflowStart
+        if (overflowStart != null) {
+            updateActiveOverflow(overflowStart, latestSnapshot, renderedSource,
+                renderedOverflow, streamFreezeSignal, listScrolling)
             return@collect
         }
-        // While the user scrolls, apply streamed text at a bounded rate instead of per publication,
-        // then read the latest text so one step catches up on everything published meanwhile.
+        // Coalesce publications while scrolling; never throttle network input or persistence.
         awaitStreamApplySlot(listScrolling)
         if (streamFreezeSignal?.isFrozen == true) return@collect
         val current = latestSnapshot.value
         if (current.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
-            // Do not parse or lay out the whole answer again. Freeze the parser's stable prefix and
-            // render only the remaining source as one Text node in the same selection/layout tree.
-            delay(80)
-            if (streamFreezeSignal?.isFrozen == true) return@collect
-            if (latestSnapshot.value.length > MAX_MARKDOWN_RENDER_CHARS.toLong()) {
-                val overflowSnapshot = withContext(Dispatchers.Default) {
-                    parser.preserveUnstableTailAsPlainText()
-                }
-                if (streamFreezeSignal?.isFrozen != true) {
-                    val latest = latestSnapshot.value
-                    val start = overflowSnapshot.overflowStart ?: overflowSnapshot.parsedLength
-                    val overflow = withContext(Dispatchers.Default) {
-                        latest.slice(start, latest.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-                    }
-                    if (streamFreezeSignal?.isFrozen != true) {
-                        renderedOverflow.value = overflow
-                        renderedSource.value = latest
-                        renderSnapshot.value = overflowSnapshot
-                    }
-                }
-            }
+            enterOverflowMode(latestSnapshot, parser, renderSnapshot,
+                renderedSource, renderedOverflow, streamFreezeSignal)
             return@collect
         }
-        // A virtualized row may have missed thousands of small stream publications. Replay the
-        // unparsed source once; the existing parser owns its bounded internal append sizes.
+        // A newly mounted row may have missed thousands of fragments. Replay only the
+        // unparsed range; the incremental parser bounds its own internal append size.
         val start = renderSnapshot.value.parsedLength
         val end = current.length.coerceAtMost(MAX_MARKDOWN_RENDER_CHARS.toLong()).toInt()
         if (end > start) {
@@ -456,6 +423,52 @@ private suspend fun collectIncrementalMarkdownUpdates(
                 renderSnapshot, renderedSource, renderedOverflow, parsing, streamFreezeSignal)
         }
     }
+}
+
+/** Do not relayout a large selectable Text between successive manual swipes. */
+private suspend fun updateActiveOverflow(
+    overflowStart: Int,
+    latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
+    streamFreezeSignal: StreamFreezeSignal?,
+    listScrolling: androidx.compose.runtime.State<Boolean>
+) {
+    awaitOverflowQuietPeriod(listScrolling)
+    if (streamFreezeSignal?.isFrozen == true) return
+    val current = latestSnapshot.value
+    val end = current.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    val prepared = withContext(Dispatchers.Default) { current.slice(overflowStart, end) }
+    if (streamFreezeSignal?.isFrozen == true) return
+    renderedOverflow.value = prepared
+    renderedSource.value = current
+}
+
+/** Preserve already parsed blocks when the source exceeds the incremental parser budget. */
+private suspend fun enterOverflowMode(
+    latestSnapshot: androidx.compose.runtime.State<StreamTextSnapshot>,
+    parser: IncrementalMarkdownParser,
+    renderSnapshot: MutableState<IncrementalMarkdownSnapshot>,
+    renderedSource: MutableState<StreamTextSnapshot>,
+    renderedOverflow: MutableState<String?>,
+    streamFreezeSignal: StreamFreezeSignal?
+) {
+    delay(80)
+    if (streamFreezeSignal?.isFrozen == true ||
+        latestSnapshot.value.length <= MAX_MARKDOWN_RENDER_CHARS.toLong()) return
+    val overflowSnapshot = withContext(Dispatchers.Default) {
+        parser.preserveUnstableTailAsPlainText()
+    }
+    if (streamFreezeSignal?.isFrozen == true) return
+    val latest = latestSnapshot.value
+    val start = overflowSnapshot.overflowStart ?: overflowSnapshot.parsedLength
+    val overflow = withContext(Dispatchers.Default) {
+        latest.slice(start, latest.length.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+    }
+    if (streamFreezeSignal?.isFrozen == true) return
+    renderedOverflow.value = overflow
+    renderedSource.value = latest
+    renderSnapshot.value = overflowSnapshot
 }
 
 private suspend fun appendIncrementalMarkdown(

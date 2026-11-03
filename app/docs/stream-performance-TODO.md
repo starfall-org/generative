@@ -2,6 +2,37 @@
 
 Branch: `fix/stream-performance` — [draft PR #61](https://github.com/starfall-org/generative/pull/61).
 
+## 2026-11-03 — source-review merge criteria (device FPS not a gate)
+
+The request is to inspect source complexity and avoid unnecessary chunk-generation
+hardware work, **not** to require FPS targets on a low-end Star 4. The isolated
+Android/JVM producer benchmark already cleared chunk generation and publication.
+The pathological large-Text, long-turn and occasional frame-time cases are
+separate renderer design follow-ups; they should not be presented as evidence
+that parsing/generating chunks is expensive. Do not drop Select All or alter
+output persistence merely to satisfy a speculative benchmark.
+
+- [x] Merge current `main` into the PR branch; resolve the `TODO.md` add/add
+      conflict without discarding either task list (retain `main`'s TODO at root,
+      track stream TODO in this file).
+- [x] Reduce complexity of incremental Markdown update handling and offscreen
+      preparation; preserve stream freeze, scroll catch-up, and output ownership.
+- [x] Avoid monopolizing the visible parser permit: skip speculative offscreen
+      AST/formula work on an unseen tail larger than 16,384 characters, while
+      leaving the actual source and foreground rendering untouched.
+- [x] Add two regression tests for oversized offscreen/terminal documents.
+- [x] Fix two Compose imports brought in by the latest `main` changes:
+      `VerticalDivider` and the relocated shared `OutlinedTextField`.
+- [x] Run source-level checks: `check_architecture.py` (668 files),
+      `check_extensions.py` (13 files), and `git diff --check` passed.
+- [ ] Get a complete local build + targeted JVM tests + lint result for the
+      **post-merge** tree. Attempt #1 failed at two now-fixed imported symbols;
+      attempt #2 reached `:app:compileDebugKotlin` without new reported errors
+      but was terminated by the 240s resource-preservation timeout. Tests and
+      lint did **not** run; do not claim they passed on the new source.
+- [ ] Mark PR ready only after required post-merge compile and checks pass,
+      unless the reviewer explicitly chooses source-only acceptance.
+
 ## Chunk-production cost — complete, no production changes required
 
 - [x] Inspect `StreamResponseTextSplitter`, `StreamCharBatcher`,

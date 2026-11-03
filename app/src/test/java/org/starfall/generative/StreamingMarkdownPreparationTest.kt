@@ -116,6 +116,33 @@ class StreamingMarkdownPreparationTest {
             preparer.speculativeScanCount > afterInitialScan)
     }
 
+    @Test fun oversizedOffscreenSourceSkipsSpeculativeParsingWithoutDroppingSource() = runBlocking {
+        val preparer = StreamingMarkdownPreparer()
+        val oversized = "Long block without a closing boundary. ".repeat(
+            MAX_SPECULATIVE_MARKDOWN_CHARS / 16
+        )
+        val source = StreamTextSnapshot.of(oversized)
+        assertTrue(source.length > MAX_SPECULATIVE_MARKDOWN_CHARS)
+        preparer.prepare(source, false, "AUTO", 32f, 32f, 0xff000000.toInt(), false)
+        assertEquals("Optional preparation should not scan huge offscreen tails", 0,
+            preparer.speculativeScanCount)
+        // A skipped speculative parse must not change the source or discard its suffix.
+        assertEquals(oversized, source.materialize())
+    }
+
+    @Test fun oversizedFinalDocumentDoesNotOccupyTheSharedSpeculativeParser() = runBlocking {
+        val preparer = StreamingMarkdownPreparer()
+        val oversized = ("Big document with **many words**.\n\n").repeat(
+            MAX_SPECULATIVE_MARKDOWN_CHARS / 16
+        )
+        val source = StreamTextSnapshot.of(oversized)
+        assertTrue(source.length > MAX_SPECULATIVE_MARKDOWN_CHARS)
+        preparer.prepare(source, true, "OFF", 32f, 32f, 0xff000000.toInt(), false)
+        assertEquals(0, preparer.speculativeScanCount)
+        // Parsing the original when it becomes visible remains the renderer's job.
+        assertEquals(oversized, source.materialize())
+    }
+
     @Test fun unsupportedFormulaDoesNotRepeatExpensiveConstruction() = runBlocking {
         val key = latexCacheKey("\\notARealTexCommandHere{1}", 32f, 0xff000000.toInt(), false)
         val before = LatexDrawables.constructionAttempts.get()
