@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -39,27 +42,37 @@ class ScreenTemplateTest {
         compose.onNodeWithTag("preview-content").assertIsDisplayed()
     }
 
-    @Test fun allSupportedContentKindsCanBeAttachedToTheShell() {
-        listOf("visual", "text", "list").forEach { kind ->
-            compose.setContent {
-                MaterialTheme {
-                    ScreenTemplate(title = kind, onBack = {}) {
-                        when (kind) {
-                            "visual" -> ContentVisualEditor {
-                                Text("Form", Modifier.testTag(kind))
-                            }
-                            "text" -> ContentTextEditor {
-                                Text("Editor", Modifier.testTag(kind))
-                            }
-                            else -> ContentList {
-                                Box(Modifier.testTag(kind))
-                            }
-                        }
-                    }
+    @Test fun visualEditorCanBeAttachedToTheShell() {
+        compose.setContent {
+            MaterialTheme {
+                ScreenTemplate(title = "visual", onBack = {}) {
+                    ContentVisualEditor { Text("Form", Modifier.testTag("visual")) }
                 }
             }
-            compose.onNodeWithTag(kind).assertIsDisplayed()
         }
+        compose.onNodeWithTag("visual").assertIsDisplayed()
+    }
+
+    @Test fun textEditorCanBeAttachedToTheShell() {
+        compose.setContent {
+            MaterialTheme {
+                ScreenTemplate(title = "text", onBack = {}) {
+                    ContentTextEditor { Text("Editor", Modifier.testTag("text")) }
+                }
+            }
+        }
+        compose.onNodeWithTag("text").assertIsDisplayed()
+    }
+
+    @Test fun listCanBeAttachedToTheShell() {
+        compose.setContent {
+            MaterialTheme {
+                ScreenTemplate(title = "list", onBack = {}) {
+                    ContentList { Text("Item", Modifier.testTag("list")) }
+                }
+            }
+        }
+        compose.onNodeWithTag("list").assertIsDisplayed()
     }
 
     @Test fun screenTemplateRejectsMissingOrMultipleContentKinds() {
@@ -78,6 +91,36 @@ class ScreenTemplateTest {
                     ScreenTemplate(title = "Multiple", onBack = {}) {
                         ContentPreview { Text("Preview") }
                         ContentList { Box(Modifier.testTag("second")) }
+                    }
+                }
+            }
+            compose.waitForIdle()
+        }
+    }
+
+    @Test fun recompositionOfOneContentListDoesNotCountAsTwo() {
+        var isEmpty by mutableStateOf(true)
+        compose.setContent {
+            MaterialTheme {
+                ScreenTemplate(title = "Collection", onBack = {}) {
+                    ContentList(isEmpty = isEmpty, emptyContent = { Text("Empty") }) {
+                        Text("Item")
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText("Empty").assertIsDisplayed()
+        compose.runOnIdle { isEmpty = false }
+        compose.onNodeWithText("Item").assertIsDisplayed()
+    }
+
+    @Test fun twoContentListsStillViolateTheContract() {
+        assertThrows(IllegalStateException::class.java) {
+            compose.setContent {
+                MaterialTheme {
+                    ScreenTemplate(title = "Duplicate", onBack = {}) {
+                        ContentList { Text("First") }
+                        ContentList { Text("Second") }
                     }
                 }
             }

@@ -49,12 +49,13 @@ one screen-transition implementation.
 
 ## Verification
 
-Completed source checks:
+Verified on 2026-11-04 (Star 4, Android 11; ADB via local forwarding):
 
-```text
-git diff --check
-```
+- `:app:assembleDebug` and `:app:assembleDebugAndroidTest`: successful.
+- `ScreenTemplateTest`: 9/9 local unit tests passed.
+- `RetainedNavHostTest` and `RetainedScreenContentTest`: 5/5 local unit tests passed.
+- `ScreenTemplateDeviceTest`: 4/4 physical-device UI tests passed after fixing a `ContentList` recomposition regression.
+- Additional scope-related UI regressions: 14 passed; the 15th test and two remaining tests were interrupted by loss of the ADB forwarding connection, not recorded as passed or failed.
+- `scripts/check_architecture.py`, `scripts/check_extensions.py`, and `git diff --check`: passed.
 
-The branch predates the repository-wide `check_architecture.py` script, so that
-check is not present here. Gradle/device verification requires the provisioned
-Android environment and was not run by this source-only pass.
+Remaining: a full screen-by-screen UI review (including dark/light/AMOLED and insets), any outstanding broader regressions, and merge-readiness verification after synchronization with `main`.

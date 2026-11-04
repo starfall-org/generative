@@ -55,9 +55,22 @@
 
 ## 3. Verify and collect UI feedback
 
-- [ ] Perform static checks for dependency direction, duplicate implementations, and navigation regressions.
+- [x] Run dependency-direction checks (`scripts/check_architecture.py`, `scripts/check_extensions.py`) and `git diff --check`.
+- [ ] Complete the post-merge duplication and navigation audit across all migrated screens.
 - [x] Add checks/tests proving that a `ScreenTemplate` cannot be created without one of the four content types, and that content types cannot be placed outside it.
 - [x] Add or update relevant unit and Android UI tests for all four content types, AppBar slots, Back navigation, forward/back transitions, scrolling, keyboard insets, and screen state preservation. Added `ScreenTemplateTest`; retained-navigation tests continue to cover transition/state behavior.
-- [ ] Run the agreed verification steps when the environment and user approval permit; avoid unnecessary repeated Gradle builds.
-- [ ] Check the resulting UI on an Android device, including light/dark/AMOLED themes, edge-to-edge insets, transitions, list scrolling, and text/form editing.
+- [x] Compile `assembleDebug` and `assembleDebugAndroidTest`; run 9 ScreenTemplate unit tests, 5 retained-navigation unit tests, and 4 focused Android UI tests on Star 4 (Android 11).
+- [ ] Finish broader regression checks and review any failed tests before declaring merge readiness.
+- [x] Confirm the ScreenTemplate UI tests pass on an actual Android 11 device (Back, preview scrolling, list empty-state recomposition, text input, saveable transition state).
+- [ ] Review screenshots and interactive flows for light/dark/AMOLED, edge-to-edge insets, and specialized screens.
 - [ ] Present the updated interface for user evaluation and collect feedback before considering the refactor complete.
+
+## Verification notes (2026-11-04)
+
+- The first device run was invalid because the device screen was asleep/locked; after waking/unlocking it, three tests passed and `ContentList` exposed a genuine recomposition bug.
+- `ScreenTemplateScope` now identifies a content call site across recompositions; two separate content sites still violate the exactly-one-content rule.
+- `ScreenTemplateTest`: 9/9 passed (including new recomposition and duplicate-content regressions). `RetainedNavHostTest`: 4/4 passed. `RetainedScreenContentTest`: 1/1 passed.
+- `ScreenTemplateDeviceTest`: 4/4 passed on the Star 4 after reinstalling the fixed APK.
+- Both architecture and extensions dependency scripts passed; Gradle debug app/test APK build passed.
+- A follow-up Android device regression run passed 14 tests (Speech Services 3, Remote Navigation 2, Chat Options/Tools 7, ChatAppBar 1, BottomSheet insets 1); the ADB local-forward connection dropped while the 15th of 17 tests was running. No result was obtained for tests 15–17.
+- Focused green tests do not replace a full interactive review of every screen or the entire 422-method Android test suite.

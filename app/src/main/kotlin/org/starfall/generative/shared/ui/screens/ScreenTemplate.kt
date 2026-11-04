@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -109,12 +110,14 @@ class ScreenTemplateScope internal constructor(
     val scaffoldPadding: PaddingValues
 ) {
     private var contentKind: ContentKind? = null
+    private var contentSite: Any? = null
 
-    private fun claim(kind: ContentKind) {
-        check(contentKind == null) {
+    private fun claim(kind: ContentKind, site: Any) {
+        check(contentSite == null || contentSite === site) {
             "ScreenTemplate requires exactly one content type; found ${contentKind!!.label} and ${kind.label}."
         }
         contentKind = kind
+        contentSite = site
     }
 
     internal fun requireExactlyOneContent() {
@@ -131,7 +134,7 @@ class ScreenTemplateScope internal constructor(
         contentPadding: PaddingValues? = null,
         content: @Composable ColumnScope.() -> Unit
     ) {
-        claim(ContentKind.PREVIEW)
+        claim(ContentKind.PREVIEW, remember { Any() })
         val resolvedPadding = contentPadding ?: defaultContentPadding()
         Column(
             modifier = Modifier
@@ -152,7 +155,7 @@ class ScreenTemplateScope internal constructor(
         contentPadding: PaddingValues? = null,
         content: @Composable BoxScope.(PaddingValues) -> Unit
     ) {
-        claim(ContentKind.VISUAL_EDITOR)
+        claim(ContentKind.VISUAL_EDITOR, remember { Any() })
         val resolvedPadding = contentPadding ?: defaultContentPadding()
         Box(
             modifier = Modifier
@@ -172,7 +175,7 @@ class ScreenTemplateScope internal constructor(
         contentPadding: PaddingValues? = null,
         content: @Composable BoxScope.() -> Unit
     ) {
-        claim(ContentKind.TEXT_EDITOR)
+        claim(ContentKind.TEXT_EDITOR, remember { Any() })
         val resolvedPadding = contentPadding ?: defaultContentPadding()
         Box(
             modifier = Modifier
@@ -196,7 +199,7 @@ class ScreenTemplateScope internal constructor(
         emptyContent: @Composable BoxScope.() -> Unit = {},
         content: @Composable BoxScope.(PaddingValues) -> Unit
     ) {
-        claim(ContentKind.LIST)
+        claim(ContentKind.LIST, remember { Any() })
         val resolvedPadding = contentPadding ?: defaultContentPadding()
         Box(
             modifier = Modifier
