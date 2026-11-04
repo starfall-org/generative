@@ -52,7 +52,7 @@ import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewCont
 import org.starfall.generative.features.home.shared.ui.SelectedModelOptionsSheetContent
 import org.starfall.generative.features.home.shared.ui.rememberPreviewTier
 import org.starfall.generative.features.home.shared.ui.selectedModelSheetStyle
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
 import org.starfall.generative.shared.ui.model.chatModelPickerFilter
 import org.starfall.generative.shared.ui.sheets.BottomSheet

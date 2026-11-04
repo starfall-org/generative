@@ -19,7 +19,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.lists.ReorderableCollection

@@ -1,8 +1,6 @@
 package org.starfall.generative.features.mcp.editor.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,9 +22,7 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.isContentApiName
-import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,23 +77,17 @@ fun ServerEditor(
             !it.second.any { ch -> ch == '\r' || ch == '\n' }
     }
     fun refreshTools() { if (canSave && !cachedLoading) scope.launch { onRefreshTools(currentServer()) } }
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onDismiss)
-
-    Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
-        Scaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                navigationIcon = { IconButton(onClick = onDismiss) {
-                    SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                } },
-                actions = { Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
-                    modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) } }
-            )
-        }) { padding ->
+    ScreenTemplate(
+        title = {
+            Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        onBack = onDismiss,
+        actions = {
+            Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
+                modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
+        }
+    ) {
+        ContentVisualEditor { padding ->
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
                 AppSwipeTabs(
                     tabs = listOf(stringResource(R.string.mcp_basic_settings), stringResource(R.string.common_tools)),

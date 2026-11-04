@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.assertTextEquals
@@ -50,7 +50,7 @@ class RuntimeAppLocaleDeviceTest {
                 var draft by remember { mutableStateOf("unsent message") }
                 Column {
                     Text(stringResource(R.string.select_model), Modifier.testTag("localized-string"))
-                    Text(LocalContext.current.getString(R.string.select_model),
+                    Text(LocalResources.current.getString(R.string.select_model),
                         Modifier.testTag("localized-context"))
                     Text(draft, Modifier.testTag("retained-draft"))
                     Button(onClick = { draft = "edited unsent message" },

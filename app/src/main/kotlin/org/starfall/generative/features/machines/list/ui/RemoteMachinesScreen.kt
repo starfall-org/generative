@@ -50,7 +50,6 @@ import org.starfall.generative.R
 import org.starfall.generative.features.machines.list.model.MachineIpUpdateNotice
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
-import org.starfall.generative.features.machines.shared.ui.RemoteMachinesTopBar
 import org.starfall.generative.features.machines.shared.ui.RemoteStatusDot
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
@@ -58,6 +57,7 @@ import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @Composable
 fun RemoteMachinesScreen(
@@ -80,25 +80,22 @@ fun RemoteMachinesScreen(
     val context = LocalContext.current
     val localizedResources = LocalResources.current
 
-    Scaffold(
-
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            RemoteMachinesTopBar(
-                title = stringResource(R.string.remote_ssh),
-                onBack = onBack,
-                actions = {
-                    ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
-                    IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
-                        SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_ssh_google_oauth))
-                    }
-                }
-            )
+    ScreenTemplate(
+        title = stringResource(R.string.remote_ssh),
+        onBack = onBack,
+        actions = {
+            ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
+            IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
+                SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
+            }
+            IconButton(onClick = onOpenSettings) {
+                SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_ssh_google_oauth))
+            }
         }
-    ) { padding ->
+    ) {
+      ContentList(
+          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
+      ) { padding ->
         Box(Modifier.fillMaxSize()) {
             if (state.machines.isEmpty()) {
                 Column(
@@ -127,7 +124,7 @@ fun RemoteMachinesScreen(
                     items = state.machines,
                     key = { it.id },
                     columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                    contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                     contentPadding = padding,
                     modifier = Modifier.fillMaxSize(),
                     onReorder = viewModel::reorderMachines,
                     preview = { machine ->
@@ -165,6 +162,7 @@ fun RemoteMachinesScreen(
                 }
             }
         }
+      }
     }
 
     portForwardMachine?.let { machine ->
@@ -278,7 +276,7 @@ private fun RemoteMachineCard(
                 }
                 if (menu) ContextMenuSheet(
                     actions = buildList {
-                        add(ContextMenuAction(stringResource(R.string.remote_server_open_terminal), onTerminal, Icons.Outlined.Terminal))
+                        add(ContextMenuAction(stringResource(R.string.remote_server_open_terminal), onTerminal, iconRes = Icons.Outlined.Terminal))
                         if (connected && isGrid) add(ContextMenuAction(stringResource(R.string.remote_server_disconnect), onDisconnect, Icons.Outlined.LinkOff))
                         add(ContextMenuAction(stringResource(R.string.remote_port_forward), onStartPortForward, Icons.Outlined.Hub))
                         add(ContextMenuAction(stringResource(R.string.remote_ai_tools), onMachineTools, Icons.Outlined.Build))

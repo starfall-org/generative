@@ -25,10 +25,10 @@ import androidx.navigation.compose.LocalOwnersProvider
 import androidx.navigation.compose.composable as navComposable
 import androidx.navigation.NavHostController
 import androidx.navigation.createGraph
-import org.starfall.generative.shared.ui.layout.retainWhen
-import org.starfall.generative.shared.ui.layout.screenSlide
-import org.starfall.generative.shared.ui.layout.screenSlideOffset
-import org.starfall.generative.shared.ui.layout.screenSlideSpec
+import org.starfall.generative.shared.ui.screens.retainWhen
+import org.starfall.generative.shared.ui.screens.screenSlide
+import org.starfall.generative.shared.ui.screens.screenSlideOffset
+import org.starfall.generative.shared.ui.screens.screenSlideSpec
 
 /**
  * Keeps the full back stack composed (including nonvisible entries), which is

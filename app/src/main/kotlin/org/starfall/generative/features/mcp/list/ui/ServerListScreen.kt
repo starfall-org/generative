@@ -1,7 +1,6 @@
 package org.starfall.generative.features.mcp.list.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -25,7 +24,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import java.util.UUID
 import org.starfall.generative.features.mcp.shared.ui.McpUnifiedCard
@@ -41,6 +39,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.layout.windowHeightIn
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,21 +56,20 @@ fun ServerListScreen(
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-            title = {
-                FixedAppBarTitle(stringResource(R.string.mcp))
-            }, navigationIcon = { IconButton(onClick = onBack) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                actions = {
-                    ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
-                    IconButton(onClick = {
-                        onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
-                            url = null, headers = emptyMap()), true)
-                    }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
-                })
-        }) { padding ->
+    ScreenTemplate(
+        title = stringResource(R.string.mcp),
+        onBack = onBack,
+        actions = {
+            ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
+            IconButton(onClick = {
+                onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
+                    url = null, headers = emptyMap()), true)
+            }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
+        }
+    ) {
+        ContentList(
+            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
+        ) { padding ->
             Box(Modifier.fillMaxSize()) {
                 if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -96,7 +94,7 @@ fun ServerListScreen(
                     }) {
                     LazyVerticalGrid(state = gridState, columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                         contentPadding = padding,
                         modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)) {
                         itemsIndexed(orderedServers, key = { _, item -> item.id }) { _, server ->
                             McpUnifiedCard(server = server, isGrid = gridMode,
@@ -131,6 +129,7 @@ fun ServerListScreen(
                     }
                 }
             }
+        }
     }
 
     if (deletingServerId != null) AlertDialog(onDismissRequest = { deletingServerId = null },

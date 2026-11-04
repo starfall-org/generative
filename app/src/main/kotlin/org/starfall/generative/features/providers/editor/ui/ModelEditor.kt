@@ -40,7 +40,7 @@ import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemo
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.code.CodeBlockSurface

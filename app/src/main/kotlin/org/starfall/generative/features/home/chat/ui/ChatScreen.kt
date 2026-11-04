@@ -45,6 +45,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.rememberInputAreaBackdrop
 import org.starfall.generative.shared.ui.layout.inputAreaBackdropSource
 import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
+import org.starfall.generative.shared.ui.screens.MainScreenTemplate
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -241,6 +242,7 @@ fun ChatScreen(
 
     val inputBackdrop = rememberInputAreaBackdrop()
     val blurInputBackdrop = LocalInputAreaAppearance.current.blurRadius > 0f && android.os.Build.VERSION.SDK_INT >= 31
+    MainScreenTemplate {
     PlatformTextSelection {
     Box(
         modifier = modifier
@@ -621,6 +623,7 @@ fun ChatScreen(
         }
         }
 
+    }
     }
 
     }

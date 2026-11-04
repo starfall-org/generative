@@ -50,7 +50,7 @@ import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
 import org.starfall.generative.shared.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.terminal.RemoteTerminalSessions
 import org.starfall.generative.shared.terminal.TerminalSlot
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 
 @Composable
 internal fun RemoteTerminalScreen(

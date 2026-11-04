@@ -55,7 +55,6 @@ import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.DeveloperOptionsScreen
 import org.starfall.generative.features.settings.ui.LauncherDragTestScreen
-import org.starfall.generative.features.settings.ui.MainAppbar
 import org.starfall.generative.features.speech.ui.SpeechServicesScreen
 import org.starfall.generative.features.storage.ui.MediaStorageSheet
 import org.starfall.generative.features.storage.ui.StorageScreen
@@ -92,8 +91,9 @@ import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
-import org.starfall.generative.shared.ui.layout.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 /** Stable route names are persisted by Navigation across Activity/process recreation. */
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
@@ -1201,18 +1201,13 @@ internal fun AppNavigation(
                     }
 
                     composable(AppDestination.APP_SETTINGS.route) {
-                        Scaffold(
-                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                            topBar = {
-                                MainAppbar(
-                                    title = stringResource(R.string.settings_general_settings),
-                                    onBack = { navController.popBackStack() }
-                                )
-                            }
-                        ) { padding ->
-                            Box(Modifier.fillMaxSize()) {
+                        ScreenTemplate(
+                            title = stringResource(R.string.settings_general_settings),
+                            onBack = { navController.popBackStack() }
+                        ) {
+                            ContentVisualEditor(contentPadding = PaddingValues()) { _ ->
                                 AppSettings(
-                                    scaffoldPadding = padding,
+                                    scaffoldPadding = scaffoldPadding,
                                     appPreferences = appPrefs,
                                     onThemeChange = { mode ->
                                         settingsViewModel.setThemeMode(mode)
@@ -1254,7 +1249,7 @@ internal fun AppNavigation(
                                     onMcpAttachmentsChange = settingsViewModel::setMcpAttachments,
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                                     onAppLanguageChange = settingsViewModel::setAppLanguage,
-                                 )
+                                )
                             }
                         }
                     }
@@ -1305,16 +1300,13 @@ internal fun AppNavigation(
                     }
 
                     composable(AppDestination.ABOUT.route) {
-                        Scaffold(
-                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                            topBar = {
-                                MainAppbar(
-                                    title = stringResource(R.string.settings_category_about),
-                                    onBack = { navController.popBackStack() }
-                                )
+                        ScreenTemplate(
+                            title = stringResource(R.string.settings_category_about),
+                            onBack = { navController.popBackStack() }
+                        ) {
+                            ContentPreview(contentPadding = scaffoldPadding) {
+                                AboutScreen(scrollable = false)
                             }
-                        ) { padding ->
-                            AboutScreen(contentPadding = padding)
                         }
                     }
 

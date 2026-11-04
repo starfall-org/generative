@@ -1,7 +1,6 @@
 package org.starfall.generative.features.speech.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.features.speech.logic.requestSpeechEngineIcons
 import java.util.UUID
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -40,9 +38,10 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
-import org.starfall.generative.shared.ui.layout.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 private data class SpeechEditorPage(val service: SpeechService, val isNew: Boolean)
 
@@ -91,41 +90,32 @@ fun SpeechServicesScreen(
                 )
             }
         } else {
-            Scaffold(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                topBar = {
-                    TopAppBar(
-                        colors = edgeToEdgeTopAppBarColors(),
-                        title = {
-                            FixedAppBarTitle(stringResource(R.string.speech_synthesis_services))
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                            }
-                        },
-                        actions = {
-                            ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
-                            IconButton(
-                                onClick = {
-                                    editor = SpeechEditorPage(SpeechService(
-                                        id = UUID.randomUUID().toString(),
-                                        name = localizedResources.getString(R.string.speech_custom_tts),
-                                        icon = null,
-                                        provider = "system",
-                                        modelId = null,
-                                        voice = "Default",
-                                        speed = 1.0f,
-                                        pitch = 1.0f
-                                    ), true)
-                                }
-                            ) {
-                                SharedIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
-                            }
+            ScreenTemplate(
+                title = stringResource(R.string.speech_synthesis_services),
+                onBack = onBack,
+                actions = {
+                    ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
+                    IconButton(
+                        onClick = {
+                            editor = SpeechEditorPage(SpeechService(
+                                id = UUID.randomUUID().toString(),
+                                name = localizedResources.getString(R.string.speech_custom_tts),
+                                icon = null,
+                                provider = "system",
+                                modelId = null,
+                                voice = "Default",
+                                speed = 1.0f,
+                                pitch = 1.0f
+                            ), true)
                         }
-                    )
+                    ) {
+                        SharedIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
+                    }
                 }
-            ) { padding ->
+            ) {
+              ContentList(
+                  contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
+              ) { padding ->
                 FadeGridListContent(
                     isGrid = isGridView,
                     modifier = Modifier.fillMaxSize()
@@ -147,7 +137,7 @@ fun SpeechServicesScreen(
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                        contentPadding = padding,
                         modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)
                     ) {
                         itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
@@ -196,6 +186,7 @@ fun SpeechServicesScreen(
                     }
                     }
                 }
+              }
             }
         }
     }

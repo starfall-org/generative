@@ -190,7 +190,7 @@ internal fun DrawerQuickShortcuts(
                                             ContextMenuAction(
                                                 label = stringResource(R.string.remote_server_open_terminal),
                                                 onClick = { onOpenTerminal(selectedMachine) },
-                                                icon = Icons.Outlined.Terminal
+                                                iconRes = Icons.Outlined.Terminal
                                             ),
                                             ContextMenuAction(
                                                 label = stringResource(R.string.remote_port_forward),

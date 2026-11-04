@@ -2,7 +2,6 @@ package org.starfall.generative.features.customization.ui
 
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,6 +47,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 import org.starfall.generative.shared.ui.sheets.ContextMenuAction
 import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
@@ -123,22 +123,17 @@ fun CustomizationScreen(
         target = slot; menuFor = null; showStorage = true
     }
 
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(stringResource(R.string.customization_title), fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { IconButton(onClick = onBack) {
-                    SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                } },
-            )
-        }
-    ) { padding ->
+    ScreenTemplate(
+        title = stringResource(R.string.customization_title),
+        onBack = onBack,
+        modifier = modifier
+    ) {
+      ContentVisualEditor(
+          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp)
+      ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("customization-list"),
-            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp),
+            contentPadding = padding,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item(key = "photo") {
@@ -247,6 +242,7 @@ fun CustomizationScreen(
                 }
             }
         }
+      }
     }
     val slot = backgroundDialog
     if (customizationEnabled && slot != null && !showStorage) {
