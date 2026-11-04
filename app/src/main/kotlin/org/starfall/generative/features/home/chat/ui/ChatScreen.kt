@@ -47,10 +47,8 @@ import org.starfall.generative.shared.ui.layout.inputAreaBackdropSource
 import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
 import org.starfall.generative.shared.ui.screens.MainScreenTemplate
 import org.starfall.generative.shared.ui.ErrorContainer
-import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft

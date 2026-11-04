@@ -1,18 +1,13 @@
 package org.starfall.generative.features.menu.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,7 +21,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import androidx.compose.material3.IconButton
@@ -37,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,18 +40,17 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.concurrent.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.ui.FeaturesLogo
+import org.starfall.generative.shared.ui.layout.ComponentGroup
+import org.starfall.generative.shared.ui.layout.ComponentGroupSlot
+import org.starfall.generative.shared.ui.layout.componentGroupItemShape
 import org.starfall.generative.shared.ui.layout.appearanceContainerColor
 import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -66,26 +58,12 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 
-// A 50% corner tracks each row's height: single-item groups become full capsules.
-internal val GroupOuterCorner = CornerSize(50)
+// Compatibility aliases retained for the existing AppMenu shape tests and callers.
 internal val GroupInnerCorner = 6.dp
-
-internal val GroupTopShape = RoundedCornerShape(
-    topStart = GroupOuterCorner,
-    topEnd = GroupOuterCorner,
-    bottomStart = CornerSize(GroupInnerCorner),
-    bottomEnd = CornerSize(GroupInnerCorner)
-)
-
+internal val GroupTopShape get() = componentGroupItemShape(0, 2)
 internal val GroupMiddleShape = RoundedCornerShape(GroupInnerCorner)
-internal val GroupSingleShape = RoundedCornerShape(GroupOuterCorner)
-
-internal val GroupBottomShape = RoundedCornerShape(
-    topStart = CornerSize(GroupInnerCorner),
-    topEnd = CornerSize(GroupInnerCorner),
-    bottomStart = GroupOuterCorner,
-    bottomEnd = GroupOuterCorner
-)
+internal val GroupSingleShape get() = componentGroupItemShape(0, 1)
+internal val GroupBottomShape get() = componentGroupItemShape(1, 2)
 
 /** App menu screen. Deliberately has no page title; the themed app logo is its header. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -171,105 +149,86 @@ fun AppMenuScreen(
             }
         }
         item(key = "configuration-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-configuration")) {
-                FeatureButton(
-                    stringResource(R.string.chat_configuration),
-                    FluentUi.Regular.Chat,
-                    onNavigateToChatOptions,
-                    shape = GroupTopShape,
-                    tag = "chat-options"
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-configuration"),
+                items = listOf(
+                    ComponentGroupSlot("chat-options") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.chat_configuration), FluentUi.Regular.Chat,
+                            onNavigateToChatOptions, modifier, shape, "chat-options")
+                    },
+                    ComponentGroupSlot("providers") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.model_providers), FluentUi.Regular.Cloud,
+                            onNavigateToProviders, modifier, shape, "providers")
+                    },
+                    ComponentGroupSlot("speech") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.speech_synthesis_services), FluentUi.Regular.PersonVoice,
+                            onNavigateToSpeech, modifier, shape, "speech")
+                    }
                 )
-                FeatureButton(
-                    stringResource(R.string.model_providers),
-                    FluentUi.Regular.Cloud,
-                    onNavigateToProviders,
-                    shape = GroupMiddleShape,
-                    tag = "providers"
-                )
-                FeatureButton(
-                    stringResource(R.string.speech_synthesis_services),
-                    FluentUi.Regular.PersonVoice,
-                    onNavigateToSpeech,
-                    shape = GroupBottomShape,
-                    tag = "speech"
-                )
-            }
+            )
         }
         item(key = "tools-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-tools")) {
-                FeatureButton(
-                    stringResource(R.string.built_in_tools),
-                    FluentUi.Regular.WrenchScrewdriver,
-                    onNavigateToToolsEditor,
-                    shape = GroupTopShape,
-                    tag = "feature-tools"
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-tools"),
+                items = listOf(
+                    ComponentGroupSlot("feature-tools") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.built_in_tools), FluentUi.Regular.WrenchScrewdriver,
+                            onNavigateToToolsEditor, modifier, shape, "feature-tools")
+                    },
+                    ComponentGroupSlot("mcp") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.mcp), FluentUi.Regular.PuzzlePiece,
+                            onNavigateToMcp, modifier, shape, "mcp")
+                    }
                 )
-                FeatureButton(
-                    stringResource(R.string.mcp),
-                    FluentUi.Regular.PuzzlePiece,
-                    onNavigateToMcp,
-                    shape = GroupBottomShape,
-                    tag = "mcp"
-                )
-            }
+            )
         }
         item(key = "remote-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-remote")) {
-                FeatureButton(
-                    stringResource(R.string.remote_ssh),
-                    FluentUi.Regular.Desktop,
-                    onNavigateToRemoteMachines,
-                    shape = GroupSingleShape,
-                    tag = "remote"
-                )
-            }
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-remote"),
+                items = listOf(ComponentGroupSlot("remote") { modifier, shape ->
+                    FeatureButton(stringResource(R.string.remote_ssh), FluentUi.Regular.Desktop,
+                        onNavigateToRemoteMachines, modifier, shape, "remote")
+                })
+            )
         }
         item(key = "media-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-media")) {
-                FeatureButton(
-                    stringResource(R.string.media_management),
-                    FluentUi.Regular.FolderOpen,
-                    onNavigateToStorage,
-                    shape = GroupTopShape,
-                    tag = "media"
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-media"),
+                items = listOf(
+                    ComponentGroupSlot("media") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.media_management), FluentUi.Regular.FolderOpen,
+                            onNavigateToStorage, modifier, shape, "media")
+                    },
+                    ComponentGroupSlot("icons") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.icons_management), FluentUi.Regular.Image,
+                            onNavigateToIcons, modifier, shape, "icons")
+                    }
                 )
-                FeatureButton(
-                    stringResource(R.string.icons_management),
-                    FluentUi.Regular.Image,
-                    onNavigateToIcons,
-                    shape = GroupBottomShape,
-                    tag = "icons"
-                )
-            }
+            )
         }
         item(key = "settings-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-settings")) {
-                FeatureButton(
-                    stringResource(R.string.app_menu_settings),
-                    FluentUi.Regular.Settings,
-                    onNavigateToAppSettings,
-                    shape = GroupSingleShape,
-                    tag = "settings"
-                )
-            }
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-settings"),
+                items = listOf(ComponentGroupSlot("settings") { modifier, shape ->
+                    FeatureButton(stringResource(R.string.app_menu_settings), FluentUi.Regular.Settings,
+                        onNavigateToAppSettings, modifier, shape, "settings")
+                })
+            )
         }
         item(key = "data-group") {
-            FeatureGroup(Modifier.testTag("app-menu-group-data")) {
-                FeatureButton(
-                    stringResource(R.string.app_menu_data),
-                    FluentUi.Regular.History,
-                    onNavigateToAppData,
-                    shape = GroupTopShape,
-                    tag = "data"
+            ComponentGroup(
+                modifier = Modifier.testTag("app-menu-group-data"),
+                items = listOf(
+                    ComponentGroupSlot("data") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.app_menu_data), FluentUi.Regular.History,
+                            onNavigateToAppData, modifier, shape, "data")
+                    },
+                    ComponentGroupSlot("about") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.app_menu_about), FluentUi.Regular.Info,
+                            onNavigateToAbout, modifier, shape, "about")
+                    }
                 )
-                FeatureButton(
-                    stringResource(R.string.app_menu_about),
-                    FluentUi.Regular.Info,
-                    onNavigateToAbout,
-                    shape = GroupBottomShape,
-                    tag = "about"
-                )
-            }
+            )
         }
     }
     IconButton(
@@ -292,25 +251,17 @@ fun AppMenuScreen(
 }
 
 @Composable
-private fun FeatureGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        content = content
-    )
-}
-
-@Composable
 private fun FeatureButton(
     title: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    modifier: Modifier,
     shape: Shape,
     tag: String
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().testTag("app-menu-$tag"),
+        modifier = modifier.testTag("app-menu-$tag"),
         shape = shape,
         color = prominentContainerColor(),
         border = prominentContainerBorder(1.5.dp)

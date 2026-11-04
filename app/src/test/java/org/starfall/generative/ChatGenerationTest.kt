@@ -276,6 +276,70 @@ class ChatGenerationTest {
         assertEquals(ChatStreamStatus.STREAMING, published.last().status)
     }
 
+    @Test fun stoppingBeforeAnyResponseRemovesTheEmptyAssistantFromRamAndStorage() = runBlocking {
+        var published: Conversation? = null
+        var saved: Conversation? = null
+        val started = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it }, publish = { published = it }
+        )
+        runner.start(conversation(), "a1", flow {
+            started.complete(Unit)
+            awaitCancellation()
+        })
+        started.await()
+        runner.stop()
+        runner.stopAndJoin()
+        assertEquals(listOf("u1"), published!!.messages.map { it.id })
+        assertEquals(listOf("u1"), saved!!.messages.map { it.id })
+    }
+
+    @Test fun aHiddenConnectToolDoesNotCreateAnEmptyStoppedReply() = runBlocking {
+        var published: Conversation? = null
+        var saved: Conversation? = null
+        val toolReceived = CompletableDeferred<Unit>()
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it }, publish = { published = it }
+        )
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.Tool(ToolActivity("connect", "server: connect", status = "success")))
+            toolReceived.complete(Unit)
+            awaitCancellation()
+        })
+        toolReceived.await()
+        runner.stop()
+        runner.stopAndJoin()
+        assertEquals(listOf("u1"), published!!.messages.map { it.id })
+        assertEquals(listOf("u1"), saved!!.messages.map { it.id })
+    }
+
+    @Test fun stoppingWithReasoningOrAToolKeepsTheActualAssistantResponse() = runBlocking {
+        for (event in listOf(
+            GenerationEvent.Reasoning("Partially thought"),
+            GenerationEvent.Tool(ToolActivity("search", "web_search", status = "success"))
+        )) {
+            var published: Conversation? = null
+            var saved: Conversation? = null
+            val received = CompletableDeferred<Unit>()
+            val runner = ChatGeneration(
+                scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+                save = { saved = it }, publish = { published = it }
+            )
+            runner.startEvents(conversation(), "a1", flow {
+                emit(event)
+                received.complete(Unit)
+                awaitCancellation()
+            })
+            received.await()
+            runner.stop()
+            runner.stopAndJoin()
+            assertEquals(listOf("u1", "a1"), published!!.messages.map { it.id })
+            assertEquals(listOf("u1", "a1"), saved!!.messages.map { it.id })
+        }
+    }
+
     @Test fun stoppingPersistsExactlyTheFrozenVisibleSnapshotAndDropsQueuedText() = runBlocking {
         var saved: Conversation? = null
         val visibleChunkPublished = CompletableDeferred<Unit>()
@@ -496,6 +560,33 @@ class ChatGenerationTest {
         val complete = updateResponse(partial, "a1", "<think>Working</think>\nAnswer")
         assertEquals("Working", complete.messages.last().reasoningContent)
         assertEquals("Answer", complete.messages.last().content)
+    }
+
+    @Test fun finalRamPublicationPrecedesStreamReleaseAndBusyReset() = runBlocking {
+        val events = mutableListOf<String>()
+        lateinit var runner: ChatGeneration
+        runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = {},
+            publish = { snapshot ->
+                if (snapshot.messages.last().content == "Complete response" &&
+                    snapshot.messages.last().activeVersion.processingFinishedAt != null) {
+                    assertTrue(runner.busy.value)
+                    events += "final"
+                }
+            },
+            publishStream = { _, state ->
+                if (state == null) {
+                    assertTrue("Stream release cannot precede the final RAM message", "final" in events)
+                    assertTrue("Busy must still be true when the stream is released", runner.busy.value)
+                    events += "cleared"
+                }
+            }
+        )
+        runner.start(conversation(), "a1", flowOf("Complete response"))
+        runner.awaitCompletion()
+        assertEquals(listOf("final", "cleared"), events)
+        assertFalse(runner.busy.value)
     }
 
     @Test fun consecutiveGenerationsUseFreshIdsAndDoNotReuseThePreviousDisplaySnapshot() = runBlocking {

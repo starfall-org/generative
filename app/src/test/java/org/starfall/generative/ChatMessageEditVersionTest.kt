@@ -39,6 +39,20 @@ class ChatMessageEditVersionTest {
         assertFalse(updated.generationInterrupted)
     }
 
+    @Test fun toolbarEditorCanAddContentToThinkingOnlyAnswerWithoutAPlaceholderBubble() {
+        val original = MessageVersion(reasoningContent = "Thinking", generationInterrupted = true)
+        val message = StoredMessage("reply", ChatRole.MODEL, listOf(original))
+        val draftFromToolbar = assistantCopyText(message)
+        assertEquals("[ActionsBlock1]", draftFromToolbar)
+        val edited = editedMessageVersion(
+            message, draftFromToolbar + "Answer added through the toolbar", emptyList(), "next"
+        )
+        assertEquals("Answer added through the toolbar", edited.content)
+        assertEquals("Thinking", edited.reasoningContent)
+        assertEquals("[ActionsBlock1]Answer added through the toolbar",
+            assistantCopyText(message.copy(versions = listOf(edited))))
+    }
+
     @Test fun missingMarkersMoveEveryBlockBeforeContentWithoutDeletingThem() {
         val initial = MessageVersion(
             content = "first second third",

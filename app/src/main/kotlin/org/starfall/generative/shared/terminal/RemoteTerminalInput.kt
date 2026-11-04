@@ -80,8 +80,8 @@ internal class RemoteTerminalInput(
         }
     }
 
-    fun sendChar(char: Char) {
-        sendCodePoint(char.code, ctrlActive, altActive)
+    fun sendChar(char: Char, forceRemote: Boolean = false) {
+        sendCodePoint(char.code, ctrlActive, altActive, forceRemote)
         clearModifiers()
     }
 
@@ -132,14 +132,14 @@ internal class RemoteTerminalInput(
         clearModifiers()
     }
 
-    fun sendCodePoint(codePoint: Int, ctrl: Boolean, alt: Boolean) {
+    fun sendCodePoint(codePoint: Int, ctrl: Boolean, alt: Boolean, forceRemote: Boolean = false) {
         snapToBottom()
         val shiftedPoint = when {
             shiftActive && codePoint in 'a'.code..'z'.code -> codePoint - 32
             shiftActive && codePoint == '/'.code -> '?'.code
             else -> codePoint
         }
-        if (inputMode.usesLocalInput) {
+        if (inputMode.usesLocalInput && !forceRemote) {
             if (ctrl) {
                 handleLocalControl(codePoint, alt)
                 clearModifiers()

@@ -231,6 +231,52 @@ class RemoteTerminalInputTest {
     }
 
     @Test
+    fun extraKeysAlwaysReachRemoteWithoutEditingTheLocalDraft() {
+        val keys = listOf(
+            "\u001b", "\t", "\u001b[D", "\u001b[A", "\u001b[B", "\u001b[C",
+            "\u001b[5~", "\u001b[6~", "\u001b[H", "\u001b[F"
+        )
+        for (mode in TerminalInputMode.entries) {
+            val terminal = Terminal(mode, context)
+            if (mode.usesLocalInput) terminal.input.sendImeText("pending command")
+            val cursor = terminal.input.localCursorPosition
+
+            keys.forEach { terminal.input.sendSpecial(it, forceRemote = true) }
+            terminal.input.sendChar('/', forceRemote = true)
+
+            assertEquals(keys.joinToString("") + "/", terminal.text())
+            assertEquals(if (mode.usesLocalInput) "pending command" else "", terminal.input.localInput)
+            assertEquals(cursor, terminal.input.localCursorPosition)
+        }
+    }
+
+    @Test
+    fun extraCharacterPreservesModifiersAndNormalLocalEditing() {
+        val terminal = Terminal(TerminalInputMode.LOCAL, context)
+        terminal.input.sendImeText("draft")
+        terminal.input.ctrlActive = true
+        terminal.input.sendChar('/', forceRemote = true)
+        assertEquals("\u001f", terminal.text()) // Ctrl+/ (unit separator)
+        assertFalse(terminal.input.ctrlActive)
+
+        terminal.input.altActive = true
+        terminal.input.sendChar('/', forceRemote = true)
+        assertEquals("\u001f\u001b/", terminal.text())
+        assertFalse(terminal.input.altActive)
+
+        terminal.input.shiftActive = true
+        terminal.input.sendChar('/', forceRemote = true)
+        assertEquals("\u001f\u001b/?", terminal.text())
+        assertFalse(terminal.input.shiftActive)
+        assertEquals("draft", terminal.input.localInput)
+
+        terminal.input.sendChar('!')
+        assertEquals("draft!", terminal.input.localInput)
+        terminal.input.sendSpecial("\r")
+        assertEquals("\u001f\u001b/?draft!\r", terminal.text())
+    }
+
+    @Test
     fun modeChangeKeepsUnsentLocalDraftWithoutSendingOrShowingItInRemoteMode() {
         val terminal = Terminal(TerminalInputMode.LOCAL, context)
         terminal.input.sendImeText("echo chào")

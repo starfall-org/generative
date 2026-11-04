@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug-only deterministic benchmark. Never available in a release build. -->
+        <activity
+            android:name="org.starfall.generative.features.home.chat.ui.StreamPerformanceBenchmarkActivity"
+            android:exported="true" />
+    </application>
+</manifest>

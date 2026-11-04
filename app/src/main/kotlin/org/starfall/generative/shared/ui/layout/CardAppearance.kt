@@ -2,6 +2,7 @@ package org.starfall.generative.shared.ui.layout
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -79,4 +80,20 @@ fun groupedItemShape(
         bottomEnd = outerCorner
     )
     else -> RoundedCornerShape(innerCorner)
+}
+
+/** Appearance-neutral shape used by ComponentGroup: a full capsule on exposed edges. */
+fun componentGroupItemShape(index: Int, count: Int): RoundedCornerShape {
+    val outer = CornerSize(50)
+    val inner = CornerSize(6.dp)
+    return when {
+        count <= 1 -> RoundedCornerShape(outer)
+        index == 0 -> RoundedCornerShape(
+            topStart = outer, topEnd = outer, bottomStart = inner, bottomEnd = inner
+        )
+        index == count - 1 -> RoundedCornerShape(
+            topStart = inner, topEnd = inner, bottomStart = outer, bottomEnd = outer
+        )
+        else -> RoundedCornerShape(inner)
+    }
 }

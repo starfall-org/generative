@@ -12,8 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import org.starfall.generative.shared.model.Conversation
-import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 
 /** The available heap, rather than a fixed chat count, determines what stays warm. */
 internal fun retainedHeapFraction(used: Long, maximum: Long): Float {

@@ -16,7 +16,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.starfall.generative.features.appdata.model.FullAppDataExport
 import org.starfall.generative.shared.model.Conversation
+import org.starfall.generative.BuildConfig
 import org.starfall.generative.shared.model.McpInfo
+import org.starfall.generative.shared.model.isContentApiPreset
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
@@ -39,7 +41,9 @@ fun buildJsonExport(
     put("type", "full_backup")
     put("providers", exportJson.parseToJsonElement(exportJson.encodeToString(providers)))
     put("providerGroups", exportJson.parseToJsonElement(exportJson.encodeToString(providerGroups)))
-    put("mcpServers", exportJson.parseToJsonElement(exportJson.encodeToString(mcpServers)))
+    put("mcpServers", exportJson.parseToJsonElement(exportJson.encodeToString(
+        mcpServers.map { it.withoutBundledEndpoint() }
+    )))
     put("speechServices", exportJson.parseToJsonElement(exportJson.encodeToString(speechServices)))
     put("conversations", exportJson.parseToJsonElement(exportJson.encodeToString(conversations)))
 })
@@ -146,3 +150,9 @@ private fun inferLegacyArray(items: JsonArray, fileNameHint: String?): FullAppDa
         else -> error("Cannot identify the data category in this legacy JSON array.")
     }
 }
+
+
+/** Do not serialize the build-provided Content API endpoint in portable exports. */
+private fun McpInfo.withoutBundledEndpoint(): McpInfo =
+    if (isContentApiPreset() && BuildConfig.CONTENT_API_MCP_URL.isNotBlank() &&
+        url?.trim() == BuildConfig.CONTENT_API_MCP_URL.trim()) copy(url = null) else this

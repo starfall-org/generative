@@ -27,8 +27,8 @@ import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 /** One file or folder entry, rendered with the app's shared [ItemCard] list/grid card. */
 @Composable
@@ -125,43 +125,35 @@ private fun ExplorerItemMenu(
                 stringResource(R.string.explorer_more_actions, itemName)
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
-            if (onDownload != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.explorer_download)) },
-                    leadingIcon = { SharedIcon(Icons.Outlined.Download, contentDescription = null) },
-                    onClick = {
-                        onExpandedChange(false)
-                        onDownload()
+        if (expanded) {
+            ContextMenuSheet(
+                actions = buildList {
+                    onDownload?.let { download ->
+                        add(
+                            ContextMenuAction(
+                                label = stringResource(R.string.explorer_download),
+                                onClick = download,
+                                icon = Icons.Outlined.Download
+                            )
+                        )
                     }
-                )
-            }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.explorer_rename)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
-                onClick = {
-                    onExpandedChange(false)
-                    onRename()
-                }
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error
+                    add(
+                        ContextMenuAction(
+                            label = stringResource(R.string.explorer_rename),
+                            onClick = onRename,
+                            icon = Icons.Outlined.Edit
+                        )
+                    )
+                    add(
+                        ContextMenuAction(
+                            label = stringResource(R.string.common_delete),
+                            onClick = onDelete,
+                            icon = Icons.Outlined.Delete,
+                            destructive = true
+                        )
                     )
                 },
-                leadingIcon = {
-                    SharedIcon(
-                        Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                onClick = {
-                    onExpandedChange(false)
-                    onDelete()
-                }
+                onDismissRequest = { onExpandedChange(false) }
             )
         }
     }

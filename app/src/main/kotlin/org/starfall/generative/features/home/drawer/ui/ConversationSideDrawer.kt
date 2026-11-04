@@ -2,7 +2,8 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -32,18 +33,14 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.painterResource
 import org.starfall.generative.R
 import org.starfall.generative.extensions.launcher.Launcher
 import java.util.UUID
@@ -54,11 +51,9 @@ import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon
@@ -347,14 +342,20 @@ fun ConversationSideDrawer(
                                     if (folder.pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.sidebar_pinned_folder), Modifier.size(14.dp))
                                     Box {
                                         IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.sidebar_folder_options)) }
-                                        DropdownMenu(menu, { menu = false }) {
-                                            DropdownMenuItem(text = { Text(stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin)) }, leadingIcon = { SharedIcon(Icons.Outlined.PushPin, null) }, onClick = {
-                                                menu = false
-                                                onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(pinned = !it.pinned) else it }) }
-                                            })
-                                            DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_rename)) }, onClick = { menu = false; editingFolder = folder; folderName = folder.name })
-                                            DropdownMenuItem(text = { Text(stringResource(R.string.sidebar_remove_folder)) }, onClick = { menu = false; deletingFolder = folder })
-                                        }
+                                        if (menu) ContextMenuSheet(
+                                            actions = listOf(
+                                                ContextMenuAction(
+                                                    stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin),
+                                                    onClick = { onUpdateOrganization { state -> state.copy(folders = state.folders.map { if (it.id == folder.id) it.copy(pinned = !it.pinned) else it }) } },
+                                                    icon = Icons.Outlined.PushPin
+                                                ),
+                                                ContextMenuAction(stringResource(R.string.sidebar_rename),
+                                                    onClick = { editingFolder = folder; folderName = folder.name }, icon = Icons.Outlined.Edit),
+                                                ContextMenuAction(stringResource(R.string.sidebar_remove_folder),
+                                                    onClick = { deletingFolder = folder }, icon = Icons.Outlined.Delete, destructive = true)
+                                            ),
+                                            onDismissRequest = { menu = false }
+                                        )
                                     }
                                 }
                             }
@@ -526,29 +527,15 @@ fun ConversationSideDrawer(
             }
         }
         }
-        DropdownMenu(
-            expanded = blankContextMenu,
+        if (blankContextMenu) ContextMenuSheet(
+            actions = listOf(
+                ContextMenuAction(stringResource(R.string.sidebar_create_folder),
+                    onClick = { folderName = ""; creatingFolder = true }, icon = Icons.Outlined.CreateNewFolder),
+                ContextMenuAction(stringResource(R.string.sidebar_select),
+                    onClick = { selecting = true; selected = emptySet() }, icon = Icons.Outlined.CheckCircle)
+            ),
             onDismissRequest = { blankContextMenu = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.sidebar_create_folder)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.CreateNewFolder, null) },
-                onClick = {
-                    blankContextMenu = false
-                    folderName = ""
-                    creatingFolder = true
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.sidebar_select)) },
-                leadingIcon = { SharedIcon(Icons.Outlined.CheckCircle, null) },
-                onClick = {
-                    blankContextMenu = false
-                    selecting = true
-                    selected = emptySet()
-                }
-            )
-        }
+        )
     }
     if (creatingFolder) AlertDialog(
         onDismissRequest = { creatingFolder = false },

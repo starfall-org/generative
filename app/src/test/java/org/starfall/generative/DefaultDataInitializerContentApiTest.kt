@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -17,6 +18,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -51,6 +53,43 @@ class DefaultDataInitializerContentApiTest {
     @After
     fun tearDown() {
         database.close()
+    }
+
+    @Test
+    fun buildEndpointIsUsedForTransportButHiddenFromUiAndBackup() = runBlocking {
+        val configuredUrl = "https://hidden.example.test/mcp"
+        val repository = McpRepository(database, McpService(ToolHttp()),
+            contentApiMcpUrl = configuredUrl)
+        val preset = McpInfo(id = "content-api", name = "Content API")
+        repository.saveServer(preset)
+
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+        assertEquals(configuredUrl, repository.resolveServer(preset).url)
+
+        // An old record containing the configured endpoint is scrubbed on save.
+        repository.saveServer(preset.copy(url = configuredUrl))
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+
+        // Old backups may contain another embedded URL from an earlier build.
+        // Never persist or re-export such URLs for the bundled preset.
+        val oldEmbeddedUrl = "https://old-build.example.test/mcp"
+        repository.saveServer(preset.copy(url = oldEmbeddedUrl))
+        assertNull(repository.allServers.first().single().url)
+        assertNull(repository.getById(preset.id)?.url)
+        assertNull(repository.loadServersForExport().single().url)
+        assertNull(database.mcpServerDao().getServerById(preset.id)?.url)
+
+        // Ordinary MCP servers still retain their user-supplied URLs.
+        val custom = McpInfo(id = "custom", name = "Custom", url = oldEmbeddedUrl)
+        repository.saveServer(custom)
+        assertEquals(oldEmbeddedUrl, repository.allServers.first().single { it.id == custom.id }.url)
+        assertEquals(oldEmbeddedUrl, repository.loadServersForExport().single { it.id == custom.id }.url)
     }
 
     @Test(timeout = 20_000)

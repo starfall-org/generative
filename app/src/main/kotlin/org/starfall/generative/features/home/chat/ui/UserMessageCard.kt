@@ -1,6 +1,7 @@
 package org.starfall.generative.features.home.chat.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalGlyphHitRegistry
@@ -28,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.logic.markdown.MarkdownRenderCacheIdentity
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
@@ -163,46 +163,34 @@ fun UserMessageCard(
                     }
 
                     // Dropdown Context Menu
-                    DropdownMenu(
-                        expanded = foreground && showMenu,
+                    if (foreground && showMenu) ContextMenuSheet(
+                        actions = buildList {
+                            if (!message.isQueued) add(ContextMenuAction(
+                                stringResource(R.string.common_copy),
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.common_copy), message.content))
+                                    Toast.makeText(context, localizedResources.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                },
+                                icon = Icons.Outlined.ContentCopy
+                            ))
+                            if (onResendFromMenu != null) add(ContextMenuAction(
+                                stringResource(R.string.resend_message),
+                                onClick = onResendFromMenu,
+                                icon = Icons.AutoMirrored.Filled.Send,
+                                enabled = resendEnabled
+                            ))
+                            add(ContextMenuAction(stringResource(R.string.common_edit),
+                                onClick = { onEdit(message.id) }, icon = Icons.Outlined.Edit))
+                            add(ContextMenuAction(
+                                stringResource(if (message.isQueued) R.string.common_cancel else R.string.common_delete),
+                                onClick = { onDelete(message.id) },
+                                icon = if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete,
+                                destructive = true
+                            ))
+                        },
                         onDismissRequest = { showMenu = false }
-                    ) {
-                        if (!message.isQueued) DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_copy)) },
-                            leadingIcon = { SharedIcon(Icons.Outlined.ContentCopy, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText(localizedResources.getString(R.string.common_copy), message.content))
-                                Toast.makeText(context, localizedResources.getString(R.string.common_copied_to_clipboard), Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                        if (onResendFromMenu != null) DropdownMenuItem(
-                            text = { Text(stringResource(org.starfall.generative.R.string.resend_message)) },
-                            leadingIcon = { SharedIcon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
-                            enabled = resendEnabled,
-                            onClick = {
-                                showMenu = false
-                                onResendFromMenu()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_edit)) },
-                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onEdit(message.id)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(if (message.isQueued) R.string.common_cancel else R.string.common_delete)) },
-                            leadingIcon = { SharedIcon(if (message.isQueued) Icons.Outlined.Close else Icons.Outlined.Delete, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onDelete(message.id)
-                            }
-                        )
-                    }
+                    )
                 }
             }
             if (onResend != null) {

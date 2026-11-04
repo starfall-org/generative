@@ -78,8 +78,8 @@ class CustomPaletteTest {
             val defaults = AppPreferences()
             assertFalse(inactive.customizationEnabled)
             assertTrue(inactive.continueLastConversation) // Non-appearance settings stay available.
-            assertEquals(defaults.themeMode, inactive.themeMode)
-            assertEquals(defaults.useAmoled, inactive.useAmoled)
+            assertEquals("DARK", inactive.themeMode)
+            assertTrue(inactive.useAmoled)
             assertTrue(inactive.useDynamicColor)
             assertEquals(defaults.colorSchemeName, inactive.colorSchemeName)
             assertEquals(defaults.customPalette, inactive.customPalette)
@@ -115,6 +115,35 @@ class CustomPaletteTest {
             assertEquals(customized.inputAreaTransparency, restored.inputAreaTransparency)
             assertEquals(customized.inputAreaBlur, restored.inputAreaBlur)
             assertEquals(profile.copy(photo = "new-profile-image"), restored.userProfile)
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+
+    @Test fun themeAndAmoledRemainIndependentAndEditableWhenCustomizationIsOff() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        try {
+            repository.replace(AppPreferences(themeMode = "DARK", useAmoled = true))
+            repository.setCustomizationEnabled(false)
+            val disabled = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertFalse(disabled.customizationEnabled)
+            assertEquals("DARK", disabled.themeMode)
+            assertTrue(disabled.useAmoled)
+
+            repository.setThemeMode("LIGHT")
+            repository.setUseAmoled(false)
+            val updated = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertFalse(updated.customizationEnabled)
+            assertEquals("LIGHT", updated.themeMode)
+            assertFalse(updated.useAmoled)
+
+            repository.setThemeMode("DARK")
+            repository.setUseAmoled(true)
+            val restored = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertFalse(restored.customizationEnabled)
+            assertEquals("DARK", restored.themeMode)
+            assertTrue(restored.useAmoled)
         } finally {
             repository.replace(AppPreferences())
         }

@@ -53,7 +53,8 @@ import org.starfall.generative.shared.model.logging.DebugLogCategory
 class McpService(
     private val http: ToolHttp = ToolHttp(),
     private val oauth: McpOAuthService? = null,
-    var serverLoader: suspend (McpInfo) -> McpInfo = { it }
+    var serverLoader: suspend (McpInfo) -> McpInfo = { it },
+    private val contentApiMcpUrl: String? = null
 ) {
     suspend fun listTools(info: McpInfo): List<String> = discover(info).map { it.originalName }
     suspend fun discover(info: McpInfo): List<ToolDefinition> = session(info).useSession { it.tools() }
@@ -67,7 +68,7 @@ class McpService(
         } else {
             server.auth.token
         }
-        return McpSession(server, http, oauthToken).also { it.initialize() }
+        return McpSession(server, http, oauthToken, contentApiMcpUrl).also { it.initialize() }
     }
 }
 
@@ -87,10 +88,11 @@ suspend fun <T> McpSession.useSession(block: suspend (McpSession) -> T): T =
 class McpSession(
     private val info: McpInfo,
     private val http: ToolHttp,
-    private val oauthToken: String = info.auth.token
+    private val oauthToken: String = info.auth.token,
+    contentApiMcpUrl: String? = null
 ) {
     init { info.requireNetworkCredentials() }
-    private val endpoint = info.resolvedUrl() ?: error("MCP URL is missing")
+    private val endpoint = info.resolvedUrl(contentApiMcpUrl) ?: error("MCP URL is missing")
     private var httpClient: HttpClient? = null
     private var client: Client? = null
     private var needsReconnect = false

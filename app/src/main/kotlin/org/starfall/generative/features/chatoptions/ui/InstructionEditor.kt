@@ -41,8 +41,8 @@ import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.text.EditorTextField
-import org.starfall.generative.shared.ui.text.HeaderNameField
+import org.starfall.generative.shared.ui.inputs.EditorTextField
+import org.starfall.generative.shared.ui.inputs.HeaderNameField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

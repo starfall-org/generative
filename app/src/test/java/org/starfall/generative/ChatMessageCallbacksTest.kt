@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
@@ -89,14 +90,16 @@ class ChatMessageCallbacksTest {
         assertEquals(false, observedGeneration)
     }
 
-    @Test fun anyStoredToolOrFileShowsToolbarButAnEmptyResponseDoesNot() {
+    @Test fun visibleToolsAndFilesShowToolbarButInternalOnlyAndEmptyRepliesDoNot() {
         val versions = listOf(
             MessageVersion(toolActivity = listOf(ToolActivity(id = "search", name = "web_search"))),
-            MessageVersion(toolActivity = listOf(ToolActivity(id = "internal", name = "server: connect"))),
             MessageVersion(toolActivity = listOf(ToolActivity(id = "file", name = "send_file",
                 files = listOf("tool-file:document.pdf")))),
             MessageVersion(files = listOf("image.png")),
-            MessageVersion()
+            MessageVersion(toolActivity = listOf(ToolActivity(id = "internal", name = "server: connect"))),
+            MessageVersion(toolActivity = listOf(ToolActivity(id = "pending", name = "send_file"))),
+            MessageVersion(),
+            MessageVersion(generationInterrupted = true)
         )
         var selected by mutableStateOf(0)
         var copied = 0
@@ -108,8 +111,8 @@ class ChatMessageCallbacksTest {
                 onEdit = {}, onDelete = {}, onRead = {}, onSwitchVersion = {}
             )
         } }
-        repeat(4) { index ->
-            compose.onNodeWithTag("assistant-empty-content").assertExists()
+        repeat(3) { index ->
+            compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
             compose.onNodeWithContentDescription(context.getString(R.string.common_copy))
                 .assertExists().performClick()
             compose.onNodeWithContentDescription(context.getString(R.string.common_share)).assertExists()
@@ -118,8 +121,15 @@ class ChatMessageCallbacksTest {
                 selected++
             }
         }
-        compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
-        compose.onNodeWithContentDescription(context.getString(R.string.common_copy)).assertDoesNotExist()
+        // An internal handshake, a file call without media, and a completely
+        // empty generation must not create a bubble, toolbar, or edit control.
+        repeat(4) { index ->
+            compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.common_copy)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.common_more)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(context.getString(R.string.message_regenerate)).assertDoesNotExist()
+            if (index < 3) compose.runOnIdle { selected++ }
+        }
     }
 
     @Test fun interruptedThinkingOnlyMessageHasFunctionalToolbar() {
@@ -139,15 +149,19 @@ class ChatMessageCallbacksTest {
                 onEdit = { editCalls++ }, onDelete = {}, onRead = {}, onSwitchVersion = {}
             )
         } }
-        compose.onNodeWithTag("assistant-empty-content").assertExists().performClick()
+        compose.onNodeWithTag("assistant-empty-content").assertDoesNotExist()
         compose.onNodeWithContentDescription(context.getString(R.string.common_copy))
             .assertExists().performClick()
         compose.runOnIdle {
             assertEquals("[ActionsBlock1]", copiedText)
             assertEquals(1, copyCalls)
-            assertEquals(1, editCalls)
+            assertEquals(0, editCalls)
         }
         compose.onNodeWithContentDescription(context.getString(R.string.common_share)).assertExists()
+        // Even without a Content block, the existing toolbar's More > Edit works.
+        compose.onNodeWithContentDescription(context.getString(R.string.common_more)).performClick()
+        compose.onNodeWithText(context.getString(R.string.common_edit)).performClick()
+        compose.runOnIdle { assertEquals(1, editCalls) }
         compose.onNodeWithContentDescription(context.getString(R.string.message_regenerate)).performClick()
         compose.runOnIdle { assertEquals(1, regenerationCalls) }
     }

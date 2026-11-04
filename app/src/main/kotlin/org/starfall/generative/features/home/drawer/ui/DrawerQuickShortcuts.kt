@@ -1,6 +1,9 @@
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.sheets.ItemListSheet
+import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -17,13 +20,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,22 +38,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.remoteMachineEnabled
 import org.starfall.generative.shared.model.selectedRemoteMachine
-import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
-import org.starfall.generative.shared.ui.sheets.BottomSheet
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 
 /**
  * Single combined card at the top of the left drawer.
@@ -163,25 +166,50 @@ internal fun DrawerQuickShortcuts(
                                         stringResource(R.string.common_more_options),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                DropdownMenu(expanded = machineMenu,
-                                    onDismissRequest = { machineMenu = false }) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.remote_server_open_terminal)) },
-                                        leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
-                                        onClick = { machineMenu = false; onOpenTerminal(selectedMachine) })
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.remote_port_forward)) },
-                                        leadingIcon = { SharedIcon(Icons.Outlined.Hub, null) },
-                                        onClick = { machineMenu = false; onPortForward(selectedMachine) })
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.common_tools)) },
-                                        leadingIcon = { SharedIcon(FluentUi.Regular.WrenchScrewdriver, null) },
-                                        onClick = { machineMenu = false; toolsMachine = selectedMachine })
-                                    HorizontalDivider()
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.remote_server_unset_action)) },
-                                        leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) },
-                                        onClick = { machineMenu = false; controls.selectMachine(null) })
+                                if (machineMenu) {
+                                    val checked = remoteMachineEnabled(controls.settings, selectedMachine)
+                                    val toggleLabel = stringResource(
+                                        if (checked) R.string.remote_server_disable_action
+                                        else R.string.remote_server_enable_action
+                                    )
+                                    ContextMenuSheet(
+                                        actions = listOf(
+                                            ContextMenuAction(
+                                                label = toggleLabel,
+                                                onClick = { controls.setMachine(selectedMachine.id, !checked) },
+                                                icon = Icons.Outlined.Computer,
+                                                trailingContent = {
+                                                    Switch(
+                                                        checked = checked,
+                                                        onCheckedChange = { controls.setMachine(selectedMachine.id, it) },
+                                                        modifier = Modifier.testTag("drawer_machine_switch_" + selectedMachine.id)
+                                                            .semantics { contentDescription = toggleLabel }
+                                                    )
+                                                }
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_server_open_terminal),
+                                                onClick = { onOpenTerminal(selectedMachine) },
+                                                iconRes = Icons.Outlined.Terminal
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_port_forward),
+                                                onClick = { onPortForward(selectedMachine) },
+                                                icon = Icons.Outlined.Hub
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.common_tools),
+                                                onClick = { toolsMachine = selectedMachine },
+                                                icon = FluentUi.Regular.WrenchScrewdriver
+                                            ),
+                                            ContextMenuAction(
+                                                label = stringResource(R.string.remote_server_unset_action),
+                                                onClick = { controls.selectMachine(null) },
+                                                icon = Icons.Outlined.LinkOff
+                                            )
+                                        ),
+                                        onDismissRequest = { machineMenu = false }
+                                    )
                                 }
                             }
                         }
@@ -244,62 +272,47 @@ internal fun DrawerQuickShortcuts(
     }
 
     if (pickerOpen) {
-        BottomSheet(onDismissRequest = { pickerOpen = false }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text(stringResource(R.string.remote_server_selection_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 12.dp))
-                if (machines.isEmpty()) {
-                    Text(stringResource(R.string.remote_servers_none_configured),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp))
-                } else {
-                    Column(Modifier.fillMaxWidth().heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        machines.forEach { machine ->
-                            val selected = selectedMachine?.id == machine.id
-                            Surface(
-                                onClick = {
-                                    controls.selectMachine(machine.id)
-                                    pickerOpen = false
-                                },
-                                shape = RoundedCornerShape(14.dp),
-                                color = prominentContainerColor(),
-                                border = prominentContainerBorder(),
-                                modifier = Modifier.fillMaxWidth()
-                                    .testTag("drawer_machine_picker_item_${machine.id}")
-                            ) {
-                                Row(Modifier.fillMaxWidth().padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    SharedIcon(if (machine.type.name == "GCLOUD_SHELL")
-                                        Icons.Outlined.Cloud else Icons.Outlined.Computer, null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(machine.name.ifBlank {
-                                            stringResource(R.string.remote_server_unnamed) },
-                                            style = MaterialTheme.typography.titleSmall,
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(machine.displayHost,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    }
-                                    if (selected) SharedIcon(Icons.Outlined.Check, null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp))
-                                }
-                            }
+        ItemListSheet(
+            title = stringResource(R.string.remote_server_selection_title),
+            onDismissRequest = { pickerOpen = false },
+            items = machines.map { machine ->
+                val selected = selectedMachine?.id == machine.id
+                ItemListSheetItem(
+                    key = machine.id,
+                    value = machine,
+                    onClick = {
+                        controls.selectMachine(machine.id)
+                        pickerOpen = false
+                    },
+                    selected = selected,
+                    modifier = Modifier.testTag("drawer_machine_picker_item_${machine.id}"),
+                    icon = {
+                        SharedIcon(
+                            if (machine.type.name == "GCLOUD_SHELL") Icons.Outlined.Cloud else Icons.Outlined.Computer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    },
+                    actions = {
+                        if (selected) SharedIcon(Icons.Outlined.Check, null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    },
+                    content = {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(machine.name.ifBlank { stringResource(R.string.remote_server_unnamed) },
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(machine.displayHost, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                }
-                Spacer(Modifier.size(12.dp))
-            }
-        }
+                )
+            },
+            listMaxHeight = 420.dp,
+            emptyMessage = stringResource(R.string.remote_servers_none_configured)
+        )
     }
 
     toolsMachine?.let { machine ->

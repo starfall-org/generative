@@ -2,6 +2,7 @@ package org.starfall.generative.features.home.chat.logic.service
 
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.hasVisibleAssistantBlock
 
 internal data class AssistantActionBlock(val offset: Int, val items: List<AssistantTimelineItem>)
 
@@ -145,7 +146,7 @@ internal fun assistantVisibleBlocks(
         blocks += AssistantVisibleBlock(0, AssistantBlockKind.MEDIA,
             version.filesContentOffset ?: version.content.length, key = "media:files")
     }
-    if (blocks.isEmpty() && version.toolActivity.isNotEmpty()) {
+    if (blocks.isEmpty() && version.toolActivity.any { it.hasVisibleAssistantBlock() }) {
         blocks += AssistantVisibleBlock(0, AssistantBlockKind.ACTIONS, 0, key = "actions:internal")
     }
     if (!version.generationError.isNullOrBlank()) {

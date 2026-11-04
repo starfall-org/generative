@@ -183,6 +183,8 @@
     <string name="connection_testing_unavailable">Không thể kiểm tra kết nối.</string>
     <string name="refresh_models">Làm mới mô hình</string>
     <string name="search_models">Tìm mô hình</string>
+    <string name="shared_search">Tìm kiếm</string>
+    <string name="shared_no_items">Không có mục nào</string>
     <string name="select_all_visible_models">Chọn tất cả mô hình đang hiện</string>
     <string name="model_discovery_unavailable">Không thể tìm kiếm mô hình</string>
     <string name="provider_deselect_visible_models">Bỏ chọn các mô hình đang hiện</string>
@@ -647,6 +649,8 @@
     <string name="remote_server_selection_title">Chọn máy chủ cho công cụ AI</string>
     <string name="remote_server_none_selected">Chưa chọn máy chủ</string>
     <string name="remote_server_unset_action">Bỏ chọn</string>
+    <string name="remote_server_enable_action">Bật công cụ AI</string>
+    <string name="remote_server_disable_action">Tắt công cụ AI</string>
     <string name="remote_servers_description">Kết nối SSH và Google Cloud Shell</string>
     <string name="remote_servers_empty">Chưa có Remote Server nào</string>
     <string name="remote_server_empty_hint">Thêm kết nối SSH hoặc Google Cloud Shell để mở terminal và duyệt tệp.</string>
@@ -978,4 +982,6 @@
     <string name="duration_minutes_seconds">%1$d phút %2$d giây</string>
     <string name="duration_seconds">%1$d giây</string>
     <string name="quick_action_camera">Máy ảnh</string>
+    <string name="providers_demo_title">Bản demo ProvidersScreen</string>
+        <string name="providers_demo_editor_title">Provider mẫu</string>
 </resources>

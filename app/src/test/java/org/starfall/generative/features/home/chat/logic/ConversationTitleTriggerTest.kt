@@ -11,11 +11,11 @@ import org.starfall.generative.shared.model.ToolActivity
 
 class ConversationTitleTriggerTest {
     @Test
-    fun titleWaitsForTenWordsOrFiveUserAndAssistantMessages() {
+    fun titleWaitsForTenWordsOrThreeUserAndAssistantMessages() {
         assertFalse(shouldGenerateConversationTitle("one two three four five six seven eight nine", 2))
         assertTrue(shouldGenerateConversationTitle("one two three four five six seven eight nine ten", 2))
-        assertFalse(shouldGenerateConversationTitle("short message", 4))
-        assertTrue(shouldGenerateConversationTitle("short message", 5))
+        assertFalse(shouldGenerateConversationTitle("short message", 2))
+        assertTrue(shouldGenerateConversationTitle("short message", 3))
     }
 
     @Test

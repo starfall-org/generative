@@ -17,7 +17,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.KeyValueField
+import org.starfall.generative.shared.ui.inputs.KeyValueValueType
 
 /** Manages a provider's custom HTTP headers; edits are applied to [rows] immediately. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,15 +45,15 @@ internal fun ProviderHeadersDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            row.first, { rows[index] = it to rows[index].second },
-                            label = { Text(stringResource(R.string.common_key)) },
-                            maxLines = 2, modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            row.second, { rows[index] = rows[index].first to it },
-                            label = { Text(stringResource(R.string.common_value)) },
-                            maxLines = 2, modifier = Modifier.weight(1f)
+                        KeyValueField(
+                            keyValue = row.first,
+                            onKeyChange = { rows[index] = it to rows[index].second },
+                            value = row.second,
+                            onValueChange = { rows[index] = rows[index].first to it },
+                            keyLabel = { Text(stringResource(R.string.common_key)) },
+                            valueLabel = { Text(stringResource(R.string.common_value)) },
+                            valueType = KeyValueValueType.Literal,
+                            modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { rows.removeAt(index) }) {
                             SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))

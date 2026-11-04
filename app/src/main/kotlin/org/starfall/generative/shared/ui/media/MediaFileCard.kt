@@ -26,7 +26,6 @@ import java.io.File
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.media.ChatFilePreview
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.media.MediaContent
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
@@ -96,18 +95,24 @@ fun MediaFileCard(
         File(store.directory, name).absolutePath, name, name.mimeForMissingFile(), null, false,
         missing = true, overlayActive = overlayActive, onOpen = {}
     ) else Text(stringResource(R.string.file_deleted), style = MaterialTheme.typography.bodySmall)
-    if (overlayActive && view && file != null) MediaViewer(store, file) { view = false }
+    if (overlayActive && view && file != null) MediaViewer(
+        store,
+        file,
+        selectedForChat = selectedForChat,
+        onToggleAttachment = onToggleChatImage
+    ) { view = false }
 }
 
 @Composable
 internal fun MediaViewer(
     store: ToolFiles, file: File,
     onDelete: suspend () -> Unit = { withContext(Dispatchers.IO) { store.delete(listOf(file.name)) } },
+    selectedForChat: Boolean = false,
+    onToggleAttachment: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    val attachmentSelection = LocalChatAttachmentSelection.current
     val scope = rememberCoroutineScope()
     val mime = remember(file.name) { file.mime() }
     val textual = remember(file.name) { file.isTextFile() }
@@ -161,15 +166,14 @@ internal fun MediaViewer(
         }
     }
     val actions = buildList {
-        attachmentSelection?.let { selection ->
-            val attached = file.path in selection.attachments.value
+        onToggleAttachment?.let { toggle ->
             add(
                 MediaViewerAction(
                     label = stringResource(
-                        if (attached) R.string.file_remove_next_message else R.string.file_attach_next_message
+                        if (selectedForChat) R.string.file_remove_next_message else R.string.file_attach_next_message
                     ),
-                    icon = if (attached) Icons.Outlined.CheckCircle else Icons.Outlined.AttachFile,
-                    onClick = { selection.toggle(file.path) }
+                    icon = if (selectedForChat) Icons.Outlined.CheckCircle else Icons.Outlined.AttachFile,
+                    onClick = { toggle(file.path) }
                 )
             )
         }

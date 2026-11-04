@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.ErrorContainer
 
@@ -18,7 +19,6 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.ui.auth.DeviceCodeChallengeText
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
@@ -96,22 +96,24 @@ internal fun OAuthAccountCard(
                         IconButton(onClick = { menuExpanded = true }, enabled = !busy) {
                             SharedIcon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
                         }
-                        DropdownMenu(menuExpanded && !busy, onDismissRequest = { menuExpanded = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.oauth_sign_in_again)) },
-                                leadingIcon = { SharedIcon(Icons.Outlined.OpenInBrowser, null) },
-                                enabled = canSignIn,
-                                onClick = { menuExpanded = false; onSignIn() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.oauth_sign_out),
-                                    color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { SharedIcon(Icons.AutoMirrored.Outlined.Logout, null,
-                                    tint = MaterialTheme.colorScheme.error) },
-                                enabled = canSignOut,
-                                onClick = { menuExpanded = false; onSignOut() }
-                            )
-                        }
+                        if (menuExpanded && !busy) ContextMenuSheet(
+                            actions = listOf(
+                                ContextMenuAction(
+                                    stringResource(R.string.oauth_sign_in_again),
+                                    onSignIn,
+                                    Icons.Outlined.OpenInBrowser,
+                                    enabled = canSignIn
+                                ),
+                                ContextMenuAction(
+                                    stringResource(R.string.oauth_sign_out),
+                                    onSignOut,
+                                    Icons.AutoMirrored.Outlined.Logout,
+                                    enabled = canSignOut,
+                                    destructive = true
+                                )
+                            ),
+                            onDismissRequest = { menuExpanded = false }
+                        )
                     }
                 }
             }

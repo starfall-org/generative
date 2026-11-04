@@ -95,9 +95,8 @@ fun ChatFilePreview(
         }
         return
     }
-    val sharedSelection = LocalChatAttachmentSelection.current
-    val toggle = onToggleAttachment ?: sharedSelection?.let { it::toggle }
-    val selected = if (onToggleAttachment == null && sharedSelection != null) reference in sharedSelection.attachments.value else selectedForChat
+    val toggle = onToggleAttachment
+    val selected = selectedForChat
     val actions: @Composable BoxScope.() -> Unit = {
         FileCornerActions(reference, name, mime, selected, toggle,
             Modifier.align(Alignment.TopEnd).padding(6.dp), overlayActive)

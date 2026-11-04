@@ -6,14 +6,27 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** One application-lifetime writer. UI mutations are visible before persistence starts.
- * Pending transforms stay over the committed snapshot until read-back, including while
- * Room emits older invalidations. Failed writes remove only their own transform.
+/** One application-owned RAM writer, with two distinct storage policies:
+ * - Snapshot loader: Room is passive and never invalidates an active UI.
+ * - Reactive source: DataStore preferences continue to observe external changes.
+ * Every accepted write is visible immediately and persists in submission order.
  */
-internal class ImmediateState<T : Any>(
-    private val source: Flow<T>,
-    scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler),
+internal class ImmediateState<T : Any> private constructor(
+    private val load: suspend () -> T,
+    private val updates: Flow<T>?,
+    scope: CoroutineScope,
 ) {
+    constructor(
+        load: suspend () -> T,
+        scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler)
+    ) : this(load, null, scope)
+
+    /** Retain DataStore's reactive preference behavior. Never use this overload for Room. */
+    constructor(
+        source: Flow<T>,
+        scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler)
+    ) : this({ source.first() }, source, scope)
+
     private class Write<T>(val transform: (T) -> T, val persist: suspend () -> Unit, val reportFailure: Boolean) {
         val result = CompletableDeferred<Unit>()
     }
@@ -30,14 +43,31 @@ internal class ImmediateState<T : Any>(
     init {
         scope.launch {
             try {
-                var firstEmission = true
-                source.collect { emitted ->
+                if (updates == null) {
                     disk.withLock {
-                        // First emission is already the committed snapshot (writes wait on `ready`), so skip
-                        // the second full decrypt/decode. Later emissions re-read under the writer lock: they may be stale.
-                        val latest = if (firstEmission) { firstEmission = false; emitted } else source.first()
-                        synchronized(guard) { committed = latest; publish() }
+                        val initial = load()
+                        synchronized(guard) {
+                            committed = initial
+                            publish()
+                        }
                         ready.complete(Unit)
+                    }
+                } else {
+                    var initialEmission = true
+                    updates.collect { emitted ->
+                        disk.withLock {
+                            // Only preferences observe storage. Re-read under the writer lock
+                            // so a delayed invalidation cannot overwrite a newer preference.
+                            val latest = if (initialEmission) {
+                                initialEmission = false
+                                emitted
+                            } else updates.first()
+                            synchronized(guard) {
+                                committed = latest
+                                publish()
+                            }
+                            ready.complete(Unit)
+                        }
                     }
                 }
             } catch (e: Throwable) {
@@ -47,26 +77,28 @@ internal class ImmediateState<T : Any>(
         }
         scope.launch {
             for (write in writes) {
-                val initialized = runCatching { ready.await() }
-                disk.withLock {
-                    val result = runCatching {
-                        initialized.getOrThrow()
+                val result = runCatching {
+                    ready.await()
+                    disk.withLock {
                         write.persist()
-                        source.first()
+                        // Room never re-reads on persistence completion. DataStore still
+                        // reads the authoritative preference value after its edit.
+                        updates?.first()
                     }
-                    synchronized(guard) {
-                        result.getOrNull()?.let { committed = it }
-                        pending.remove(write)
-                        publish()
-                    }
-                    result.fold(
-                        onSuccess = { write.result.complete(Unit) },
-                        onFailure = {
-                            write.result.completeExceptionally(it)
-                            if (write.reportFailure) LocalWriteErrors.report()
-                        }
-                    )
                 }
+                synchronized(guard) {
+                    if (result.isSuccess) committed = result.getOrNull()
+                        ?: write.transform(checkNotNull(committed))
+                    pending.remove(write)
+                    publish()
+                }
+                result.fold(
+                    onSuccess = { write.result.complete(Unit) },
+                    onFailure = {
+                        write.result.completeExceptionally(it)
+                        if (write.reportFailure) LocalWriteErrors.report()
+                    }
+                )
             }
         }
     }
@@ -75,7 +107,7 @@ internal class ImmediateState<T : Any>(
         committed?.let { base -> visible.value = pending.fold(base) { value, write -> write.transform(value) } }
     }
 
-    /** Use from a drop callback: publish to RAM synchronously, never await Room on the UI path. */
+    /** Accept a UI action synchronously; the storage writer never blocks the caller. */
     fun enqueue(transform: (T) -> T, persist: suspend () -> Unit): Deferred<Unit> {
         val write = Write(transform, persist, reportFailure = true)
         submit(write)

@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -24,13 +26,17 @@ import org.junit.Test
 import org.starfall.generative.features.home.drawer.ui.DrawerQuickShortcuts
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.withSelectedRemoteMachine
+import org.starfall.generative.shared.model.withRemoteMachineEnabled
+import org.starfall.generative.shared.model.remoteMachineToolEnabled
+import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.terminal.RemoteTerminalSessions
 import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.ui.LocalToolControls
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.RuntimeAppLocale
-import org.starfall.generative.shared.ui.ToolControls
-import org.starfall.generative.shared.ui.terminal.RemoteTerminalScreen
+import org.starfall.generative.features.home.shared.ui.ToolControls
+import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -107,18 +113,18 @@ class RemoteNavigationDeviceTest {
             RemoteMachine("device-drawer-a", "Alpha"),
             RemoteMachine("device-drawer-b", "Beta")
         )
-        var selectedId by mutableStateOf<String?>(null)
+        var settings by mutableStateOf(ToolSettings(selectedMachineId = ""))
         var forwarded: RemoteMachine? = null
         compose.setContent {
             EnglishRemoteTestTheme {
                 CompositionLocalProvider(
                     LocalToolControls provides ToolControls(
                         machines = machines,
-                        settings = ToolSettings(
-                            machinesEnabled = selectedId != null,
-                            enabledMachines = machines.associate { it.id to (it.id == selectedId) }
-                        ),
-                        selectMachine = { selectedId = it }
+                        settings = settings,
+                        selectMachine = { settings = settings.withSelectedRemoteMachine(it, machines.map { machine -> machine.id }) },
+                        setMachine = { id, enabled ->
+                            settings = settings.withRemoteMachineEnabled(id, enabled, machines.map { machine -> machine.id })
+                        }
                     )
                 ) {
                     DrawerQuickShortcuts(
@@ -135,8 +141,14 @@ class RemoteNavigationDeviceTest {
         compose.onNodeWithText("Select server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_machine_picker_item_device-drawer-b").performClick()
-        compose.runOnIdle { assertEquals("device-drawer-b", selectedId) }
+        compose.runOnIdle {
+            assertEquals("device-drawer-b", settings.selectedMachineId)
+            assertTrue("Selecting a server must not enable its tools", settings.enabledMachines.values.none { it })
+        }
         compose.onNodeWithTag("drawer_machine_options_device-drawer-b").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_device-drawer-b").assertIsOff().performClick()
+        compose.onNodeWithTag("drawer_machine_switch_device-drawer-b").assertIsOn()
+        compose.runOnIdle { assertEquals(setOf("device-drawer-b"), settings.enabledMachines.filterValues { it }.keys) }
         compose.onNodeWithText("Port Forward").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(machines[1], forwarded) }
         compose.waitUntil(5_000) {
@@ -144,8 +156,22 @@ class RemoteNavigationDeviceTest {
         }
         compose.onNodeWithTag("drawer_machine_options_device-drawer-b").performClick()
         compose.onNodeWithText("Unset").performScrollTo().assertIsDisplayed().performClick()
-        compose.runOnIdle { assertEquals(null, selectedId) }
+        compose.runOnIdle {
+            assertEquals("", settings.selectedMachineId)
+            assertTrue(settings.enabledMachines.values.none { it })
+            assertFalse(settings.machinesEnabled)
+            assertFalse(remoteMachineToolEnabled(settings, machines[1], REMOTE_TOOL_EXECUTE))
+        }
         compose.onNodeWithText("Select server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_item_device-drawer-b").performClick()
+        compose.runOnIdle {
+            assertTrue("Reselecting must restore the saved switch",
+                remoteMachineToolEnabled(settings, machines[1], REMOTE_TOOL_EXECUTE))
+            assertFalse(remoteMachineToolEnabled(settings, machines[0], REMOTE_TOOL_EXECUTE))
+        }
+        compose.onNodeWithTag("drawer_machine_options_device-drawer-b").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_device-drawer-b").assertIsOn()
     }
 
     private class FakeOpenTerminal : RemoteTerminalSession {

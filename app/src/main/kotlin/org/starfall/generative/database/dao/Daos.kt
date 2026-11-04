@@ -1,7 +1,6 @@
 package org.starfall.generative.database.dao
 
 import androidx.room.*
-import kotlinx.coroutines.flow.Flow
 import org.starfall.generative.database.entities.ChatProfileEntity
 import org.starfall.generative.database.entities.ConversationMigrationQuarantineEntity
 import org.starfall.generative.database.entities.ConversationSummaryEntity
@@ -54,10 +53,10 @@ interface ConversationDao {
         FROM conversations c
         ORDER BY c.updatedAt DESC, c.id ASC
     """)
-    fun getConversationListItems(): Flow<List<ConversationListItem>>
+    suspend fun getConversationListItems(): List<ConversationListItem>
 
     @Query("SELECT * FROM conversations ORDER BY updatedAt DESC, id ASC")
-    fun getAllConversations(): Flow<List<ConversationEntity>>
+    suspend fun getAllConversations(): List<ConversationEntity>
 
     @Query("SELECT * FROM conversations WHERE id = :id")
     suspend fun getConversationById(id: String): ConversationEntity?
@@ -246,7 +245,7 @@ interface ConversationDao {
 @Dao
 interface ChatProfileDao {
     @Query("SELECT * FROM chat_profiles ORDER BY sortOrder ASC, id ASC")
-    fun getAllProfiles(): Flow<List<ChatProfileEntity>>
+    suspend fun getAllProfiles(): List<ChatProfileEntity>
 
     @Query("SELECT * FROM chat_profiles WHERE id = :id")
     suspend fun getProfileById(id: String): ChatProfileEntity?
@@ -305,9 +304,6 @@ interface ChatProfileDao {
 
 @Dao
 interface ProviderGroupDao {
-    @Query("SELECT * FROM provider_groups ORDER BY sortOrder ASC, id ASC")
-    fun getAllGroups(): Flow<List<ProviderGroupEntity>>
-
     @Query("SELECT * FROM provider_groups WHERE id = :id")
     suspend fun getGroupById(id: String): ProviderGroupEntity?
 
@@ -327,7 +323,7 @@ interface ProviderGroupDao {
 @Dao
 interface ModelProviderDao {
     @Query("SELECT * FROM model_providers ORDER BY sortOrder ASC, id ASC")
-    fun getAllProviders(): Flow<List<ModelProviderEntity>>
+    suspend fun getAllProviders(): List<ModelProviderEntity>
 
     @Query("SELECT * FROM model_providers WHERE id = :id")
     suspend fun getProviderById(id: String): ModelProviderEntity?
@@ -432,7 +428,7 @@ interface StructuredJsonDao {
 @Dao
 interface McpServerDao {
     @Query("SELECT * FROM mcp_servers ORDER BY sortOrder ASC, id ASC")
-    fun getAllServers(): Flow<List<McpServerEntity>>
+    suspend fun getAllServers(): List<McpServerEntity>
 
     @Query("SELECT * FROM mcp_servers WHERE id = :id")
     suspend fun getServerById(id: String): McpServerEntity?
@@ -474,7 +470,7 @@ interface McpServerDao {
 @Dao
 interface SpeechServiceDao {
     @Query("SELECT * FROM speech_services ORDER BY sortOrder ASC, id ASC")
-    fun getAllSpeechServices(): Flow<List<SpeechServiceEntity>>
+    suspend fun getAllSpeechServices(): List<SpeechServiceEntity>
 
     @Query("SELECT * FROM speech_services WHERE id = :id")
     suspend fun getServiceById(id: String): SpeechServiceEntity?

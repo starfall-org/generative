@@ -18,7 +18,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** Hold incomplete edits locally so an unfinished header name never corrupts the saved request. */
 internal data class EditableHeader(val id: Int, val name: String, val value: String)
@@ -92,7 +92,7 @@ internal fun MediaRequestHeadersEditor(
                                 value = row.name,
                                 onValueChange = { value -> update(rows.map { if (it.id == row.id) it.copy(name = value) else it }) },
                                 label = { Text(stringResource(R.string.media_chain_header_name)) },
-                                placeholder = { Text("X-Request-ID") },
+                                placeholder = { Text(stringResource(R.string.media_chain_header_name_hint)) },
                                 keyboardOptions = mediaLiteralKeyboardOptions,
                                 singleLine = true,
                                 modifier = Modifier.weight(1f).testTag("media-header-name-${row.id}")

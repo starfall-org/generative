@@ -399,7 +399,11 @@ internal class ChatGeneration(
                                 })
                             })
                         }
-                        val finalized = requireNotNull(snapshot)
+                        // An empty stopped (or completed) assistant attempt is not a message.
+                        // Prune it in RAM as well as on disk, so an abandoned reply cannot
+                        // leave an empty card behind until the conversation is reopened.
+                        val finalized = requireNotNull(snapshot).pruningEmptyResponses()
+                        snapshot = finalized
                         publish(finalized)
                         // Register the ordered write before releasing busy, so a subsequent send
                         // cannot overtake this final snapshot on disk.

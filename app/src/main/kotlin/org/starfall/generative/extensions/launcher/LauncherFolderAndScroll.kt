@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.composed
 import androidx.compose.runtime.getValue
@@ -110,6 +111,9 @@ fun <T : Any> Modifier.launcherDragAutoScroll(
     // An unconditional frame loop prevents Compose from becoming idle on long-press.
     val currentFraction = rememberUpdatedState(fraction)
     val scrollToken = remember(state, scrollState) { Any() }
+    DisposableEffect(state, scrollToken) {
+        onDispose { state.removeScrollViewport(scrollToken) }
+    }
     LaunchedEffect(state, scrollState, state.session?.identity, fraction != 0f, speedPx) {
         if (dragKey == null || fraction == 0f || speedPx == 0f) return@LaunchedEffect
         var previousFrame = 0L
@@ -129,5 +133,8 @@ fun <T : Any> Modifier.launcherDragAutoScroll(
             state.setAutoScrolling(scrollToken, false)
         }
     }
-    this.onGloballyPositioned { viewport = it.boundsInWindow() }
+    this.onGloballyPositioned {
+        viewport = it.boundsInWindow()
+        state.registerScrollViewport(scrollToken, scrollState, viewport)
+    }
 }

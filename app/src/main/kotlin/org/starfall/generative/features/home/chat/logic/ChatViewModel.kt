@@ -155,7 +155,7 @@ class ChatViewModel(
                 .filterNot { it.id in deleted }
                 .map { item -> renamed[item.id]?.let { item.copy(title = it) } ?: item }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val providers: StateFlow<List<ModelProvider>> = modelRepo.allProviders
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -349,7 +349,6 @@ class ChatViewModel(
         currentConversation = _currentConversation,
         configuredTextModel = modelContext::configuredTextModel,
         existingGeneration = ::existingGeneration,
-        generationFor = ::generationFor,
         isRestoreInProgress = { isRestoreInProgress },
         withRestoreGuard = { block -> conversationCoordinator.withRestoreGuard(onRejected = {}, block = block) },
         writeConversation = { block -> conversationCoordinator.writeConversation(serialize = true, block = block) },

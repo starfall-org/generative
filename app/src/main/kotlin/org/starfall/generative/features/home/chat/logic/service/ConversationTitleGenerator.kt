@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
@@ -26,7 +28,6 @@ internal class ConversationTitleGenerator(
     private val currentConversation: MutableStateFlow<Conversation?>,
     private val configuredTextModel: (String) -> Pair<ModelProvider, SystemToolConfig>?,
     private val existingGeneration: (String) -> ChatGeneration?,
-    private val generationFor: (String) -> ChatGeneration,
     private val isRestoreInProgress: () -> Boolean = { false },
     private val withRestoreGuard: (() -> Unit) -> Unit = { it() },
     private val writeConversation: (suspend () -> Unit) -> Boolean = { block ->
@@ -62,58 +63,79 @@ internal class ConversationTitleGenerator(
     }
 
     private suspend fun requestTitle(conversation: Conversation, provider: ModelProvider, config: SystemToolConfig): String {
-        val titleMessages = conversation.messages
-            .filter { it.role == ChatRole.USER || it.role == ChatRole.MODEL }
-            .map { message -> StoredMessage(
-                id = message.id,
-                role = message.role,
-                versions = listOf(MessageVersion(content = message.content))
-            ) }
-            .filter { it.content.isNotBlank() }
+        val messages = conversationTitleRequestMessages(conversation, config.prompt)
+        check(messages.isNotEmpty()) { "Conversation has no messages" }
         val raw = toolChat.completeText(
             provider,
             config.modelId,
-            titleMessages,
-            config.prompt.ifBlank { DEFAULT_TITLE_GENERATION_PROMPT }
+            messages,
+            ""
         )
-        return raw.lineSequence().firstOrNull().orEmpty().trim().trim('"', '\'', '`')
+        return parseConversationTitle(raw)
     }
 
     fun generate(conversation: Conversation, expectedFallbackTitle: String) {
-        if (isRestoreInProgress() || conversation.isTemporary) return
+        if (isRestoreInProgress() || conversation.isTemporary ||
+            conversation.title != expectedFallbackTitle) return
         val configured = configuredTextModel("title_generation") ?: return
         val (provider, config) = configured
         val conversationId = conversation.id
         val job = scope.launch(start = CoroutineStart.LAZY) {
-            val title = runCatching { requestTitle(conversation, provider, config) }
-                .onFailure { if (it is CancellationException) throw it }
-                .getOrNull().orEmpty()
-            if (title.isBlank() || isRestoreInProgress()) return@launch
+            val title = try {
+                requestTitle(conversation, provider, config)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                DebugLog.error(DebugLogCategory.SYSTEM, "Title Generation",
+                    "Could not generate title for conversation $conversationId", error)
+                return@launch
+            }
+            if (isRestoreInProgress()) return@launch
 
-            if (existingGeneration(conversationId)?.snapshot?.id == conversationId) {
+            // A running answer still owns its RAM snapshot; its final save includes the title.
+            fun updateRunningGeneration(): Boolean {
+                var applied = false
                 withRestoreGuard {
-                    if (existingGeneration(conversationId)?.snapshot?.id == conversationId) {
-                        generationFor(conversationId).updateConversation { current ->
-                            if (current.id == conversationId && current.title == expectedFallbackTitle) {
+                    val running = existingGeneration(conversationId)
+                    if (running?.busy?.value == true && running.snapshot?.id == conversationId) {
+                        running.updateConversation { current ->
+                            if (current.title == expectedFallbackTitle) {
                                 current.copy(title = title, updatedAt = System.currentTimeMillis())
                             } else current
                         }
+                        applied = true
                     }
                 }
-            } else {
-                writeConversation {
-                    val current = currentConversation.value?.takeIf { it.id == conversationId }
-                        ?: conversationRepo.loadById(conversationId)
-                        ?: return@writeConversation
-                    if (current.title != expectedFallbackTitle) return@writeConversation
-                    val updated = current.copy(title = title, updatedAt = System.currentTimeMillis())
-                    conversationRepo.saveConversation(updated)
-                    if (currentConversation.value?.id == conversationId) currentConversation.value = updated
+                return applied
+            }
+
+            if (updateRunningGeneration()) return@launch
+            writeConversation {
+                // The final response may already be queued for persistence after busy becomes false.
+                // Do not let that older save overwrite the generated title.
+                existingGeneration(conversationId)?.awaitPersistence()
+                if (isRestoreInProgress() || updateRunningGeneration()) return@writeConversation
+                val current = conversationRepo.loadById(conversationId) ?: return@writeConversation
+                if (current.title != expectedFallbackTitle) return@writeConversation
+                // Update metadata only: saving an old full conversation can erase newer replies.
+                conversationRepo.renameConversation(conversationId, title)
+                // A new answer may have started while the database operation was suspended.
+                if (!updateRunningGeneration()) {
+                    val visible = currentConversation.value
+                    if (visible?.id == conversationId && visible.title == expectedFallbackTitle) {
+                        currentConversation.value = visible.copy(title = title, updatedAt = System.currentTimeMillis())
+                    }
+                    // If another response finished during the metadata write, let its old
+                    // snapshot finish saving before restoring the title (without touching messages).
+                    existingGeneration(conversationId)?.awaitPersistence()
+                    if (conversationRepo.loadById(conversationId)?.title == expectedFallbackTitle) {
+                        conversationRepo.renameConversation(conversationId, title)
+                    }
                 }
             }
         }
         val accepted = synchronized(jobsLock) {
-            if (isRestoreInProgress()) {
+            if (isRestoreInProgress() || conversationId in activeJobs.values) {
                 false
             } else {
                 activeJobs[job] = conversationId
@@ -152,4 +174,34 @@ internal class ConversationTitleGenerator(
             jobs.joinAll()
         }
     }
+}
+
+/** The last turn must request a title, not ask the API to continue an assistant answer. */
+internal fun conversationTitleRequestMessages(conversation: Conversation, prompt: String = DEFAULT_TITLE_GENERATION_PROMPT): List<StoredMessage> {
+    val messages = conversation.messages
+        .filter { it.role == ChatRole.USER || it.role == ChatRole.MODEL }
+        .map { message -> StoredMessage(
+            id = message.id,
+            role = message.role,
+            versions = listOf(MessageVersion(content = message.content))
+        ) }
+        .filter { it.content.isNotBlank() }
+    if (messages.isEmpty()) return emptyList()
+    val instruction = prompt.ifBlank { DEFAULT_TITLE_GENERATION_PROMPT }
+    val last = messages.last()
+    return if (last.role == ChatRole.USER) {
+        messages.dropLast(1) + last.copy(versions = listOf(MessageVersion(content = "${last.content}\n\n$instruction")))
+    } else {
+        messages + StoredMessage("title_generation_instruction", ChatRole.USER, listOf(MessageVersion(content = instruction)))
+    }
+}
+
+/** Text-encoded transport failures must not become conversation titles. */
+internal fun parseConversationTitle(raw: String): String {
+    val response = raw.trim()
+    val error = Regex("(?:^|\\s)\\[Error: (.*)]$", RegexOption.DOT_MATCHES_ALL).find(response)
+    if (error != null) throw IllegalStateException(error.groupValues[1])
+    val title = response.lineSequence().firstOrNull().orEmpty().trim().trim('"', '\'', '`').trim()
+    check(title.isNotBlank()) { "No title generated" }
+    return title
 }

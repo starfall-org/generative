@@ -20,7 +20,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.text
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.model.media.ImageOptionField
 import org.starfall.generative.shared.helpers.media.imageOptionFields
 import org.starfall.generative.shared.helpers.media.validateImageOptions

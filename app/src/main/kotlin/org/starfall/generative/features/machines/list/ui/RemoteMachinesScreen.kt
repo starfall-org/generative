@@ -3,13 +3,12 @@
 package org.starfall.generative.features.machines.list.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -275,50 +274,19 @@ private fun RemoteMachineCard(
                 IconButton(onClick = { menu = true }) {
                     SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_server_open_terminal)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Terminal, null) },
-                        onClick = { menu = false; onTerminal() }
-                    )
-                    if (connected && isGrid) DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_server_disconnect)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) },
-                        onClick = { menu = false; onDisconnect() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_port_forward)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Hub, null) },
-                        onClick = { menu = false; onStartPortForward() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_ai_tools)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Build, null) },
-                        onClick = { menu = false; onMachineTools() }
-                    )
-                    if (gcloud) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.remote_server_update_ip)) },
-                            leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
-                            onClick = { menu = false; onUpdateIp() }
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.common_files)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Folder, null) },
-                        onClick = { menu = false; onFiles() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.common_edit)) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) },
-                        onClick = { menu = false; onEdit() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = { SharedIcon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                        onClick = { menu = false; onDelete() }
-                    )
-                }
+                if (menu) ContextMenuSheet(
+                    actions = buildList {
+                        add(ContextMenuAction(stringResource(R.string.remote_server_open_terminal), onTerminal, iconRes = Icons.Outlined.Terminal))
+                        if (connected && isGrid) add(ContextMenuAction(stringResource(R.string.remote_server_disconnect), onDisconnect, Icons.Outlined.LinkOff))
+                        add(ContextMenuAction(stringResource(R.string.remote_port_forward), onStartPortForward, Icons.Outlined.Hub))
+                        add(ContextMenuAction(stringResource(R.string.remote_ai_tools), onMachineTools, Icons.Outlined.Build))
+                        if (gcloud) add(ContextMenuAction(stringResource(R.string.remote_server_update_ip), onUpdateIp, Icons.Outlined.Refresh))
+                        add(ContextMenuAction(stringResource(R.string.common_files), onFiles, Icons.Outlined.Folder))
+                        add(ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit))
+                        add(ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true))
+                    },
+                    onDismissRequest = { menu = false }
+                )
             }
           }
         },

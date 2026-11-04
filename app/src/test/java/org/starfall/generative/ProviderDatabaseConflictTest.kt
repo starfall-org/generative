@@ -159,6 +159,47 @@ class ProviderDatabaseConflictTest {
         } finally { release.complete(Unit); hold.cancel() }
     }
 
+    @Test fun queuedCheckboxChangesAndImmediateReorderKeepTheirOrderWithoutRoom() = runBlocking {
+        val repository = repo()
+        repository.saveProvider(Phase4StorageFixtures.provider("checkbox-queue"))
+        repository.allProviders.first()
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val hold = async(Dispatchers.IO) {
+            db.withTransaction { entered.complete(Unit); release.await() }
+        }
+        try {
+            entered.await()
+            // Simulate the editor's off-Main FIFO consumer. No database write can finish yet.
+            val writes = withTimeout(2_000) { withContext(Dispatchers.Default) {
+                val first = repository.queueSaveProviderModels("checkbox-queue", linkedMapOf(
+                    "one" to ModelConfiguration()))
+                val second = repository.queueSaveProviderModels("checkbox-queue", linkedMapOf(
+                    "one" to ModelConfiguration(), "two" to ModelConfiguration()))
+                val reordered = repository.queueReorderProviderModels("checkbox-queue", listOf("two", "one"))
+                Triple(first, second, reordered)
+            } }
+            val visible = withTimeout(2_000) { repository.allProviders.first { providers ->
+                providers.firstOrNull { it.id == "checkbox-queue" }?.config?.modelIds == listOf("two", "one")
+            } }
+            assertEquals(listOf("two", "one"), visible.single().config.modelIds)
+            assertEquals(setOf("one", "two"), visible.single().config.modelConfigs.keys)
+            assertFalse("The first write must still be awaiting Room", writes.first.isCompleted)
+            assertFalse("The second write must still be awaiting Room", writes.second.isCompleted)
+            release.complete(Unit)
+            withTimeout(15_000) {
+                writes.first.await()
+                writes.second.await()
+                writes.third.await()
+                hold.await()
+            }
+            val stored = repository.getProviderById("checkbox-queue")!!.config
+            assertEquals(listOf("two", "one"), stored.modelIds)
+            assertEquals(setOf("one", "two"), stored.modelConfigs.keys)
+            foreignKeysAreHealthy()
+        } finally { release.complete(Unit); hold.cancel() }
+    }
+
     @Test fun modelReorderIsVisibleBeforeRoomUnlocksAndEventuallyPersists() = runBlocking {
         val repository = repo()
         repository.saveProvider(Phase4StorageFixtures.provider("queued-models"))

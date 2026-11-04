@@ -35,7 +35,7 @@ import org.starfall.generative.shared.theme.parsePaletteHex
 import org.starfall.generative.shared.theme.toPaletteHex
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 /** A draft-only HSV color mixer. Cancel never writes the appearance preference. */
 @Composable

@@ -184,6 +184,8 @@
     <string name="connection_testing_unavailable">接続テストは利用できません。</string>
     <string name="refresh_models">モデルを更新</string>
     <string name="search_models">モデルを検索</string>
+    <string name="shared_search">検索</string>
+    <string name="shared_no_items">項目がありません</string>
     <string name="select_all_visible_models">表示中のモデルをすべて選択</string>
     <string name="model_discovery_unavailable">モデル検索は利用できません</string>
     <string name="provider_deselect_visible_models">表示中のモデルの選択を解除</string>
@@ -652,6 +654,8 @@
     <string name="remote_server_selection_title">AI ツールで使うサーバーを選択</string>
     <string name="remote_server_none_selected">サーバー未選択</string>
     <string name="remote_server_unset_action">選択を解除</string>
+    <string name="remote_server_enable_action">AI ツールを有効にする</string>
+    <string name="remote_server_disable_action">AI ツールを無効にする</string>
     <string name="remote_servers_description">SSH と Google Cloud Shell の接続</string>
     <string name="remote_servers_empty">リモートサーバーがありません</string>
     <string name="remote_server_empty_hint">SSH または Google Cloud Shell の接続を追加すると、ターミナルやファイル閲覧を利用できます。</string>
@@ -985,4 +989,6 @@
     <string name="settings_repair_provider_result">%1$d 件のプロバイダー記録を修復しました。</string>
     <string name="settings_repair_provider_warning">読み取れない JSON メタデータを削除し、影響を受けたプロバイダーの破損した OAuth 認証情報のみリセットします。モデルやその他のプロバイダーは保持されます。再ログインが必要になる場合があります。</string>
     <string name="settings_repair_provider_failed">プロバイダーの修復に失敗しました：%1$s</string>
+    <string name="providers_demo_title">ProvidersScreen デモ</string>
+        <string name="providers_demo_editor_title">デモ用プロバイダー</string>
 </resources>

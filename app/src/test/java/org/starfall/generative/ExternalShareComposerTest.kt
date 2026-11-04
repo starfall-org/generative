@@ -14,8 +14,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
-import org.starfall.generative.shared.ui.media.ChatAttachmentSelection
-import org.starfall.generative.shared.ui.media.LocalChatAttachmentSelection
+import org.starfall.generative.features.home.chat.ui.ChatAttachmentSelection
+import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

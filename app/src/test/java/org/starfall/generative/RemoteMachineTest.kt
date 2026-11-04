@@ -1,5 +1,6 @@
 package org.starfall.generative
 
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
@@ -25,6 +26,7 @@ import org.starfall.generative.shared.model.parsePortForwardRule
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 import org.starfall.generative.shared.model.selectedRemoteMachine
 import org.starfall.generative.shared.model.withSelectedRemoteMachine
+import org.starfall.generative.shared.model.withRemoteMachineEnabled
 
 class RemoteMachineTest {
     @Test
@@ -306,35 +308,126 @@ class RemoteMachineTest {
         }
     }
     @Test
-    fun selectingMachineIsAtomicAndUnsetDisablesLegacyTools() {
+    fun switchingServersDisablesOldServerAndDoesNotAutomaticallyEnableNewServer() {
         val allIds = listOf("one", "two", "three")
-        val previous = ToolSettings(machinesEnabled = true,
-            enabledMachines = mapOf("one" to true, "two" to true, "stale" to true))
-        val selected = previous.withSelectedRemoteMachine("two", allIds)
-        assertEquals(mapOf("one" to false, "two" to true, "three" to false, "stale" to false),
-            selected.enabledMachines)
-        assertTrue(selected.machinesEnabled)
+        val machines = allIds.map { RemoteMachine(it, it) }
+        val previous = ToolSettings(
+            selectedMachineId = "one",
+            machinesEnabled = true,
+            enabledMachines = mapOf("one" to true, "two" to false, "stale" to true)
+        )
 
-        val unset = selected.withSelectedRemoteMachine(null, allIds)
+        val selected = previous.withSelectedRemoteMachine("two", allIds)
+        assertEquals("two", selected.selectedMachineId)
+        assertEquals(true, selected.rememberedEnabledMachines["one"])
+        assertTrue(selected.enabledMachines.values.none { it })
+        assertFalse(selected.machinesEnabled)
+        assertEquals(machines[1], selectedRemoteMachine(selected, machines))
+        assertFalse(remoteMachineToolEnabled(selected, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(selected, machines[1], REMOTE_TOOL_EXECUTE))
+
+        // First-time selection is off; only Switch can create a saved "on" preference.
+        val enabled = selected.withRemoteMachineEnabled("two", true, allIds)
+        assertEquals(true, enabled.rememberedEnabledMachines["two"])
+        assertEquals(setOf("two"), enabled.enabledMachines.filterValues { it }.keys)
+        assertTrue(enabled.machinesEnabled)
+        assertTrue(remoteMachineToolEnabled(enabled, machines[1], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(enabled, machines[0], REMOTE_TOOL_EXECUTE))
+
+        // Tapping the already selected server should not inadvertently turn it off.
+        assertEquals(enabled, enabled.withSelectedRemoteMachine("two", allIds))
+        // Toggling an unselected server has no effect.
+        assertEquals(enabled, enabled.withRemoteMachineEnabled("one", true, allIds))
+
+        val switchedBack = enabled.withSelectedRemoteMachine("one", allIds)
+        assertEquals(setOf("one"), switchedBack.enabledMachines.filterValues { it }.keys)
+        assertTrue(switchedBack.machinesEnabled)
+        assertFalse(remoteMachineToolEnabled(switchedBack, machines[1], REMOTE_TOOL_EXECUTE))
+        assertTrue(remoteMachineToolEnabled(switchedBack, machines[0], REMOTE_TOOL_EXECUTE))
+        assertEquals(true, switchedBack.rememberedEnabledMachines["two"])
+
+        val backToTwo = switchedBack.withSelectedRemoteMachine("two", allIds)
+        assertEquals(setOf("two"), backToTwo.enabledMachines.filterValues { it }.keys)
+        assertTrue(remoteMachineToolEnabled(backToTwo, machines[1], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(backToTwo, machines[0], REMOTE_TOOL_EXECUTE))
+
+        val unset = backToTwo.withSelectedRemoteMachine(null, allIds)
+        assertEquals("", unset.selectedMachineId)
+        assertNull(selectedRemoteMachine(unset, machines))
         assertEquals(allIds.toSet() + "stale", unset.enabledMachines.keys)
         assertTrue(unset.enabledMachines.values.none { it })
+        assertEquals(true, unset.rememberedEnabledMachines["one"])
+        assertEquals(true, unset.rememberedEnabledMachines["two"])
         assertFalse(unset.machinesEnabled)
+        assertFalse(remoteMachineToolEnabled(unset, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(unset, machines[1], REMOTE_TOOL_EXECUTE))
+
+        // Re-selecting restores the saved switch, but never activates another server.
+        val reselected = unset.withSelectedRemoteMachine("one", allIds)
+        assertTrue(remoteMachineToolEnabled(reselected, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(reselected, machines[1], REMOTE_TOOL_EXECUTE))
+        assertEquals(setOf("one"), reselected.enabledMachines.filterValues { it }.keys)
+
+        // Explicitly turning the switch off must be remembered too.
+        val disabled = reselected.withRemoteMachineEnabled("one", false, allIds)
+        assertEquals(false, disabled.rememberedEnabledMachines["one"])
+        val disabledReselected = disabled.withSelectedRemoteMachine(null, allIds)
+            .withSelectedRemoteMachine("one", allIds)
+        assertFalse(remoteMachineToolEnabled(disabledReselected, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(disabledReselected.machinesEnabled)
+
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
             previous.withSelectedRemoteMachine("unknown", allIds)
         }
     }
 
     @Test
-    fun selectedRemoteMachineUsesEnabledMachineAndUnsetOverridesLegacyDefault() {
+    fun savedPerServerSwitchesSurviveSerializationWithoutGrantingToolAccess() {
         val machines = listOf(RemoteMachine("one", "One"), RemoteMachine("two", "Two"))
-        assertEquals(machines[1], selectedRemoteMachine(
-            ToolSettings(machinesEnabled = true,
-                enabledMachines = mapOf("one" to false, "two" to true)), machines))
-        assertNull(selectedRemoteMachine(
-            ToolSettings(machinesEnabled = false,
-                enabledMachines = mapOf("one" to false, "two" to false)), machines))
-        assertEquals(machines[0], selectedRemoteMachine(
-            ToolSettings(machinesEnabled = true), machines))
+        val ids = machines.map { it.id }
+        val saved = ToolSettings(selectedMachineId = "one")
+            .withRemoteMachineEnabled("one", true, ids)
+            .withSelectedRemoteMachine("two", ids)
+            .withRemoteMachineEnabled("two", false, ids)
+            .withSelectedRemoteMachine(null, ids)
+
+        val json = Json.encodeToString(ToolSettings.serializer(), saved)
+        val restored = Json.decodeFromString(ToolSettings.serializer(), json)
+        assertEquals(mapOf("one" to true, "two" to false), restored.rememberedEnabledMachines)
+        assertEquals("", restored.selectedMachineId)
+        assertTrue(restored.enabledMachines.values.none { it })
+        assertFalse(remoteMachineToolEnabled(restored, machines[0], REMOTE_TOOL_EXECUTE))
+
+        val selectedOne = restored.withSelectedRemoteMachine("one", ids)
+        assertTrue(remoteMachineToolEnabled(selectedOne, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(selectedOne, machines[1], REMOTE_TOOL_EXECUTE))
+        val selectedTwo = selectedOne.withSelectedRemoteMachine("two", ids)
+        assertFalse(remoteMachineToolEnabled(selectedTwo, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(selectedTwo, machines[1], REMOTE_TOOL_EXECUTE))
+    }
+
+    @Test
+    fun legacyEnabledFlagsDoNotGrantToolsWithoutExplicitSelection() {
+        val machines = listOf(RemoteMachine("one", "One"), RemoteMachine("two", "Two"))
+        val legacy = ToolSettings(machinesEnabled = true,
+            enabledMachines = mapOf("one" to true, "two" to true))
+        assertNull(selectedRemoteMachine(legacy, machines))
+        assertFalse(remoteMachineToolEnabled(legacy, machines[0], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(legacy, machines[1], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(ToolSettings(machinesEnabled = true),
+            machines[0], REMOTE_TOOL_EXECUTE))
+        val noSelection = ToolSettings(selectedMachineId = "", enabledMachines = mapOf("" to true))
+        val invalidIdMachine = RemoteMachine("", "Invalid ID")
+        assertFalse(remoteMachineToolEnabled(noSelection, invalidIdMachine, REMOTE_TOOL_EXECUTE))
+        assertEquals(noSelection, noSelection.withRemoteMachineEnabled("", true, listOf("")))
+
+        val selected = legacy.withSelectedRemoteMachine("two", machines.map { it.id })
+        assertEquals(machines[1], selectedRemoteMachine(selected, machines))
+        assertTrue(selected.enabledMachines.values.none { it })
+        assertFalse(remoteMachineToolEnabled(selected, machines[1], REMOTE_TOOL_EXECUTE))
+        val enabled = selected.withRemoteMachineEnabled("two", true, machines.map { it.id })
+        assertTrue(remoteMachineToolEnabled(enabled, machines[1], REMOTE_TOOL_EXECUTE))
+        assertFalse(remoteMachineToolEnabled(enabled, machines[0], REMOTE_TOOL_EXECUTE))
     }
 
 }

@@ -33,10 +33,8 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Starfall%20Org%20Copyleft%20v1.1-blue"></a>
 </p>
 
-<p align="center" style="white-space: nowrap;">
-  <img src="docs/image1.png" width="30%" alt="Generative screenshot 1">
-  <img src="docs/image2.png" width="30%" alt="Generative screenshot 2">
-  <img src="docs/image3.png" width="30%" alt="Generative screenshot 3">
+<p align="center">
+  <img src="docs/hero.png" width="100%" alt="Generative app preview">
 </p>
 
 Generative is a native Android AI client for your own models, tools, and remote machines. Bring your own API key or supported account; no API credits are included.
@@ -106,8 +104,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing guidance.
 ### Localization
 
 - **Tier 1:** English (source)
-- **Tier 2:** Vietnamese, Japanese, Chinese (Simplified)
-- **Tier 3:** Korean, Chinese (Traditional), German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil)
+- **Tier 2:** Vietnamese
+- **Tier 3:** Japanese, Chinese (Simplified), Chinese (Traditional), Korean, German, Russian, French, Spanish, Italian, Indonesian, Thai, Portuguese (Brazil)
+
+> Contact us if you would like to contribute the translations.
 
 ## License
 

@@ -35,7 +35,7 @@ import org.starfall.generative.shared.ui.media.MediaViewer
 import org.starfall.generative.shared.ui.media.isPreviewableMedia
 import org.starfall.generative.shared.ui.media.mediaMimeType
 import org.starfall.generative.shared.ui.media.mediaThumbnail
-import org.starfall.generative.shared.ui.sheets.BottomSheet
+import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.features.storage.logic.listMediaStorageFiles
 import org.starfall.generative.features.storage.logic.deleteMediaStorageFiles
 
@@ -54,7 +54,7 @@ fun MediaStorageSheet(store: ToolFiles, onDismiss: () -> Unit) {
         }
         if (viewingFile != null && media.orEmpty().none { it.file == viewingFile }) viewingFile = null
     }
-    BottomSheet(
+    ContentSheet(
         onDismissRequest = onDismiss,
         fixedHeightFraction = 0.82f,
         contentBehindNavigationBar = true

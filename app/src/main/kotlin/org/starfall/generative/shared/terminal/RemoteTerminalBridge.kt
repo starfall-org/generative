@@ -1,12 +1,11 @@
 package org.starfall.generative.shared.terminal
 
-import android.app.Activity
 import android.content.ClipData
-import android.content.ContextWrapper
 import android.content.ClipboardManager
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,7 +14,6 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.compose.ui.window.DialogWindowProvider
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -30,7 +28,8 @@ import org.starfall.generative.shared.model.remote.TerminalInputMode
  */
 internal class RemoteTerminalBridge(
     private val context: android.content.Context,
-    initialInputMode: TerminalInputMode
+    initialInputMode: TerminalInputMode,
+    private val hostWindow: Window? = null
 ) :
     TerminalSessionClient,
     TerminalViewClient {
@@ -304,9 +303,9 @@ internal class RemoteTerminalBridge(
         syncLocalImeDraft()
     }
 
-    fun sendChar(char: Char) {
+    fun sendChar(char: Char, forceRemote: Boolean = false) {
         inputView?.finishImeComposition()
-        input.sendChar(char)
+        input.sendChar(char, forceRemote)
         syncLocalImeDraft()
     }
 
@@ -374,28 +373,12 @@ internal class RemoteTerminalBridge(
         return scale
     }
 
-    // Resolve the hosting window, including a Dialog host if the adapter is reused there.
-    private fun windowFor(view: android.view.View): android.view.Window? {
-        if (view is DialogWindowProvider) return view.window
-        var parent: android.view.ViewParent? = view.parent
-        while (parent != null) {
-            if (parent is DialogWindowProvider) return parent.window
-            parent = parent.parent
-        }
-        var current = view.context
-        while (true) {
-            if (current is Activity) return current.window
-            if (current !is ContextWrapper) return null
-            current = current.baseContext
-        }
-    }
-
     private fun focusAndShowKeyboard() {
         val terminalView = inputView?.inputTarget ?: view ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
-            windowFor(terminalView)?.let { window ->
+            hostWindow?.let { window ->
                 WindowCompat.getInsetsController(window, terminalView).show(WindowInsetsCompat.Type.ime())
             }
             val imm = context.getSystemService(InputMethodManager::class.java)
@@ -428,7 +411,7 @@ internal class RemoteTerminalBridge(
 
     fun hideKeyboard() {
         val terminalView = inputView?.inputTarget ?: view ?: return
-        val window = windowFor(terminalView)
+        val window = hostWindow
         if (window != null) {
             WindowCompat.getInsetsController(window, terminalView).hide(WindowInsetsCompat.Type.ime())
         } else {

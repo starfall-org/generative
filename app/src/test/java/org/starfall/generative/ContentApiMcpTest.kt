@@ -12,8 +12,8 @@ class ContentApiMcpTest {
     @Test
     fun recognizedNamesUseBuildConfiguredEndpointOrNone() {
         val endpoint = BuildConfig.CONTENT_API_MCP_URL.trim().ifEmpty { null }
-        listOf("Content API", "contentapi", "CONTENT-API").forEach { name ->
-            assertEquals(endpoint, McpInfo("id", name).resolvedUrl())
+        listOf("Content API", "contentapi", "CONTENT-API", "MCP Content-API", "Content API MCP").forEach { name ->
+            assertEquals(endpoint, McpInfo("id", name).resolvedUrl(endpoint))
             assertTrue(name.isContentApiName())
         }
         assertNull(McpInfo("id", "Another server").resolvedUrl())

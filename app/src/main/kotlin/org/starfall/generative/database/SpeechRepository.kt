@@ -1,14 +1,10 @@
 package org.starfall.generative.database
 
 import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.storage.upsert
 
 import androidx.room.withTransaction
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
@@ -21,59 +17,73 @@ class SpeechRepository(private val db: AppDatabase) {
     private val dao = db.speechServiceDao()
     private val structured = db.structuredJsonDao()
 
-    private val stored: Flow<List<SpeechService>> = flow {
-        dao.getAllSpeechServices().collect { entities -> emit(db.withTransaction { entities.map { entityToModel(it) } }) }
-    }
-    private val state = ImmediateState(stored)
+    private val state = ImmediateState(load = {
+        db.withTransaction { dao.getAllSpeechServices().map { entityToModel(it) } }
+    })
     val allServices: Flow<List<SpeechService>> = state.flow
 
-    suspend fun getById(id: String): SpeechService? = withContext(Dispatchers.IO) {
+    suspend fun getById(id: String): SpeechService? =
         db.withTransaction { dao.getServiceById(id)?.let { entityToModel(it) } }
-    }
 
-    /** Replaces every speech service during a full application restore. */
+    /** Restore explicitly replaces the memory catalog and persists it in one transaction. */
     suspend fun replaceAll(services: List<SpeechService>) {
-        dao.getAllSpeechServices().first().map { it.id }.forEach { deleteService(it) }
-        services.forEach { saveService(it) }
-    }
-
-    suspend fun saveService(service: SpeechService) = withContext(Dispatchers.IO) {
-        db.withTransaction {
-            val authId = service.apiKey.takeIf { it.isNotEmpty() }?.let { "speech-auth-${service.id}" }
-            if (authId != null) dao.insertAuth(SpeechAuthEntity(authId, SecretCipher.encrypt(service.apiKey), 1, System.currentTimeMillis()))
-            else dao.getServiceById(service.id)?.authId?.let { dao.deleteAuth(it) }
-            dao.insertOrUpdate(SpeechServiceEntity(
-                id = service.id,
-                name = service.name,
-                provider = service.provider,
-                modelId = service.modelId,
-                voice = service.voice,
-                speed = service.speed,
-                pitch = service.pitch,
-                sortOrder = service.sortOrder,
-                icon = service.icon,
-                instructions = service.instructions,
-                responseFormat = service.responseFormat,
-                languageCode = service.languageCode,
-                authId = authId
-            ))
-            structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "engine_settings", buildJsonObject {
-                put("engine", service.engine.name)
-                put("voiceName", service.voiceName)
-                put("sentencesPerChunk", service.sentencesPerChunk)
-            }))
-            val old = structured.getDocument("speech_service", service.id, "extra_body")
-            if (service.extraBody.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "extra_body", service.extraBody))
-            else old?.let { structured.deleteDocument(it.id) }
+        state.mutate({ services.sortedBy { it.sortOrder } }) {
+            db.withTransaction {
+                dao.getAllSpeechServices().forEach { row ->
+                    dao.getServiceById(row.id)?.authId?.let { dao.deleteAuth(it) }
+                    dao.deleteById(row.id)
+                    listOf("extra_body", "engine_settings").forEach { kind ->
+                        structured.getDocument("speech_service", row.id, kind)?.let { structured.deleteDocument(it.id) }
+                    }
+                }
+                services.forEach { persistService(it) }
+            }
         }
     }
 
-    suspend fun deleteService(id: String) = withContext(Dispatchers.IO) {
-        db.withTransaction {
-            dao.getServiceById(id)?.authId?.let { dao.deleteAuth(it) }
-            dao.deleteById(id)
-            listOf("extra_body", "engine_settings").forEach { kind ->
-                structured.getDocument("speech_service", id, kind)?.let { structured.deleteDocument(it.id) }
+    suspend fun saveService(service: SpeechService) {
+        state.mutate({ it.upsert(service) { item -> item.id }.sortedBy { item -> item.sortOrder } }) {
+            db.withTransaction { persistService(service) }
+        }
+    }
+
+    private suspend fun persistService(service: SpeechService) {
+        val authId = service.apiKey.takeIf { it.isNotEmpty() }?.let { "speech-auth-${service.id}" }
+        if (authId != null) dao.insertAuth(SpeechAuthEntity(authId, SecretCipher.encrypt(service.apiKey), 1, System.currentTimeMillis()))
+        else dao.getServiceById(service.id)?.authId?.let { dao.deleteAuth(it) }
+        dao.insertOrUpdate(SpeechServiceEntity(
+            id = service.id,
+            name = service.name,
+            provider = service.provider,
+            modelId = service.modelId,
+            voice = service.voice,
+            speed = service.speed,
+            pitch = service.pitch,
+            sortOrder = service.sortOrder,
+            icon = service.icon,
+            instructions = service.instructions,
+            responseFormat = service.responseFormat,
+            languageCode = service.languageCode,
+            authId = authId
+        ))
+        structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "engine_settings", buildJsonObject {
+            put("engine", service.engine.name)
+            put("voiceName", service.voiceName)
+            put("sentencesPerChunk", service.sentencesPerChunk)
+        }))
+        val old = structured.getDocument("speech_service", service.id, "extra_body")
+        if (service.extraBody.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "extra_body", service.extraBody))
+        else old?.let { structured.deleteDocument(it.id) }
+    }
+
+    suspend fun deleteService(id: String) {
+        state.mutate({ it.filterNot { item -> item.id == id } }) {
+            db.withTransaction {
+                dao.getServiceById(id)?.authId?.let { dao.deleteAuth(it) }
+                dao.deleteById(id)
+                listOf("extra_body", "engine_settings").forEach { kind ->
+                    structured.getDocument("speech_service", id, kind)?.let { structured.deleteDocument(it.id) }
+                }
             }
         }
     }

@@ -26,7 +26,7 @@ import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 
 @Composable
 internal fun RenameConversationDialog(
@@ -38,6 +38,7 @@ internal fun RenameConversationDialog(
     var title by remember(chat.id) { mutableStateOf(chat.title) }
     var generating by remember(chat.id) { mutableStateOf(false) }
     var error by remember(chat.id) { mutableStateOf(false) }
+    var errorDetail by remember(chat.id) { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -46,13 +47,19 @@ internal fun RenameConversationDialog(
         text = {
             OutlinedTextField(
                 value = title,
-                onValueChange = { title = it; error = false },
+                onValueChange = { title = it; error = false; errorDetail = "" },
                 modifier = Modifier.fillMaxWidth().testTag("rename-chat-title"),
                 singleLine = true,
                 label = { Text(stringResource(R.string.sidebar_chat_title)) },
                 isError = error,
                 supportingText = if (error) ({
-                    Text(stringResource(R.string.sidebar_title_generation_failed), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        listOfNotNull(
+                            stringResource(R.string.sidebar_title_generation_failed),
+                            errorDetail.takeIf(String::isNotBlank)
+                        ).joinToString("\n"),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }) else null,
                 trailingIcon = {
                     if (generating) {
@@ -66,6 +73,7 @@ internal fun RenameConversationDialog(
                             onClick = {
                                 val originalTitle = title
                                 error = false
+                                errorDetail = ""
                                 generating = true
                                 scope.launch {
                                     try {
@@ -80,7 +88,10 @@ internal fun RenameConversationDialog(
                                         // A manual edit made while the request was running wins over its response.
                                         if (title == originalTitle) {
                                             suggestion.onSuccess { title = it }
-                                                .onFailure { error = true }
+                                                .onFailure { failure ->
+                                                    errorDetail = failure.localizedMessage.orEmpty()
+                                                    error = true
+                                                }
                                         }
                                     } finally {
                                         generating = false

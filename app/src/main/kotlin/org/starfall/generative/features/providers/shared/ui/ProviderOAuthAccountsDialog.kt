@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,8 +34,7 @@ import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.auth.oauthErrorDetails
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
@@ -133,21 +133,31 @@ internal fun ProviderOAuthAccountsDialog(
                                     IconButton(enabled = !busy, onClick = { menu = true }) {
                                         SharedIcon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
                                     }
-                                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
-                                            onClick = { menu = false; edit(account) })
-                                        DropdownMenuItem(enabled = canDelete, text = { Text(stringResource(R.string.common_delete)) },
-                                            onClick = {
-                                                menu = false
-                                                scope.launch {
-                                                    busy = true; error = null
-                                                    try { onDelete(account.id).onFailure { error = oauthErrorDetails(it) } }
-                                                    catch (e: CancellationException) { throw e }
-                                                    catch (e: Exception) { error = oauthErrorDetails(e) }
-                                                    finally { busy = false }
-                                                }
-                                            })
-                                    }
+                                    if (menu) ContextMenuSheet(
+                                        actions = listOf(
+                                            ContextMenuAction(
+                                                stringResource(R.string.common_edit),
+                                                onClick = { edit(account) },
+                                                icon = Icons.Outlined.Edit
+                                            ),
+                                            ContextMenuAction(
+                                                stringResource(R.string.common_delete),
+                                                onClick = {
+                                                    scope.launch {
+                                                        busy = true; error = null
+                                                        try { onDelete(account.id).onFailure { error = oauthErrorDetails(it) } }
+                                                        catch (e: CancellationException) { throw e }
+                                                        catch (e: Exception) { error = oauthErrorDetails(e) }
+                                                        finally { busy = false }
+                                                    }
+                                                },
+                                                icon = Icons.Outlined.Delete,
+                                                enabled = canDelete,
+                                                destructive = true
+                                            )
+                                        ),
+                                        onDismissRequest = { menu = false }
+                                    )
                                 }
                             }
                         }

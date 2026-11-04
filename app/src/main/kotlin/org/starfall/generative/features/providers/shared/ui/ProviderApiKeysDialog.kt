@@ -1,6 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.menus.DropdownMenu
+import org.starfall.generative.shared.ui.sheets.ContextMenuAction
+import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
 
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
@@ -34,8 +35,7 @@ import org.starfall.generative.shared.ui.text.ApiKeyMask
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
@@ -125,12 +125,22 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                 Box {
                                     IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert,
                                         stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
-                                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_edit)) },
-                                            leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) }, onClick = { menu = false; edit(entry.id) })
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) },
-                                            leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) }, onClick = { menu = false; state.delete(entry.id, identity) })
-                                    }
+                                    if (menu) ContextMenuSheet(
+                                        actions = listOf(
+                                            ContextMenuAction(
+                                                stringResource(R.string.common_edit),
+                                                onClick = { edit(entry.id) },
+                                                icon = Icons.Outlined.Edit
+                                            ),
+                                            ContextMenuAction(
+                                                stringResource(R.string.common_delete),
+                                                onClick = { state.delete(entry.id, identity) },
+                                                icon = Icons.Outlined.Delete,
+                                                destructive = true
+                                            )
+                                        ),
+                                        onDismissRequest = { menu = false }
+                                    )
                                 }
                             }
                         }

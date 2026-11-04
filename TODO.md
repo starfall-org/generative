@@ -1,63 +1,61 @@
-# TODO — Feature Screen Refactor
+# TODO — Shared Layer Reorganization
 
-## 1. Create reusable screen templates and content types
+Scope: reorganize `app/src/main/kotlin/org/starfall/generative/shared/` by **responsibility, ownership, and real reuse**, without changing behavior. The branch starts from `main`. Do not implement the parallel screen/component API refactors here.
 
-- [x] **ScreenTemplate**
-  - Provide a reusable full-screen shell consisting of an AppBar and a required, explicitly typed content area.
-  - **Require exactly one of the four supported content types:** `ContentPreview`, `ContentVisualEditor`, `ContentTextEditor`, or `ContentList`. Do not expose an unrestricted body slot that bypasses this requirement.
-  - Enforce the relationship in the component API where practical (for example, a `ScreenTemplate`-scoped content DSL or typed content contract): the four content types are only valid inside `ScreenTemplate`, not as standalone screen wrappers or inside `MainScreenTemplate`.
-  - Use an AppBar with a theme-aware `surface` background.
-  - Place a Back button on the left side of the AppBar; route navigation through a callback supplied by the caller.
-  - Expose slots for AppBar title and optional actions/custom content without constraining feature-specific UI.
-  - Handle edge-to-edge layout, system bar insets, and content padding consistently with existing app appearance policies.
-  - Do not apply ChatAppBar's custom gradient to ordinary screens.
+## 1. Audit shared ownership and define the target structure
 
-- [x] **ContentPreview**
-  - Read-only screen content: present information, previews, and non-editing components without adding editor-specific UI.
-  - Accept feature-defined display components while centralizing content layout, spacing, scrolling, and safe-area handling.
-  - Only attach through the required content contract of `ScreenTemplate`.
+- [ ] Inventory every shared declaration and caller; the current baseline and completed ownership batches are recorded in `app/docs/shared-migration-map.md`.
+- [ ] Classify the remaining shared files; the migration map records owner, destination, reason and callers for the completed batches.
+- [ ] Enforce ownership rules:
+  - `shared/model/`: cross-feature data types/serialization, never UI, feature workflows, or `BuildConfig`.
+  - `shared/storage/`: app-wide state primitives and DataStore preferences; Room-backed repositories stay in `database/`.
+  - `shared/auth/`, `files/`, `icons/`, `logging/`, `media/`, `networking/`, `terminal/`, and `code/`: cohesive reusable non-screen capabilities; move external API clients to `integrations/` where applicable.
+  - `shared/ui/`: composable presentation and appearance primitives with no feature-owned flow, persistence or app navigation.
+  - `shared/subfeatures/`: larger, cohesive **actually reusable** experiences with their own UI/logic; retain `shared/subfeatures/explorer/` as the canonical Explorer.
+  - `features/<owner>/`: UI and state confined to that feature; use the feature's internal `shared/` only where its subfeatures reuse the code.
+  - `navigation/` / `appwiring/`: application routing, root Activity decisions and host configuration.
+- [ ] Establish concise `shared/ui/` categories. Evaluate `inputs/` (editable fields, switch/slider/completion), `text/` (display/Markdown/selection), `layout/` (layout only), `appearance/` or `theme/` (single visual-policy source), `screens/` (reusable shell/transition), `lists/`, `dialogs/`, `sheets/`, `menus/`, `icons/`, `code/`, and `media/`. Avoid empty or arbitrarily single-file packages.
+- [ ] Preserve explicitly shared and stable infrastructure (e.g. icon registry, `shared/ui/dialogs/`, `shared/ui/sheets/`, `shared/subfeatures/explorer/`). Do not move files just to make the directory tree symmetrical.
+- [ ] Record the baseline before changes: imports by layer, feature reuse per component, stray Compose dependencies, and any suspected unused code; distinguish confirmed dependency breaches from potential organizational improvements.
 
-- [x] **ContentVisualEditor**
-  - Screen content for editing through multiple controls, such as text inputs, switches, selectors, and other form components.
-  - Standardize layout, spacing, keyboard/inset handling, and scrolling without owning feature-specific state, validation, or persistence.
-  - Only attach through the required content contract of `ScreenTemplate`.
+## 2. Reorganize shared in small, behavior-preserving batches
 
-- [x] **ContentTextEditor**
-  - Screen content whose sole purpose is text entry/editing; prioritize the text editing area and its keyboard behavior.
-  - Provide the structure for a full-content text editor without mixing in unrelated settings or form controls.
-  - Only attach through the required content contract of `ScreenTemplate`.
+- [x] **Fix confirmed upward dependencies.**
+  - `shared/auth/OAuthCallbackService.kt` now receives the app-return Intent from the host through `OAuthReturnIntentProvider`, without changing OAuth foreground service handling.
+  - `shared/model/McpInfo.kt` now accepts a host-provided Content API endpoint; explicit URL priority, preset fallback and credential handling are preserved.
+  - Note the related `features/home/shared/logic/ChatBackgroundService.kt` → `MainActivity` import for coordination; do not expand this branch into unrelated Home refactoring.
+- [ ] **Separate rendering from lower-level logic where genuinely mixed.**
+  - `shared/code/CodeSyntaxHighlighting.kt` keeps language detection/token ranges independent; Compose `Color` / `SpanStyle` / `AnnotatedString` mapping now lives in `shared/ui/code/CodeHighlighting.kt`.
+  - [x] `RemoteTerminalBridge.kt` no longer imports `DialogWindowProvider` or resolves Compose windows; Machines UI supplies the host `Window?`, while Termux bridge behavior, IME, sessions and input remain in shared terminal infrastructure.
+  - [x] Reviewed `shared/preview/CodePreviewActivity.kt` as an Android presentation entry point; it remains under `shared/preview` because the manifest and shared code header reference the complete preview capability.
+- [ ] **Move feature-specific state/components toward their real owner.**
+  - `InstructionControls.kt` and `ToolControls.kt` now live in `features/home/shared/ui/`; navigation still supplies the contracts from the outside.
+  - [x] Move `ChatAttachmentSelection` to `features/home/chat/ui/` and pass generic selection callbacks/parameters to shared media views; `MediaFileCard` no longer imports chat state.
+  - [x] Audited `MachineDialogTitle.kt` and `MachineToolsDialog.kt`; both are used by Machines and the Home drawer, so their existing machine-scoped shared package is retained.
+  - [x] Removed `shared/ui/ProfileMcpPermissions.kt` after a repository-wide search confirmed no production, test, manifest or reflection caller; `McpAccess` storage/model types remain unchanged.
+- [ ] **Move complete presentation capabilities out of generic primitive buckets when justified.**
+  - [x] Moved `RemoteTerminalScreen.kt`, `RemoteTerminalAppBar.kt`, `RemoteTerminalPanels.kt`, and `RemoteTerminalDialogs.kt` to `features/machines/shared/ui/terminal/`; navigation callbacks and screen lifecycle remain unchanged.
+  - [x] Audited `shared/ui/model/` as one Model Picker capability used by multiple features; retain it in shared UI to preserve one selection/search/scroll/animation implementation.
+  - Keep `shared/subfeatures/explorer/` centralized and independent of feature/database backends. Do not move its UI back into `extensions/`.
+  - [x] Audited `shared/ui/logging/` as a coherent global debug UI mounted by the app shell; retain the package intact.
+- [ ] **Normalize the generic `shared/ui/` structure.**
+  - Editable controls (`OutlinedTextField`, `EditorTextField`, `HeaderNameField`, `ApiKeyField`, `AppBarSearchField`) now live under `shared/ui/inputs/`; `text/` retains rendering, Markdown, selection, wrapping and streaming effects.
+  - Reclassify policy files mixed into `shared/ui/layout/` (`CardAppearance`, `ContainerTransparency`, `InputAreaAppearance`, `AmoledBorder`) without duplicating `shared/theme/` or existing Appearance/UserProfile helpers.
+  - Reclassify `ScreenCover`, `RetainedScreenContent`, `ScreenSlideMotion`, `SystemBars` and `EdgeToEdgeContent` according to shared screen/window responsibilities, coordinating with `refactor/feature-screens`.
+  - Review top-level `shared/ui/` files (`ErrorContainer`, `FeaturesLogo`, `LoadingIndicator`, `RuntimeAppLocale`, `ToolSwitch`) for intuitive ownership. Keep widely reused primitives discoverable; do not force renames without value.
+  - Preserve Fluent `ImageVector` sources and registration in `shared/ui/icons/fluentui/`; keep icon asset/storage services separate under `shared/icons/`.
+- [ ] **Respect the other planning branches.** `refactor/components` owns `ContentSheet`, `ContextMenuSheet`, `ItemListSheet`, `ExpandableSearchField`, `KeyValueField`, `ComponentGroup` and their behavior-driven migrations. `refactor/feature-screens` owns `ScreenTemplate`, the four `Content*` types, screen transitions and screen migrations. This branch owns **shared package boundaries and ownership**; coordinate naming, avoid duplicate APIs and do not implement the other branches' features.
+- [ ] Apply one cohesive migration per batch. Update package declarations, imports, references, tests, navigation, Android manifest registrations, reflection/serialization names and documentation. Do not leave duplicate wrappers just to conceal missed callers.
+- [ ] Preserve behavior: AMOLED/dynamic colors, appearance transparency, `ProfileBackground`, ChatAppBar independent gradient, dialog/sheet animation and insets, touch/keyboard/accessibility, chat scrolling/streaming, OAuth return flow, stored data and backup compatibility.
+- [ ] Do not change Room schemas, database names, credential keys, DataStore keys or serialization formats for package-only relocations. Keep `extensions/` isolated; generic Compose drag mechanics there are **not** automatically app-owned UI and are outside this branch's main scope.
 
-- [x] **ContentList**
-  - Screen content for displaying collections of items.
-  - Centralize list layout and appropriate scrolling, content padding, and empty/loading presentation hooks while leaving item rendering, selection, actions, and data ownership to callers.
-  - Only attach through the required content contract of `ScreenTemplate`.
+## 3. Verify architecture and close the refactor
 
-- [x] **ScreenTransitionEffect**
-  - Extract a reusable navigation transition for screens using `ScreenTemplate`.
-  - Support forward navigation (right to left) and back navigation (left to right), including system Back.
-  - Integrate through the navigation layer; avoid duplicating transition logic in each feature.
-  - Preserve screen state and existing navigation/back-stack behavior, and avoid unnecessary recomposition or visual jumps.
-
-- [x] **MainScreenTemplate**
-  - Add a minimal shared placeholder/marker representing the main/root screen category, intended for `ChatScreen`.
-  - Keep it deliberately lightweight; do not duplicate `ScreenTemplate`'s AppBar, Back button, transition, or content-type responsibilities.
-  - Maintain the distinction between `ChatScreen` and ordinary secondary screens; preserve ChatAppBar's existing appearance and behavior.
-
-## 2. Integrate the shared components into the app
-
-- [x] Inventory screen entry points, existing AppBars, transitions, and body layouts; classify each secondary screen as preview, visual editor, text editor, or list. See `app/docs/screen-template-migration-map.md`.
-- [x] Implement the screen shell and its four content types in the appropriate shared UI layer without introducing feature dependencies.
-- [x] Ensure `ScreenTemplate` requires a supported content type and that none of the four types is used outside its scope; do not silently fall back to a free-form body.
-- [x] Migrate suitable secondary screens to `ScreenTemplate`, the appropriate `Content*` type, and `ScreenTransitionEffect` in manageable batches.
-- [x] Apply `MainScreenTemplate` to `ChatScreen` where appropriate, without changing its existing UI or streaming behavior.
-- [ ] Remove duplicated screen/AppBar/transition/content-layout code only after confirming that callers retain their intended behavior.
-- [ ] Preserve feature-specific actions, UI state, background appearance, navigation, keyboard handling, and safe-area behavior.
-
-## 3. Verify and collect UI feedback
-
-- [ ] Perform static checks for dependency direction, duplicate implementations, and navigation regressions.
-- [x] Add checks/tests proving that a `ScreenTemplate` cannot be created without one of the four content types, and that content types cannot be placed outside it.
-- [x] Add or update relevant unit and Android UI tests for all four content types, AppBar slots, Back navigation, forward/back transitions, scrolling, keyboard insets, and screen state preservation. Added `ScreenTemplateTest`; retained-navigation tests continue to cover transition/state behavior.
-- [ ] Run the agreed verification steps when the environment and user approval permit; avoid unnecessary repeated Gradle builds.
-- [ ] Check the resulting UI on an Android device, including light/dark/AMOLED themes, edge-to-edge insets, transitions, list scrolling, and text/form editing.
-- [ ] Present the updated interface for user evaluation and collect feedback before considering the refactor complete.
+- [x] Add `scripts/check_architecture.py` for cross-feature imports; upward `shared/` and `integrations/` dependencies; feature model boundaries; and Compose rendering inside `integrations/` and `database/`.
+- [x] Keep and run the existing `scripts/check_extensions.py` check. The new architecture check only rejects Compose rendering imports in `integrations/` and `database/`.
+- [ ] Search for orphaned/duplicated components and imports after each migration; verify apparent dead code with all entry points and tests before removal.
+- [ ] Perform fast static checks (`git diff --check`, architecture scripts) before expensive tests. Run Gradle/unit/Android tests only if approved, in cohesive batches rather than repeated builds.
+- [ ] When verification is permitted, regression-test OAuth notification reopening, Terminal screen and IME, Model Picker selection/search/scroll, Explorer adapters, Chat attachment selection, MCP permissions, Debug Log, and all relevant sheet/dialog/light/dark/AMOLED states.
+- [ ] Produce before/after dependency and directory inventories, with evidence of no feature import cycles or unintended shared-to-feature dependencies.
+- [ ] Update `AGENTS.md` and `app/docs/architecture.md` to the **implemented** layout only after the changes are verified. Remove obsolete paths/docs and retain migration notes for future contributors.
+- [ ] Review the final organization for unnecessary micro-packages, duplicate abstractions, behavior changes, and overlap with the two parallel refactor branches before marking the TODO complete.

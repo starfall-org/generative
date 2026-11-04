@@ -22,6 +22,7 @@ fun DeveloperOptionsScreen(
     onDebugLogCategoriesChange: (Set<DebugLogCategory>) -> Unit,
     onDebugLogLevelChange: (DebugLogLevel) -> Unit,
     onOpenLauncherDragTest: () -> Unit,
+    onOpenProvidersDemo: () -> Unit = {},
     onBack: () -> Unit
 ) {
     ScreenTemplate(title = stringResource(R.string.settings_developer), onBack = onBack) {
@@ -42,6 +43,10 @@ fun DeveloperOptionsScreen(
                     SettingsActionPreference(
                         title = stringResource(R.string.launcher_drag_test_title),
                         onClick = onOpenLauncherDragTest
+                    )
+                    SettingsActionPreference(
+                        title = stringResource(R.string.providers_demo_title),
+                        onClick = onOpenProvidersDemo
                     )
                 }
             }
