@@ -91,7 +91,7 @@ class ScreenTemplateDeviceTest {
         var page by mutableStateOf("A")
         compose.setContent {
             MaterialTheme {
-                ScreenTransitionEffect(page, ScreenTransitionDirection.FORWARD) { current ->
+                ScreenTransitionEffect(page, ScreenTransitionDirection.FORWARD, contentKey = { it }) { current ->
                     var count by rememberSaveable { mutableIntStateOf(0) }
                     Column {
                         Text("$current count $count")

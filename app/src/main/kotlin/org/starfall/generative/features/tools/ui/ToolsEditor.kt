@@ -72,7 +72,7 @@ fun ToolsEditor(
         title = stringResource(R.string.common_feature_tools),
         onBack = onBack
     ) {
-      ContentList { padding ->
+      ContentList(contentPadding = scaffoldPadding) { padding ->
         AppSwipeTabs(
             tabs = listOf(stringResource(R.string.tool_settings_tab_media), stringResource(R.string.tool_settings_tab_others)),
             pagerState = pager,

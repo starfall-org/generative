@@ -1,6 +1,9 @@
 package org.starfall.generative.shared.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -10,12 +13,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -75,7 +80,7 @@ class ScreenTemplateTest {
         compose.onNodeWithTag("list").assertIsDisplayed()
     }
 
-    @Test fun screenTemplateRejectsMissingOrMultipleContentKinds() {
+    @Test fun screenTemplateRejectsMissingContent() {
         assertThrows(IllegalStateException::class.java) {
             compose.setContent {
                 MaterialTheme {
@@ -84,7 +89,9 @@ class ScreenTemplateTest {
             }
             compose.waitForIdle()
         }
+    }
 
+    @Test fun screenTemplateRejectsMixedContentKinds() {
         assertThrows(IllegalStateException::class.java) {
             compose.setContent {
                 MaterialTheme {
@@ -126,6 +133,25 @@ class ScreenTemplateTest {
             }
             compose.waitForIdle()
         }
+    }
+
+    @Test fun nonScrollablePreviewKeepsCenteredContentWithinTheViewport() {
+        compose.setContent {
+            MaterialTheme {
+                ScreenTemplate(title = "Loading", onBack = {}) {
+                    ContentPreview(scrollable = false) {
+                        Column(
+                            modifier = Modifier.fillMaxSize().testTag("preview-bounds"),
+                            verticalArrangement = Arrangement.Center
+                        ) { Text("Loading content", Modifier.testTag("preview-center")) }
+                    }
+                }
+            }
+        }
+        val area = compose.onNodeWithTag("preview-bounds").getUnclippedBoundsInRoot()
+        val content = compose.onNodeWithTag("preview-center").getUnclippedBoundsInRoot()
+        assertTrue("Content should be below the top of the viewport", content.top > area.top)
+        assertTrue("Content should be above the bottom of the viewport", content.bottom < area.bottom)
     }
 
     @Test fun mainScreenTemplateDoesNotAddASecondaryScreenShell() {

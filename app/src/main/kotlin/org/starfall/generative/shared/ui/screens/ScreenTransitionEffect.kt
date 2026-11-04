@@ -38,7 +38,7 @@ fun <T> ScreenTransitionEffect(
     direction: ScreenTransitionDirection,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    contentKey: (T) -> Any = { it as Any? ?: "null" },
+    contentKey: (T) -> Any,
     content: @Composable (T) -> Unit
 ) {
     onBack?.let { BackHandler(onBack = it) }

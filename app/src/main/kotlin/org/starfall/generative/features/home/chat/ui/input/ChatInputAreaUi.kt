@@ -163,6 +163,7 @@ internal fun UserInputArea(
     val textState = textFieldState.text.toString()
     val context = LocalContext.current
     val localizedResources = LocalResources.current
+    val latestLocalizedResources by rememberUpdatedState(localizedResources)
     val coroutineScope = rememberCoroutineScope()
     val externalSelection = LocalChatAttachmentSelection.current
     val externalText = externalSelection?.pendingExternalText
@@ -216,7 +217,7 @@ internal fun UserInputArea(
                         if (saved.isNotEmpty()) latestOnAddClipboardImages(saved.distinct())
                         if (failures > 0) {
                             latestOnSubmissionFailed(
-                                localizedResources.getString(R.string.media_image_open_failed)
+                                latestLocalizedResources.getString(R.string.media_image_open_failed)
                             )
                         }
                     }

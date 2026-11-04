@@ -132,15 +132,17 @@ class ScreenTemplateScope internal constructor(
     fun ContentPreview(
         modifier: Modifier = Modifier,
         contentPadding: PaddingValues? = null,
+        scrollable: Boolean = true,
         content: @Composable ColumnScope.() -> Unit
     ) {
         claim(ContentKind.PREVIEW, remember { Any() })
+        val scrollState = rememberScrollState()
         val resolvedPadding = contentPadding ?: defaultContentPadding()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .then(modifier)
-                .verticalScroll(rememberScrollState())
+                .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
                 .imePadding()
                 .navigationBarsPadding()
                 .padding(resolvedPadding),

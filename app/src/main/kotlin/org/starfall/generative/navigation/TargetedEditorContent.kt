@@ -5,6 +5,10 @@ import org.starfall.generative.shared.ui.screens.ScreenTemplate
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -59,24 +63,27 @@ internal fun <T : Any> TargetedEditorContent(
     ScreenTemplate(title = title, onBack = onBack) {
         ContentPreview(
             modifier = Modifier.fillMaxSize(),
+            scrollable = false,
             contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 24.dp, top = 24.dp, bottom = 24.dp)
         ) {
-            Column(
-                Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
-            ) {
-            val error = failure
-            if (error == null) {
-                LoadingIndicator()
-                Text(loadingMessage, textAlign = TextAlign.Center)
-            } else {
-                Text(stringResource(R.string.editor_open_failed), style = MaterialTheme.typography.titleMedium)
-                Text(error, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error)
-                Text(stringResource(R.string.editor_load_retry_hint), textAlign = TextAlign.Center)
-                Button(onClick = { failure = null; attempt++ }) { Text(stringResource(R.string.common_retry)) }
-            }
-            TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val error = failure
+                    if (error == null) {
+                        LoadingIndicator()
+                        Text(loadingMessage, textAlign = TextAlign.Center)
+                    } else {
+                        Text(stringResource(R.string.editor_open_failed), style = MaterialTheme.typography.titleMedium)
+                        Text(error, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.editor_load_retry_hint), textAlign = TextAlign.Center)
+                        Button(onClick = { failure = null; attempt++ }) { Text(stringResource(R.string.common_retry)) }
+                    }
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }
+                }
             }
         }
     }
