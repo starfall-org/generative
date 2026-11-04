@@ -41,7 +41,7 @@ fun <T> ScreenTransitionEffect(
     contentKey: (T) -> Any,
     content: @Composable (T) -> Unit
 ) {
-    onBack?.let { BackHandler(onBack = it) }
+    onBack?.let { BackHandler(enabled = LocalScreenTransitionActive.current, onBack = it) }
     val stateHolder = rememberSaveableStateHolder()
     AnimatedContent(
         targetState = targetState,

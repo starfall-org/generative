@@ -75,3 +75,11 @@
 - A follow-up Android device regression run passed 14 tests (Speech Services 3, Remote Navigation 2, Chat Options/Tools 7, ChatAppBar 1, BottomSheet insets 1); the ADB local-forward connection dropped while the 15th of 17 tests was running. No result was obtained for tests 15–17.
 - Extended JVM regressions: 22/25 passed. All three failures (`ModelSheetTransitionTest.longPickerExpandsExistingSelectedModelSheetWithoutReopeningIt`, `QuickActionsSheetTransitionTest.temporaryChatCaptureStaysInTheSessionCache`, and `QuickActionsSheetTransitionTest.cameraAttachesCapturedPhotoAlongsideExistingAttachments`) were reproduced unchanged on `main` using the same test command, so they are known baseline failures rather than regressions introduced by this branch.
 - Focused green tests do not replace a full interactive review of every screen or the entire 422-method Android test suite.
+
+## Final review follow-up (2026-11-04)
+
+- Addressed all six inline CodeRabbit comments: removed global `MissingTranslation` lint suppression, updated asynchronous clipboard errors for locale changes, removed duplicated Tools tabs padding, restored vertically centered yet scrollable loading/error content, required explicit saveable transition keys, and separated the two invalid `setContent` assertions. Also guarded `ScreenTransitionEffect` system Back with the retained-screen active flag (additional review finding).
+- Rebuilt debug and Android-test APKs successfully after the review changes; 11 `ScreenTemplateTest`, 5 retained-navigation tests and 10 isolated Chat tests passed.
+- A broad JVM run was interrupted by the execution time limit after showing unrelated failures; isolated Chat tests passed, and three sheet/media failures were confirmed on `main`. Do not describe the full JVM suite as green.
+- The localization checker reports existing missing translations (including Vietnamese and Tier 3 locales); this PR restores the default lint behavior rather than hiding them globally. Locale coverage is a separate baseline concern.
+- The device stayed offline via Tailscale/ADB; the three interrupted Android tests and final physical visual review remain unavailable. Earlier 4/4 focused device tests and 14 additional on-device regressions passed before it disconnected.

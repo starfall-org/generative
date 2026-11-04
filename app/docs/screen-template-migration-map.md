@@ -60,3 +60,5 @@ Verified on 2026-11-04 (Star 4, Android 11; ADB via local forwarding):
 - `scripts/check_architecture.py`, `scripts/check_extensions.py`, and `git diff --check`: passed.
 
 Remaining: a full screen-by-screen UI review (including dark/light/AMOLED and insets), any outstanding broader regressions, and merge-readiness verification after synchronization with `main`.
+
+Final review check (2026-11-04): the six inline review findings and a retained-back handler finding were fixed, and the subsequent debug build and focused JVM tests passed. The loading/error preview centers short content while keeping long error messages scrollable. Full-suite / physical-device coverage limitations are tracked in `feature-screen-refactor-TODO.md`.
