@@ -36,7 +36,7 @@ import org.starfall.generative.shared.ui.model.modelInitial
 import org.starfall.generative.shared.ui.model.ModelPickerCard
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
 
 /** Sheet background that follows the reasoning tier: the maximum effort tier gets a red brush. */

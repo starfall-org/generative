@@ -39,7 +39,7 @@ import org.starfall.generative.shared.model.agentSkillDocument
 import org.starfall.generative.shared.model.parseAgentSkillDocument
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.text.EditorTextField
 
 /** Edit and exchange one complete SKILL.md, not three disconnected form fields. */

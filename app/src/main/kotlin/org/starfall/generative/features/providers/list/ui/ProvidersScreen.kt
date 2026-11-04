@@ -43,7 +43,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.moved
 

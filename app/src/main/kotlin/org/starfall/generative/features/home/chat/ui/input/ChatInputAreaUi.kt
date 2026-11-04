@@ -216,7 +216,7 @@ internal fun UserInputArea(
                         if (saved.isNotEmpty()) latestOnAddClipboardImages(saved.distinct())
                         if (failures > 0) {
                             latestOnSubmissionFailed(
-                                context.getString(R.string.media_image_open_failed)
+                                localizedResources.getString(R.string.media_image_open_failed)
                             )
                         }
                     }

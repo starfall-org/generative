@@ -18,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.navigation.RetainedNavHost
 import org.starfall.generative.navigation.movesMenuBackground
-import org.starfall.generative.shared.ui.layout.screenSlideOffset
+import org.starfall.generative.shared.ui.screens.screenSlideOffset
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 

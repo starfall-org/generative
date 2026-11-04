@@ -1,13 +1,16 @@
 package org.starfall.generative.navigation
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,12 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 
 /** Only unsaved drafts bypass loading. Existing metadata must go through [load]. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun <T : Any> TargetedEditorContent(
     recordId: String,
@@ -57,26 +56,16 @@ internal fun <T : Any> TargetedEditorContent(
         return
     }
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+    ScreenTemplate(title = title, onBack = onBack) {
+        ContentPreview(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 24.dp, top = 24.dp, bottom = 24.dp)
         ) {
+            Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+            ) {
             val error = failure
             if (error == null) {
                 LoadingIndicator()
@@ -88,6 +77,7 @@ internal fun <T : Any> TargetedEditorContent(
                 Button(onClick = { failure = null; attempt++ }) { Text(stringResource(R.string.common_retry)) }
             }
             TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }
+            }
         }
     }
 }

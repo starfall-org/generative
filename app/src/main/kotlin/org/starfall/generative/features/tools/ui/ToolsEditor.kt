@@ -1,8 +1,6 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,10 +12,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,13 +35,13 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
 import org.starfall.generative.shared.ui.text.OutlinedTextField
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,21 +68,11 @@ fun ToolsEditor(
     val pager = rememberPagerState(pageCount = { 2 })
     fun openMediaSettings(name: String) { onOpenMediaProfiles(name == "generate_video") }
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(stringResource(R.string.common_feature_tools)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    ScreenTemplate(
+        title = stringResource(R.string.common_feature_tools),
+        onBack = onBack
+    ) {
+      ContentList { padding ->
         AppSwipeTabs(
             tabs = listOf(stringResource(R.string.tool_settings_tab_media), stringResource(R.string.tool_settings_tab_others)),
             pagerState = pager,
@@ -246,6 +232,7 @@ fun ToolsEditor(
                 }
             }
         }
+      }
     }
 
     choosing?.let { name ->

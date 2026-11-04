@@ -1,9 +1,7 @@
 package org.starfall.generative.features.tools.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.DropdownMenu
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,9 +19,6 @@ import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.networking.text
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.model.media.ImageOptionField
@@ -33,6 +28,7 @@ import org.starfall.generative.shared.helpers.media.optionAt
 import org.starfall.generative.shared.helpers.media.withOption
 import org.starfall.generative.shared.helpers.media.videoOptionFields
 import org.starfall.generative.shared.helpers.media.validateVideoOptions
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,31 +46,23 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     }.exceptionOrNull()?.message
     val dirty = parsed != savedOptions || disabledParams != config.disabledParams
     fun back() { if (dirty) confirmDiscard = true else onBack() }
-    BackHandler(enabled = LocalScreenTransitionActive.current) { back() }
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings)) },
-                navigationIcon = {
-                    IconButton(onClick = { back() }) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    Button(
-                        enabled = error == null,
-                        onClick = { parsed?.let { onSave(it, disabledParams) } },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) { Text(stringResource(R.string.common_save)) }
-                }
-            )
+    ScreenTemplate(
+        title = stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings),
+        onBack = { back() },
+        actions = {
+            Button(
+                enabled = error == null,
+                onClick = { parsed?.let { onSave(it, disabledParams) } },
+                modifier = Modifier.padding(end = 8.dp)
+            ) { Text(stringResource(R.string.common_save)) }
         }
-    ) { padding ->
+    ) {
+      ContentVisualEditor(
+          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp)
+      ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding(),
-            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+             contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(provider.name + " / " + (provider.config.modelConfigs[config.modelId]?.displayName?.ifBlank { config.modelId } ?: config.modelId),
@@ -110,6 +98,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
             error?.let { problem -> item { Text(problem, color = MaterialTheme.colorScheme.error) } }
             item { TextButton(onClick = { draft = "{}"; disabledParams = emptySet() }) { Text(stringResource(R.string.image_tool_reset_defaults)) } }
         }
+      }
     }
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },

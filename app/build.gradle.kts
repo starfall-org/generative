@@ -39,6 +39,12 @@ android {
     compileSdk = 37
     buildToolsVersion = "36.0.0"
 
+    // English is the canonical fallback language. Tier 3 locales intentionally fall back to
+    // English, so MissingTranslation must not fail the build; other lint checks remain active.
+    lint {
+        disable += "MissingTranslation"
+    }
+
     defaultConfig {
         applicationId = "org.starfall.generative"
         minSdk = 26

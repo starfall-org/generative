@@ -32,7 +32,7 @@ import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.text.OutlinedTextField
 import org.starfall.generative.shared.ui.ToolSwitch
 

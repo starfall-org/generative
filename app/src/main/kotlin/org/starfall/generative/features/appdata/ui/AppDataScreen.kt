@@ -1,8 +1,6 @@
 package org.starfall.generative.features.appdata.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,10 +20,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +41,7 @@ import org.starfall.generative.database.ProviderRepairResult
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.screens.ScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,26 +69,16 @@ fun AppDataScreen(
     val scope = rememberCoroutineScope()
     val transferBusy = exportInProgress || importInProgress
     // Transfers belong to the application scope, not this screen. Navigation never waits for them.
-    BackHandler(onBack = onBack)
-
-    Scaffold(
-
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = { Text(stringResource(R.string.settings_data_controls)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+    ScreenTemplate(
+        title = stringResource(R.string.settings_data_controls),
+        onBack = onBack
+    ) {
+        ContentList(
+            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp)
+        ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = scrollableScaffoldPadding(innerPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp),
+            contentPadding = innerPadding,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
@@ -174,6 +161,7 @@ fun AppDataScreen(
                 ) { showSensitiveActions = true }
             }
         }
+    }
     }
 
     if (showRepairConfirm && !transferBusy) {

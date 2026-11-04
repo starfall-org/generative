@@ -74,7 +74,7 @@ import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

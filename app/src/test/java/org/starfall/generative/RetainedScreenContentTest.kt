@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.ui.layout.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

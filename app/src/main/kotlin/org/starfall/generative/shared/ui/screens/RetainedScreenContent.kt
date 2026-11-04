@@ -1,4 +1,4 @@
-package org.starfall.generative.shared.ui.layout
+package org.starfall.generative.shared.ui.screens
 
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.snap
@@ -29,10 +29,12 @@ fun <T : Any> RetainedScreenContent(
         transitionSpec = { screenSlideSpec() }, label = "editor-parent"
     ) { page -> if (page == null) 0f else -1f }
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize()
-            .retainWhen(editor == null || (transitioning && transition.currentState == null))
-            .screenSlide { parentOffset.value }
-            .then(if (editor == null || transitioning) Modifier else Modifier.clearAndSetSemantics { })) {
+        Box(
+            Modifier.fillMaxSize()
+                .retainWhen(editor == null || (transitioning && transition.currentState == null))
+                .screenSlide { parentOffset.value }
+                .then(if (editor == null || transitioning) Modifier else Modifier.clearAndSetSemantics { })
+        ) {
             CompositionLocalProvider(
                 LocalScreenTransitionActive provides (parentActive && editor == null)
             ) { content(null) }
@@ -51,8 +53,10 @@ fun <T : Any> RetainedScreenContent(
                     )
                 }
                 val visible = page == editor || (transitioning && page == transition.currentState)
-                Box(Modifier.fillMaxSize().retainWhen(visible).screenSlide { offset.value }
-                    .then(if (visible) Modifier else Modifier.clearAndSetSemantics { })) {
+                Box(
+                    Modifier.fillMaxSize().retainWhen(visible).screenSlide { offset.value }
+                        .then(if (visible) Modifier else Modifier.clearAndSetSemantics { })
+                ) {
                     CompositionLocalProvider(
                         LocalScreenTransitionActive provides (parentActive && page == editor)
                     ) { content(page) }

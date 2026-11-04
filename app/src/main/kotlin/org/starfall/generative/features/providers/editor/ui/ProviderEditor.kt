@@ -75,9 +75,9 @@ import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemo
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.text.OutlinedTextField
-import org.starfall.generative.shared.ui.layout.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.auth.rememberOAuthStart

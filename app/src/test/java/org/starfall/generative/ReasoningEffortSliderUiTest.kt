@@ -3,6 +3,7 @@ package org.starfall.generative
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -27,7 +28,7 @@ class ReasoningEffortSliderUiTest {
         var saved: String? = null
         var saveCount = 0
         compose.setContent {
-            var selected by mutableStateOf<String?>(null)
+            var selected by remember { mutableStateOf<String?>(null) }
             MaterialTheme {
                 ReasoningEffortControl(
                     effort = selected,
