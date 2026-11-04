@@ -56,6 +56,7 @@ Verified on 2026-11-04 (Star 4, Android 11; ADB via local forwarding):
 - `RetainedNavHostTest` and `RetainedScreenContentTest`: 5/5 local unit tests passed.
 - `ScreenTemplateDeviceTest`: 4/4 physical-device UI tests passed after fixing a `ContentList` recomposition regression.
 - Additional scope-related UI regressions: 14 passed; the 15th test and two remaining tests were interrupted by loss of the ADB forwarding connection, not recorded as passed or failed.
+- Expanded sheet/navigation unit run: 22 of 25 passed; three failures reproduced on `main` (one Model Sheet height assertion, two camera-capture/temporary-media expectations).
 - `scripts/check_architecture.py`, `scripts/check_extensions.py`, and `git diff --check`: passed.
 
 Remaining: a full screen-by-screen UI review (including dark/light/AMOLED and insets), any outstanding broader regressions, and merge-readiness verification after synchronization with `main`.

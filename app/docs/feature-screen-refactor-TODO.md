@@ -73,4 +73,5 @@
 - `ScreenTemplateDeviceTest`: 4/4 passed on the Star 4 after reinstalling the fixed APK.
 - Both architecture and extensions dependency scripts passed; Gradle debug app/test APK build passed.
 - A follow-up Android device regression run passed 14 tests (Speech Services 3, Remote Navigation 2, Chat Options/Tools 7, ChatAppBar 1, BottomSheet insets 1); the ADB local-forward connection dropped while the 15th of 17 tests was running. No result was obtained for tests 15–17.
+- Extended JVM regressions: 22/25 passed. All three failures (`ModelSheetTransitionTest.longPickerExpandsExistingSelectedModelSheetWithoutReopeningIt`, `QuickActionsSheetTransitionTest.temporaryChatCaptureStaysInTheSessionCache`, and `QuickActionsSheetTransitionTest.cameraAttachesCapturedPhotoAlongsideExistingAttachments`) were reproduced unchanged on `main` using the same test command, so they are known baseline failures rather than regressions introduced by this branch.
 - Focused green tests do not replace a full interactive review of every screen or the entire 422-method Android test suite.
