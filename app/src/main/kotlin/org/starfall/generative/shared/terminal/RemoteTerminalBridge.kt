@@ -426,7 +426,9 @@ internal class RemoteTerminalBridge(
         if (visible) hideKeyboard() else focusAndShowKeyboard()
     }
 
-    override fun onSingleTapUp(e: MotionEvent) { focusAndShowKeyboard() }
+    override fun onSingleTapUp(e: MotionEvent) {
+        if (!forceMouse) focusAndShowKeyboard()
+    }
     override fun shouldBackButtonBeMappedToEscape(): Boolean = false
     override fun shouldEnforceCharBasedInput(): Boolean = true
     override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
