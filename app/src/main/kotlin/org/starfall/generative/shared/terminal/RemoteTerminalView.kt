@@ -29,19 +29,19 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
         // Termux's text-selection toolbar uses More -> View.showContextMenu(). It stores the
         // selected text until the menu closes, so add our action at precisely that point.
         terminalView.setOnCreateContextMenuListener { menu, _, _ ->
-            val url = terminalBrowserUrl(terminalView.storedSelectedText)
-            if (url != null) {
+            val selectedText = terminalView.storedSelectedText
+            if (!selectedText.isNullOrEmpty()) {
                 menu.add(org.starfall.generative.R.string.remote_server_terminal_open_browser)
                     .setOnMenuItemClickListener {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(selectedText))
                             .addCategory(Intent.CATEGORY_BROWSABLE)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         try {
                             context.startActivity(intent)
                         } catch (_: ActivityNotFoundException) {
-                            // No browser installed.
+                            // No app can open the selected text as a URI.
                         } catch (_: SecurityException) {
-                            // The device does not permit this link to open.
+                            // The device does not permit this URI to open.
                         }
                         terminalView.unsetStoredSelectedText()
                         true
@@ -105,14 +105,4 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
         if (keyCode == KeyEvent.KEYCODE_BACK) super.onKeyUp(keyCode, event) else true
-}
-
-/** Only open explicit web links (or the common www. shorthand), never arbitrary commands. */
-internal fun terminalBrowserUrl(selection: String?): String? {
-    val value = selection?.trim()?.trimEnd('.', ',', ';', ')', ']', '}', '!', '?') ?: return null
-    if (value.isBlank() || value.any { it.isWhitespace() }) return null
-    val url = if (value.startsWith("www.", ignoreCase = true)) "https://$value" else value
-    val uri = Uri.parse(url)
-    if (uri.scheme?.lowercase() !in setOf("http", "https") || uri.host.isNullOrBlank()) return null
-    return url
 }
