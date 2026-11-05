@@ -1,8 +1,6 @@
 package org.starfall.generative.features.tools.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,7 +56,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
@@ -144,45 +142,33 @@ fun MediaRequestProfileEditor(
         testedResponsePaths.clear() // Indices have changed.
         closeStepEditor()
     }
-    BackHandler(enabled = LocalScreenTransitionActive.current) { leave() }
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+    EditorScreenTemplate(
+        title = draft.name.ifBlank { stringResource(R.string.media_gen_profile_name) },
+        onBack = ::leave,
         modifier = Modifier.testTag("media-profile-editor-screen"),
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    Text(draft.name.ifBlank { stringResource(R.string.media_gen_profile_name) }, maxLines = 1)
-                },
-                navigationIcon = {
-                    IconButton(onClick = ::leave) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    if (!music) Box {
-                        TextButton(onClick = { modeMenu = true }, enabled = profile.id != defaultMediaProfile(video).id) {
-                            Text(stringResource(if (draft.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom))
-                            SharedIcon(Icons.Default.ArrowDropDown, null)
-                        }
-                        DropdownMenu(modeMenu, { modeMenu = false }) {
-                            MediaGenerationMode.entries.forEach { mode ->
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                    onClick = {
-                                        draft = draft.copy(mode = mode, requiresModel = if (mode == MediaGenerationMode.DEFAULT) true else draft.requiresModel)
-                                        modeMenu = false
-                                    }
-                                )
+        actions = {
+            if (!music) Box {
+                TextButton(onClick = { modeMenu = true },
+                    enabled = profile.id != defaultMediaProfile(video).id) {
+                    Text(stringResource(if (draft.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom))
+                    SharedIcon(Icons.Default.ArrowDropDown, null)
+                }
+                DropdownMenu(modeMenu, { modeMenu = false }) {
+                    MediaGenerationMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(if (mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
+                            onClick = {
+                                draft = draft.copy(mode = mode, requiresModel = if (mode == MediaGenerationMode.DEFAULT) true else draft.requiresModel)
+                                modeMenu = false
                             }
-                        }
+                        )
                     }
                 }
-            )
+            }
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().imePadding(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

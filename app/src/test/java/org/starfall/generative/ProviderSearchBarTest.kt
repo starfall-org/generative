@@ -4,10 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusManager
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -17,8 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.features.providers.list.logic.ProviderSearchField
-import org.starfall.generative.features.providers.list.ui.ProviderScreenTopBar
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w400dp-h800dp-xhdpi", application = LibraryTestApplication::class)
@@ -33,20 +30,16 @@ class ProviderSearchBarTest {
             val manager = LocalFocusManager.current
             SideEffect { focus = manager }
             MaterialTheme {
-                ProviderScreenTopBar(
-                    isGridView = false,
-                    searching = searching,
+                ListScreenTemplate(
+                    title = "Providers", onBack = {},
                     searchQuery = query,
-                    searchFields = setOf(ProviderSearchField.PROVIDER_NAME),
-                    searchFilterOpen = false,
-                    searchFocus = remember { FocusRequester() },
                     onSearchQueryChange = { query = it },
-                    onSearchFieldsChange = {},
-                    onSearchFilterOpenChange = {},
-                    onBack = {}, onToggleGridView = {}, onAddProvider = {}, onCreateGroup = {},
-                    onOpenSearch = { searching = true },
-                    onCloseSearch = { searching = false }
-                )
+                    searchExpanded = searching,
+                    onSearchExpandedChange = { searching = it },
+                    searchTag = "provider_search",
+                    searchButtonTag = "provider_search_expand",
+                    searchClearButtonTag = "provider_search_clear"
+                ) { _ -> }
             }
         }
         compose.onNodeWithTag("provider_search").assertDoesNotExist()

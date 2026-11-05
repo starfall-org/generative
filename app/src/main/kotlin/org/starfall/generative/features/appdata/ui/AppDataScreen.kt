@@ -41,7 +41,7 @@ import org.starfall.generative.database.ProviderRepairResult
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,13 +69,12 @@ fun AppDataScreen(
     val scope = rememberCoroutineScope()
     val transferBusy = exportInProgress || importInProgress
     // Transfers belong to the application scope, not this screen. Navigation never waits for them.
-    ScreenTemplate(
+    EditorScreenTemplate(
         title = stringResource(R.string.settings_data_controls),
         onBack = onBack
-    ) {
-        ContentList(
-            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp)
-        ) { innerPadding ->
+    ) { scaffoldPadding ->
+        val innerPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp)
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = innerPadding,
@@ -161,7 +160,7 @@ fun AppDataScreen(
                 ) { showSensitiveActions = true }
             }
         }
-    }
+
     }
 
     if (showRepairConfirm && !transferBusy) {

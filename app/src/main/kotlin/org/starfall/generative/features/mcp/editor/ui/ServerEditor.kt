@@ -1,6 +1,7 @@
 package org.starfall.generative.features.mcp.editor.ui
 
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
+import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,7 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.isContentApiName
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +78,7 @@ fun ServerEditor(
             !it.second.any { ch -> ch == '\r' || ch == '\n' }
     }
     fun refreshTools() { if (canSave && !cachedLoading) scope.launch { onRefreshTools(currentServer()) } }
-    ScreenTemplate(
+    EditorScreenTemplate(
         title = {
             Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
@@ -86,8 +87,9 @@ fun ServerEditor(
             Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
                 modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
         }
-    ) {
-        ContentVisualEditor { padding ->
+    ) { scaffoldPadding ->
+        val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 16.dp)
+
             Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
                 AppSwipeTabs(
                     tabs = listOf(stringResource(R.string.mcp_basic_settings), stringResource(R.string.common_tools)),
@@ -125,6 +127,6 @@ fun ServerEditor(
                     onSetToolEnabled, onSetToolParameter, ::refreshTools, Modifier.fillMaxSize())
                 }
             }
-        }
+
     }
 }

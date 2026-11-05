@@ -1,6 +1,9 @@
 package org.starfall.generative.features.providers.list.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.icons.SharedIcon
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
@@ -15,9 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import org.starfall.generative.extensions.launcher.Launcher
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.blur
@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -91,9 +92,6 @@ fun ProvidersScreen(
     var searchQuery by remember { mutableStateOf("") }
     var searchFields by remember { mutableStateOf(setOf(ProviderSearchField.PROVIDER_NAME)) }
     var searchFilterOpen by remember { mutableStateOf(false) }
-    val searchFocus = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
     val query = searchQuery.trim()
     fun matches(provider: ModelProvider) = matchesProviderSearch(provider, query, searchFields)
     // Search is a flat provider list, including members of matching folders.
@@ -104,13 +102,6 @@ fun ProvidersScreen(
         orderedProviders.filter { matches(it) || it.groupId in matchingGroupIds }
             .map { ProviderRootItem.ProviderItem(it) }
     } else rootItems
-    fun closeSearch() {
-        searching = false
-        searchFilterOpen = false
-        focusManager.clearFocus(force = true)
-        keyboard?.hide()
-    }
-    BackHandler(enabled = LocalScreenTransitionActive.current && searching) { closeSearch() }
     var draggedProviderId by remember { mutableStateOf<String?>(null) }
     var draggedGroupId by remember { mutableStateOf<String?>(null) }
     var dragRootSnapshot by remember { mutableStateOf<List<ProviderRootItem>?>(null) }
@@ -401,40 +392,51 @@ fun ProvidersScreen(
                 }
             )
         }
-        Scaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            // Root controls are covered by the folder page, and must also be hidden from accessibility.
+        ListScreenTemplate(
+            title = stringResource(R.string.model_providers),
+            onBack = onBack,
+            handleBack = openGroup == null && dndState.session == null,
             modifier = (if (openGroup != null) Modifier.clearAndSetSemantics {} else Modifier)
                 .then(if (backdropBlur > 0.dp) Modifier.blur(backdropBlur) else Modifier),
-            topBar = {
-                // This target remains composed while the full-screen folder is visible.
-                // Crossing it closes the folder without ending the active DND session.
-                Box(Modifier.dropTarget(
-                    state = dndState, key = "root-header", priority = -10,
-                    enabled = !searching && query.isBlank(),
-                    onDragEnter = { drag ->
-                        if (openGroupId != null && !drag.item.data.isGroup)
-                            exitOpenFolder(drag.item.data.id)
-                    }, onDrop = { true }
-                )) {
-                ProviderScreenTopBar(
-                    isGridView = isGridView,
-                    searching = searching,
-                    searchQuery = searchQuery,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            searchPlaceholder = stringResource(R.string.search_providers),
+            searchExpanded = searching,
+            onSearchExpandedChange = { expanded ->
+                if (expanded) openGroupId = null else searchFilterOpen = false
+                searching = expanded
+            },
+            searchPopupOpen = searchFilterOpen,
+            searchTag = "provider_search",
+            searchButtonTag = "provider_search_expand",
+            searchClearButtonTag = "provider_search_clear",
+            isGrid = isGridView,
+            onGridChange = { onToggleGridView?.invoke(it) },
+            appBarModifier = Modifier.dropTarget(
+                state = dndState, key = "root-header", priority = -10,
+                enabled = !searching && query.isBlank(),
+                onDragEnter = { drag ->
+                    if (openGroupId != null && !drag.item.data.isGroup)
+                        exitOpenFolder(drag.item.data.id)
+                }, onDrop = { true }
+            ),
+            primaryActions = {
+                IconButton(onClick = { createProvider() }, modifier = Modifier.testTag("add_provider")) {
+                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                }
+                IconButton(onClick = { dialogs.creatingGroup = true }, modifier = Modifier.testTag("add_provider_group")) {
+                    SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.common_add))
+                }
+            },
+            bottomPadding = 8.dp,
+            searchActions = {
+                ProviderSearchFilter(
                     searchFields = searchFields,
                     searchFilterOpen = searchFilterOpen,
-                    searchFocus = searchFocus,
-                    onSearchQueryChange = { searchQuery = it },
                     onSearchFieldsChange = { searchFields = it },
                     onSearchFilterOpenChange = { searchFilterOpen = it },
-                    onBack = onBack,
-                    onToggleGridView = onToggleGridView,
-                    onAddProvider = { createProvider() },
-                    onCreateGroup = { dialogs.creatingGroup = true },
-                    onOpenSearch = { openGroupId = null; searching = true },
-                    onCloseSearch = ::closeSearch
+                    onDismiss = { searching = false }
                 )
-                }
             }
         ) { padding ->
             Box(
@@ -485,7 +487,7 @@ fun ProvidersScreen(
                         LazyVerticalGrid(
                             state = gridState,
                             columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                            contentPadding = padding,
                             modifier = Modifier.fillMaxSize()
                                 .dropTarget(
                                     state = dndState, key = "root-end", priority = -10,

@@ -32,7 +32,6 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.icons.EntityIcon
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
@@ -41,7 +40,8 @@ import org.starfall.generative.shared.ui.icons.providerInitials
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import androidx.compose.runtime.saveable.rememberSaveable
 
 private data class SpeechEditorPage(val service: SpeechService, val isNew: Boolean)
 
@@ -69,6 +69,12 @@ fun SpeechServicesScreen(
     var editor by remember { mutableStateOf<SpeechEditorPage?>(null) }
     var deletingServiceId by remember { mutableStateOf<String?>(null) }
     var orderedServices by remember(speechServices) { mutableStateOf(speechServices) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val matchingServices = orderedServices.filter { service ->
+        searchQuery.isBlank() || listOf(service.name, service.provider, service.modelId.orEmpty()).any {
+            it.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
     val providersById = remember(providers) { providers.associateBy { it.id } }
     val effectiveSelectedId = speechServices.effectiveTtsProviderId(selectedSpeechServiceId)
 
@@ -90,32 +96,31 @@ fun SpeechServicesScreen(
                 )
             }
         } else {
-            ScreenTemplate(
+            ListScreenTemplate(
                 title = stringResource(R.string.speech_synthesis_services),
                 onBack = onBack,
-                actions = {
-                    ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
-                    IconButton(
-                        onClick = {
-                            editor = SpeechEditorPage(SpeechService(
-                                id = UUID.randomUUID().toString(),
-                                name = localizedResources.getString(R.string.speech_custom_tts),
-                                icon = null,
-                                provider = "system",
-                                modelId = null,
-                                voice = "Default",
-                                speed = 1.0f,
-                                pitch = 1.0f
-                            ), true)
-                        }
-                    ) {
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                isGrid = isGridView,
+                onGridChange = { onToggleGridView?.invoke(it) },
+                bottomPadding = 8.dp,
+                primaryActions = {
+                    IconButton(onClick = {
+                        editor = SpeechEditorPage(SpeechService(
+                            id = UUID.randomUUID().toString(),
+                            name = localizedResources.getString(R.string.speech_custom_tts),
+                            icon = null,
+                            provider = "system",
+                            modelId = null,
+                            voice = "Default",
+                            speed = 1.0f,
+                            pitch = 1.0f
+                        ), true)
+                    }) {
                         SharedIcon(Icons.Default.Add, contentDescription = stringResource(R.string.speech_add_service))
                     }
                 }
-            ) {
-              ContentList(
-                  contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
-              ) { padding ->
+            ) { padding ->
                 FadeGridListContent(
                     isGrid = isGridView,
                     modifier = Modifier.fillMaxSize()
@@ -133,14 +138,18 @@ fun SpeechServicesScreen(
                                 onSetTtsProvider = {}, onTest = {}, onEdit = {}, onDelete = {})
                         }
                     }) {
-                    LazyVerticalGrid(state = gridState,
+                    if (matchingServices.isEmpty() && searchQuery.isNotBlank()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(stringResource(R.string.content_list_no_results))
+                        }
+                    } else LazyVerticalGrid(state = gridState,
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = padding,
                         modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)
                     ) {
-                        itemsIndexed(orderedServices, key = { _, item -> item.id }) { _, service ->
+                        itemsIndexed(matchingServices, key = { _, item -> item.id }) { _, service ->
                             val providerName = when {
                                     service.engine == org.starfall.generative.shared.model.SpeechEngine.SYSTEM -> stringResource(R.string.speech_android_system_tts)
                                     service.engine.standalone -> speechEngineLabel(service.engine)
@@ -186,7 +195,6 @@ fun SpeechServicesScreen(
                     }
                     }
                 }
-              }
             }
         }
     }

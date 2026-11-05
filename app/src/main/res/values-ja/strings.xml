@@ -991,4 +991,5 @@
     <string name="settings_repair_provider_failed">プロバイダーの修復に失敗しました：%1$s</string>
     <string name="providers_demo_title">ProvidersScreen デモ</string>
         <string name="providers_demo_editor_title">デモ用プロバイダー</string>
+    <string name="content_list_no_results">一致する項目がありません。</string>
 </resources>

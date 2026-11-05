@@ -3,8 +3,8 @@
 package org.starfall.generative.features.machines.list.ui
 
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -57,7 +56,7 @@ import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 
 @Composable
 fun RemoteMachinesScreen(
@@ -72,6 +71,12 @@ fun RemoteMachinesScreen(
     val connectedIds by viewModel.connectedMachineIds.collectAsStateWithLifecycle()
     val forwardedPorts by viewModel.forwardedPorts.collectAsStateWithLifecycle()
     var isGrid by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val matchingMachines = state.machines.filter { machine ->
+        searchQuery.isBlank() || listOf(machine.name, machine.host, machine.username).any {
+            it.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
     var deleting by remember { mutableStateOf<RemoteMachine?>(null) }
     var portForwardMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
@@ -80,22 +85,25 @@ fun RemoteMachinesScreen(
     val context = LocalContext.current
     val localizedResources = LocalResources.current
 
-    ScreenTemplate(
+    ListScreenTemplate(
         title = stringResource(R.string.remote_ssh),
         onBack = onBack,
-        actions = {
-            ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
+        searchQuery = searchQuery,
+        onSearchQueryChange = { searchQuery = it },
+        isGrid = isGrid,
+        onGridChange = { isGrid = it },
+        bottomPadding = 8.dp,
+        primaryActions = {
             IconButton(onClick = { onOpenEditor(viewModel.newMachine(), true) }) {
                 SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
             }
+        },
+        trailingActions = {
             IconButton(onClick = onOpenSettings) {
                 SharedIcon(Icons.Outlined.Settings, stringResource(R.string.remote_ssh_google_oauth))
             }
         }
-    ) {
-      ContentList(
-          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
-      ) { padding ->
+    ) { padding ->
         Box(Modifier.fillMaxSize()) {
             if (state.machines.isEmpty()) {
                 Column(
@@ -118,15 +126,25 @@ fun RemoteMachinesScreen(
                         Text(stringResource(R.string.common_add))
                     }
                 }
+            } else if (matchingMachines.isEmpty()) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.content_list_no_results))
+                }
             } else {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
                   ReorderableCollection(
-                    items = state.machines,
+                    items = matchingMachines,
                     key = { it.id },
                     columns = GridCells.Fixed(if (gridMode) 2 else 1),
                      contentPadding = padding,
                     modifier = Modifier.fillMaxSize(),
-                    onReorder = viewModel::reorderMachines,
+                    onReorder = { visibleOrder ->
+                        val visibleIds = matchingMachines.mapTo(mutableSetOf()) { it.id }
+                        val reordered = visibleOrder.iterator()
+                        viewModel.reorderMachines(state.machines.map { machine ->
+                            if (machine.id in visibleIds) reordered.next() else machine.id
+                        })
+                    },
                     preview = { machine ->
                         RemoteMachineCard(machine, gridMode, machine.id in connectedIds,
                             onDisconnect = {}, onStartPortForward = {}, onMachineTools = {},
@@ -162,7 +180,6 @@ fun RemoteMachinesScreen(
                 }
             }
         }
-      }
     }
 
     portForwardMachine?.let { machine ->
@@ -274,7 +291,8 @@ private fun RemoteMachineCard(
                 IconButton(onClick = { menu = true }) {
                     SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                 }
-                if (menu) ContextMenuSheet(
+                if (menu) ContextDropdownMenu(
+                    expanded = true,
                     actions = buildList {
                         add(ContextMenuAction(stringResource(R.string.remote_server_open_terminal), onTerminal, iconRes = Icons.Outlined.Terminal))
                         if (connected && isGrid) add(ContextMenuAction(stringResource(R.string.remote_server_disconnect), onDisconnect, Icons.Outlined.LinkOff))

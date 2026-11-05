@@ -1,7 +1,6 @@
 package org.starfall.generative.features.providers.editor.ui
 
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.activity.compose.BackHandler
@@ -35,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
 import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
@@ -352,31 +352,36 @@ fun ProviderEditor(
                 },
                 onBack = { editingModel = null })
         } else {
-            Scaffold(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,modifier = Modifier.fillMaxSize(), topBar = {
-                TopAppBar(
-                    colors = edgeToEdgeTopAppBarColors(),
-            title = {
-                    Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                    navigationIcon = { IconButton(onClick = onDismiss) { SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) } },
-                    actions = {
-                        if (pager.currentPage == 0) Button(enabled = valid && !oauthAuthorizing && !iconImporting,
-                            onClick = { onSave(draft()); providerPersisted = true }, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
-                        else {
-                            IconButton(onClick = { showTestDialog = true },
-                                enabled = testingConnection || (onTestConnection != null && (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (testingConnection && !showTestDialog) LoadingIndicator(Modifier.size(36.dp))
-                                    SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
-                                }
-                            }
-                            IconButton(onClick = { editingModel = "" }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
-                            IconButton(onClick = { showCatalog = true }) { SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog)) }
+            EditorScreenTemplate(
+                title = { Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                onBack = onDismiss,
+                modifier = Modifier.fillMaxSize(),
+                actions = {
+                    if (pager.currentPage == 0) {
+                        Button(enabled = valid && !oauthAuthorizing && !iconImporting,
+                            onClick = { onSave(draft()); providerPersisted = true },
+                            modifier = Modifier.padding(end = 8.dp)) {
+                            Text(stringResource(R.string.common_save))
                         }
-                    })
-            }) { padding ->
-                Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
+                    } else {
+                        IconButton(onClick = { editingModel = "" }) {
+                            SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
+                        }
+                        IconButton(onClick = { showCatalog = true }) {
+                            SharedIcon(Icons.Outlined.FormatListBulleted, stringResource(R.string.open_model_catalog))
+                        }
+                        IconButton(onClick = { showTestDialog = true },
+                            enabled = testingConnection || (onTestConnection != null &&
+                                (type.isAccountProvider || baseUrl.isNotBlank()) && valid && models.isNotEmpty())) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (testingConnection && !showTestDialog) LoadingIndicator(Modifier.size(36.dp))
+                                SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.test_connection))
+                            }
+                        }
+                    }
+                }
+            ) { padding ->
+                Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
                     AppSwipeTabs(
                         tabs = listOf(stringResource(R.string.common_configuration), stringResource(R.string.provider_models)),
                         pagerState = pager,

@@ -1,7 +1,6 @@
 package org.starfall.generative.features.storage.ui
 
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -13,7 +12,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +34,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.files.ToolFiles
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -84,102 +81,52 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
 
     // Back exits selection first, then the screen. Viewer cover handles its own back.
     BackHandler(enabled = viewingFile != null) { viewingFile = null }
-    BackHandler(enabled = viewingFile == null && inSelectMode) {
-        inSelectMode = false
-        selected = emptySet()
-    }
-    BackHandler(enabled = viewingFile == null && !inSelectMode, onBack = onBack)
 
-    Scaffold(
+    ListScreenTemplate(
+        title = stringResource(R.string.media_management),
+        onBack = onBack,
+        handleBack = viewingFile == null,
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            if (inSelectMode) {
-                TopAppBar(
-                    colors = edgeToEdgeTopAppBarColors(),
-                    title = {
-                        val title = if (selected.isEmpty()) {
-                            stringResource(R.string.sidebar_select)
-                        } else {
-                            "${selected.size} ${stringResource(R.string.common_selected)}"
-                        }
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            inSelectMode = false
-                            selected = emptySet()
-                        }) {
-                            SharedIcon(
-                                FluentUi.Regular.Dismiss,
-                                contentDescription = stringResource(R.string.common_close)
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = {
-                                selected = if (allSelected) emptySet()
-                                else files.toSet()
-                            },
-                            enabled = files.isNotEmpty()
-                        ) {
-                            SharedIcon(
-                                imageVector = if (allSelected) FluentUi.Regular.DismissCircle else FluentUi.Regular.CheckmarkCircle,
-                                contentDescription = stringResource(
-                                    if (allSelected) R.string.storage_clear_selection else R.string.storage_select_all
-                                )
-                            )
-                        }
-                        IconButton(
-                            onClick = { if (selected.isNotEmpty()) confirmDelete = true },
-                            enabled = selected.isNotEmpty()
-                        ) {
-                            SharedIcon(
-                                Icons.Outlined.Delete,
-                                contentDescription = stringResource(R.string.common_delete),
-                                tint = if (selected.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+        isGrid = isGrid,
+        onGridChange = { isGrid = it },
+        bottomPadding = 8.dp,
+        selectionTitle = if (inSelectMode) {
+            if (selected.isEmpty()) stringResource(R.string.sidebar_select)
+            else "${selected.size} ${stringResource(R.string.common_selected)}"
+        } else null,
+        onExitSelection = { inSelectMode = false; selected = emptySet() },
+        selectionActions = {
+            IconButton(
+                onClick = { selected = if (allSelected) emptySet() else files.toSet() },
+                enabled = files.isNotEmpty()
+            ) {
+                SharedIcon(
+                    imageVector = if (allSelected) FluentUi.Regular.DismissCircle else FluentUi.Regular.CheckmarkCircle,
+                    contentDescription = stringResource(
+                        if (allSelected) R.string.storage_clear_selection else R.string.storage_select_all
+                    )
                 )
-            } else {
-                TopAppBar(
-                    colors = edgeToEdgeTopAppBarColors(),
-                    title = {
-                        FixedAppBarTitle(stringResource(R.string.media_management))
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            SharedIcon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back)
-                            )
-                        }
-                    },
-                    actions = {
-                        ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
-                        IconButton(onClick = onBrowseFiles) {
-                            SharedIcon(
-                                Icons.Outlined.OpenInBrowser,
-                                contentDescription = stringResource(R.string.storage_open_in_files)
-                            )
-                        }
-                        if (files.isNotEmpty()) {
-                            IconButton(onClick = { inSelectMode = true }) {
-                                SharedIcon(
-                                    FluentUi.Regular.CheckmarkCircle,
-                                    contentDescription = stringResource(R.string.sidebar_select)
-                                )
-                            }
-                        }
-                    }
+            }
+            IconButton(
+                onClick = { if (selected.isNotEmpty()) confirmDelete = true },
+                enabled = selected.isNotEmpty()
+            ) {
+                SharedIcon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.common_delete),
+                    tint = if (selected.isNotEmpty()) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        },
+        primaryActions = {
+            IconButton(onClick = onBrowseFiles) {
+                SharedIcon(Icons.Outlined.OpenInBrowser, stringResource(R.string.storage_open_in_files))
+            }
+            if (files.isNotEmpty()) {
+                IconButton(onClick = { inSelectMode = true }) {
+                    SharedIcon(FluentUi.Regular.CheckmarkCircle, stringResource(R.string.sidebar_select))
+                }
             }
         }
     ) { padding ->
@@ -193,7 +140,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         modifier = Modifier.testTag("storage-preview-list"),
-                        contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp),
+                        contentPadding = padding,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {

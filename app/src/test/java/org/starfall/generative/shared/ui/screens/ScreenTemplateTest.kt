@@ -1,6 +1,5 @@
 package org.starfall.generative.shared.ui.screens
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +11,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -32,155 +31,82 @@ import org.robolectric.annotation.Config
 class ScreenTemplateTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun previewContentUsesTheSecondaryScreenShell() {
+    @Test fun previewOwnsAppBarAndScrollableViewport() {
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "Preview", onBack = {}) {
-                    ContentPreview {
-                        Text("Read only", Modifier.testTag("preview-content"))
-                    }
+                PreviewScreenTemplate(title = "Preview", onBack = {}) {
+                    Text("Read only", Modifier.testTag("preview-content"))
                 }
             }
         }
-
-        compose.onNodeWithTag("screen-template").assertIsDisplayed()
+        compose.onNodeWithTag("preview-screen-template").assertIsDisplayed()
         compose.onNodeWithTag("preview-content").assertIsDisplayed()
     }
 
-    @Test fun visualEditorCanBeAttachedToTheShell() {
+    @Test fun editorOwnsAppBarAndImeSafeContent() {
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "visual", onBack = {}) {
-                    ContentVisualEditor { Text("Form", Modifier.testTag("visual")) }
+                EditorScreenTemplate(title = "Editor", onBack = {}) { _ ->
+                    Text("Form", Modifier.testTag("editor"))
                 }
             }
         }
-        compose.onNodeWithTag("visual").assertIsDisplayed()
+        compose.onNodeWithTag("editor-screen-template").assertIsDisplayed()
+        compose.onNodeWithTag("editor").assertIsDisplayed()
     }
 
-    @Test fun textEditorCanBeAttachedToTheShell() {
-        compose.setContent {
-            MaterialTheme {
-                ScreenTemplate(title = "text", onBack = {}) {
-                    ContentTextEditor { Text("Editor", Modifier.testTag("text")) }
-                }
-            }
-        }
-        compose.onNodeWithTag("text").assertIsDisplayed()
-    }
-
-    @Test fun listCanBeAttachedToTheShell() {
-        compose.setContent {
-            MaterialTheme {
-                ScreenTemplate(title = "list", onBack = {}) {
-                    ContentList { Text("Item", Modifier.testTag("list")) }
-                }
-            }
-        }
-        compose.onNodeWithTag("list").assertIsDisplayed()
-    }
-
-    @Test fun screenTemplateRejectsMissingContent() {
-        assertThrows(IllegalStateException::class.java) {
-            compose.setContent {
-                MaterialTheme {
-                    ScreenTemplate(title = "Missing", onBack = {}) { }
-                }
-            }
-            compose.waitForIdle()
-        }
-    }
-
-    @Test fun screenTemplateRejectsMixedContentKinds() {
-        assertThrows(IllegalStateException::class.java) {
-            compose.setContent {
-                MaterialTheme {
-                    ScreenTemplate(title = "Multiple", onBack = {}) {
-                        ContentPreview { Text("Preview") }
-                        ContentList { Box(Modifier.testTag("second")) }
-                    }
-                }
-            }
-            compose.waitForIdle()
-        }
-    }
-
-    @Test fun recompositionOfOneContentListDoesNotCountAsTwo() {
+    @Test fun listOwnsAppBarAndEmptyPlaceholder() {
         var isEmpty by mutableStateOf(true)
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "Collection", onBack = {}) {
-                    ContentList(isEmpty = isEmpty, emptyContent = { Text("Empty") }) {
-                        Text("Item")
-                    }
-                }
+                ListScreenTemplate(title = "Collection", onBack = {}, isEmpty = isEmpty,
+                    emptyContent = { Text("Empty") }) { _ -> Text("Item") }
             }
         }
+        compose.onNodeWithTag("list-screen-template").assertIsDisplayed()
         compose.onNodeWithText("Empty").assertIsDisplayed()
         compose.runOnIdle { isEmpty = false }
         compose.onNodeWithText("Item").assertIsDisplayed()
     }
 
-    @Test fun twoContentListsStillViolateTheContract() {
-        assertThrows(IllegalStateException::class.java) {
-            compose.setContent {
-                MaterialTheme {
-                    ScreenTemplate(title = "Duplicate", onBack = {}) {
-                        ContentList { Text("First") }
-                        ContentList { Text("Second") }
-                    }
-                }
-            }
-            compose.waitForIdle()
-        }
-    }
-
-    @Test fun nonScrollablePreviewKeepsCenteredContentWithinTheViewport() {
+    @Test fun nonScrollablePreviewKeepsCenteredContentWithinViewport() {
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "Loading", onBack = {}) {
-                    ContentPreview(scrollable = false) {
-                        Column(
-                            modifier = Modifier.fillMaxSize().testTag("preview-bounds"),
-                            verticalArrangement = Arrangement.Center
-                        ) { Text("Loading content", Modifier.testTag("preview-center")) }
+                PreviewScreenTemplate(title = "Loading", onBack = {}, scrollable = false) {
+                    Column(Modifier.fillMaxSize().testTag("preview-bounds"),
+                        verticalArrangement = Arrangement.Center) {
+                        Text("Loading content", Modifier.testTag("preview-center"))
                     }
                 }
             }
         }
         val area = compose.onNodeWithTag("preview-bounds").getUnclippedBoundsInRoot()
         val content = compose.onNodeWithTag("preview-center").getUnclippedBoundsInRoot()
-        assertTrue("Content should be below the top of the viewport", content.top > area.top)
-        assertTrue("Content should be above the bottom of the viewport", content.bottom < area.bottom)
+        assertTrue(content.top > area.top)
+        assertTrue(content.bottom < area.bottom)
     }
 
-    @Test fun mainScreenTemplateDoesNotAddASecondaryScreenShell() {
-        compose.setContent {
-            MainScreenTemplate { Text("Chat root") }
-        }
-
+    @Test fun mainTemplateDoesNotAddSecondaryScreenShell() {
+        compose.setContent { MainScreenTemplate { Text("Chat root") } }
         compose.onNodeWithText("Chat root").assertIsDisplayed()
-        compose.onNodeWithTag("screen-template").assertDoesNotExist()
+        compose.onNodeWithTag("list-screen-template").assertDoesNotExist()
+        compose.onNodeWithTag("editor-screen-template").assertDoesNotExist()
     }
-    @Test fun appBarSlotsAndBackCallbackBelongToTheShell() {
-        var backCalls = 0
+
+    @Test fun editorActionsAndBackCallbackBelongToTheTemplate() {
+        var backs = 0
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(
-                    title = { Text("Custom title") },
-                    onBack = { backCalls++ },
-                    actions = { TextButton(onClick = {}) { Text("Action") } }
-                ) {
-                    ContentTextEditor {
-                        Text("Text area", Modifier.testTag("text-editor-content"))
-                    }
+                EditorScreenTemplate(title = { Text("Custom title") },
+                    onBack = { backs++ },
+                    actions = { TextButton(onClick = {}) { Text("Action") } }) { _ ->
+                    Text("Text area")
                 }
             }
         }
-
         compose.onNodeWithText("Custom title").assertIsDisplayed()
         compose.onNodeWithText("Action").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.runOnIdle { check(backCalls == 1) }
+        compose.runOnIdle { check(backs == 1) }
     }
 }

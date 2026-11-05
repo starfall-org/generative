@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.webkit.MimeTypeMap
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -30,8 +28,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -43,8 +39,10 @@ import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
 import org.starfall.generative.shared.ui.LoadingIndicator
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import androidx.compose.material3.IconButton
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 
@@ -77,8 +75,6 @@ fun ExplorerScreen(
     var refresh by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
-    var searchWasFocused by remember { mutableStateOf(false) }
-    val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var grid by remember { mutableStateOf(false) }
     var action by remember { mutableStateOf<ExplorerAction?>(null) }
@@ -90,7 +86,6 @@ fun ExplorerScreen(
     fun closeSearch() {
         focusManager.clearFocus()
         searchExpanded = false
-        searchWasFocused = false
     }
 
     fun back() {
@@ -101,7 +96,6 @@ fun ExplorerScreen(
             query = ""
         }
     }
-    BackHandler { if (searchExpanded) closeSearch() else back() }
 
     LaunchedEffect(repository, location, refresh, refreshKey) {
         loading = true
@@ -180,53 +174,54 @@ fun ExplorerScreen(
         else -> location.label.takeIf { it.isNotBlank() && it != title }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
+    ListScreenTemplate(
+        title = title,
+        subtitle = subtitle,
+        onBack = ::back,
         snackbarHost = { SnackbarHost(snackbar) },
-        topBar = {
-            ExplorerTopBar(
-                title = title,
-                subtitle = subtitle,
-                searching = searchExpanded,
-                query = query,
-                filterActive = query.isNotBlank(),
-                searchFocus = searchFocus,
-                onQueryChange = { query = it },
-                onSearchFocusChanged = { focused ->
-                    if (focused) searchWasFocused = true
-                    else if (searchWasFocused) {
-                        searchExpanded = false
-                        searchWasFocused = false
-                    }
-                },
-                onOpenSearch = { searchExpanded = true },
-                onCloseSearch = ::closeSearch,
-                onBack = ::back,
-                onNewFolder = if (location.isHome) null else ({
+        searchQuery = query,
+        onSearchQueryChange = { query = it },
+        searchPlaceholder = stringResource(R.string.explorer_search),
+        searchExpanded = searchExpanded,
+        onSearchExpandedChange = { searchExpanded = it },
+        searchTag = "explorer-search",
+        searchButtonTag = "explorer-open-search",
+        searchCloseButtonTag = "explorer-close-search",
+        navigationTag = "explorer-back",
+        viewToggleTag = "explorer-toggle-layout",
+        isGrid = grid,
+        onGridChange = { grid = it },
+        bottomPadding = 8.dp,
+        primaryActions = {
+            if (!location.isHome) {
+                IconButton(onClick = {
                     target = null
                     name = ""
                     action = ExplorerAction.FOLDER
-                }),
-                onUpload = if (location.isHome || onUploadFile == null) null else ({
-                    pendingUpload = location
-                    uploadPicker.launch(arrayOf("*/*"))
-                }),
-                isGrid = grid,
-                onToggleLayout = { grid = !grid },
-                onRefresh = { refresh++ }
-            )
+                }, modifier = Modifier.testTag("explorer-new-folder")) {
+                    SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.explorer_new_folder))
+                }
+                if (onUploadFile != null) {
+                    IconButton(onClick = {
+                        pendingUpload = location
+                        uploadPicker.launch(arrayOf("*/*"))
+                    }, modifier = Modifier.testTag("explorer-upload")) {
+                        SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.explorer_upload))
+                    }
+                }
+            }
+        },
+        trailingActions = {
+            IconButton(onClick = { refresh++ }, modifier = Modifier.testTag("explorer-refresh")) {
+                SharedIcon(Icons.Default.Refresh, stringResource(R.string.refresh))
+            }
         }
     ) { padding ->
         Box(Modifier.fillMaxSize()) {
             FadeGridListContent(isGrid = grid, modifier = Modifier.fillMaxSize()) { gridMode ->
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                    contentPadding = scrollableScaffoldPadding(
-                        padding,
-                        horizontal = 16.dp,
-                        top = 8.dp,
-                        bottom = 8.dp
-                    ),
+                    contentPadding = padding,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize().testTag("explorer-list")

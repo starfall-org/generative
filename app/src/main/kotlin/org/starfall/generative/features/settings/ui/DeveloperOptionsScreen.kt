@@ -12,7 +12,7 @@ import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 /** Dedicated Developer Options destination, not an expanding group in preferences. */
 @Composable
@@ -25,10 +25,9 @@ fun DeveloperOptionsScreen(
     onOpenProvidersDemo: () -> Unit = {},
     onBack: () -> Unit
 ) {
-    ScreenTemplate(title = stringResource(R.string.settings_developer), onBack = onBack) {
-        ContentList(
-            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 24.dp)
-        ) { padding ->
+    EditorScreenTemplate(title = stringResource(R.string.settings_developer), onBack = onBack) { scaffoldPadding ->
+        val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 24.dp)
+
         LazyColumn(
             modifier = androidx.compose.ui.Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -51,6 +50,6 @@ fun DeveloperOptionsScreen(
                 }
             }
         }
-        }
+
     }
 }

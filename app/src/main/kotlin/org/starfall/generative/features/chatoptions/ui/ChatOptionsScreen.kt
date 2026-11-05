@@ -2,7 +2,6 @@ package org.starfall.generative.features.chatoptions.ui
 
 import androidx.compose.ui.platform.LocalLayoutDirection
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,9 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +37,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.McpInfo
@@ -58,7 +54,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.lists.ListViewToggle
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
@@ -277,39 +273,31 @@ fun ChatOptionsScreen(
             }
             null -> {
             BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-            Scaffold(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                topBar = {
-                    TopAppBar(
-                        colors = edgeToEdgeTopAppBarColors(),
-                        title = {
-                            FixedAppBarTitle(stringResource(R.string.chat_configuration))
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                            }
-                        },
-                        actions = {
-                            if (pager.currentPage in 1..2) {
-                                ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
-                                IconButton(onClick = {
-                                    if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
-                                }) {
-                                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
-                                }
-                            }
-                            if (pager.currentPage == 2) {
-                                IconButton(onClick = {
-                                    skillImportError = null
-                                    showSkillImport = true
-                                }) {
-                                    SharedIcon(Icons.Outlined.UploadFile,
-                                        stringResource(R.string.agent_skill_import))
-                                }
-                            }
+            ListScreenTemplate(
+                title = stringResource(R.string.chat_configuration),
+                onBack = onBack,
+                isGrid = if (pager.currentPage in 1..2) isGrid else null,
+                onGridChange = { isGrid = it },
+                horizontalPadding = 0.dp,
+                topPadding = 0.dp,
+                bottomPadding = 0.dp,
+                primaryActions = {
+                    if (pager.currentPage in 1..2) {
+                        IconButton(onClick = {
+                            if (pager.currentPage == 1) creatingInstruction = true else creatingSkill = true
+                        }) {
+                            SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                         }
-                    )
+                    }
+                    if (pager.currentPage == 2) {
+                        IconButton(onClick = {
+                            skillImportError = null
+                            showSkillImport = true
+                        }) {
+                            SharedIcon(Icons.Outlined.UploadFile,
+                                stringResource(R.string.agent_skill_import))
+                        }
+                    }
                 }
             ) { padding ->
                 Column(

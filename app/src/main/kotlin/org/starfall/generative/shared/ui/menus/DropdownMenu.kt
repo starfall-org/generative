@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.shared.theme.LocalAmoledMode
@@ -65,9 +66,10 @@ fun ExposedDropdownMenuBoxScope.ExposedDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    containerColor: Color? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val menuColor = menuContainerColor()
+    val menuColor = containerColor ?: menuContainerColor()
     val hostContext = LocalContext.current
     val hostConfiguration = LocalConfiguration.current
     val hostResources = LocalResources.current

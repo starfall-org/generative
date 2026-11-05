@@ -1,7 +1,7 @@
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.shared.ui.sheets.ItemListSheet
 import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 import androidx.compose.animation.AnimatedVisibility
@@ -172,7 +172,8 @@ internal fun DrawerQuickShortcuts(
                                         if (checked) R.string.remote_server_disable_action
                                         else R.string.remote_server_enable_action
                                     )
-                                    ContextMenuSheet(
+                                    ContextDropdownMenu(
+                                        expanded = true,
                                         actions = listOf(
                                             ContextMenuAction(
                                                 label = toggleLabel,

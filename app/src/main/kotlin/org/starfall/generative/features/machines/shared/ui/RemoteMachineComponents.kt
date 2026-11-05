@@ -4,8 +4,6 @@ package org.starfall.generative.features.machines.shared.ui
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.ErrorContainer
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -29,10 +25,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +44,6 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 
 /**
  * Shared building blocks for every Remote Machines screen. They deliberately reuse the app's
@@ -169,33 +160,6 @@ internal fun RemoteTextField(
         singleLine = singleLine,
         textStyle = if (font == null) LocalTextStyle.current else LocalTextStyle.current.copy(fontFamily = font)
     )
-}
-
-@Composable
-internal fun <T> RemoteDropdownField(
-    label: String,
-    options: List<Pair<T, String>>,
-    selected: T,
-    onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded, { expanded = !expanded }, modifier) {
-        OutlinedTextField(
-            value = options.firstOrNull { it.first == selected }?.second.orEmpty(),
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            label = { Text(label) },
-            trailingIcon = { TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-        )
-        ExposedDropdownMenu(expanded, { expanded = false }) {
-            options.forEach { (value, text) ->
-                DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(value); expanded = false })
-            }
-        }
-    }
 }
 
 /** A label + switch row, with an optional supporting explanation under the label. */

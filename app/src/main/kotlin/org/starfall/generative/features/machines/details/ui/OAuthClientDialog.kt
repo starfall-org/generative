@@ -1,5 +1,6 @@
 package org.starfall.generative.features.machines.details.ui
 
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
@@ -14,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
@@ -38,7 +38,7 @@ internal fun OAuthClientDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
                 RemoteTextField(clientId, { clientId = it }, stringResource(R.string.client_id))
-                RemoteDropdownField(
+                SelectionDropdown(
                     label = stringResource(R.string.remote_server_oauth_client_type),
                     options = GoogleOAuthClientType.entries.map { option ->
                         option to stringResource(

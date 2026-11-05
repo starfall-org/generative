@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -133,7 +133,8 @@ internal fun ProviderOAuthAccountsDialog(
                                     IconButton(enabled = !busy, onClick = { menu = true }) {
                                         SharedIcon(Icons.Default.MoreVert, stringResource(R.string.oauth_account_actions))
                                     }
-                                    if (menu) ContextMenuSheet(
+                                    if (menu) ContextDropdownMenu(
+                                        expanded = true,
                                         actions = listOf(
                                             ContextMenuAction(
                                                 stringResource(R.string.common_edit),

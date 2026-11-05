@@ -1,8 +1,7 @@
 package org.starfall.generative.features.icons.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import android.widget.Toast
-import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,7 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.lists.ListViewToggle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,9 +26,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -48,7 +43,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.layout.FixedAppBarTitle
 import org.starfall.generative.shared.icons.IconStore
 import org.starfall.generative.shared.icons.model.StoredIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
@@ -72,9 +66,6 @@ fun IconsScreen(onBack: () -> Unit) {
     }
     var isGrid by rememberSaveable { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
-    var searchExpanded by remember { mutableStateOf(false) }
-    var searchHasFocus by remember { mutableStateOf(false) }
-    val searchFocus = remember { FocusRequester() }
     var busy by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<StoredIcon?>(null) }
     var patterns by remember { mutableStateOf(emptyList<String>()) }
@@ -156,10 +147,6 @@ fun IconsScreen(onBack: () -> Unit) {
             }
         }
     }
-    LaunchedEffect(searchExpanded) {
-        if (searchExpanded) searchFocus.requestFocus()
-    }
-
     val trimmedQuery = query.trim()
     val visible = entries.filter { entry ->
         entry.filename.contains(trimmedQuery, ignoreCase = true) ||
@@ -167,64 +154,21 @@ fun IconsScreen(onBack: () -> Unit) {
             entry.patterns.any { it.contains(trimmedQuery, ignoreCase = true) }
     }
 
-    Scaffold(
-
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    AnimatedContent(targetState = searchExpanded, label = "icons_app_bar_search") { searching ->
-                        if (searching) {
-                            TextField(
-                                value = query,
-                                onValueChange = { query = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(searchFocus)
-                                    .onFocusChanged { focusState ->
-                                        if (focusState.isFocused) {
-                                            searchHasFocus = true
-                                        } else if (searchHasFocus) {
-                                            searchHasFocus = false
-                                            searchExpanded = false
-                                            query = ""
-                                        }
-                                    },
-                                singleLine = true,
-                                placeholder = { Text(stringResource(R.string.icon_cache_search)) },
-                                leadingIcon = { SharedIcon(FluentUi.Regular.Search, contentDescription = null) },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                )
-                            )
-                        } else {
-                            FixedAppBarTitle(stringResource(R.string.icons_management))
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    if (!searchExpanded) {
-                        ListViewToggle(isGrid = isGrid, onToggle = { isGrid = !isGrid })
-                        IconButton(onClick = { searchExpanded = true }) {
-                            SharedIcon(FluentUi.Regular.Search, contentDescription = stringResource(R.string.icon_cache_search))
-                        }
-                    }
-                    IconButton(enabled = !busy, onClick = {
-                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) {
-                        SharedIcon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.common_add))
-                    }
-                }
-            )
+    ListScreenTemplate(
+        title = stringResource(R.string.icons_management),
+        onBack = onBack,
+        searchQuery = query,
+        onSearchQueryChange = { query = it },
+        searchPlaceholder = stringResource(R.string.icon_cache_search),
+        clearSearchOnClose = true,
+        isGrid = isGrid,
+        onGridChange = { isGrid = it },
+        primaryActions = {
+            IconButton(enabled = !busy, onClick = {
+                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }) {
+                SharedIcon(FluentUi.Regular.ImageAdd, contentDescription = stringResource(R.string.common_add))
+            }
         }
     ) { padding ->
         Column(
@@ -244,7 +188,7 @@ fun IconsScreen(onBack: () -> Unit) {
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = padding.calculateBottomPadding() + 16.dp)
+                        contentPadding = PaddingValues(bottom = padding.calculateBottomPadding())
                     ) {
                         items(visible, key = { it.image }) { entry ->
                             ItemCard(

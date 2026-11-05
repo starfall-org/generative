@@ -20,7 +20,7 @@ import org.starfall.generative.shared.theme.GenerativeTheme
 class ModelTypeSelectorTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun modelTypeOpensFooterlessDialogAndSelectsImmediately() {
+    @Test fun modelTypeOpensDropdownAndSelectsImmediately() {
         var selected by mutableStateOf(ModelType.TEXT_GENERATION)
         var changes = 0
         compose.setContent {
@@ -30,14 +30,10 @@ class ModelTypeSelectorTest {
         }
         compose.onNodeWithTag("model-type-selector").assertHasClickAction()
         compose.onNodeWithText("Model Type").assertIsDisplayed()
-        compose.onNodeWithText("Text Generation").assertIsDisplayed()
+        compose.onNodeWithTag("model-type-selector").assertTextContains("Text Generation")
         compose.onNodeWithTag("model-type-selector").performClick()
-        compose.onNodeWithTag("app-dialog").assertExists()
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
-        compose.onNodeWithTag("model-type-text_generation").assertIsSelected()
-        compose.onNodeWithTag("model-type-video_generation").performClick()
-        compose.onNodeWithTag("app-dialog").assertDoesNotExist()
-        compose.onNodeWithText("Video Generation").assertIsDisplayed()
+        compose.onNodeWithText("Video Generation").performClick()
+        compose.onNodeWithTag("model-type-selector").assertTextContains("Video Generation")
         compose.runOnIdle {
             assertEquals(ModelType.VIDEO_GENERATION, selected)
             assertEquals(1, changes)

@@ -2,6 +2,7 @@
 
 package org.starfall.generative.features.machines.details.ui
 
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.LoadingIndicator
@@ -54,7 +55,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
-import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
 import org.starfall.generative.features.machines.shared.ui.RemoteListRow
@@ -217,7 +217,7 @@ internal fun MachineDetailsScreen(
         ) {
             RemoteSection(stringResource(R.string.remote_server_basic_section)) {
                 RemoteTextField(name, { name = it }, stringResource(R.string.common_name))
-                RemoteDropdownField(
+                SelectionDropdown(
                     label = stringResource(R.string.remote_server_type_label),
                     options = listOf(
                         RemoteMachineType.SSH to stringResource(R.string.remote_server_type_ssh),
@@ -285,7 +285,7 @@ internal fun MachineDetailsScreen(
                 } else {
                     RemoteTextField(username, { username = it }, stringResource(R.string.remote_server_username), keyboardOptions = remoteLiteralKeyboardOptions())
                 }
-                RemoteDropdownField(
+                SelectionDropdown(
                     label = stringResource(R.string.remote_server_authentication),
                     options = listOf(
                         RemoteAuthentication.PRIVATE_KEY to stringResource(R.string.remote_server_private_key),
@@ -370,7 +370,7 @@ internal fun MachineDetailsScreen(
                     }
                 )
                 if (type == RemoteMachineType.SSH) {
-                    RemoteDropdownField(
+                    SelectionDropdown(
                         label = stringResource(R.string.remote_server_proxy_server),
                         options = listOf("" to stringResource(R.string.common_none)) + state.machines
                             .filter { it.id != initial.id }
@@ -411,7 +411,7 @@ internal fun MachineDetailsScreen(
             }
             if (type == RemoteMachineType.GCLOUD_SHELL) {
                 RemoteSection(stringResource(R.string.remote_google_cloud_oauth)) {
-                    RemoteDropdownField(
+                    SelectionDropdown(
                         label = stringResource(R.string.remote_server_oauth_client),
                         options = listOf("" to stringResource(R.string.remote_server_select_oauth)) +
                             state.oauthClients.map { it.id to it.name },

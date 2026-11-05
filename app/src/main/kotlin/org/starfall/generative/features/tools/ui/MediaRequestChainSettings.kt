@@ -20,12 +20,11 @@ import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.lists.ReorderableCollection
 import org.starfall.generative.shared.ui.lists.ItemSurface
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 
 /** A reusable profile library. Selection belongs to the tool's model dropdown, not this list. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,23 +52,17 @@ fun MediaRequestChainSettings(
     }
 
     BackHandler(enabled = LocalScreenTransitionActive.current) { onBack() }
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,modifier = Modifier.testTag("media-profiles-screen"), topBar = {
-        TopAppBar(
-            colors = edgeToEdgeTopAppBarColors(),
-            title = { Text(stringResource(if (music) R.string.music_profiles else if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles)) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                }
-            },
-            actions = {
-                IconButton(onClick = onAddProfile) {
-                    SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
-                }
+    ListScreenTemplate(
+        title = stringResource(if (music) R.string.music_profiles else if (video) R.string.media_video_gen_profiles else R.string.media_image_gen_profiles),
+        onBack = onBack,
+        modifier = Modifier.testTag("media-profiles-screen"),
+        topPadding = 12.dp,
+        primaryActions = {
+            IconButton(onClick = onAddProfile) {
+                SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
             }
-        )
-    }) { padding ->
+        }
+    ) { padding ->
         val ordered = profiles.values.toList()
         ReorderableCollection(
             items = ordered,
@@ -77,7 +70,7 @@ fun MediaRequestChainSettings(
             canReorder = { it.id != protectedId },
             columns = GridCells.Fixed(1),
             modifier = Modifier.fillMaxSize().consumeWindowInsets(padding),
-            contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 12.dp, bottom = 16.dp),
+            contentPadding = padding,
             spacing = 8.dp,
             onReorder = { ids ->
                 // Keep the built-in Default first. LinkedHashMap preserves the user's order.
@@ -123,7 +116,8 @@ fun MediaRequestChainSettings(
                             IconButton(onClick = { menuExpanded = true }) {
                                 SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options))
                             }
-                             if (menuExpanded) ContextMenuSheet(
+                             if (menuExpanded) ContextDropdownMenu(
+                                 expanded = true,
                                  actions = buildList {
                                      add(ContextMenuAction(
                                          label = stringResource(R.string.common_edit),

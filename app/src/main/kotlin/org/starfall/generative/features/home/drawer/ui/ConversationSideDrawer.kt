@@ -2,8 +2,8 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -105,7 +105,6 @@ fun ConversationSideDrawer(
     var deleting by remember { mutableStateOf(emptySet<String>()) }
     var renaming by remember { mutableStateOf<ConversationListItem?>(null) }
     var grouping by remember { mutableStateOf(false) }
-    var blankContextMenu by remember { mutableStateOf(false) }
     var creatingFolder by remember { mutableStateOf(false) }
     var folderName by remember { mutableStateOf("") }
     var editingFolder by remember { mutableStateOf<ChatFolder?>(null) }
@@ -203,10 +202,17 @@ fun ConversationSideDrawer(
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .imePadding()
                     // A tap on any non-interactive part of the drawer leaves the search field.
-                    .pointerInput(Unit) {
+                    .pointerInput(selecting) {
                         detectTapGestures(
                             onTap = { unfocusSearch() },
-                            onLongPress = { blankContextMenu = true }
+                            onLongPress = {
+                                unfocusSearch()
+                                if (!selecting) {
+                                    contextChatId = null
+                                    selecting = true
+                                    selected = emptySet()
+                                }
+                            }
                         )
                     }
             ) {
@@ -259,7 +265,15 @@ fun ConversationSideDrawer(
                         },
                         enabled = matchingIds.isNotEmpty()
                     )
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { folderName = ""; grouping = true }) { SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.sidebar_move_selected_to_folder)) }
+                    IconButton(onClick = {
+                        folderName = ""
+                        if (selected.isEmpty()) creatingFolder = true else grouping = true
+                    }) {
+                        SharedIcon(
+                            Icons.Outlined.CreateNewFolder,
+                            stringResource(if (selected.isEmpty()) R.string.sidebar_create_folder else R.string.sidebar_move_selected_to_folder)
+                        )
+                    }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -278,7 +292,8 @@ fun ConversationSideDrawer(
                 }) {
                     LazyColumn(
                         state = folderListState,
-                        modifier = Modifier.fillMaxSize().autoScroll(folderDrag, folderListState),
+                        modifier = Modifier.fillMaxSize().autoScroll(folderDrag, folderListState)
+                            .testTag("conversation_drawer_list"),
                         contentPadding = PaddingValues(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -342,7 +357,8 @@ fun ConversationSideDrawer(
                                     if (folder.pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.sidebar_pinned_folder), Modifier.size(14.dp))
                                     Box {
                                         IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.sidebar_folder_options)) }
-                                        if (menu) ContextMenuSheet(
+                                        if (menu) ContextDropdownMenu(
+                                            expanded = true,
                                             actions = listOf(
                                                 ContextMenuAction(
                                                     stringResource(if (folder.pinned) R.string.sidebar_unpin else R.string.sidebar_pin),
@@ -527,15 +543,6 @@ fun ConversationSideDrawer(
             }
         }
         }
-        if (blankContextMenu) ContextMenuSheet(
-            actions = listOf(
-                ContextMenuAction(stringResource(R.string.sidebar_create_folder),
-                    onClick = { folderName = ""; creatingFolder = true }, icon = Icons.Outlined.CreateNewFolder),
-                ContextMenuAction(stringResource(R.string.sidebar_select),
-                    onClick = { selecting = true; selected = emptySet() }, icon = Icons.Outlined.CheckCircle)
-            ),
-            onDismissRequest = { blankContextMenu = false }
-        )
     }
     if (creatingFolder) AlertDialog(
         onDismissRequest = { creatingFolder = false },

@@ -1,7 +1,7 @@
 package org.starfall.generative.navigation
 
 import org.starfall.generative.shared.ui.LoadingIndicator
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 
 import androidx.compose.foundation.layout.Arrangement
@@ -60,12 +60,10 @@ internal fun <T : Any> TargetedEditorContent(
         return
     }
 
-    ScreenTemplate(title = title, onBack = onBack) {
-        ContentPreview(
-            modifier = Modifier.fillMaxSize(),
-            scrollable = false,
-            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 24.dp, top = 24.dp, bottom = 24.dp)
-        ) {
+    PreviewScreenTemplate(
+        title = title, onBack = onBack, scrollable = false,
+        horizontalPadding = 24.dp, topPadding = 24.dp, bottomPadding = 24.dp
+    ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -85,6 +83,5 @@ internal fun <T : Any> TargetedEditorContent(
                     TextButton(onClick = onBack) { Text(stringResource(R.string.common_back)) }
                 }
             }
-        }
     }
 }

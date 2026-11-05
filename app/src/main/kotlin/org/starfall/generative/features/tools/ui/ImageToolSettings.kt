@@ -28,7 +28,7 @@ import org.starfall.generative.shared.helpers.media.optionAt
 import org.starfall.generative.shared.helpers.media.withOption
 import org.starfall.generative.shared.helpers.media.videoOptionFields
 import org.starfall.generative.shared.helpers.media.validateVideoOptions
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +46,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     }.exceptionOrNull()?.message
     val dirty = parsed != savedOptions || disabledParams != config.disabledParams
     fun back() { if (dirty) confirmDiscard = true else onBack() }
-    ScreenTemplate(
+    EditorScreenTemplate(
         title = stringResource(if (video) R.string.tool_video_settings else R.string.tool_image_settings),
         onBack = { back() },
         actions = {
@@ -56,10 +56,9 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
                 modifier = Modifier.padding(end = 8.dp)
             ) { Text(stringResource(R.string.common_save)) }
         }
-    ) {
-      ContentVisualEditor(
-          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp)
-      ) { padding ->
+    ) { scaffoldPadding ->
+        val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp)
+
         LazyColumn(
             Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding(),
              contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -98,7 +97,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
             error?.let { problem -> item { Text(problem, color = MaterialTheme.colorScheme.error) } }
             item { TextButton(onClick = { draft = "{}"; disabledParams = emptySet() }) { Text(stringResource(R.string.image_tool_reset_defaults)) } }
         }
-      }
+
     }
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },

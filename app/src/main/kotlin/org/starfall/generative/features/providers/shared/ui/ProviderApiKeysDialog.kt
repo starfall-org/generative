@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
 
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
@@ -125,7 +125,8 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                 Box {
                                     IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert,
                                         stringResource(R.string.provider_api_key_actions, entry.label.ifBlank { maskedProviderApiKey(entry.value) })) }
-                                    if (menu) ContextMenuSheet(
+                                    if (menu) ContextDropdownMenu(
+                                        expanded = true,
                                         actions = listOf(
                                             ContextMenuAction(
                                                 stringResource(R.string.common_edit),

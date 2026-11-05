@@ -25,7 +25,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.screens.ScreenTransitionDirection
 import org.starfall.generative.shared.ui.screens.ScreenTransitionEffect
 
@@ -37,10 +39,8 @@ class ScreenTemplateDeviceTest {
         var backs = 0
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "Preview", onBack = { backs++ }) {
-                    ContentPreview {
+                PreviewScreenTemplate(title = "Preview", onBack = { backs++ }) {
                         repeat(45) { index -> Text("Preview row $index") }
-                    }
                 }
             }
         }
@@ -56,10 +56,9 @@ class ScreenTemplateDeviceTest {
         var hasItems by mutableStateOf(false)
         compose.setContent {
             MaterialTheme {
-                ScreenTemplate(title = "Collection", onBack = {}) {
-                    ContentList(isEmpty = !hasItems, emptyContent = { Text("Nothing yet") }) {
+                ListScreenTemplate(title = "Collection", onBack = {}, isEmpty = !hasItems,
+                    emptyContent = { Text("Nothing yet") }) { _ ->
                         Text("First item")
-                    }
                 }
             }
         }
@@ -72,14 +71,12 @@ class ScreenTemplateDeviceTest {
         compose.setContent {
             var text by remember { mutableStateOf("") }
             MaterialTheme {
-                ScreenTemplate(title = "Editor", onBack = {}) {
-                    ContentTextEditor {
+                EditorScreenTemplate(title = "Editor", onBack = {}) { _ ->
                         BasicTextField(
                             value = text,
                             onValueChange = { text = it },
                             modifier = Modifier.testTag("template-text-editor")
                         )
-                    }
                 }
             }
         }

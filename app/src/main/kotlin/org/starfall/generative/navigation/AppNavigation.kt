@@ -93,7 +93,8 @@ import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
+import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
 
 /** Stable route names are persisted by Navigation across Activity/process recreation. */
 private data class MachineEditorPage(val machine: RemoteMachine, val isNew: Boolean)
@@ -1201,13 +1202,12 @@ internal fun AppNavigation(
                     }
 
                     composable(AppDestination.APP_SETTINGS.route) {
-                        ScreenTemplate(
+                        EditorScreenTemplate(
                             title = stringResource(R.string.settings_general_settings),
                             onBack = { navController.popBackStack() }
-                        ) {
-                            ContentVisualEditor(contentPadding = PaddingValues()) { _ ->
+                        ) { editorPadding ->
                                 AppSettings(
-                                    scaffoldPadding = scaffoldPadding,
+                                    scaffoldPadding = editorPadding,
                                     appPreferences = appPrefs,
                                     onThemeChange = { mode ->
                                         settingsViewModel.setThemeMode(mode)
@@ -1250,7 +1250,6 @@ internal fun AppNavigation(
                                     onScreenWakelockModeChange = settingsViewModel::setScreenWakelockMode,
                                     onAppLanguageChange = settingsViewModel::setAppLanguage,
                                 )
-                            }
                         }
                     }
 
@@ -1300,13 +1299,12 @@ internal fun AppNavigation(
                     }
 
                     composable(AppDestination.ABOUT.route) {
-                        ScreenTemplate(
+                        PreviewScreenTemplate(
                             title = stringResource(R.string.settings_category_about),
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
+                            horizontalPadding = 0.dp, topPadding = 0.dp, bottomPadding = 0.dp
                         ) {
-                            ContentPreview(contentPadding = scaffoldPadding) {
-                                AboutScreen(scrollable = false)
-                            }
+                            AboutScreen(scrollable = false)
                         }
                     }
 

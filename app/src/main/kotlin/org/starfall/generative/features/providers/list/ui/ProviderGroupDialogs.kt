@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
 
 import androidx.compose.foundation.BorderStroke
@@ -48,7 +48,8 @@ internal fun ProviderGroupContextMenu(onEdit: () -> Unit, onDelete: () -> Unit, 
                 modifier = if (compact) Modifier.size(20.dp) else Modifier
             )
         }
-        if (expanded) ContextMenuSheet(
+        if (expanded) ContextDropdownMenu(
+            expanded = true,
             actions = listOf(
                 ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
                 ContextMenuAction(stringResource(R.string.delete_group), onDelete, Icons.Outlined.Delete, destructive = true)

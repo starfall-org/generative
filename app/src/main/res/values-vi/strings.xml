@@ -984,4 +984,5 @@
     <string name="quick_action_camera">Máy ảnh</string>
     <string name="providers_demo_title">Bản demo ProvidersScreen</string>
         <string name="providers_demo_editor_title">Provider mẫu</string>
+    <string name="content_list_no_results">Không tìm thấy mục phù hợp.</string>
 </resources>

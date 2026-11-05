@@ -20,7 +20,7 @@ import org.starfall.generative.shared.theme.GenerativeTheme
 class ProviderApiTypeSelectorTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun apiTypeIsAnActionRowWithSelectedSubtitleAndFooterlessDialog() {
+    @Test fun apiTypeIsASelectionDropdownAndUpdatesImmediately() {
         var selected by mutableStateOf(ModelApiType.OPENAI_RESPONSES)
         val selections = mutableListOf<ModelApiType>()
         compose.setContent {
@@ -33,19 +33,14 @@ class ProviderApiTypeSelectorTest {
         }
 
         compose.onNodeWithText("API Type").assertIsDisplayed()
-        compose.onNodeWithText("OpenAI Responses").assertIsDisplayed()
+        compose.onNodeWithTag("provider-type-selector").assertTextContains("OpenAI Responses")
         compose.onNodeWithTag("provider-type-selector").assertHasClickAction().performClick()
-        compose.onNodeWithTag("app-dialog").assertExists()
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
-        compose.onNodeWithTag("provider-api-type-openai_responses").assertIsSelected()
-        compose.onNodeWithTag("provider-api-type-anthropic").performClick()
-
-        compose.onNodeWithTag("app-dialog").assertDoesNotExist()
-        compose.onNodeWithText("Anthropic Messages").assertIsDisplayed()
+        compose.onNodeWithText("Anthropic Messages").performClick()
+        compose.onNodeWithTag("provider-type-selector").assertTextContains("Anthropic Messages")
         compose.runOnIdle { assertEquals(listOf(ModelApiType.ANTHROPIC), selections) }
     }
 
-    @Test fun choosingCurrentApiTypeClosesDialogWithoutChangingTheType() {
+    @Test fun choosingCurrentApiTypeClosesDropdownWithoutChangingTheType() {
         var selected by mutableStateOf(ModelApiType.OPENAI)
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
@@ -53,7 +48,7 @@ class ProviderApiTypeSelectorTest {
             }
         }
         compose.onNodeWithTag("provider-type-selector").performClick()
-        compose.onNodeWithTag("provider-api-type-openai").performClick()
+        compose.onAllNodesWithText(ModelApiType.OPENAI.displayName).onLast().performClick()
         compose.onNodeWithTag("app-dialog").assertDoesNotExist()
         compose.runOnIdle { assertEquals(ModelApiType.OPENAI, selected) }
     }

@@ -27,8 +27,8 @@ import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 
 /** One file or folder entry, rendered with the app's shared [ItemCard] list/grid card. */
 @Composable
@@ -126,7 +126,8 @@ private fun ExplorerItemMenu(
             )
         }
         if (expanded) {
-            ContextMenuSheet(
+            ContextDropdownMenu(
+                expanded = true,
                 actions = buildList {
                     onDownload?.let { download ->
                         add(

@@ -992,4 +992,5 @@
     <string name="settings_repair_provider_failed">修复提供商失败：%1$s</string>
     <string name="providers_demo_title">ProvidersScreen 演示</string>
         <string name="providers_demo_editor_title">演示提供商</string>
+    <string name="content_list_no_results">没有匹配的项目。</string>
 </resources>

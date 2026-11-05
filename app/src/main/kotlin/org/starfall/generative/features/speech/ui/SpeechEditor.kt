@@ -1,10 +1,8 @@
 package org.starfall.generative.features.speech.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.features.speech.logic.brandHomepage
 import org.starfall.generative.features.speech.logic.requestSpeechEngineIcons
 import org.starfall.generative.shared.ui.menus.DropdownMenu
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,7 +33,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.providerInitials
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.inputs.ApiKeyField
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
@@ -199,34 +197,24 @@ fun SpeechEditor(
         },
         onDismiss = { providerExpanded = false }
     )
-    BackHandler(enabled = LocalScreenTransitionActive.current && !providerExpanded, onBack = onDismiss)
     Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
-        Scaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        EditorScreenTemplate(
+            title = stringResource(if (isNew) R.string.speech_add_service else R.string.speech_edit_title),
+            onBack = onDismiss,
+            handleSystemBack = !providerExpanded,
             modifier = Modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    colors = edgeToEdgeTopAppBarColors(),
-                    title = { Text(stringResource(if (isNew) R.string.speech_add_service else R.string.speech_edit_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                        }
-                    },
-                    actions = {
-                        Button(
-                            onClick = { onSave(currentService()) },
-                            enabled = canSave && !iconImporting,
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) { Text(stringResource(R.string.common_save)) }
-                    }
-                )
+            actions = {
+                Button(
+                    onClick = { onSave(currentService()) },
+                    enabled = canSave && !iconImporting,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) { Text(stringResource(R.string.common_save)) }
             }
         ) { padding ->
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize().consumeWindowInsets(padding)
-                    .imePadding().verticalScroll(rememberScrollState()).padding(padding)
+                    .verticalScroll(rememberScrollState()).padding(padding)
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 OutlinedTextField(

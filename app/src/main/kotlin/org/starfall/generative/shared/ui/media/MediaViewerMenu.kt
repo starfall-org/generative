@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 
 internal data class MediaViewerAction(
     val label: String,
@@ -71,7 +71,8 @@ internal fun MediaViewerMenu(
                     }
                 }
                 if (expanded) {
-                    ContextMenuSheet(
+                    ContextDropdownMenu(
+                        expanded = true,
                         actions = actions.map { action ->
                             ContextMenuAction(
                                 label = action.label,

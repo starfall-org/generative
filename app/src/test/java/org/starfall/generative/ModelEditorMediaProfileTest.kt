@@ -133,8 +133,7 @@ class ModelEditorMediaProfileTest {
             }
         }
         compose.onNodeWithTag("model-type-selector").performScrollTo().performClick()
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
-        compose.onNodeWithTag("model-type-video_generation").performClick()
+        compose.onNodeWithText("Video Generation").performClick()
         compose.onNodeWithTag("media-profile-selector").assertExists()
         compose.onNodeWithText("Save").performClick()
         compose.runOnIdle {

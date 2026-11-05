@@ -1,7 +1,5 @@
 package org.starfall.generative.features.chatoptions.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,9 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +35,7 @@ import org.starfall.generative.shared.model.agentSkillDocument
 import org.starfall.generative.shared.model.parseAgentSkillDocument
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.inputs.EditorTextField
 
 /** Edit and exchange one complete SKILL.md, not three disconnected form fields. */
@@ -61,39 +57,27 @@ internal fun SkillEditor(
 
     fun draft(): AgentSkill? = parsed?.copy(id = skill?.id.orEmpty())
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = { onBack(draft()) })
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    Text(
-                        parsed?.name ?: stringResource(R.string.agent_skill_details),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { onBack(draft()) }) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    IconButton(enabled = parsed != null, onClick = { onBack(draft()) }) {
-                        SharedIcon(Icons.Outlined.Save, stringResource(R.string.agent_skill_save))
-                    }
-                    Spacer(Modifier.width(4.dp))
-                }
+    EditorScreenTemplate(
+        title = {
+            Text(
+                parsed?.name ?: stringResource(R.string.agent_skill_details),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+        },
+        onBack = { onBack(draft()) },
+        actions = {
+            IconButton(enabled = parsed != null, onClick = { onBack(draft()) }) {
+                SharedIcon(Icons.Outlined.Save, stringResource(R.string.agent_skill_save))
+            }
+            Spacer(Modifier.width(4.dp))
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding()
         ) {
             // A lightweight file tab, instead of a labeled, rounded input box.
             Row(

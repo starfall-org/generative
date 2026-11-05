@@ -1,5 +1,6 @@
 package org.starfall.generative.features.machines.list.ui
 
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.features.machines.shared.ui.RemoteDropdownField
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteTextField
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
@@ -78,7 +78,7 @@ internal fun PortForwardDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                RemoteDropdownField(
+                SelectionDropdown(
                     label = stringResource(R.string.remote_server_forward_type),
                     options = ForwardType.entries.map { it to stringResource(it.labelRes) },
                     selected = selectedType,

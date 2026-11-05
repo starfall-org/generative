@@ -34,35 +34,35 @@ class DialogFooterOrderTest {
         assertTrue("Save must be the rightmost footer button", save.left > close.left)
     }
 
-    @Test fun closeIsRightOfCustomActionsWithoutSave() {
+    @Test fun deleteIsRightOfCancelWithoutSave() {
         compose.setContent {
             MaterialTheme {
                 AlertDialog(onDismissRequest = {},
                     title = { Text("Confirmation") }, text = { Text("Details") },
-                    confirmButton = { TextButton(onClick = {}) { Text("Remove") } },
-                    dismissButton = { TextButton(onClick = {}) { Text("Close") } })
+                    confirmButton = { TextButton(onClick = {}) { Text("Delete") } },
+                    dismissButton = { TextButton(onClick = {}) { Text("Cancel") } })
             }
         }
-        val extra = compose.onNodeWithText("Remove").fetchSemanticsNode().boundsInRoot
-        val close = compose.onNodeWithText("Close").fetchSemanticsNode().boundsInRoot
-        assertTrue("Close must be to the right of custom actions", close.left > extra.left)
+        val delete = compose.onNodeWithText("Delete").fetchSemanticsNode().boundsInRoot
+        val cancel = compose.onNodeWithText("Cancel").fetchSemanticsNode().boundsInRoot
+        assertTrue("Delete must be to the right of Cancel", delete.left > cancel.left)
     }
 
-    @Test fun customFooterFollowsOtherThenCloseThenSave() {
+    @Test fun customFooterPlacesDeleteBeforeCancelWhenSaveExists() {
         compose.setContent {
             MaterialTheme {
                 Dialog(onDismissRequest = {}, title = { Text("Report") }, content = { Text("Details") },
                     buttons = {
-                        TextButton(onClick = {}) { Text("Other") }
-                        TextButton(onClick = {}) { Text("Close") }
+                        TextButton(onClick = {}) { Text("Delete") }
+                        TextButton(onClick = {}) { Text("Cancel") }
                         TextButton(onClick = {}) { Text("Save") }
                     })
             }
         }
-        val other = compose.onNodeWithText("Other").fetchSemanticsNode().boundsInRoot
-        val close = compose.onNodeWithText("Close").fetchSemanticsNode().boundsInRoot
+        val delete = compose.onNodeWithText("Delete").fetchSemanticsNode().boundsInRoot
+        val cancel = compose.onNodeWithText("Cancel").fetchSemanticsNode().boundsInRoot
         val save = compose.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot
-        assertTrue(other.left < close.left)
-        assertTrue(close.left < save.left)
+        assertTrue(delete.left < cancel.left)
+        assertTrue(cancel.left < save.left)
     }
 }

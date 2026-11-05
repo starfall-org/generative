@@ -34,12 +34,12 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
-import org.starfall.generative.shared.ui.lists.ListViewToggle
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.layout.windowHeightIn
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,28 +54,39 @@ fun ServerListScreen(
     var deletingServerId by remember { mutableStateOf<String?>(null) }
     var selectedToolError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var orderedServers by remember(mcpServers) { mutableStateOf(mcpServers) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val matchingServers = orderedServers.filter { server ->
+        searchQuery.isBlank() || listOf(server.name, server.url.orEmpty()).any {
+            it.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
     val context = LocalContext.current
     val localizedResources = LocalResources.current
-    ScreenTemplate(
+    ListScreenTemplate(
         title = stringResource(R.string.mcp),
         onBack = onBack,
-        actions = {
-            ListViewToggle(isGridView, onToggle = { onToggleGridView?.invoke(!isGridView) })
+        searchQuery = searchQuery,
+        onSearchQueryChange = { searchQuery = it },
+        isGrid = isGridView,
+        onGridChange = { onToggleGridView?.invoke(it) },
+        bottomPadding = 8.dp,
+        primaryActions = {
             IconButton(onClick = {
                 onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
                     url = null, headers = emptyMap()), true)
             }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
         }
-    ) {
-        ContentList(
-            contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 8.dp)
-        ) { padding ->
+    ) { padding ->
             Box(Modifier.fillMaxSize()) {
                 if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         SharedIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
+                    }
+                } else if (matchingServers.isEmpty()) {
+                    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.content_list_no_results))
                     }
                 } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
                     val gridState = rememberLazyGridState()
@@ -96,7 +107,7 @@ fun ServerListScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
                          contentPadding = padding,
                         modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)) {
-                        itemsIndexed(orderedServers, key = { _, item -> item.id }) { _, server ->
+                        itemsIndexed(matchingServers, key = { _, item -> item.id }) { _, server ->
                             McpUnifiedCard(server = server, isGrid = gridMode,
                                     modifier = Modifier.animateItem()
                                         .dragSource(dndState, server.id, server.id,
@@ -129,7 +140,6 @@ fun ServerListScreen(
                     }
                 }
             }
-        }
     }
 
     if (deletingServerId != null) AlertDialog(onDismissRequest = { deletingServerId = null },

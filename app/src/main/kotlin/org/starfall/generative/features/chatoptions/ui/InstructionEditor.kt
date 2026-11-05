@@ -1,9 +1,7 @@
 package org.starfall.generative.features.chatoptions.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,9 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,7 +36,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.inputs.EditorTextField
 import org.starfall.generative.shared.ui.inputs.HeaderNameField
 
@@ -64,73 +60,48 @@ internal fun InstructionEditor(
         role = role
     )
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = { onBack(draft()) })
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    HeaderNameField(
-                        value = name,
-                        onValueChange = { name = it },
-                        placeholder = stringResource(R.string.common_name),
-                        modifier = Modifier.padding(end = 8.dp).testTag("instruction_name_input")
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { onBack(draft()) }) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    Box {
-                        AssistChip(
-                            onClick = { roleMenuExpanded = true },
-                            label = { Text(instructionRoleLabel(role)) },
-                            leadingIcon = {
-                                SharedIcon(
-                                    Icons.Outlined.AccountCircle,
-                                    stringResource(R.string.instruction_role_accessibility, instructionRoleLabel(role)),
-                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
-                                )
-                            },
-                            trailingIcon = {
-                                SharedIcon(
-                                    Icons.Default.KeyboardArrowDown,
-                                    null,
-                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
-                                )
-                            },
-                            shape = RoundedCornerShape(50)
-                        )
-                        DropdownMenu(
-                            expanded = roleMenuExpanded,
-                            onDismissRequest = { roleMenuExpanded = false }
-                        ) {
-                            listOf(ChatRole.SYSTEM, ChatRole.USER, ChatRole.MODEL).forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(instructionRoleLabel(option)) },
-                                    onClick = {
-                                        role = option
-                                        roleMenuExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    IconButton(
-                        enabled = name.isNotBlank() && content.isNotBlank(),
-                        onClick = { onPreview(draft()) }
-                    ) {
-                        SharedIcon(
-                            Icons.Outlined.Visibility,
-                            stringResource(R.string.instruction_preview_open)
-                        )
-                    }
-                    Spacer(Modifier.width(4.dp))
-                }
+    EditorScreenTemplate(
+        title = {
+            HeaderNameField(
+                value = name,
+                onValueChange = { name = it },
+                placeholder = stringResource(R.string.common_name),
+                modifier = Modifier.padding(end = 8.dp).testTag("instruction_name_input")
             )
+        },
+        onBack = { onBack(draft()) },
+        actions = {
+            Box {
+                AssistChip(
+                    onClick = { roleMenuExpanded = true },
+                    label = { Text(instructionRoleLabel(role)) },
+                    leadingIcon = {
+                        SharedIcon(
+                            Icons.Outlined.AccountCircle,
+                            stringResource(R.string.instruction_role_accessibility, instructionRoleLabel(role)),
+                            modifier = Modifier.size(AssistChipDefaults.IconSize)
+                        )
+                    },
+                    trailingIcon = {
+                        SharedIcon(Icons.Default.KeyboardArrowDown, null,
+                            modifier = Modifier.size(AssistChipDefaults.IconSize))
+                    },
+                    shape = RoundedCornerShape(50)
+                )
+                DropdownMenu(expanded = roleMenuExpanded, onDismissRequest = { roleMenuExpanded = false }) {
+                    listOf(ChatRole.SYSTEM, ChatRole.USER, ChatRole.MODEL).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(instructionRoleLabel(option)) },
+                            onClick = { role = option; roleMenuExpanded = false }
+                        )
+                    }
+                }
+            }
+            IconButton(enabled = name.isNotBlank() && content.isNotBlank(),
+                onClick = { onPreview(draft()) }) {
+                SharedIcon(Icons.Outlined.Visibility, stringResource(R.string.instruction_preview_open))
+            }
+            Spacer(Modifier.width(4.dp))
         }
     ) { padding ->
         EditorTextField(
@@ -141,7 +112,6 @@ internal fun InstructionEditor(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
                 .testTag("instruction_content_input"),
             textStyle = MaterialTheme.typography.bodyMedium.copy(

@@ -45,8 +45,8 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 
 @Composable
 fun ReasoningDropdown(
@@ -314,7 +314,8 @@ internal fun BlockContextPadding(
         .combinedClickable(onClick = { onTap?.invoke() }, onLongClick = {
             if (onDelete != null) menuOpen = true
         })) {
-        if (foreground && menuOpen && onDelete != null) ContextMenuSheet(
+        if (foreground && menuOpen && onDelete != null) ContextDropdownMenu(
+            expanded = true,
             actions = listOf(ContextMenuAction(
                 stringResource(R.string.common_delete),
                 onClick = onDelete,

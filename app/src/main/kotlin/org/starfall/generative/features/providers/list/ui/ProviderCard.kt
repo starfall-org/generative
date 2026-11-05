@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.list.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
 
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
@@ -191,7 +191,8 @@ private fun ProviderContextMenu(
         IconButton(onClick = { expanded = true }) {
             SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
-        if (expanded) ContextMenuSheet(
+        if (expanded) ContextDropdownMenu(
+            expanded = true,
             actions = listOf(
                 ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
                 ContextMenuAction(stringResource(R.string.move_to_group), onMoveToGroup, Icons.Outlined.Folder),

@@ -9,7 +9,6 @@ language as the rest of the app instead of defining its own.
 
 - `logic/ExplorerRepository.kt`: `ExplorerLocation`, `ExplorerItem`, and `ExplorerRepository`.
 - `ui/ExplorerScreen.kt`: the reusable Compose screen, navigation, search, and host callbacks.
-- `ui/ExplorerTopBar.kt`: AppBar with the folder title/breadcrumb, inline search, and actions.
 - `ui/ExplorerItemCard.kt`: the shared `ItemCard` entry plus its context menu.
 - `ui/ExplorerDialogs.kt`: create/rename and delete dialogs.
 
@@ -72,9 +71,7 @@ Use `initialLocation = ExplorerLocation()` when the host supports a multi-source
 
 The screen reuses the app's presentation components rather than its own variants:
 
-- `TopAppBar` with `edgeToEdgeTopAppBarColors()`, shared Fluent icons, the shared
-  `ListViewToggle`, and the shared `AppBarSearchField`; the title shows the folder name with a
-  breadcrumb subtitle.
+- `ListScreenTemplate` supplies the AppBar, Back navigation, inline `AppBarSearchField`, list/grid toggle and insets; the title shows the folder name with a breadcrumb subtitle. The create/upload actions occupy the leading action slot, Search follows them, then List/Grid, then Refresh.
 - `ItemCard` for every entry in both list and grid modes, with `ListViewToggle`,
   `FadeGridListContent` and `animateItem()` providing the same view-mode fade and item motion as
   other entity collections.
@@ -84,8 +81,7 @@ The screen reuses the app's presentation components rather than its own variants
 - All user-facing text comes from string resources, so the explorer is localized like the rest of
   the app.
 
-The AppBar displays the current source/folder, Back, a compact search button, and (when not
-searching) New folder, Upload (when supported), List/Grid and Refresh actions. Tapping Search
+The AppBar displays Back and the current source/folder; when not searching it places New folder, Upload (when supported), Search, List/Grid and Refresh in that fixed order. Tapping Search
 expands a single-line search field **in the AppBar**, focuses it, and replaces the other actions
 with Close search. Submitting the IME search action, tapping Close, pressing Back or losing input
 focus retracts the field. Its query remains in memory and **keeps filtering** after the field

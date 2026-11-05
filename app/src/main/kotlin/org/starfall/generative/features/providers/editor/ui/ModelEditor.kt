@@ -1,7 +1,5 @@
 package org.starfall.generative.features.providers.editor.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,9 +38,10 @@ import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemo
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.model.modelInitial
 
@@ -67,7 +66,6 @@ fun ModelEditor(
     var iconImporting by remember { mutableStateOf(false) }
     var iconChanged by remember { mutableStateOf(false) }
     var iconModelId by remember { mutableStateOf<String?>(null) }
-    var profileExpanded by remember { mutableStateOf(false) }
     var showSampling by remember { mutableStateOf(false) }
     var showModelTools by remember { mutableStateOf(false) }
     var showModelJsonDialog by remember { mutableStateOf(false) }
@@ -127,39 +125,27 @@ fun ModelEditor(
         }
     }
 
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    Text(
-                        text = config.displayName.trim().ifBlank {
-                            trimmedId.ifBlank {
-                                stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
-                            }
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+    EditorScreenTemplate(
+        title = {
+            Text(
+                text = config.displayName.trim().ifBlank {
+                    trimmedId.ifBlank {
+                        stringResource(if (initialModelId.isBlank()) R.string.add_model_title else R.string.edit_model_title)
                     }
                 },
-                actions = {
-                    TextButton(onClick = ::saveAndBack, enabled = idError == null && contextWindow != null && !iconImporting) {
-                        Text(stringResource(R.string.common_save))
-                    }
-                }
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
+        },
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize(),
+        actions = {
+            TextButton(onClick = ::saveAndBack, enabled = idError == null && contextWindow != null && !iconImporting) {
+                Text(stringResource(R.string.common_save))
+            }
         }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding()
+            Modifier.fillMaxSize().consumeWindowInsets(padding)
                 .verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -199,7 +185,6 @@ fun ModelEditor(
                     (type == ModelType.IMAGE_GENERATION || type == ModelType.VIDEO_GENERATION)) {
                     config.copy(modelType = type, mediaRequestProfileId = "", mediaApiType = MediaGenerationMode.DEFAULT)
                 } else config.copy(modelType = type)
-                profileExpanded = false
             }
             if (config.modelType == ModelType.TEXT_GENERATION) {
                 OutlinedTextField(
@@ -337,34 +322,27 @@ fun ModelEditor(
                     }
                 }
             } else if (isMediaModel) {
-                ExposedDropdownMenuBox(
-                    expanded = profileExpanded,
-                    onExpandedChange = { profileExpanded = !profileExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = chosenMediaProfile.name,
-                        onValueChange = {}, readOnly = true,
-                        label = { Text(stringResource(if (isVideoGen) R.string.media_video_profile else R.string.media_image_profile)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(profileExpanded) },
-                        modifier = Modifier.menuAnchor(
-                            ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
-                        ).fillMaxWidth().testTag("media-profile-selector")
-                    )
-                    ExposedDropdownMenu(profileExpanded, { profileExpanded = false }) {
-                        mediaProfiles.values.forEach { profile ->
-                            DropdownMenuItem(
-                                text = { Text(profile.name + " · " +
-                                    stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                onClick = {
-                                    config = config.copy(
-                                        mediaApiType = profile.mode,
-                                        mediaRequestProfileId = profile.id
-                                    )
-                                    profileExpanded = false
-                                }
+                key(config.modelType) {
+                    SelectionDropdown(
+                        label = stringResource(
+                            if (isVideoGen) R.string.media_video_profile else R.string.media_image_profile
+                        ),
+                        options = mediaProfiles.values.map { profile ->
+                            profile to (profile.name + " · " + stringResource(
+                                if (profile.mode == MediaGenerationMode.DEFAULT)
+                                    R.string.common_default else R.string.media_chain_custom
+                            ))
+                        },
+                        selected = chosenMediaProfile,
+                        displayValue = chosenMediaProfile.name,
+                        onSelect = { profile ->
+                            config = config.copy(
+                                mediaApiType = profile.mode,
+                                mediaRequestProfileId = profile.id
                             )
-                        }
-                    }
+                        },
+                        fieldModifier = Modifier.testTag("media-profile-selector")
+                    )
                 }
             }
             OutlinedButton(

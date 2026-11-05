@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
@@ -92,17 +92,12 @@ internal fun RemoteMachineSettings(
     }
 
     val pager = rememberPagerState(pageCount = { 2 })
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            RemoteMachinesTopBar(
-                title = stringResource(R.string.remote_ssh_google_oauth),
-                onBack = onBack
-            )
-        }
+    EditorScreenTemplate(
+        title = stringResource(R.string.remote_ssh_google_oauth),
+        onBack = onBack
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)
         ) {
             AppSwipeTabs(
                 tabs = listOf(

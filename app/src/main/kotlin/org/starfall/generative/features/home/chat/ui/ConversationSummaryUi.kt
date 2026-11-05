@@ -149,6 +149,7 @@ fun ConversationSummaryDialog(
                 FlowRow(Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
                     TextButton(
                         onClick = {
                             onDelete()
@@ -160,7 +161,6 @@ fun ConversationSummaryDialog(
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.summary_delete))
                     }
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }

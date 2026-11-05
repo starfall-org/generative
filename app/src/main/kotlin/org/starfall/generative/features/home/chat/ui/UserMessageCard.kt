@@ -1,7 +1,7 @@
 package org.starfall.generative.features.home.chat.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GlyphHitRegistry
 import org.starfall.generative.shared.ui.text.LocalGlyphHitRegistry
@@ -163,7 +163,8 @@ fun UserMessageCard(
                     }
 
                     // Dropdown Context Menu
-                    if (foreground && showMenu) ContextMenuSheet(
+                    if (foreground && showMenu) ContextDropdownMenu(
+                        expanded = true,
                         actions = buildList {
                             if (!message.isQueued) add(ContextMenuAction(
                                 stringResource(R.string.common_copy),

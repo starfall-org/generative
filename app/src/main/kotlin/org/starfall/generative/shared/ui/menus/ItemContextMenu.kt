@@ -9,8 +9,6 @@ import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
 
 @Composable
 fun ItemContextMenu(
@@ -33,7 +31,8 @@ fun ItemContextMenu(
             SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
         }
         if (expanded) {
-            ContextMenuSheet(
+            ContextDropdownMenu(
+                expanded = true,
                 actions = buildList {
                     if (firstActionText != null && onFirstAction != null &&
                         (firstActionIcon != null || firstActionImageVector != null)

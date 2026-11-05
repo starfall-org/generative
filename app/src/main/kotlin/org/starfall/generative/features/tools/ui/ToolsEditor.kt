@@ -1,13 +1,9 @@
 package org.starfall.generative.features.tools.ui
 
-import org.starfall.generative.shared.ui.menus.ExposedDropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -16,6 +12,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,12 +33,11 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.model.DefaultModelSelector
 import org.starfall.generative.shared.ui.model.ModelPickerSheet
-import org.starfall.generative.shared.ui.inputs.OutlinedTextField
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,11 +64,12 @@ fun ToolsEditor(
     val pager = rememberPagerState(pageCount = { 2 })
     fun openMediaSettings(name: String) { onOpenMediaProfiles(name == "generate_video") }
 
-    ScreenTemplate(
+    EditorScreenTemplate(
         title = stringResource(R.string.common_feature_tools),
         onBack = onBack
-    ) {
-      ContentList(contentPadding = scaffoldPadding) { padding ->
+    ) { scaffoldPadding ->
+        val padding = scaffoldPadding
+
         AppSwipeTabs(
             tabs = listOf(stringResource(R.string.tool_settings_tab_media), stringResource(R.string.tool_settings_tab_others)),
             pagerState = pager,
@@ -97,9 +94,6 @@ fun ToolsEditor(
                         val eligibleProfiles = profiles.values.filter { hasModel || it.modelIndependent }
                         val canPickProfile = eligibleProfiles.isNotEmpty()
                         val currentProfileValid = hasModel || selectedProfile.modelIndependent
-                        var apiTypeExpanded by remember(name, config.providerId, config.modelId) {
-                            mutableStateOf(false)
-                        }
 
                         SettingsCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -128,42 +122,34 @@ fun ToolsEditor(
                             HorizontalDivider()
                             Spacer(Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                ExposedDropdownMenuBox(
-                                    expanded = apiTypeExpanded && canPickProfile,
-                                    onExpandedChange = { if (canPickProfile) apiTypeExpanded = !apiTypeExpanded },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    OutlinedTextField(
-                                        value = if (currentProfileValid) selectedProfile.name
+                                key(name, config.providerId, config.modelId) {
+                                    SelectionDropdown(
+                                        label = stringResource(R.string.media_gen_profile),
+                                        options = eligibleProfiles.map { profile ->
+                                            profile to (profile.name + " · " + stringResource(
+                                                if (profile.mode == MediaGenerationMode.DEFAULT)
+                                                    R.string.common_default else R.string.media_chain_custom
+                                            ))
+                                        },
+                                        selected = selectedProfile,
+                                        displayValue = if (currentProfileValid) selectedProfile.name
                                             else stringResource(R.string.media_chain_select_profile),
-                                        onValueChange = {},
-                                        readOnly = true,
                                         enabled = canPickProfile,
-                                        label = { Text(stringResource(R.string.media_gen_profile)) },
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(apiTypeExpanded) },
-                                        modifier = Modifier.menuAnchor(
-                                            ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = canPickProfile
-                                        ).fillMaxWidth().testTag("media_profile_picker_$name")
+                                        onSelect = { profile ->
+                                            if (!profile.modelIndependent && hasModel) {
+                                                onSaveModelConfiguration(
+                                                    config.providerId, config.modelId,
+                                                    requireNotNull(model).copy(
+                                                        mediaApiType = profile.mode,
+                                                        mediaRequestProfileId = profile.id
+                                                    )
+                                                )
+                                            }
+                                            onSave(name, config.selectMediaProfile(!image, profile))
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        fieldModifier = Modifier.testTag("media_profile_picker_$name")
                                     )
-                                    ExposedDropdownMenu(apiTypeExpanded && canPickProfile, { apiTypeExpanded = false }) {
-                                        eligibleProfiles.forEach { profile ->
-                                            DropdownMenuItem(
-                                                text = { Text(profile.name + " · " +
-                                                    stringResource(if (profile.mode == MediaGenerationMode.DEFAULT) R.string.common_default else R.string.media_chain_custom)) },
-                                                onClick = {
-                                                    if (!profile.modelIndependent && hasModel) {
-                                                        onSaveModelConfiguration(config.providerId, config.modelId,
-                                                            requireNotNull(model).copy(
-                                                                mediaApiType = profile.mode,
-                                                                mediaRequestProfileId = profile.id
-                                                            ))
-                                                    }
-                                                    onSave(name, config.selectMediaProfile(!image, profile))
-                                                    apiTypeExpanded = false
-                                                }
-                                            )
-                                        }
-                                    }
                                 }
                                 IconButton(
                                     onClick = { openMediaSettings(name) },
@@ -232,7 +218,7 @@ fun ToolsEditor(
                 }
             }
         }
-      }
+
     }
 
     choosing?.let { name ->

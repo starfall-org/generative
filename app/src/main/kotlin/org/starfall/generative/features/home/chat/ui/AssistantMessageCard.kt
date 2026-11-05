@@ -1,8 +1,8 @@
 package org.starfall.generative.features.home.chat.ui
 
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
@@ -233,7 +233,8 @@ fun AssistantMessageCard(
                     ) {
                         SharedIcon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
-                    if (foreground && showMoreMenu) ContextMenuSheet(
+                    if (foreground && showMoreMenu) ContextDropdownMenu(
+                        expanded = true,
                         actions = listOf(
                             ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
                             ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)

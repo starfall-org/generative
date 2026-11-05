@@ -2,8 +2,8 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -66,24 +66,27 @@ internal fun ConversationItem(
             .clip(itemShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (selecting) {
-                Checkbox(checked, onCheckedChange = { onClick() }, modifier = Modifier.size(36.dp))
-            } else {
-                ConversationLeadingIcon(
-                    chat = chat,
-                    active = active,
-                    isGenerating = isGenerating,
-                    modelIcon = modelIcon,
-                    onLongClick = onLongClick
-                )
-            }
+            ConversationLeadingIcon(
+                chat = chat,
+                active = active,
+                isGenerating = isGenerating,
+                modelIcon = modelIcon,
+                onLongClick = if (selecting) onClick else onLongClick
+            )
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(chat.title.ifBlank { stringResource(R.string.conversation_untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Text(formatTimestamp(chat.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
             if (pinned) SharedIcon(Icons.Default.PushPin, stringResource(R.string.conversation_pinned), Modifier.padding(end = 10.dp).size(14.dp))
-            if (!selecting) {
-                if (menu) ContextMenuSheet(
+            if (selecting) {
+                Checkbox(
+                    checked,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.size(36.dp).testTag("conversation_select_checkbox_${chat.id}")
+                )
+            } else {
+                if (menu) ContextDropdownMenu(
+                    expanded = true,
                     actions = listOf(
                         ContextMenuAction(stringResource(R.string.sidebar_select), onSelect, Icons.Outlined.CheckCircle),
                         ContextMenuAction(stringResource(if (pinned) R.string.sidebar_unpin else R.string.sidebar_pin), onPin, Icons.Outlined.PushPin),

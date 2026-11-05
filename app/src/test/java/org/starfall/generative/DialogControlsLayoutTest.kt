@@ -30,12 +30,19 @@ class DialogControlsLayoutTest {
     @Test fun summaryRolesStayVisibleAndClickableWhileLongSummaryScrolls() {
         var summary by mutableStateOf(ConversationSummary("summary", (0..99).joinToString("\n") { "Paragraph $it" }, "message"))
         lateinit var userLabel: String
+        lateinit var closeLabel: String
+        lateinit var deleteLabel: String
         compose.setContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
                 userLabel = stringResource(R.string.common_user)
+                closeLabel = stringResource(R.string.common_close)
+                deleteLabel = stringResource(R.string.summary_delete)
                 ConversationSummaryDialog(summary, onRoleChange = { summary = summary.copy(role = it) }, onDelete = {}, onDismiss = {})
             }
         }
+        val cancel = compose.onNodeWithText(closeLabel).fetchSemanticsNode().boundsInRoot
+        val delete = compose.onNodeWithText(deleteLabel).fetchSemanticsNode().boundsInRoot
+        assertTrue("Delete must follow Close without a Save button", delete.left > cancel.left)
         val roles = compose.onNodeWithTag("summary-role-selector").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val content = compose.onNodeWithTag("summary-dialog-content")
         assertTrue("The role selector belongs below the scrolling content", roles.top >= content.fetchSemanticsNode().boundsInRoot.bottom)

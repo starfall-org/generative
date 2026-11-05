@@ -123,7 +123,7 @@ private fun ConfigureAmoledDialogWindow() {
 }
 
 /** Dialog with a title, scrollable content and an optional action footer.
- * Footer actions are ordered left-to-right: other actions, Close, Save (when present).
+ * Order footer actions left-to-right: other actions, Cancel, Save; or Cancel, Delete when no Save exists.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -222,8 +222,8 @@ fun AlertDialog(
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = true,
-    /** Save/Close sits at the right edge. Other confirmation actions sit left of dismissal. */
-    confirmAtRight: Boolean = false
+    /** Confirmation (including Delete or Save) follows Cancel/Close by default. */
+    confirmAtRight: Boolean = true
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,

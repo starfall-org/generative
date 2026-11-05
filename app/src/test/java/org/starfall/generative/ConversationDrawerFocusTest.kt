@@ -1,6 +1,9 @@
 package org.starfall.generative
 
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertTextContains
@@ -127,12 +130,55 @@ class ConversationDrawerFocusTest {
 
         compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
         compose.onNodeWithTag("conversation_drawer_selection_bar").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_icon_selected-chat").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_select_checkbox_selected-chat").assertIsDisplayed()
         compose.onNodeWithText("A conversation whose full title is retained").assertIsDisplayed()
 
         compose.onNodeWithContentDescription("Exit selection").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_drawer_selection_bar").assertDoesNotExist()
         compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
+    }
+
+    @Test
+    fun longPressOnBlankDrawerSpaceEntersSelectionWithoutMenuAndKeepsCreateFolderAction() {
+        val chat = ConversationListItem(
+            id = "blank-press-chat", title = "Preserved icon",
+            createdAt = 1L, updatedAt = 1L, tokenCount = null,
+            providerId = "", modelId = "", profileId = null,
+            reasoningEffort = null, hasMessages = true, hasSummary = false
+        )
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ConversationSideDrawer(
+                    conversations = listOf(chat),
+                    currentConversationId = null,
+                    isOpen = true,
+                    organization = SidebarOrganization(),
+                    onUpdateOrganization = {},
+                    onDeleteConversations = {},
+                    onSelectConversation = {},
+                    onNewChat = {},
+                    onRenameConversation = { _, _ -> },
+                    onDeleteConversation = {},
+                    onNavigateToSettings = {},
+                    onCloseDrawer = {}
+                )
+            }
+        }
+
+        compose.onNodeWithTag("conversation_drawer_selection_bar").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_list").performTouchInput {
+            longClick(Offset(center.x, height * 0.85f))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("conversation_drawer_selection_bar").assertIsDisplayed()
+        compose.onNodeWithText("Select").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_icon_blank-press-chat").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_select_checkbox_blank-press-chat").assertIsDisplayed()
+
+        // The selection toolbar still exposes empty-folder creation.
+        compose.onNodeWithContentDescription("Create Folder").assertIsDisplayed()
     }
 
     @Test

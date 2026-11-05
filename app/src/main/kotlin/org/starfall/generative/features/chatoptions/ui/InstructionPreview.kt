@@ -1,7 +1,5 @@
 package org.starfall.generative.features.chatoptions.ui
 
-import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +35,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
 import org.starfall.generative.shared.ui.text.messageMarkdownTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,44 +45,19 @@ internal fun InstructionPreview(
     onEdit: () -> Unit,
     onBack: () -> Unit
 ) {
-    BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = edgeToEdgeTopAppBarColors(),
-                title = {
-                    Text(
-                        instruction.name.ifBlank { stringResource(R.string.instruction_preview_title) },
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        SharedIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onEdit) {
-                        SharedIcon(
-                            Icons.Outlined.Edit,
-                            stringResource(R.string.instruction_preview_edit)
-                        )
-                    }
-                }
-            )
+    PreviewScreenTemplate(
+        title = instruction.name.ifBlank { stringResource(R.string.instruction_preview_title) },
+        onBack = onBack,
+        horizontalPadding = 12.dp,
+        topPadding = 12.dp,
+        bottomPadding = 12.dp,
+        actions = {
+            IconButton(onClick = onEdit) {
+                SharedIcon(Icons.Outlined.Edit, stringResource(R.string.instruction_preview_edit))
+            }
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(padding)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            InstructionPreviewMessage(instruction.role, instruction.content)
-        }
+    ) {
+        InstructionPreviewMessage(instruction.role, instruction.content)
     }
 }
 

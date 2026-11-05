@@ -47,9 +47,9 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.background.ProfileBackground
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.dialogs.Dialog
-import org.starfall.generative.shared.ui.screens.ScreenTemplate
-import org.starfall.generative.shared.ui.sheets.ContextMenuAction
-import org.starfall.generative.shared.ui.sheets.ContextMenuSheet
+import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 
 /** App-wide customization: colors, component opacity, profile image and backgrounds. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,14 +123,13 @@ fun CustomizationScreen(
         target = slot; menuFor = null; showStorage = true
     }
 
-    ScreenTemplate(
+    EditorScreenTemplate(
         title = stringResource(R.string.customization_title),
         onBack = onBack,
         modifier = modifier
-    ) {
-      ContentVisualEditor(
-          contentPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp)
-      ) { padding ->
+    ) { scaffoldPadding ->
+        val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp)
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("customization-list"),
             contentPadding = padding,
@@ -242,7 +241,7 @@ fun CustomizationScreen(
                 }
             }
         }
-      }
+
     }
     val slot = backgroundDialog
     if (customizationEnabled && slot != null && !showStorage) {
@@ -431,7 +430,8 @@ private fun CustomizationActionRow(
 @Composable
 private fun SlotMenu(expanded: Boolean, hasImage: Boolean, onDismiss: () -> Unit,
                       onGallery: () -> Unit, onStorage: () -> Unit, onRemove: () -> Unit) {
-    if (expanded) ContextMenuSheet(
+    if (expanded) ContextDropdownMenu(
+        expanded = true,
         actions = listOf(
             ContextMenuAction(
                 label = stringResource(R.string.user_profile_photos_gallery),

@@ -148,7 +148,6 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
 
         compose.onNodeWithText("API Type").assertIsDisplayed()
         compose.onNodeWithTag("provider-type-selector").assertHasClickAction().performClick()
-        compose.onNodeWithTag("app-dialog-buttons").assertDoesNotExist()
         compose.onNodeWithText("Chat Completions").performClick()
         compose.onNode(hasSetTextAction() and hasText("OpenAI")).assertExists()
         compose.onNode(hasSetTextAction() and hasText("Base URL"))
