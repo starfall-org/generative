@@ -22,8 +22,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.features.machines.shared.ui.terminal.TerminalExtraKeys
 
 private val DpRect.center: Offset

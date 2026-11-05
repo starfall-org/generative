@@ -11,10 +11,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.entities.OAuthTokenRecordEntity
-import org.starfall.generative.database.RoomOAuthRecordStorage
-import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.room.entities.OAuthTokenRecordEntity
+import org.starfall.generative.database.repositories.RoomOAuthRecordStorage
+import org.starfall.generative.database.preferences.MigratedStringPreferences
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

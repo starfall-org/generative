@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.shared.model.ChatRole
@@ -18,7 +18,7 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.repositories.ConversationRepository
 
 /** Generates titles independently of the message-send transaction while respecting restore boundaries. */
 internal class ConversationTitleGenerator(

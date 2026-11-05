@@ -19,11 +19,11 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 
 @Composable
 fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifier, toolCount: Int?, toolError: String?,

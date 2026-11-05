@@ -37,11 +37,11 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.home.drawer.logic.ConversationModelIcon
 import org.starfall.generative.shared.model.ConversationListItem
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.model.modelInitial
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
 
 @Composable
 internal fun ConversationItem(

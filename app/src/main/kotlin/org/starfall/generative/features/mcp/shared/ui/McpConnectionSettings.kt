@@ -17,12 +17,12 @@ import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.IconPickerRow
+import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.inputs.ApiKeyField
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.ui.inputs.KeyValueField
 import org.starfall.generative.shared.ui.inputs.KeyValueValueType
 

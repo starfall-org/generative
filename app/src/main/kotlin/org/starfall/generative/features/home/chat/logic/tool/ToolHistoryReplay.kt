@@ -2,10 +2,10 @@ package org.starfall.generative.features.home.chat.logic.tool
 
 
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 
 /**
  * Past tool calls as real `assistant` + `tool_calls` and `tool` result messages.

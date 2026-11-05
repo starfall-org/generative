@@ -1,6 +1,6 @@
 package org.starfall.generative
 
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 
 import org.starfall.generative.integrations.modelapis.account.*
 
@@ -19,8 +19,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.helpers.networking.text
 import java.net.ServerSocket
 import java.net.Socket
 import org.starfall.generative.shared.model.api.ModelApiType

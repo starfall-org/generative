@@ -9,8 +9,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

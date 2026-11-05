@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.concurrent.CancellationException
 import org.starfall.generative.R
-import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.layout.ComponentGroup
 import org.starfall.generative.shared.ui.layout.ComponentGroupSlot

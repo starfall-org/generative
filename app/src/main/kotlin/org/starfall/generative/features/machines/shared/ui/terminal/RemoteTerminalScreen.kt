@@ -40,16 +40,16 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FONT_SIZE_KEY
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_FORCE_MOUSE_KEY
-import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
-import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
-import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
-import org.starfall.generative.shared.storage.preferences.remoteTerminalInputPreferences
-import org.starfall.generative.shared.terminal.PendingRemoteSecretRequest
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.terminal.RemoteTerminalSessions
-import org.starfall.generative.shared.terminal.TerminalSlot
+import org.starfall.generative.database.preferences.REMOTE_TERMINAL_FONT_SIZE_KEY
+import org.starfall.generative.database.preferences.REMOTE_TERMINAL_FORCE_MOUSE_KEY
+import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.database.preferences.remoteTerminalImePreferenceKey
+import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.database.preferences.remoteTerminalInputPreferences
+import org.starfall.generative.shared.subfeatures.terminal.PendingRemoteSecretRequest
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalSessions
+import org.starfall.generative.shared.subfeatures.terminal.TerminalSlot
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 
 @Composable

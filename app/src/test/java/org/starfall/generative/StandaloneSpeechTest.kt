@@ -15,8 +15,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.integrations.speech.*
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.media.pcmWave
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.integrations.speech.pcmWave
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 
 class StandaloneSpeechTest {
     private fun service(engine: SpeechEngine) = SpeechService("speech", "Speech", engine = engine,
@@ -28,7 +28,7 @@ class StandaloneSpeechTest {
     @Test fun oldJsonInfersSystemAndProviderWithoutMistakingEngineIds() {
         assertEquals(SpeechEngine.SYSTEM, Json.decodeFromString<SpeechService>("""{"id":"s","name":"Old"}""").engine)
         assertEquals(SpeechEngine.PROVIDER, Json.decodeFromString<SpeechService>("""{"id":"s","name":"Old","provider":"elevenlabs"}""").engine)
-        val speech = service(SpeechEngine.CARTESIA).copy(voiceName = "Friendly voice", sentencesPerChunk = 12)
+        val speech = service(SpeechEngine.CARTESIA).copy(voiceName = "Friendly voice", maxWordsPerChunk = 12)
         assertEquals(speech, Json.decodeFromString<SpeechService>(Json.encodeToString(speech)))
     }
     @Test fun eachEngineOwnsItsAuthenticationAndPayload() {

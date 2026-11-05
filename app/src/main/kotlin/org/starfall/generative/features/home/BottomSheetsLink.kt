@@ -23,11 +23,11 @@ import java.io.File
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.importUserAttachment
-import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
-import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
-import org.starfall.generative.shared.ui.model.rememberThinkingColorBurst
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.importUserAttachment
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.LocalThinkingScreenBurst
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ThinkingScreenBurstLayer
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.rememberThinkingColorBurst
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.defaultNativeModelTools
 import org.starfall.generative.shared.model.language.ModelType
@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.features.home.shared.ui.FeatureToolsSheetContent
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheetContent
 import org.starfall.generative.shared.model.ConversationSummaryRequest
-import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
 import org.starfall.generative.features.home.shared.ui.McpConnectorsSheetContent
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
 import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewContent
@@ -53,14 +52,13 @@ import org.starfall.generative.features.home.shared.ui.SelectedModelOptionsSheet
 import org.starfall.generative.features.home.shared.ui.rememberPreviewTier
 import org.starfall.generative.features.home.shared.ui.selectedModelSheetStyle
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
-import org.starfall.generative.shared.ui.model.chatModelPickerFilter
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheetContent
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.chatModelPickerFilter
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
 
 internal enum class QuickActionsPage {
     ROOT,
-    INSTRUCTIONS,
     FEATURE_TOOLS,
     MCP_CONNECTORS,
 }
@@ -97,9 +95,6 @@ internal class BottomSheetsLinkState {
     fun backFromModelPicker() {
         if (modelSheetPage == ModelSheetPage.MODEL_PICKER_FROM_OVERVIEW)
             openSelectedModelOverview() else dismissModelSheet()
-    }
-    fun openInstructions() {
-        quickActionsPage = QuickActionsPage.INSTRUCTIONS
     }
     fun openFeatureTools() {
         quickActionsPage = QuickActionsPage.FEATURE_TOOLS
@@ -293,9 +288,6 @@ internal fun BottomSheetsLink(
                                 onMediaKindChange(ModelType.VIDEO_GENERATION)
                             }
                         },
-                        onOpenInstructions = {
-                            if (pageActive) sheets.openInstructions()
-                        },
                         onOpenSkills = {
                             if (pageActive) {
                                 sheets.dismissAddMenu()
@@ -311,10 +303,6 @@ internal fun BottomSheetsLink(
                         onDismiss = {
                             if (pageActive) sheets.dismissAddMenu()
                         }
-                    )
-                    QuickActionsPage.INSTRUCTIONS -> InstructionsSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() },
-                        onLeave = { if (pageActive) sheets.dismissAddMenu() }
                     )
                     QuickActionsPage.FEATURE_TOOLS -> FeatureToolsSheetContent(
                         onBack = { if (pageActive) sheets.backToQuickActions() },
@@ -359,7 +347,6 @@ internal fun BottomSheetsLink(
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }
-        var pickerContentOverflows by remember(modelSheetPage) { mutableStateOf(false) }
         // A conversation override wins; otherwise show the level saved for this model.
         val effectiveReasoningEffort = conversationReasoningEffort ?: selectedConfig.reasoningEffort
         val previewTier = rememberPreviewTier(selectedConfig, effectiveReasoningEffort)
@@ -376,7 +363,6 @@ internal fun BottomSheetsLink(
                     sheets.dismissModelSheet()
                 },
                 dismissOnBack = modelSheetPage == ModelSheetPage.SELECTED_MODEL,
-                expandOnOpen = modelSheetPage == ModelSheetPage.MODEL_PICKER && pickerContentOverflows,
                 containerColor = style.color,
                 containerBrush = style.brush,
                 navigationBarColor = style.navigationBarColor,
@@ -404,7 +390,6 @@ internal fun BottomSheetsLink(
                     val pageActive = LocalScreenTransitionActive.current
                     if (target == ModelSheetPage.MODEL_PICKER) {
                         ModelPickerSheetContent(
-                            onOverflowChanged = { pickerContentOverflows = it },
                             providers = if (mediaKind != null) mediaProviders else providers,
                             providerGroups = providerGroups,
                             collapsedGroupIdsState = modelPickerCollapsedGroups,

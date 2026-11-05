@@ -9,8 +9,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.editor.ui.*
-import org.starfall.generative.features.providers.editor.ui.*
-import org.starfall.generative.features.providers.editor.ui.*
 import org.starfall.generative.features.providers.list.ui.*
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.model.auth.AuthMethod

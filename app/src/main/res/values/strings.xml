@@ -194,6 +194,7 @@
     <string name="stream" translatable="false">Stream Response</string>
     <string translatable="false" name="custom_headers">Custom Headers</string>
     <string name="open_model_catalog">Open model catalog</string>
+    <string name="model_catalog_title">Model catalog</string>
     <string name="test_connection">Test connection</string>
     <string name="check_connection">Check Connection</string>
     <string name="test_model">Test %1$s</string>
@@ -548,6 +549,8 @@
     <string name="provider_auth_custom_header" translatable="false">Custom Header</string>
     <string name="provider_auth_platform_default" translatable="false">Platform Default</string>
     <string name="provider_show_api_key">Show API key</string>
+    <string name="provider_hide">Hide</string>
+    <string name="provider_show">Show</string>
     <string name="provider_hide_api_key">Hide API key</string>
     <string name="file_download">Download file</string>
     <string name="file_download_saved">File saved</string>
@@ -700,6 +703,7 @@
     <string name="settings_mcp_manage_description">Tool servers &amp; integrations</string>
     <string name="settings_speech_services_description">Text-to-speech models &amp; voices</string>
     <string name="storage_media_storage">Media Storage</string>
+    <string name="drawer_instructions_selected">%1$d of %2$d enabled</string>
     <string name="drawer_media_short_title">Media</string>
     <string name="storage_media_empty">No saved photos, videos, or audio yet.</string>
     <string name="settings_storage_description">Files created by your tools</string>
@@ -1240,9 +1244,18 @@
     <string name="reasoning_level_active" translatable="false">Active</string>
     <string name="media_image_generation_failed">Image generation failed</string>
     <string name="media_video_generation_failed">Video generation failed</string>
-    <string name="speech_sentences_per_chunk">Sentences per API request</string>
-    <string name="speech_chunk_boundaries">A period or line break ends a sentence. Adjacent separators count once.</string>
+    <string name="speech_words_per_chunk">Maximum words per API request</string>
+    <string name="speech_word_chunk_boundaries">Approximate limit: rounds up or down to a nearby period, exclamation mark, or question mark. Long sentences are split at the limit.</string>
     <string name="notification_speech_channel">Speech playback</string>
+    <string name="sftp_transfer_channel">SFTP file transfers</string>
+    <string name="sftp_transfer_preparing">Preparing SFTP transfer…</string>
+    <string name="sftp_transfer_uploading">Uploading %1$s</string>
+    <string name="sftp_transfer_downloading">Downloading %1$s</string>
+    <string name="sftp_transfer_file_number">File %1$d of %2$d</string>
+    <string name="sftp_transfer_file_progress">%1$s · %2$d%%</string>
+    <string name="sftp_transfer_complete">SFTP transfer complete</string>
+    <string name="sftp_transfer_failed">SFTP transfer failed</string>
+    <string name="sftp_transfer_result">%1$d of %2$d files transferred</string>
     <string name="notification_speech_playing">Reading aloud</string>
     <string name="settings_item_transparency">Component transparency</string>
     <string name="settings_item_transparency_reset">Reset component transparency to default</string>

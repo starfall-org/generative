@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.ui.lists.ListViewToggle
 
 /**
@@ -87,7 +87,8 @@ private fun ProviderFolderMiniGrid(groupId: String, providers: List<ModelProvide
                         image = provider.icon,
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                         text = providerInitials(provider.name),
-                        matchName = provider.name
+                        matchName = provider.name,
+                        grayscale = provider.isHidden
                     )
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -182,7 +183,8 @@ internal fun ProviderFolderOverlay(
     onDeleteGroup: () -> Unit,
     onEditProvider: (ModelProvider) -> Unit,
     onMoveProvider: (ModelProvider) -> Unit,
-    onDeleteProvider: (String) -> Unit
+    onDeleteProvider: (String) -> Unit,
+    onSetProviderHidden: (String, Boolean) -> Unit = { _, _ -> }
 ) = with(Launcher) {
     val gridState = rememberLazyGridState()
     // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
@@ -366,6 +368,7 @@ internal fun ProviderFolderOverlay(
                                 onEdit = { onEditProvider(provider) },
                                 onMoveToGroup = { onMoveProvider(provider) },
                                 onDelete = { onDeleteProvider(provider.id) },
+                                onToggleHidden = { onSetProviderHidden(provider.id, !provider.isHidden) },
                                 modifier = itemModifier.folderMember(
                                     state = dndState,
                                     sourceKey = key,

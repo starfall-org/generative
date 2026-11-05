@@ -43,8 +43,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.icons.model.StoredIcon
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.shared.model.icons.StoredIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon

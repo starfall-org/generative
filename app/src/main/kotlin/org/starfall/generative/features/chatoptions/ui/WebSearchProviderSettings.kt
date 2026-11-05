@@ -26,11 +26,11 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.resolvedUrl
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.model.DefaultSelectionItem
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.DefaultSelectionItem
 import org.starfall.generative.shared.ui.sheets.ItemListSheet
 import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 

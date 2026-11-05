@@ -22,7 +22,7 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.shared.ui.lists.ItemSurface
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField

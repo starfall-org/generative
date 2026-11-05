@@ -3,7 +3,7 @@ package org.starfall.generative
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
+import org.starfall.generative.database.preferences.ScreenWakelockMode
 
 class ScreenWakelockPolicyTest {
     @Test fun automaticModeKeepsScreenOnWhileWaitingForApiResponse() {

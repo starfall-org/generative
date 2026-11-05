@@ -17,5 +17,6 @@ data class ModelProvider(
     val config: ProviderConfiguration = ProviderConfiguration(),
     val sortOrder: Int = Int.MAX_VALUE,
     val groupId: String? = null,
-    @kotlinx.serialization.Transient val credentialState: CredentialLoadState = CredentialLoadState.LOADED
+    @kotlinx.serialization.Transient val credentialState: CredentialLoadState = CredentialLoadState.LOADED,
+    val isHidden: Boolean = false
 )

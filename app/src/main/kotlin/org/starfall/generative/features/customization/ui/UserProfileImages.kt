@@ -20,9 +20,9 @@ internal object UserProfileImages {
     }
 
     suspend fun importStorage(context: Context, file: File): String = withContext(Dispatchers.IO) {
-        val folder = org.starfall.generative.shared.files.ToolFiles.appStorageDirectory(context).canonicalFile
+        val folder = org.starfall.generative.shared.subfeatures.media.logic.ToolFiles.appStorageDirectory(context).canonicalFile
         require(file.canonicalFile.parentFile == folder && file.isFile &&
-            org.starfall.generative.shared.ui.media.mediaMimeType(file.name).startsWith("image/"))
+            org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType(file.name).startsWith("image/"))
         import(context, file.inputStream())
     }
 
@@ -56,7 +56,7 @@ internal object UserProfileImages {
     }
 
     /** Only delete a profile-owned image if no other slot still references it. */
-    fun cleanup(context: Context, removed: String?, retained: org.starfall.generative.shared.storage.preferences.UserProfile) {
+    fun cleanup(context: Context, removed: String?, retained: org.starfall.generative.database.preferences.UserProfile) {
         val file = removed?.let(::File) ?: return
         if (file.parentFile?.canonicalFile != folder(context).canonicalFile) return
         if (removed in listOfNotNull(retained.photo, retained.chatBackground,

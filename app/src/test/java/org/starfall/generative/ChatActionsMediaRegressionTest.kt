@@ -23,7 +23,7 @@ import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 import org.starfall.generative.features.home.chat.ui.ProcessingDropdown
 import org.starfall.generative.features.home.chat.ui.ProcessingDropdownItem
 import org.starfall.generative.features.home.chat.ui.tool.ToolActivityCards
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage

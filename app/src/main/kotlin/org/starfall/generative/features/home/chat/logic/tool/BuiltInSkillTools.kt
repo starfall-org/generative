@@ -2,8 +2,8 @@ package org.starfall.generative.features.home.chat.logic.tool
 
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 
 internal const val CREATE_SKILL_TOOL_NAME = "create_skill"
 internal const val ACTIVATE_SKILL_TOOL_NAME = "activate_skill"

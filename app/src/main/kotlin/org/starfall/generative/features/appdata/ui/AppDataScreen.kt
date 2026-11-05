@@ -36,8 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.ui.ErrorContainer
-import org.starfall.generative.shared.auth.oauthErrorDetails
-import org.starfall.generative.database.ProviderRepairResult
+import org.starfall.generative.shared.subfeatures.auth.logic.oauthErrorDetails
+import org.starfall.generative.database.repositories.ProviderRepairResult
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons

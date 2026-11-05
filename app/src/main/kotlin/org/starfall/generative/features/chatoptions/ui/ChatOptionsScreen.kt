@@ -53,14 +53,14 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
-import org.starfall.generative.shared.ui.model.DefaultModelSelector
-import org.starfall.generative.shared.ui.model.ModelPickerSheet
-import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.DefaultModelSelector
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
+import org.starfall.generative.database.preferences.AppPreferences
 
 private sealed interface ChatOptionsEditor {
     data class InstructionEditor(val instructionId: String?) : ChatOptionsEditor

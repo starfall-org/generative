@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
@@ -72,18 +73,18 @@ import org.starfall.generative.shared.model.provider.oauthAccountsWithCurrent
 import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.provider.recordOAuthAccount
 import org.starfall.generative.shared.model.provider.removeOAuthAccount
-import org.starfall.generative.shared.networking.providerBase
-import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
+import org.starfall.generative.shared.helpers.networking.providerBase
+import org.starfall.generative.database.preferences.ModelConfigurationMemory
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.IconPickerRow
+import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.shared.ui.lists.moved
-import org.starfall.generative.shared.ui.icons.providerInitials
-import org.starfall.generative.shared.ui.auth.rememberOAuthStart
-import org.starfall.generative.shared.auth.oauthErrorDetails
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
+import org.starfall.generative.shared.subfeatures.auth.ui.rememberOAuthStart
+import org.starfall.generative.shared.subfeatures.auth.logic.oauthErrorDetails
 
 // Chat Completions remains endpoint-agnostic in the shared API model and provider links.
 // Only the editor offers OpenAI starter values, as it already does for Responses.
@@ -115,6 +116,7 @@ fun ProviderEditor(
     onSaveModels: (String, Map<String, ModelConfiguration>) -> Unit, onReorderModels: (String, List<String>) -> Unit,
     onReorderModelsTracked: ((String, List<String>, (Result<Unit>) -> Unit) -> Unit)? = null,
     onDismiss: () -> Unit, onSave: (ModelProvider) -> Unit,
+    onDelete: ((String) -> Unit)? = null,
     customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     onSaveIcon: (ModelProvider) -> Unit = {},
@@ -123,6 +125,7 @@ fun ProviderEditor(
     onAutoCreateProvider: (ModelProvider) -> Unit = onSave
 ) {
     val scope = rememberCoroutineScope()
+    var confirmDelete by remember { mutableStateOf(false) }
     var name by remember {
         mutableStateOf(if (isNew && initialProvider.type == ModelApiType.OPENAI && initialProvider.name.isBlank())
             ModelApiType.OPENAI.editorDefaultName else initialProvider.name)
@@ -130,7 +133,7 @@ fun ProviderEditor(
     var providerIcon by remember { mutableStateOf(initialProvider.icon) }
     var iconImporting by remember { mutableStateOf(false) }
     // Lives with the screen, not the pager page, so a logo fetch survives tab switches and stops when the screen closes.
-    val faviconFetch = org.starfall.generative.shared.ui.dialogs.rememberFaviconFetchState()
+    val faviconFetch = org.starfall.generative.shared.subfeatures.icons.ui.rememberFaviconFetchState()
     var type by remember { mutableStateOf(initialProvider.type) }
     var baseUrl by remember {
         mutableStateOf(if (isNew && initialProvider.type == ModelApiType.OPENAI && initialProvider.baseUrl.isBlank())
@@ -385,12 +388,39 @@ fun ProviderEditor(
                 },
                 onBack = { editingModel = null })
         } else {
+            if (confirmDelete && onDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { confirmDelete = false },
+                    title = { Text(stringResource(R.string.dialog_delete_provider_title)) },
+                    text = { Text(stringResource(R.string.delete_provider_message)) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                confirmDelete = false
+                                onDelete(initialProvider.id)
+                                onDismiss()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) { Text(stringResource(R.string.common_delete)) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmDelete = false }) {
+                            Text(stringResource(R.string.common_close))
+                        }
+                    }
+                )
+            }
             EditorScreenTemplate(
                 title = { Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 onBack = onDismiss,
                 modifier = Modifier.fillMaxSize(),
                 actions = {
                     if (pager.currentPage == 0) {
+                        if (!isNew && onDelete != null) {
+                            IconButton(onClick = { confirmDelete = true }) {
+                                SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
+                            }
+                        }
                         Button(enabled = valid && !oauthAuthorizing && !iconImporting,
                             onClick = { onSave(draft()); providerPersisted = true },
                             modifier = Modifier.padding(end = 8.dp)) {
@@ -579,7 +609,7 @@ fun ProviderEditor(
                 onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { localizedResources.getString(R.string.provider_default_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
-            if (showCatalog) ModelCatalogSheet(
+            if (showCatalog) ModelCatalogDialog(
                 provider = initialProvider.copy(name = name, type = type, baseUrl = baseUrl.trim(),
                     auth = authorization(), config = requestConfig()),
                 selectedModels = models.keys,

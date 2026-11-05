@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 import org.starfall.generative.integrations.modelapis.account.AccountTokenStore
 import org.starfall.generative.integrations.modelapis.devin.DevinAdapter
 import org.starfall.generative.integrations.modelapis.devin.DevinOAuthProtocol
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.defaultAuthorization
 import org.starfall.generative.shared.model.provider.ModelProvider

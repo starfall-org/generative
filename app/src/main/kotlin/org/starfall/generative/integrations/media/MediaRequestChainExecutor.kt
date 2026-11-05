@@ -11,12 +11,12 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.helpers.media.MEDIA_FILE_TOKEN_PREFIX
 import org.starfall.generative.shared.helpers.media.MediaTemplateContext
 import org.starfall.generative.shared.helpers.media.MediaTemplateInput
 import org.starfall.generative.shared.helpers.media.MediaStepTemplateContext
-import org.starfall.generative.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
+import org.starfall.generative.shared.subfeatures.media.logic.MAX_MEDIA_INPUT_VIDEO_BYTES
 import org.starfall.generative.shared.helpers.media.decodeMediaBase64
 import org.starfall.generative.shared.helpers.media.isAbsoluteMediaEndpoint
 import org.starfall.generative.shared.helpers.media.isValidMediaEndpointTemplate
@@ -31,10 +31,10 @@ import org.starfall.generative.shared.model.media.MediaResponseType
 import org.starfall.generative.shared.model.media.MediaResponseObservationMode
 import org.starfall.generative.shared.model.media.MediaValueKind
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.providerBase
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.providerBase
+import org.starfall.generative.shared.helpers.networking.str
 import java.io.File
 import java.util.Locale
 
@@ -266,7 +266,7 @@ internal class MediaRequestChainExecutor(private val http: ToolHttp, private val
                             offset += count
                         }
                         source.reset()
-                        org.starfall.generative.shared.media.audioMime(header) ?: error("Response is not supported audio.")
+                        org.starfall.generative.shared.helpers.audio.audioMime(header) ?: error("Response is not supported audio.")
                     } else mime
                     val name = if (preview) null else http.requireFiles().save(source, verifiedMime, audioOnly = music)
                     val responseBody = if (preview) obj(

@@ -905,8 +905,8 @@
     <string name="speech_engine_api_key_help">Obrigatória para este mecanismo de voz. Armazenada com segurança neste dispositivo.</string>
     <string name="media_image_generation_failed">Falha ao gerar a imagem</string>
     <string name="media_video_generation_failed">Falha ao gerar o vídeo</string>
-    <string name="speech_sentences_per_chunk">Frases por requisição API</string>
-    <string name="speech_chunk_boundaries">Um ponto ou uma quebra de linha encerra uma frase. Separadores consecutivos contam apenas uma vez.</string>
+    <string name="speech_words_per_chunk">Máximo de palavras por requisição API</string>
+    <string name="speech_word_chunk_boundaries">A quantidade de palavras é ajustada para terminar no ponto, ponto de exclamação ou interrogação mais próximo. Frases longas são divididas.</string>
     <string name="notification_speech_channel">Reprodução de fala</string>
     <string name="notification_speech_playing">Lendo em voz alta</string>
     <string name="user_profile_background_transparency">Transparência do fundo</string>

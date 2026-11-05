@@ -896,8 +896,8 @@
     <string name="speech_engine_api_key_help">Diperlukan oleh mesin suara ini. Disimpan dengan aman di perangkat ini.</string>
     <string name="media_image_generation_failed">Gagal membuat gambar</string>
     <string name="media_video_generation_failed">Gagal membuat video</string>
-    <string name="speech_sentences_per_chunk">Kalimat per permintaan API</string>
-    <string name="speech_chunk_boundaries">Titik atau baris baru mengakhiri kalimat. Pemisah yang berurutan dihitung sekali.</string>
+    <string name="speech_words_per_chunk">Jumlah kata maksimum per permintaan API</string>
+    <string name="speech_word_chunk_boundaries">Jumlah kata disesuaikan untuk berhenti pada titik, tanda seru, atau tanda tanya terdekat. Kalimat panjang akan dipecah.</string>
     <string name="notification_speech_channel">Pemutaran suara</string>
     <string name="notification_speech_playing">Membaca dengan suara</string>
     <string name="user_profile_background_transparency">Transparansi latar belakang</string>

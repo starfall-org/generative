@@ -6,7 +6,7 @@ import kotlinx.serialization.json.*
 import okhttp3.Request
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 
 /** Synthesis models are separate from voice IDs, including Fish Audio's /model directory. */
 internal class SpeechModelCatalog(private val http: ToolHttp) {

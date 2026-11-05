@@ -35,8 +35,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import org.starfall.generative.shared.ui.model.DefaultModelSelector
-import org.starfall.generative.shared.ui.model.ModelPickerSheet
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.DefaultModelSelector
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)

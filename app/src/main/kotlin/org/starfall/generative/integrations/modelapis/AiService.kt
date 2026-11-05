@@ -9,11 +9,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import org.starfall.generative.integrations.modelapis.account.AccountProviderAdapterRegistry
 import org.starfall.generative.integrations.modelapis.sdk.OfficialProviderSdk
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.logging.DebugLog
-import org.starfall.generative.shared.logging.DebugLogKtorPlugin
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLogKtorPlugin
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
@@ -32,8 +32,8 @@ import org.starfall.generative.shared.model.language.wireReasoningEffort
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.streamEnabledFor
-import org.starfall.generative.shared.networking.requireNetworkCredentials
-import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
+import org.starfall.generative.shared.helpers.networking.requireNetworkCredentials
+import org.starfall.generative.database.preferences.ModelConfigurationMemory
 import java.util.Base64
 
 class AiService(

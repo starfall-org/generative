@@ -1,0 +1,201 @@
+package org.starfall.generative.features.providers.editor.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.JsonNull
+import org.starfall.generative.R
+import org.starfall.generative.features.providers.shared.logic.formatCatalogMetadata
+import org.starfall.generative.shared.model.language.DiscoveredModel
+import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.ui.ErrorContainer
+import org.starfall.generative.shared.ui.inputs.ExpandableSearchField
+import org.starfall.generative.shared.ui.dialogs.ToolbarDialog
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
+import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.prominentContainerBorder
+import org.starfall.generative.shared.ui.layout.prominentContainerColor
+
+@Composable
+internal fun ModelCatalogDialog(
+    provider: ModelProvider,
+    selectedModels: Set<String>,
+    onFetchModels: (suspend (ModelProvider) -> List<DiscoveredModel>)?,
+    onCatalogLoaded: (List<DiscoveredModel>) -> Unit,
+    onToggle: (String) -> Unit,
+    onSetSelection: (List<String>, Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val discoveryIdentity = listOf(provider.id, provider.type, provider.baseUrl, provider.auth,
+        provider.config.customListModelsUrl, provider.config.codexClientVersion,
+        provider.config.antigravityVersion, provider.config.antigravityChangelist,
+        provider.config.antigravityProjectIds, provider.config.headers)
+    var models by remember(discoveryIdentity) { mutableStateOf<List<DiscoveredModel>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableIntStateOf(0) }
+    var query by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    val localizedResources = LocalResources.current
+    val discoveryUnavailable = stringResource(R.string.model_discovery_unavailable)
+    LaunchedEffect(refresh, discoveryIdentity) {
+        loading = true
+        loadError = null
+        try {
+            val discovered = (onFetchModels ?: error(discoveryUnavailable))(provider).distinctBy { it.id }
+            models = discovered
+            onCatalogLoaded(discovered)
+        } catch (e: CancellationException) { throw e
+        } catch (e: Exception) {
+            loadError = e.localizedMessage?.takeIf { it.isNotBlank() }
+                ?: localizedResources.getString(R.string.unable_to_load_models)
+        } finally { loading = false }
+    }
+    val modelsById = remember(models) { models.associateBy { it.id } }
+    val visibleModels = (models.map { it.id } + selectedModels).distinct().filter {
+        it.contains(query, ignoreCase = true) || modelsById[it]?.displayName?.contains(query, ignoreCase = true) == true
+    }
+    val allVisibleSelected = visibleModels.isNotEmpty() && visibleModels.all { it in selectedModels }
+    val selectionState = when {
+        allVisibleSelected -> ToggleableState.On
+        visibleModels.any { it in selectedModels } -> ToggleableState.Indeterminate
+        else -> ToggleableState.Off
+    }
+    val selectionDescription = stringResource(
+        if (allVisibleSelected) R.string.provider_deselect_visible_models else R.string.select_all_visible_models
+    )
+    ToolbarDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.model_catalog_title)) },
+        toolbarModifier = Modifier.testTag("provider-model-catalog-toolbar"),
+        toolbarLeading = {
+            ExpandableSearchField(
+                value = query,
+                onValueChange = { query = it },
+                expanded = searchExpanded,
+                onExpandedChange = { searchExpanded = it },
+                placeholder = stringResource(R.string.search_models),
+                modifier = Modifier.fillMaxWidth(),
+                testTag = "provider_model_catalog_search",
+                buttonTestTag = "provider_model_catalog_search_button",
+                tonalCollapsedButton = false
+            )
+        },
+        toolbarActions = {
+            IconButton(
+                onClick = { refresh++ },
+                enabled = !loading,
+                modifier = Modifier.size(40.dp)
+            ) {
+                SharedIcon(Icons.Outlined.Refresh, stringResource(R.string.refresh_models))
+            }
+            TriStateCheckbox(
+                state = selectionState,
+                onClick = { onSetSelection(visibleModels, !allVisibleSelected) },
+                enabled = visibleModels.isNotEmpty(),
+                modifier = Modifier.size(40.dp)
+                    .testTag("provider-model-catalog-select-all")
+                    .semantics { contentDescription = selectionDescription }
+            )
+        },
+        content = {
+            if (loading) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
+            loadError?.let { error ->
+                ErrorContainer(
+                    message = error,
+                    onRetry = { refresh++ },
+                    modifier = Modifier.padding(vertical = 8.dp)
+                        .testTag("provider-model-catalog-error"),
+                    copyButtonModifier = Modifier.testTag("provider-model-catalog-copy-error")
+                )
+            }
+            LazyColumn(
+                Modifier
+                    // Wrap short results; long lists consume the maximum available height.
+                    .weight(1f, fill = false)
+                    .fillMaxWidth()
+                    .testTag("provider-model-catalog-list"),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (visibleModels.isEmpty() && !loading && loadError == null) {
+                    item { Text(stringResource(if (query.isBlank()) R.string.no_models_returned else R.string.no_matching_models), modifier = Modifier.padding(16.dp)) }
+                }
+                items(visibleModels, key = { it }) { id ->
+                    var expanded by androidx.compose.runtime.saveable.rememberSaveable(id) { mutableStateOf(false) }
+                    val added = id in selectedModels
+                    val model = modelsById[id]
+                    val title = model?.displayName?.ifBlank { id } ?: id
+                    val modelSelectionDescription = stringResource(R.string.provider_select_model, id)
+                    Surface(
+                        onClick = { expanded = !expanded },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (added) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+                        } else {
+                            prominentContainerColor()
+                        },
+                        border = if (added) {
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
+                        } else {
+                            prominentContainerBorder()
+                        }
+                    ) {
+                        Column {
+                        Row(Modifier.padding(7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            EntityIcon(provider.config.modelConfigs[id]?.icon, Modifier.size(32.dp),
+                                text = id.substringAfterLast('/').take(1).uppercase(), matchName = title, fallbackMatchName = id, model = true)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                                    maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
+                                if (title != id) Text(id, style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (expanded) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                            }
+                             SharedIcon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                 stringResource(if (expanded) R.string.collapse else R.string.expand), modifier = Modifier.size(20.dp),
+                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                             Checkbox(checked = added, onCheckedChange = { onToggle(id) }, modifier = Modifier.size(32.dp).semantics {
+                                 contentDescription = modelSelectionDescription
+                             })
+                        }
+                        if (expanded) {
+                            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                val metadata = model?.metadata?.filter { (key, value) ->
+                                    key !in setOf("id", "name", "display_name", "displayName") && value != JsonNull
+                                }.orEmpty()
+                                for ((key, value) in metadata) {
+                                    val label = key.replace('_', ' ').replaceFirstChar { it.uppercase() }
+                                    val detail = formatCatalogMetadata(key, value)
+                                    Text("$label: $detail", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (model == null) Text(stringResource(R.string.provider_model_not_in_latest_api_response),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                        }
+                    }
+                }
+            }
+        }
+    )
+}

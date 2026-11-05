@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.WordWrapMode
 import org.starfall.generative.features.settings.ui.CodeRenderingPreferences
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.RenderCodeBlock

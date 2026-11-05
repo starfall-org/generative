@@ -11,8 +11,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
-import org.starfall.generative.shared.storage.preferences.rememberedModelName
+import org.starfall.generative.database.preferences.ModelConfigurationMemory
+import org.starfall.generative.database.preferences.rememberedModelName
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.language.DEFAULT_CONTEXT_WINDOW_TOKENS
 import org.starfall.generative.shared.model.language.DiscoveredModel

@@ -5,7 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.integrations.modelapis.antigravity.normalizeAntigravityRequest
 import org.starfall.generative.integrations.modelapis.antigravity.restoreAntigravityToolArguments
-import org.starfall.generative.shared.networking.*
+import org.starfall.generative.shared.helpers.networking.*
 
 class AntigravityRequestNormalizationTest {
     @Test fun claudeKeepsTokenLimitValidatesDeclarationsAndScopesStableSessions() {

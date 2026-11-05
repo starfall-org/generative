@@ -72,6 +72,9 @@ fun ProvidersDemoScreen(onBack: () -> Unit) {
         onDeleteProvider = { id ->
             data = data.copy(providers = data.providers.filterNot { it.id == id })
         },
+        onSetProviderHidden = { id, hidden ->
+            data = data.copy(providers = data.providers.map { if (it.id == id) it.copy(isHidden = hidden) else it })
+        },
         onReorderProviders = { ids -> data = data.reorderMembers(ids) },
         onReorderRootItemsTracked = { order, completed ->
             data = data.reorderRoot(order)

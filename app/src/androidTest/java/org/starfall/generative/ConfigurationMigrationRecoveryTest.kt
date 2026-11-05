@@ -11,9 +11,9 @@ import org.junit.Test
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.auth.CredentialLoadState
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.integrations.security.SecretCipher
 
 /** Failure and recovery cases against released v9 rows, real Room, and Android Keystore. */

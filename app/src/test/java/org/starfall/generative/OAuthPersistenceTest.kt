@@ -18,9 +18,9 @@ import org.starfall.generative.integrations.modelapis.antigravity.AntigravityAda
 import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenStore
 import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenState
 import org.starfall.generative.integrations.modelapis.openaicodex.OpenAICodexAdapter
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType

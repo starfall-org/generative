@@ -7,8 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.features.home.shared.ui.toolResponseLanguage
 import org.starfall.generative.features.home.shared.ui.unescapeToolResponse
-import org.starfall.generative.shared.code.CodeTokenKind
-import org.starfall.generative.shared.code.codeTokens
+import org.starfall.generative.shared.helpers.code.CodeTokenKind
+import org.starfall.generative.shared.helpers.code.codeTokens
 
 class ToolResponseFormattingTest {
     @Test fun jsonObjectRetainsEscapesAndJsonHighlighting() {

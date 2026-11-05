@@ -15,10 +15,10 @@ import org.starfall.generative.shared.model.auth.*
 import org.starfall.generative.shared.model.generation.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
-import org.starfall.generative.shared.networking.providerTokenUsage
+import org.starfall.generative.shared.helpers.networking.providerTokenUsage
 import java.util.Base64
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

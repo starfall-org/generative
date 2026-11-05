@@ -4,11 +4,6 @@ import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.shared.ui.sheets.ItemListSheet
 import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,16 +46,16 @@ import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.layout.ComponentGroup
+import org.starfall.generative.shared.ui.layout.ComponentGroupSlot
+import org.starfall.generative.shared.ui.layout.groupedItemShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.machines.MachineToolsDialog
 
-/**
- * Single combined card at the top of the left drawer.
- * - Remote: single selected machine with a BottomSheet picker, title is "Remote Services"
- * - Media: opens the media grid sheet, title is "Media"
- * Both rows share the same [prominentContainerColor] block.
- */
+/** Top drawer shortcuts: expandable Remote and Instructions cards followed by Media. */
+private enum class DrawerShortcutSection { REMOTE, INSTRUCTIONS }
+
 @Composable
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
@@ -75,7 +69,7 @@ internal fun DrawerQuickShortcuts(
     val controls = LocalToolControls.current
     val machines = controls.machines
     val selectedMachine = selectedRemoteMachine(controls.settings, machines)
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expandedSection by rememberSaveable { mutableStateOf<DrawerShortcutSection?>(null) }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     var machineMenu by remember { mutableStateOf(false) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
@@ -83,55 +77,27 @@ internal fun DrawerQuickShortcuts(
         ?: stringResource(if (machines.isEmpty()) R.string.remote_servers_none_configured
             else R.string.remote_server_none_selected)
 
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = prominentContainerColor(),
-        border = prominentContainerBorder(),
-        modifier = modifier.fillMaxWidth().heightIn(max = if (expanded) maxExpandedHeight else Dp.Unspecified)
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .clickable { expanded = !expanded }
-                    .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.size(42.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        SharedIcon(FluentUi.Regular.Desktop, null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(22.dp))
-                    }
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.drawer_remote_services),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                IconButton(onClick = onOpenRemoteMachines, modifier = Modifier.size(36.dp)) {
-                    SharedIcon(FluentUi.Regular.Settings,
-                        stringResource(R.string.tool_settings_accessibility,
-                            stringResource(R.string.drawer_remote_services_settings_label)),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                }
-                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(36.dp)) {
-                    SharedIcon(if (expanded) FluentUi.Regular.ChevronUp else FluentUi.Regular.ChevronDown,
-                        null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp))
-                }
-            }
-            AnimatedVisibility(visible = expanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()) {
-                Column(Modifier.fillMaxWidth()) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(horizontal = 14.dp))
+    ComponentGroup(
+        modifier = modifier,
+        items = listOf(
+            ComponentGroupSlot("remote") { itemModifier, _ ->
+                DrawerExpandableCard(
+                    title = stringResource(R.string.drawer_remote_services),
+                    subtitle = subtitle,
+                    icon = FluentUi.Regular.Desktop,
+                    expanded = expandedSection == DrawerShortcutSection.REMOTE,
+                    onToggle = {
+                        expandedSection = if (expandedSection == DrawerShortcutSection.REMOTE) null else DrawerShortcutSection.REMOTE
+                    },
+                    onSettings = onOpenRemoteMachines,
+                    settingsDescription = stringResource(R.string.tool_settings_accessibility,
+                        stringResource(R.string.drawer_remote_services_settings_label)),
+                    headerTag = "drawer_remote_header",
+                    maxExpandedHeight = maxExpandedHeight,
+                    // Keep the top radius stable even when expanded: 50% of the 66.dp header.
+                    shape = groupedItemShape(0, 3, outerCorner = 33.dp, innerCorner = 6.dp),
+                    modifier = itemModifier
+                ) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
                         .testTag("drawer_remote_selected_machine"),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -216,61 +182,79 @@ internal fun DrawerQuickShortcuts(
                         }
                     }
                 }
-            }
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                modifier = Modifier.padding(horizontal = 14.dp))
-            // Media row — opens the media grid sheet
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onOpenMediaStorage)
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            },
+            ComponentGroupSlot("instructions") { itemModifier, shape ->
+                DrawerInstructionsSection(
+                    expanded = expandedSection == DrawerShortcutSection.INSTRUCTIONS,
+                    onToggle = {
+                        expandedSection = if (expandedSection == DrawerShortcutSection.INSTRUCTIONS) null
+                            else DrawerShortcutSection.INSTRUCTIONS
+                    },
+                    maxExpandedHeight = maxExpandedHeight,
+                    modifier = itemModifier,
+                    shape = shape
+                )
+            },
+            ComponentGroupSlot("media") { itemModifier, shape ->
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(42.dp)
+                    modifier = itemModifier.testTag("drawer_media_card"),
+                    shape = shape,
+                    color = prominentContainerColor(),
+                    border = prominentContainerBorder()
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    // Media row — opens the media grid sheet
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(shape)
+                            .clickable(onClick = onOpenMediaStorage)
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                SharedIcon(
+                                    imageVector = FluentUi.Regular.FolderOpen,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.drawer_media_short_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.heightIn(min = 2.dp))
+                            Text(
+                                text = stringResource(R.string.settings_storage_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
                         SharedIcon(
-                            imageVector = FluentUi.Regular.FolderOpen,
+                            imageVector = FluentUi.Regular.ChevronRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.drawer_media_short_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.heightIn(min = 2.dp))
-                    Text(
-                        text = stringResource(R.string.settings_storage_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                SharedIcon(
-                    imageVector = FluentUi.Regular.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
             }
-        }
-    }
+        )
+    )
 
     if (pickerOpen) {
         ItemListSheet(

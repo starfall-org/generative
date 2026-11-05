@@ -3,7 +3,7 @@ package org.starfall.generative.navigation
 import android.content.Intent
 import android.content.Context
 import android.net.Uri
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** One external share is a composer draft, never a request to send a message. */
 internal data class ExternalShare(val text: String?, val streams: List<Uri>, val fallbackMime: String?)
@@ -44,6 +44,6 @@ internal suspend fun stageSharedAttachment(
     uri: Uri,
     fallbackMime: String?,
     temporaryChatId: String?
-): String = org.starfall.generative.shared.files.importUserAttachment(
+): String = org.starfall.generative.shared.subfeatures.media.logic.importUserAttachment(
     context, files, uri, fallbackMime, temporaryChatId
 )

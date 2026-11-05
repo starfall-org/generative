@@ -15,7 +15,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
@@ -24,7 +24,7 @@ class OAuthAccountErrorUiTest {
 
     @Test fun devinLoginFailureShowsCopyableDiagnosticInsteadOfCrashing() {
         val details = "java.lang.IllegalStateException: OAuth foreground service unavailable\\n" +
-            "    at org.starfall.generative.shared.auth.OAuthCallbackService.start(OAuthCallbackService.kt:1)"
+            "    at org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService.start(OAuthCallbackService.kt:1)"
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", dynamicColor = false) {
                 OAuthAccountCard(

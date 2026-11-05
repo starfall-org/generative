@@ -34,16 +34,16 @@ import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.language.withThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.storage.preferences.ModelConfigurationMemory
+import org.starfall.generative.database.preferences.ModelConfigurationMemory
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.IconPickerRow
+import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
-import org.starfall.generative.shared.ui.model.modelInitial
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

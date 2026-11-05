@@ -10,7 +10,7 @@ import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.room.AppDatabase
 
 /**
  * Synthetic-only Android measurement. It opens an in-memory Room database and

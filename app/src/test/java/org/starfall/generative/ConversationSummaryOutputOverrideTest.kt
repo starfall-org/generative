@@ -15,7 +15,7 @@ import org.starfall.generative.features.home.chat.logic.generateConversationSumm
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationSummaryRequest
@@ -25,7 +25,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 

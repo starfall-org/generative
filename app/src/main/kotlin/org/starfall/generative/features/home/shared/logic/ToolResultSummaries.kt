@@ -1,8 +1,8 @@
 package org.starfall.generative.features.home.shared.logic
 
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.helpers.networking.str
 
 internal data class ToolSummary(
     val content: JsonObject,

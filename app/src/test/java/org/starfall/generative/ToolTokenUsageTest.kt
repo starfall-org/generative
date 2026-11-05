@@ -19,7 +19,7 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.features.home.shared.logic.ToolRequestService
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.MessageVersion
@@ -30,7 +30,7 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.*
+import org.starfall.generative.shared.helpers.networking.*
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

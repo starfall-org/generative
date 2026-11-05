@@ -22,14 +22,14 @@ import org.starfall.generative.integrations.modelapis.anthropic.CLAUDE_CODE_IDEN
 import org.starfall.generative.integrations.modelapis.anthropic.CLAUDE_CODE_USER_AGENT
 import org.starfall.generative.integrations.modelapis.anthropic.claudeCodeSystemReminder
 import org.starfall.generative.integrations.modelapis.claudecode.ClaudeCodeAdapter
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.*
+import org.starfall.generative.shared.helpers.networking.*
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

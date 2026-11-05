@@ -9,7 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
-import org.starfall.generative.shared.storage.preferences.MessageFontFamily
+import org.starfall.generative.database.preferences.MessageFontFamily
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 
 internal fun MessageFontFamily.toComposeFontFamily(): FontFamily = when (this) {

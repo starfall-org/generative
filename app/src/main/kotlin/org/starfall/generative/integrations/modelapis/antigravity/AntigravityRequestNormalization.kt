@@ -3,9 +3,9 @@ package org.starfall.generative.integrations.modelapis.antigravity
 import java.security.MessageDigest
 import java.util.UUID
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Model-specific normalization applied to the inner Antigravity request envelope. */
 internal fun normalizeAntigravityRequest(request: JsonObject, model: String, credentialId: String): JsonObject {

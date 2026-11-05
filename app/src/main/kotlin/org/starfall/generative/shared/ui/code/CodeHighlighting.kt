@@ -3,7 +3,7 @@ package org.starfall.generative.shared.ui.code
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import org.starfall.generative.shared.code.codeTokens
+import org.starfall.generative.shared.helpers.code.codeTokens
 
 private val darkCodeColors = listOf(
     0xFF8B949E, 0xFFA5D6FF, 0xFF79C0FF, 0xFFFF7B72, 0xFFFFA657,

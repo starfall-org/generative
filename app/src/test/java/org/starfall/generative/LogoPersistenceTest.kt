@@ -18,19 +18,20 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
-import org.starfall.generative.database.*
+import org.starfall.generative.database.repositories.*
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.icons.FaviconResult
-import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.subfeatures.icons.logic.FaviconResult
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.ui.dialogs.FaviconFetchState
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.subfeatures.icons.ui.FaviconFetchState
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

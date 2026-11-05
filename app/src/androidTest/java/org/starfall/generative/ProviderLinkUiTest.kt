@@ -12,10 +12,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.integrations.modelapis.AiService
 import java.util.UUID
 

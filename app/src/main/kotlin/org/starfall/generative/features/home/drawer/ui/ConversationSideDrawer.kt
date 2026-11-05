@@ -49,7 +49,7 @@ import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -216,7 +216,7 @@ fun ConversationSideDrawer(
                         )
                     }
             ) {
-            // Keep Remote/Media shortcuts mounted in both normal and selection modes.
+            // Keep Remote Services, Instructions, and Media mounted in normal and selection modes.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

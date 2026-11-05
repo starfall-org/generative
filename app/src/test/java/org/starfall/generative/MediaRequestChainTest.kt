@@ -16,7 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.integrations.media.MediaRequestChainExecutor
 import org.starfall.generative.integrations.media.SystemMediaTools
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.helpers.media.MediaTemplateContext
 import org.starfall.generative.shared.helpers.media.MediaTemplateInput
 import org.starfall.generative.shared.helpers.media.MediaStepTemplateContext
@@ -36,7 +36,7 @@ import org.starfall.generative.shared.model.media.MediaValueKind
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.nio.file.Files
 
 class MediaRequestChainTest {

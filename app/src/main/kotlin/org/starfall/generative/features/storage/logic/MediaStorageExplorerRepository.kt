@@ -12,9 +12,9 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
-import org.starfall.generative.shared.files.AppDocumentsLocation
-import org.starfall.generative.shared.files.MediaStorageDocuments
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.AppDocumentsLocation
+import org.starfall.generative.shared.subfeatures.media.logic.MediaStorageDocuments
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** Local MediaStorage and UploadCaches adapter to the reusable explorer. */
 class MediaStorageExplorerRepository(context: Context) : ExplorerRepository {

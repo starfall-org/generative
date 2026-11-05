@@ -2,8 +2,8 @@ package org.starfall.generative.features.home.chat.logic.service
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** Translate user references (including content:// documents) into app-owned copies only. */
 internal fun localChatUploadNames(files: ToolFiles, references: Collection<String>): Set<String> =

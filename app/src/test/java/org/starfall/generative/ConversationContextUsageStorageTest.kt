@@ -22,9 +22,9 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.generation.ContextUsageSnapshot
 import org.starfall.generative.shared.model.generation.TokenUsage
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.entities.MessageVersionEntity
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.room.entities.MessageVersionEntity
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

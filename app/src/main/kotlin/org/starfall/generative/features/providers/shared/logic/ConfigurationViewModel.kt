@@ -27,14 +27,14 @@ import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.ProviderRepairResult
-import org.starfall.generative.database.ProfileRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.ProviderRepairResult
+import org.starfall.generative.database.repositories.ProfileRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
 
 class ConfigurationViewModel(
     private val profileRepo: ProfileRepository,
@@ -325,6 +325,12 @@ class ConfigurationViewModel(
         Result.success(modelRepo.repairCorruptProviders())
     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
     catch (e: Exception) { Result.failure(e) }
+
+    fun setProviderHidden(providerId: String, hidden: Boolean) {
+        viewModelScope.launch(LocalWriteErrors.handler) {
+            modelRepo.setProviderHidden(providerId, hidden)
+        }
+    }
 
     fun deleteProvider(providerId: String) {
         viewModelScope.launch(LocalWriteErrors.handler) {

@@ -35,8 +35,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.appearanceContainerColor
-import org.starfall.generative.shared.theme.LocalDarkMode
-import org.starfall.generative.shared.theme.warningColor
+import org.starfall.generative.shared.ui.theme.LocalDarkMode
+import org.starfall.generative.shared.ui.theme.warningColor
 import org.starfall.generative.shared.ui.text.GatedSelectionContainer
 
 /** Message presentation only; existing error data and retry mechanics are unchanged. */

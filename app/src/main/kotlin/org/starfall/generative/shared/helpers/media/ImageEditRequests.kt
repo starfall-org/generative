@@ -8,9 +8,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.util.Base64
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 // https://developers.openai.com/api/reference/resources/images/methods/edit
 internal fun openAiImageEditRequest(model: String, prompt: String, options: JsonObject, images: List<MediaInputImage>): MultipartBody {

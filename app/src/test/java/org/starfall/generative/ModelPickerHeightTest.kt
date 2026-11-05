@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.ui.model.ModelPickerSheetContent
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheetContent
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w400dp-h800dp-xhdpi", application = LibraryTestApplication::class)

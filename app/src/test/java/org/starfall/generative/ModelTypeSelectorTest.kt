@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.providers.editor.ui.ModelTypeSelector
 import org.starfall.generative.shared.model.language.ModelType
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "en-w400dp-h800dp-xhdpi", application = LibraryTestApplication::class)

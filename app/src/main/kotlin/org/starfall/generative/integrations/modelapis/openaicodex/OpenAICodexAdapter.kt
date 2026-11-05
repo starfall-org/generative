@@ -27,8 +27,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.auth.awaitLoopbackAuthorizationCode
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.auth.logic.awaitLoopbackAuthorizationCode
 import org.starfall.generative.integrations.modelapis.account.AccountProviderAdapter
 import org.starfall.generative.integrations.modelapis.discoveredModel
 import org.starfall.generative.integrations.modelapis.modelCatalogHttpError
@@ -38,8 +38,8 @@ import org.starfall.generative.integrations.modelapis.sdk.OfficialProviderSdk
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.language.DiscoveredModel
-import org.starfall.generative.shared.auth.AppAuthTransactions
-import org.starfall.generative.shared.auth.OAuthBrowser
+import org.starfall.generative.shared.subfeatures.auth.logic.AppAuthTransactions
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -47,7 +47,7 @@ import org.starfall.generative.shared.model.provider.effectiveCodexClientVersion
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.language.wireReasoningEffort
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 
 /**
  * Self-contained ChatGPT Codex account adapter.
@@ -68,7 +68,7 @@ internal class OpenAICodexAdapter(
     private val tokenStore = CodexTokenStore(appContext)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val sdk = OfficialProviderSdk(attachments)
-    private val http = HttpClient(CIO) { install(org.starfall.generative.shared.logging.DebugLogKtorPlugin) }
+    private val http = HttpClient(CIO) { install(org.starfall.generative.shared.subfeatures.logging.logic.DebugLogKtorPlugin) }
 
     override suspend fun authorize(provider: ModelProvider): Result<ModelProvider> = runCatching {
         require(provider.type == ModelApiType.OPENAI_CODEX) { "Provider is not OpenAI Codex." }

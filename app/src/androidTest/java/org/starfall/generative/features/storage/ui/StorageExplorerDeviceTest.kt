@@ -25,7 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.R
 import org.starfall.generative.navigation.ExplorerActivity
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** End-to-end UI checks against real app-private files and the existing viewer. */
 @RunWith(AndroidJUnit4::class)

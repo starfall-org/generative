@@ -11,8 +11,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.util.concurrent.TimeUnit
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization

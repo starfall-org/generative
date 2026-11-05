@@ -44,8 +44,8 @@ import org.starfall.generative.features.menu.ui.GroupSingleShape
 import org.starfall.generative.features.menu.ui.GroupTopShape
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.theme.ThemePresets
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.ThemePresets
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1600dp-xhdpi")

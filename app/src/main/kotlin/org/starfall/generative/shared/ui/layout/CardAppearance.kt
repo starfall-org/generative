@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 
 /** Appearance-controlled item fill; optional boost preserves extra contrast for overlay controls. */
 @Composable

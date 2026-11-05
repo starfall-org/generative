@@ -11,8 +11,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.shared.files.CrashReport
-import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReport
+import org.starfall.generative.shared.subfeatures.crashreports.ui.CrashReportDialog
 
 /** Confirms the actual crash dialog exposes complete diagnostics without losing its actions. */
 @RunWith(AndroidJUnit4::class)

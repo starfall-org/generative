@@ -4,9 +4,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.helpers.media.prepareContentApiResult
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 
 internal suspend fun resolveContentApiMedia(
     result: JsonObject,

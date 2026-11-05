@@ -11,7 +11,7 @@ import org.junit.Test
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.integrations.mcp.McpService
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors

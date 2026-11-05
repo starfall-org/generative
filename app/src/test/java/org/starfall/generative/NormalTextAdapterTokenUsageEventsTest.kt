@@ -23,7 +23,7 @@ import org.starfall.generative.integrations.modelapis.ollama.OllamaAdapter
 import org.starfall.generative.integrations.modelapis.openai.OpenAIChatCompletionsAdapter
 import org.starfall.generative.integrations.modelapis.openairesponses.OpenAIResponsesAdapter
 import org.starfall.generative.integrations.modelapis.sdk.OfficialProviderSdk
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage

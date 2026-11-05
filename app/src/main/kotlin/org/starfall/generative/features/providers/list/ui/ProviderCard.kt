@@ -23,11 +23,11 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 
 private val ProviderListCardHeight = 88.dp
 private val ProviderGridCardHeight = 152.dp
@@ -43,6 +43,7 @@ internal fun ProviderRootCard(
     onEditProvider: (ModelProvider) -> Unit,
     onMoveProvider: (ModelProvider) -> Unit,
     onDeleteProvider: (String) -> Unit,
+    onSetProviderHidden: (String, Boolean) -> Unit = { _, _ -> },
     onOpenGroup: (String) -> Unit
 ) {
     when (item) {
@@ -52,7 +53,8 @@ internal fun ProviderRootCard(
             modifier = Modifier.then(if (testTag) Modifier.testTag("provider_${item.provider.id}") else Modifier),
             onEdit = { onEditProvider(item.provider) },
             onMoveToGroup = { onMoveProvider(item.provider) },
-            onDelete = { onDeleteProvider(item.provider.id) }
+            onDelete = { onDeleteProvider(item.provider.id) },
+            onToggleHidden = { onSetProviderHidden(item.provider.id, !item.provider.isHidden) }
         )
         is ProviderRootItem.GroupItem -> ProviderGroupCollapsedCard(
             group = item.group,
@@ -115,6 +117,7 @@ internal fun ProviderFolderProviderTile(
     onEdit: () -> Unit,
     onMoveToGroup: () -> Unit,
     onDelete: () -> Unit,
+    onToggleHidden: () -> Unit,
     testTag: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -126,7 +129,8 @@ internal fun ProviderFolderProviderTile(
         ),
         onEdit = onEdit,
         onMoveToGroup = onMoveToGroup,
-        onDelete = onDelete
+        onDelete = onDelete,
+        onToggleHidden = onToggleHidden
     )
 }
 
@@ -137,7 +141,8 @@ fun ProviderUnifiedCard(
     modifier: Modifier = Modifier,
     onEdit: () -> Unit,
     onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onToggleHidden: () -> Unit = {}
 ) {
     ItemCard(
         isGrid = isGrid,
@@ -145,10 +150,11 @@ fun ProviderUnifiedCard(
         modifier = modifier
             .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight),
             icon = {
-                EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name), matchName = provider.name)
+                EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name),
+                    matchName = provider.name, grayscale = provider.isHidden)
             },
             actions = {
-                ProviderContextMenu(onEdit, onMoveToGroup, onDelete)
+                ProviderContextMenu(provider.isHidden, onEdit, onMoveToGroup, onDelete, onToggleHidden)
             },
             content = {
                 Column(
@@ -158,20 +164,21 @@ fun ProviderUnifiedCard(
                         Text(
                             text = provider.name,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (provider.isHidden) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.fillMaxWidth()
                         )
                             Text(
                                 text = provider.type.displayName,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (provider.isHidden) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                     if (!provider.type.isAccountProvider) Text(
                         text = provider.baseUrl,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = if (provider.isHidden) 0.7f else 1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -182,9 +189,11 @@ fun ProviderUnifiedCard(
 
 @Composable
 private fun ProviderContextMenu(
+    isHidden: Boolean,
     onEdit: () -> Unit,
     onMoveToGroup: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onToggleHidden: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -194,6 +203,11 @@ private fun ProviderContextMenu(
         if (expanded) ContextDropdownMenu(
             expanded = true,
             actions = listOf(
+                ContextMenuAction(
+                    stringResource(if (isHidden) R.string.provider_show else R.string.provider_hide),
+                    onToggleHidden,
+                    if (isHidden) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff
+                ),
                 ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
                 ContextMenuAction(stringResource(R.string.move_to_group), onMoveToGroup, Icons.Outlined.Folder),
                 ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)

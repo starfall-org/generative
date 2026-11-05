@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.SidebarOrganization
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w420dp-h900dp-xhdpi", application = LibraryTestApplication::class)

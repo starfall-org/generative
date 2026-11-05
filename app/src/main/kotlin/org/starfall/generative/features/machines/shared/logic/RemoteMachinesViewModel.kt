@@ -15,7 +15,7 @@ import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineState
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
-import org.starfall.generative.shared.storage.LocalWriteErrors
+import org.starfall.generative.shared.state.LocalWriteErrors
 
 class RemoteMachinesViewModel(
     private val service: RemoteMachineService

@@ -914,8 +914,8 @@
     <string name="speech_engine_api_key_help">Требуется для этого движка синтеза речи. Безопасно хранится на этом устройстве.</string>
     <string name="media_image_generation_failed">Не удалось создать изображение</string>
     <string name="media_video_generation_failed">Не удалось создать видео</string>
-    <string name="speech_sentences_per_chunk">Предложений на запрос API</string>
-    <string name="speech_chunk_boundaries">Точка или перенос строки завершает предложение. Последовательные разделители считаются одним.</string>
+    <string name="speech_words_per_chunk">Максимум слов на запрос API</string>
+    <string name="speech_word_chunk_boundaries">Число слов гибко изменяется до ближайшей точки, восклицательного или вопросительного знака. Длинные предложения разделяются.</string>
     <string name="notification_speech_channel">Воспроизведение речи</string>
     <string name="notification_speech_playing">Чтение вслух</string>
     <string name="user_profile_background_transparency">Прозрачность фона</string>

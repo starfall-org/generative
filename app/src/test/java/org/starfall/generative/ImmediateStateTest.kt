@@ -5,7 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.state.ImmediateState
 
 class ImmediateStateTest {
     @Test fun reactivePreferencesStillObserveExternalChanges() = runBlocking {

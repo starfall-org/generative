@@ -49,11 +49,11 @@ import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.navigation.NullableFilePathSaver
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.media.SpeechAudioPlayer
-import org.starfall.generative.shared.media.SpeechSynthesisService
-import org.starfall.generative.shared.media.TtsHelper
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.integrations.speech.SpeechAudioPlayer
+import org.starfall.generative.integrations.speech.SpeechSynthesisService
+import org.starfall.generative.integrations.speech.TtsHelper
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
@@ -65,15 +65,15 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.ProfileRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.ProfileRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.ToolSettingsStore
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

@@ -166,6 +166,7 @@
     <string name="provider_antigravity_project_id">ID dự án Antigravity (tùy chọn)</string>
     <string name="http_unencrypted_provider_warning">HTTP không được mã hóa. Khóa API, header và tin nhắn có thể bị đọc trên mạng. Hãy dùng HTTPS ngoài mạng nội bộ đáng tin cậy.</string>
     <string name="open_model_catalog">Mở danh mục mô hình</string>
+    <string name="model_catalog_title">Danh mục mô hình</string>
     <string name="test_connection">Kiểm tra kết nối</string>
     <string name="check_connection">Thử kết nối</string>
     <string name="test_model">Thử %1$s</string>
@@ -429,6 +430,8 @@
     <string name="provider_restore_default_url">Khôi phục URL mặc định</string>
     <string name="provider_select_auth_type">Chọn cách xác thực</string>
     <string name="provider_show_api_key">Hiện khoá API</string>
+    <string name="provider_hide">Ẩn</string>
+    <string name="provider_show">Hiện</string>
     <string name="provider_hide_api_key">Ẩn khoá API</string>
     <string name="file_download">Tải tệp xuống</string>
     <string name="file_download_saved">Đã lưu tệp</string>
@@ -924,9 +927,18 @@
     <string name="speech_engine_api_key_help">Bắt buộc đối với dịch vụ giọng nói này. Được lưu an toàn trên thiết bị này.</string>
     <string name="media_image_generation_failed">Tạo ảnh thất bại</string>
     <string name="media_video_generation_failed">Tạo video thất bại</string>
-    <string name="speech_sentences_per_chunk">Số câu mỗi lần gọi API</string>
-    <string name="speech_chunk_boundaries">Dấu chấm hoặc xuống dòng kết thúc một câu. Các dấu phân cách liền nhau chỉ tính một lần.</string>
+    <string name="speech_words_per_chunk">Số từ tối đa mỗi lần gọi API</string>
+    <string name="speech_word_chunk_boundaries">Giới hạn tương đối: linh hoạt tăng hoặc giảm số từ để ngắt tại dấu chấm, chấm than hoặc chấm hỏi gần nhất. Câu quá dài sẽ được chia nhỏ.</string>
     <string name="notification_speech_channel">Phát giọng nói</string>
+    <string name="sftp_transfer_channel">Truyền tệp SFTP</string>
+    <string name="sftp_transfer_preparing">Đang chuẩn bị truyền tệp SFTP…</string>
+    <string name="sftp_transfer_uploading">Đang tải lên %1$s</string>
+    <string name="sftp_transfer_downloading">Đang tải xuống %1$s</string>
+    <string name="sftp_transfer_file_number">Tệp %1$d/%2$d</string>
+    <string name="sftp_transfer_file_progress">%1$s · %2$d%%</string>
+    <string name="sftp_transfer_complete">Truyền tệp SFTP hoàn tất</string>
+    <string name="sftp_transfer_failed">Truyền tệp SFTP thất bại</string>
+    <string name="sftp_transfer_result">Đã truyền %1$d/%2$d tệp</string>
     <string name="notification_speech_playing">Đang đọc</string>
     <string name="user_profile_background_transparency">Độ trong suốt của ảnh nền</string>
     <string name="user_profile_background_transparency_reset">Đặt lại độ trong suốt ảnh nền về mặc định</string>
@@ -1000,4 +1012,5 @@
     <string name="providers_demo_title">Bản demo ProvidersScreen</string>
         <string name="providers_demo_editor_title">Provider mẫu</string>
     <string name="content_list_no_results">Không tìm thấy mục phù hợp.</string>
+    <string name="drawer_instructions_selected">Đã bật %1$d/%2$d</string>
 </resources>

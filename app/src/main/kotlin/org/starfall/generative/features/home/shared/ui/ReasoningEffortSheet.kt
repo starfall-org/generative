@@ -13,12 +13,12 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
-import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.sheets.ContentSheetTitle
-import org.starfall.generative.shared.ui.model.ReasoningEffortControl
-import org.starfall.generative.shared.ui.model.reasoningEffortOptions
-import org.starfall.generative.shared.ui.model.reasoningEffortIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ReasoningEffortControl
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortOptions
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortIndex
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

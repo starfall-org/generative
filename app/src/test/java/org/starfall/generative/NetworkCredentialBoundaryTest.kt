@@ -23,8 +23,8 @@ import org.starfall.generative.integrations.mcp.McpOAuthService
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.mcp.McpSession
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.media.SpeechSynthesisService
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.integrations.speech.SpeechSynthesisService
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.Authorization
@@ -34,9 +34,9 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.room.AppDatabase
 import java.nio.file.Files
 import java.util.Base64
 import java.util.concurrent.TimeUnit

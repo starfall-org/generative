@@ -5,9 +5,9 @@ import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.networking.*
-import org.starfall.generative.shared.storage.preferences.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
+import org.starfall.generative.shared.helpers.networking.*
+import org.starfall.generative.database.preferences.*
 import java.nio.file.Files
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.features.home.chat.logic.SendFileTool

@@ -25,17 +25,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.ui.auth.DeviceCodeChallengeText
+import org.starfall.generative.shared.subfeatures.auth.ui.DeviceCodeChallengeText
 import org.starfall.generative.features.providers.shared.logic.isEmpty
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderOAuthAccount
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.ErrorContainer
-import org.starfall.generative.shared.auth.oauthErrorDetails
+import org.starfall.generative.shared.subfeatures.auth.logic.oauthErrorDetails
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
-import org.starfall.generative.shared.ui.auth.rememberOAuthStart
+import org.starfall.generative.shared.subfeatures.auth.ui.rememberOAuthStart
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 

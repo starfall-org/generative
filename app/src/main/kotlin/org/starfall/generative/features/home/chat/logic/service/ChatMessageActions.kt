@@ -29,11 +29,11 @@ import org.starfall.generative.features.home.chat.logic.effectiveContext
 import org.starfall.generative.features.home.chat.logic.contextUsageKey
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Handles chat-message mutations and generation entry points; state is supplied by the ViewModel. */

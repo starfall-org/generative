@@ -16,8 +16,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration

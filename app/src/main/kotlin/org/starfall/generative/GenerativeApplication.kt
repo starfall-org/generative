@@ -8,16 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.starfall.generative.appwiring.AppContainer
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.RoomOAuthRecordStorage
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.RoomOAuthRecordStorage
 import org.starfall.generative.integrations.security.OAuthRecordStorage
 import org.starfall.generative.integrations.security.OAuthRecordStorageOwner
 import org.starfall.generative.integrations.remote.RemoteConnectionService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
-import org.starfall.generative.shared.files.CrashReportStore
-import org.starfall.generative.shared.files.CrashRecordingHandler
-import org.starfall.generative.shared.auth.OAuthReturnIntentProvider
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReportStore
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashRecordingHandler
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthReturnIntentProvider
 import java.io.File
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 
@@ -31,7 +31,7 @@ class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRec
     }
 
     override fun newImageLoader(context: android.content.Context): coil3.ImageLoader =
-        org.starfall.generative.shared.icons.AppImages.createLoader(context)
+        org.starfall.generative.shared.subfeatures.icons.logic.AppImages.createLoader(context)
 
     val container by lazy { AppContainer(this) }
 

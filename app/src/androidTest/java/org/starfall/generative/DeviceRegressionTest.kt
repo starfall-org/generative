@@ -17,15 +17,15 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.ui.media.InlineVideoPreview
-import org.starfall.generative.shared.ui.media.mediaThumbnail
+import org.starfall.generative.shared.subfeatures.media.ui.InlineVideoPreview
+import org.starfall.generative.shared.subfeatures.media.ui.mediaThumbnail
 import java.io.File
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheet
-import org.starfall.generative.shared.ui.model.ModelPickerSheet
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
 
 class DeviceRegressionTest {
     @get:Rule val compose = createComposeRule()
@@ -33,7 +33,7 @@ class DeviceRegressionTest {
     @Test fun addSheetStartsHalfHeightExpandsAndShowsToolControlsBeforeSummary() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {}, {})
+            QuickActionsSheet({}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.waitForIdle()
         val photos = compose.onNodeWithText("Photos")

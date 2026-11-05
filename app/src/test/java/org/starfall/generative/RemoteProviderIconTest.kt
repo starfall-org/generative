@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
 import java.io.ByteArrayOutputStream
 
 @RunWith(RobolectricTestRunner::class)

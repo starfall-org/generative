@@ -2,8 +2,8 @@ package org.starfall.generative
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.generative.shared.storage.preferences.UserProfile
-import org.starfall.generative.shared.storage.preferences.UserProfileImageSlot
+import org.starfall.generative.database.preferences.UserProfile
+import org.starfall.generative.database.preferences.UserProfileImageSlot
 import org.starfall.generative.shared.ui.background.backgroundPhotoAlpha
 
 /** A user-profile slider changes only the photo alpha, never item fills or modal surfaces. */

@@ -22,7 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import kotlin.math.roundToInt
 import java.util.concurrent.atomic.AtomicBoolean

@@ -542,7 +542,7 @@ private fun RenderIncrementalMarkdownDocument(
     truncationLabel: String,
     modifier: Modifier,
     cacheIdentity: MarkdownRenderCacheIdentity?,
-    preferences: org.starfall.generative.shared.storage.preferences.AppPreferences,
+    preferences: org.starfall.generative.database.preferences.AppPreferences,
     typography: MarkdownTypography
 ) {
     Markdown(

@@ -2,7 +2,7 @@ package org.starfall.generative.integrations.modelapis.antigravity
 
 import android.content.Context
 import okhttp3.FormBody
-import org.starfall.generative.shared.logging.DebugLogInterceptor
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLogInterceptor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -17,13 +17,13 @@ import org.starfall.generative.shared.model.auth.*
 import org.starfall.generative.shared.model.generation.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.integrations.modelapis.discoveredModel
 import java.util.UUID
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 internal class AntigravityAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(
     context, attachments, ModelApiType.ANTIGRAVITY,

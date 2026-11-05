@@ -9,9 +9,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
-import org.starfall.generative.shared.helpers.media.MAX_MEDIA_INPUT_BYTES
-import org.starfall.generative.shared.helpers.media.MAX_MEDIA_INPUT_VIDEO_BYTES
-import org.starfall.generative.shared.helpers.media.detectInputMediaMime
+import org.starfall.generative.shared.subfeatures.media.logic.MAX_MEDIA_INPUT_BYTES
+import org.starfall.generative.shared.subfeatures.media.logic.MAX_MEDIA_INPUT_VIDEO_BYTES
+import org.starfall.generative.shared.subfeatures.media.logic.detectInputMediaMime
 import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
 import org.starfall.generative.integrations.media.SystemMediaTools
 import org.starfall.generative.integrations.modelapis.AiService
@@ -21,9 +21,9 @@ import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaRequestChain
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.features.home.shared.logic.prepareToolResult
 
 /** Handles direct image/video generation and emits its progress as tool events. */

@@ -45,11 +45,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.terminal.TerminalSlot
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.TerminalSlot
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 
 internal const val MIN_TERMINAL_FONT_DP = 8
 internal const val MAX_TERMINAL_FONT_DP = 32

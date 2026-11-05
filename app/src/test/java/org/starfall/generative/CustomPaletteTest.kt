@@ -14,14 +14,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.UserProfile
-import org.starfall.generative.shared.theme.CustomPalette
-import org.starfall.generative.shared.theme.ThemePresets
-import org.starfall.generative.shared.theme.customColorScheme
-import org.starfall.generative.shared.theme.parsePaletteHex
-import org.starfall.generative.shared.theme.toPaletteHex
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.UserProfile
+import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.shared.ui.theme.ThemePresets
+import org.starfall.generative.shared.ui.theme.customColorScheme
+import org.starfall.generative.shared.ui.theme.parsePaletteHex
+import org.starfall.generative.shared.ui.theme.toPaletteHex
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

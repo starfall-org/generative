@@ -30,7 +30,6 @@ fun QuickActionsSheet(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
@@ -46,7 +45,6 @@ fun QuickActionsSheet(
             onTakePhoto = onTakePhoto,
             onCreateImage = onCreateImage,
             onCreateVideo = onCreateVideo,
-            onOpenInstructions = onOpenInstructions,
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onDismiss = onDismiss,
@@ -62,7 +60,6 @@ internal fun QuickActionsSheetContent(
     onTakePhoto: () -> Unit,
     onCreateImage: () -> Unit,
     onCreateVideo: () -> Unit,
-    onOpenInstructions: () -> Unit,
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
@@ -134,11 +131,6 @@ internal fun QuickActionsSheetContent(
             icon = Icons.Outlined.Lightbulb,
             title = stringResource(R.string.common_skills),
             onClick = { onOpenSkills(); onDismiss() }
-        )
-        AddActionRow(
-            icon = Icons.Outlined.DocumentSparkle,
-            title = stringResource(R.string.common_instructions),
-            onClick = onOpenInstructions
         )
         AddActionRow(
             icon = Icons.Outlined.Build,

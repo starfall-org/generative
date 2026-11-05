@@ -17,27 +17,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
-import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
-import org.starfall.generative.shared.ui.model.ReasoningEffortControl
-import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
-import org.starfall.generative.shared.ui.model.maximumEffortCardBrush
-import org.starfall.generative.shared.ui.model.reasoningEffortOptions
-import org.starfall.generative.shared.ui.model.reasoningEffortIndex
-import org.starfall.generative.shared.ui.model.reasoningEffortTier
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.LocalThinkingScreenBurst
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ThinkingScreenBurstLayer
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ReasoningEffortControl
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.localizedReasoningEffortLabels
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.maximumEffortCardBrush
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortOptions
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortTier
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.model.modelInitial
-import org.starfall.generative.shared.ui.model.ModelPickerCard
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerCard
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.sheets.SlideSheetContent
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
-import org.starfall.generative.shared.ui.model.drawMaximumEffortStreaks
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.drawMaximumEffortStreaks
 
 /** Sheet background that follows the reasoning tier: the maximum effort tier gets a red brush. */
 internal class SelectedModelSheetStyle(

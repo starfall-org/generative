@@ -94,12 +94,11 @@ Tap a directory to enter it, or a file to invoke `onOpenFile`. Per-entry menus (
 offer Download (files only, when supported), Rename and Delete; the AppBar offers New folder
 within a source. Upload accepts multiple documents from the system file picker; Download opens the
 system Save As picker with the original name and inferred MIME type. Canceled pickers do nothing,
-and transfers are performed through the supplied suspending callbacks. Successful uploads reload
-the directory; after a partially successful batch, the listing is also refreshed when a later file
-fails. These operations use confirmation dialogs, call the injected repository, then reload the
-current location. A spinner indicates loading; errors from repository or viewer callbacks show a
-snackbar. The screen maintains view mode, query, current location and dialogs in Compose memory
-only.
+and transfers are performed through the supplied suspending callbacks. By default, successful
+uploads reload the directory (including partially successful batches). Hosts with background
+transfers can opt out of the transfer spinner and refresh the listing on completion. Repository
+operations still show a loading indicator, and synchronous errors show a snackbar. The screen
+maintains view mode, query, current location and dialogs in Compose memory only.
 
 ## Dependency boundary and host integrations
 
@@ -111,7 +110,10 @@ itself. Backend implementations and external viewers remain the host's responsib
 The MediaStorage, UploadCaches and SFTP hosts implement upload/download using streams, so files are not
 loaded into memory all at once. The local adapter refuses to overwrite existing names and removes
 incomplete uploads; the SFTP adapter uploads to a temporary remote path before publishing the
-file. Download failure may leave a partial document in a third-party destination (Android's
+file. The SFTP host queues transfers in a foreground service and shows per-file byte progress
+in a system notification (indeterminate when a source cannot provide its size). Uploads refresh
+the explorer after the queue completes; navigation away does not cancel active transfers.
+Download failure may leave a partial document in a third-party destination (Android's
 provider owns it), which the user can remove with their file manager.
 
 The local storage host exposes **MediaStorage** for tool-generated output and **UploadCaches**

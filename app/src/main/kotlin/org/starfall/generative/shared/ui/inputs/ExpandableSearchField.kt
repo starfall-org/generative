@@ -62,7 +62,8 @@ fun ExpandableSearchField(
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
     onBoundsChange: (Rect?) -> Unit = {},
     testTag: String = "expandable-search",
-    buttonTestTag: String = "$testTag-button"
+    buttonTestTag: String = "$testTag-button",
+    tonalCollapsedButton: Boolean = true
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -135,15 +136,27 @@ fun ExpandableSearchField(
                         .testTag(testTag)
                 )
             } else {
-                FilledTonalIconButton(
-                    onClick = { onExpandedChange(true) },
-                    modifier = Modifier.size(40.dp).testTag(buttonTestTag)
-                ) {
+                val openSearch: () -> Unit = { onExpandedChange(true) }
+                val buttonContent: @Composable () -> Unit = {
                     SharedIcon(
                         Icons.Outlined.Search,
                         contentDescription = placeholder,
                         tint = if (value.isNotEmpty()) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSecondaryContainer
+                        else if (tonalCollapsedButton) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (tonalCollapsedButton) {
+                    FilledTonalIconButton(
+                        onClick = openSearch,
+                        modifier = Modifier.size(40.dp).testTag(buttonTestTag),
+                        content = buttonContent
+                    )
+                } else {
+                    IconButton(
+                        onClick = openSearch,
+                        modifier = Modifier.size(40.dp).testTag(buttonTestTag),
+                        content = buttonContent
                     )
                 }
             }

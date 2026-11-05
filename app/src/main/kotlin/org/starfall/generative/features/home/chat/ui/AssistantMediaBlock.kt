@@ -10,10 +10,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.features.home.chat.logic.service.AssistantActionBlock
 import org.starfall.generative.features.home.chat.logic.service.AssistantTimelineItem
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.ui.media.MediaFileCard
-import org.starfall.generative.shared.ui.media.mediaMimeType
+import org.starfall.generative.shared.subfeatures.media.ui.MediaFileCard
+import org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType
 import org.starfall.generative.shared.ui.text.SelectionOnlyPlaceholder
 
 internal sealed interface MediaPreviewItem {

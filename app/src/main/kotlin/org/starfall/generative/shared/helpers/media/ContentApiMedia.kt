@@ -4,7 +4,7 @@ import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.starfall.generative.shared.model.media.ContentApiMedia
 import org.starfall.generative.shared.model.media.PreparedContentApiResult
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Handle direct JSON, MCP structuredContent and JSON encoded in MCP text blocks. */
 internal fun prepareContentApiResult(result: JsonObject): PreparedContentApiResult {

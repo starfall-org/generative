@@ -7,9 +7,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.account.AccountTokenStore
-import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.RoomOAuthRecordStorage
+import org.starfall.generative.database.preferences.MigratedStringPreferences
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.RoomOAuthRecordStorage
 import kotlinx.coroutines.runBlocking
 import java.util.UUID
 

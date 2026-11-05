@@ -11,12 +11,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.entities.SpeechServiceEntity
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.room.entities.SpeechServiceEntity
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.iconMatchName
-import org.starfall.generative.database.SpeechRepository
+import org.starfall.generative.database.repositories.SpeechRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -57,7 +57,7 @@ class SpeechServiceStorageTest {
             org.starfall.generative.shared.model.SpeechEngine.entries.filter { it.standalone }.forEach { engine ->
                 val service = SpeechService(engine.name, "Standalone", provider = "", engine = engine,
                     modelId = "engine-model", voice = "voice-id", voiceName = "Friendly name", apiKey = "private-key",
-                    speed = 1.6f, sentencesPerChunk = 7)
+                    speed = 1.6f, maxWordsPerChunk = 27)
                 SpeechRepository(db).saveService(service)
                 assertEquals(service, SpeechRepository(db).getById(service.id))
                 val entity = db.speechServiceDao().getServiceById(service.id)!!
@@ -78,7 +78,7 @@ class SpeechServiceStorageTest {
                 responseFormat = "mp3", languageCode = "", authId = null
             ))
             val service = SpeechRepository(db).getById("s")!!
-            assertEquals(10, service.sentencesPerChunk)
+            assertEquals(20, service.maxWordsPerChunk)
             assertEquals("mp3", service.responseFormat)
             assertEquals("", service.instructions)
             assertTrue(service.extraBody.isEmpty())

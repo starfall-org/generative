@@ -31,8 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.media.MediaViewer
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.ui.MediaViewer
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.ui.sheets.ContentSheet
 import org.starfall.generative.shared.ui.icons.SharedIcon

@@ -3,7 +3,7 @@ package org.starfall.generative
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.networking.geminiFunctionParameters
+import org.starfall.generative.shared.helpers.networking.geminiFunctionParameters
 
 class GeminiToolSchemaTest {
     private fun parse(text: String) = Json.parseToJsonElement(text)

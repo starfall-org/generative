@@ -27,8 +27,8 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.database.*
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.*
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.integrations.security.SecretCipher
 
 @RunWith(RobolectricTestRunner::class)

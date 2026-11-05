@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 

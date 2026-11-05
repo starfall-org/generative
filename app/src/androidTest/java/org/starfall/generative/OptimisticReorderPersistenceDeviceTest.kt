@@ -19,11 +19,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.ProfileRepository
-import org.starfall.generative.database.SpeechRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.ProfileRepository
+import org.starfall.generative.database.repositories.SpeechRepository
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.ChatProfile

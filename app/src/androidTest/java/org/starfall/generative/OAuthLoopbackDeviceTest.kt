@@ -12,10 +12,10 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.helpers.networking.text
 import java.net.ServerSocket
 import java.net.Socket
 import org.starfall.generative.shared.model.auth.defaultAuthorization

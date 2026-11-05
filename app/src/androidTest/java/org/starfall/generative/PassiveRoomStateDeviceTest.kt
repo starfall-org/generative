@@ -10,11 +10,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.entities.ConversationEntity
-import org.starfall.generative.database.entities.ProviderGroupEntity
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.room.entities.ConversationEntity
+import org.starfall.generative.database.room.entities.ProviderGroupEntity
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.provider.ProviderGroup

@@ -281,7 +281,6 @@ Write clearly.
                     onTakePhoto = {},
                     onCreateImage = {},
                     onCreateVideo = {},
-                    onOpenInstructions = {},
                     onOpenFeatureTools = {},
                     onOpenMcpConnectors = {},
                     onDismiss = {},

@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
-import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferences
 import kotlin.math.roundToInt
 
 @Composable

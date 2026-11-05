@@ -9,16 +9,16 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.starfall.generative.shared.auth.AppAuthTransactions
-import org.starfall.generative.shared.auth.OAuthBrowser
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.auth.awaitLoopbackAuthorizationCode
+import org.starfall.generative.shared.subfeatures.auth.logic.AppAuthTransactions
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.auth.logic.awaitLoopbackAuthorizationCode
 import org.starfall.generative.shared.model.McpAuthMethod
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.resolvedUrl
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.text
 
 
 

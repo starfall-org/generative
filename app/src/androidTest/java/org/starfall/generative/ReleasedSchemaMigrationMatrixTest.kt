@@ -17,12 +17,12 @@ import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.CredentialLoadState
-import org.starfall.generative.database.ConversationMigrationException
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.ConversationMigrationException
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.integrations.security.SecretCipher
 
 /** Every released source schema is opened directly, then migrated once to the v10 target. */

@@ -14,8 +14,8 @@ import org.starfall.generative.shared.model.api.*
 import org.starfall.generative.shared.model.auth.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.helpers.networking.text
 
 internal const val CLAUDE_CODE_OAUTH_SCOPE =
     "user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"

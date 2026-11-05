@@ -905,8 +905,8 @@
     <string name="speech_engine_api_key_help">จำเป็นสำหรับเอนจินเสียงพูดนี้ จัดเก็บอย่างปลอดภัยบนอุปกรณ์นี้</string>
     <string name="media_image_generation_failed">สร้างภาพไม่สำเร็จ</string>
     <string name="media_video_generation_failed">สร้างวิดีโอไม่สำเร็จ</string>
-    <string name="speech_sentences_per_chunk">จำนวนประโยคต่อคำขอ API</string>
-    <string name="speech_chunk_boundaries">จุดหรือการขึ้นบรรทัดใหม่ถือเป็นการจบประโยค ตัวคั่นที่อยู่ติดกันจะนับเพียงครั้งเดียว</string>
+    <string name="speech_words_per_chunk">จำนวนคำสูงสุดต่อคำขอ API</string>
+    <string name="speech_word_chunk_boundaries">ปรับจำนวนคำเพื่อแบ่งที่จุด เครื่องหมายอัศเจรีย์ หรือเครื่องหมายคำถามที่ใกล้ที่สุด และแบ่งประโยคที่ยาวเกินไปโดยอัตโนมัติ</string>
     <string name="notification_speech_channel">การเล่นเสียงพูด</string>
     <string name="notification_speech_playing">กำลังอ่านออกเสียง</string>
     <string name="user_profile_background_transparency">ความโปร่งใสของพื้นหลัง</string>

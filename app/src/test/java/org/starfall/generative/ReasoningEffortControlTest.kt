@@ -10,18 +10,18 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.REASONING_EFFORT_ACTIVE
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
-import org.starfall.generative.shared.ui.model.reasoningEffortBurstDuration
-import org.starfall.generative.shared.ui.model.reasoningEffortEnabled
-import org.starfall.generative.shared.ui.model.reasoningEffortAccent
-import org.starfall.generative.shared.ui.model.reasoningEffortIndex
-import org.starfall.generative.shared.ui.model.reasoningEffortOptions
-import org.starfall.generative.shared.ui.model.ReasoningEffortOption
-import org.starfall.generative.shared.ui.model.reasoningEffortTier
-import org.starfall.generative.shared.ui.model.nearestReasoningEffortIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortBurstDuration
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortEnabled
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortAccent
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortOptions
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ReasoningEffortOption
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortTier
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.nearestReasoningEffortIndex
 
 class ReasoningEffortControlTest {
-    private fun efforts(options: List<org.starfall.generative.shared.ui.model.ReasoningEffortOption>) = options.map { it.effort }
-    private fun tiers(options: List<org.starfall.generative.shared.ui.model.ReasoningEffortOption>) =
+    private fun efforts(options: List<org.starfall.generative.shared.subfeatures.modelpicker.ui.ReasoningEffortOption>) = options.map { it.effort }
+    private fun tiers(options: List<org.starfall.generative.shared.subfeatures.modelpicker.ui.ReasoningEffortOption>) =
         options.indices.map { reasoningEffortTier(it, options) }
 
     @Test fun disabledValuesAreRecognized() {

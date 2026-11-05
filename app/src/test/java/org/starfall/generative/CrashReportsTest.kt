@@ -8,11 +8,11 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.files.CrashRecordingHandler
-import org.starfall.generative.shared.files.CrashLogExporter
-import org.starfall.generative.shared.files.CrashReport
-import org.starfall.generative.shared.files.CrashReportStore
-import org.starfall.generative.shared.files.coreStackTrace
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashRecordingHandler
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashLogExporter
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReport
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReportStore
+import org.starfall.generative.shared.subfeatures.crashreports.logic.coreStackTrace
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)

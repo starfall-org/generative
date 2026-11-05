@@ -21,7 +21,7 @@ import org.starfall.generative.integrations.modelapis.account.AccountTokenStore
 import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenState
 import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenStore
 import org.starfall.generative.integrations.modelapis.openaicodex.OpenAICodexAdapter
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
@@ -32,7 +32,7 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.shared.networking.*
+import org.starfall.generative.shared.helpers.networking.*
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

@@ -897,8 +897,8 @@
     <string name="speech_engine_api_key_help">Richiesta da questo motore vocale. Memorizzata in modo sicuro su questo dispositivo.</string>
     <string name="media_image_generation_failed">Generazione dell’immagine non riuscita</string>
     <string name="media_video_generation_failed">Generazione del video non riuscita</string>
-    <string name="speech_sentences_per_chunk">Frasi per richiesta API</string>
-    <string name="speech_chunk_boundaries">Un punto o un ritorno a capo termina una frase. I separatori consecutivi contano una sola volta.</string>
+    <string name="speech_words_per_chunk">Numero massimo di parole per richiesta API</string>
+    <string name="speech_word_chunk_boundaries">Il numero di parole viene adattato per terminare al punto, punto esclamativo o interrogativo più vicino. Le frasi lunghe vengono divise.</string>
     <string name="notification_speech_channel">Riproduzione vocale</string>
     <string name="notification_speech_playing">Lettura ad alta voce</string>
     <string name="user_profile_background_transparency">Trasparenza dello sfondo</string>

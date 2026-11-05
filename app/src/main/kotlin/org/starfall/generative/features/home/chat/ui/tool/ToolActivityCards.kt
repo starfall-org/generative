@@ -49,10 +49,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sin
-import org.starfall.generative.shared.ui.media.MediaViewer
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.ui.MediaViewer
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.ToolActivity
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.database.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.features.home.shared.ui.LocalToolSheetState

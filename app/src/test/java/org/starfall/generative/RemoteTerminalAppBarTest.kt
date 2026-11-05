@@ -18,8 +18,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.features.machines.shared.ui.terminal.TerminalAppBar
 
 @RunWith(RobolectricTestRunner::class)

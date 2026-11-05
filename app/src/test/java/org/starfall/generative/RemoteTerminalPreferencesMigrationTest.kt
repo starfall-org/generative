@@ -19,9 +19,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.REMOTE_TERMINAL_UI_PREFERENCES
-import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
-import org.starfall.generative.shared.storage.preferences.terminalPreferenceMigrations
+import org.starfall.generative.database.preferences.REMOTE_TERMINAL_UI_PREFERENCES
+import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.database.preferences.terminalPreferenceMigrations
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

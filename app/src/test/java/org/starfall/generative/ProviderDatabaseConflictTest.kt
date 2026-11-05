@@ -14,9 +14,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.RoomOAuthRecordStorage
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.RoomOAuthRecordStorage
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.account.AccountTokenStore
@@ -80,6 +80,33 @@ class ProviderDatabaseConflictTest {
         withTimeout(8_000) { repository.saveProvider(Phase4StorageFixtures.provider("healthy-after-delete")) }
         assertNotNull(repo().getProviderById("healthy-after-delete"))
         foreignKeysAreHealthy()
+    }
+
+    @Test fun visibilityTogglePersistsWithoutChangingProviderCredentialsOrModels() = runBlocking {
+        val repository = repo()
+        val provider = Phase4StorageFixtures.provider("toggle-hidden")
+        repository.saveProvider(provider)
+        val originalAuthId = db.modelProviderDao().getProviderById(provider.id)!!.authId!!
+        val originalAuth = db.modelProviderDao().getAuth(originalAuthId)!!.encryptedPayload
+
+        repository.setProviderHidden(provider.id, true)
+        assertTrue(repository.allProviders.first().single().isHidden)
+        assertTrue(repo().getProviderById(provider.id)!!.isHidden)
+        assertEquals(originalAuth, db.modelProviderDao().getAuth(originalAuthId)!!.encryptedPayload)
+        assertEquals(provider.config.modelIds, repo().getProviderById(provider.id)!!.config.modelIds)
+
+        val edited = repo().getProviderById(provider.id)!!.copy(name = "Hidden but editable")
+        repository.saveProvider(edited)
+        assertTrue(repo().getProviderById(provider.id)!!.isHidden)
+        assertEquals("Hidden but editable", repo().getProviderById(provider.id)!!.name)
+
+        val editedAuth = db.modelProviderDao().getAuth(originalAuthId)!!.encryptedPayload
+        repository.setProviderHidden(provider.id, false)
+        assertFalse(repository.allProviders.first().single().isHidden)
+        assertFalse(repo().getProviderById(provider.id)!!.isHidden)
+        assertNull(db.structuredJsonDao().getDocument("provider", provider.id, "hidden"))
+        assertEquals(originalAuthId, db.modelProviderDao().getProviderById(provider.id)!!.authId)
+        assertEquals(editedAuth, db.modelProviderDao().getAuth(originalAuthId)!!.encryptedPayload)
     }
 
     @Test fun corruptJsonRowCannotPoisonEntireRamCatalogOrBlockDeletion() = runBlocking {
@@ -337,7 +364,7 @@ class ProviderDatabaseConflictTest {
             reopened.modelProviderDao().insertOrUpdate(
                 Phase4StorageFixtures.provider("do-not-use").let { fixture ->
                     // The repository write itself is tested above; the reopened database remains writable.
-                    org.starfall.generative.database.entities.ModelProviderEntity(
+                    org.starfall.generative.database.room.entities.ModelProviderEntity(
                         fixture.id, fixture.name, fixture.type.name, fixture.baseUrl, null, 0, null,
                         null, true, false, null, 4096, false, "EXPLICIT")
                 })

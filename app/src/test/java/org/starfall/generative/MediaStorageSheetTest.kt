@@ -12,8 +12,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.storage.ui.MediaStorageSheet
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)

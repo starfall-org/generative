@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalScreen
 
 @RunWith(RobolectricTestRunner::class)

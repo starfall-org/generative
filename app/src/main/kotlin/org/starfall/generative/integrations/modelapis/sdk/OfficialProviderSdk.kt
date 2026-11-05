@@ -19,7 +19,7 @@ import org.starfall.generative.shared.model.auth.*
 import org.starfall.generative.shared.model.generation.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import java.time.Duration
 
 internal inline fun <R> com.openai.client.OpenAIClient.useClient(block: (com.openai.client.OpenAIClient) -> R): R =
@@ -142,7 +142,7 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
         val base = baseUrl(provider).removeSuffix("/models")
         val version = Regex("/(v1(?:beta|alpha)?)$").find(base)?.groupValues?.get(1)
         // Supply auth in the transport so custom headers/query auth work with gateways too.
-        val transport = OkHttpClient.Builder().addInterceptor(org.starfall.generative.shared.logging.DebugLogInterceptor()).addInterceptor { chain ->
+        val transport = OkHttpClient.Builder().addInterceptor(org.starfall.generative.shared.subfeatures.logging.logic.DebugLogInterceptor()).addInterceptor { chain ->
             val original = chain.request()
             val request = original.newBuilder()
             if (version == null) {

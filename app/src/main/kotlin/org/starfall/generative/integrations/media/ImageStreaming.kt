@@ -8,11 +8,11 @@ import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.RequestBody
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.text
 
 /** SSE data is spooled to disk; a single image event can contain hundreds of MB of base64. */
 internal suspend fun ToolHttp.postMedia(url: String, body: JsonObject, provider: ModelProvider): JsonObject =

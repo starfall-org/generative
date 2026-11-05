@@ -14,8 +14,8 @@ import org.junit.Test
 import org.starfall.generative.features.appdata.logic.readZipBackup
 import org.starfall.generative.features.appdata.logic.writeZipBackup
 import org.starfall.generative.features.appdata.model.AppDataBackup
-import org.starfall.generative.shared.icons.model.IconRule
-import org.starfall.generative.shared.icons.model.IconStoreState
+import org.starfall.generative.shared.model.icons.IconRule
+import org.starfall.generative.shared.model.icons.IconStoreState
 import org.starfall.generative.shared.model.ToolSettings
 
 class ZipAppDataTransferTest {

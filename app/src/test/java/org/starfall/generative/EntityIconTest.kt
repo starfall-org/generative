@@ -1,6 +1,6 @@
 package org.starfall.generative
 
-import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+import org.starfall.generative.database.preferences.MigratedStringPreferences
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -14,22 +14,20 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.entities.McpServerEntity
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.room.entities.McpServerEntity
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.McpRepository
 import org.starfall.generative.features.mcp.shared.ui.*
 import org.starfall.generative.integrations.mcp.*
 import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
 import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.icons.*
-import org.starfall.generative.shared.media.*
+import org.starfall.generative.shared.subfeatures.icons.logic.*
 import java.io.File
-import org.starfall.generative.shared.icons.model.IconRule
+import org.starfall.generative.shared.model.icons.IconRule
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization

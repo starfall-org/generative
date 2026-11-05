@@ -7,8 +7,8 @@ import kotlinx.serialization.json.*
 import okhttp3.MultipartBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 import java.util.Base64
 
 /** OpenAI-compatible video APIs use multipart requests. */

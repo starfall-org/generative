@@ -3,15 +3,16 @@ package org.starfall.generative.integrations.media
 import org.starfall.generative.shared.model.media.MediaInputImage
 import org.starfall.generative.shared.model.media.MediaInputVideo
 import org.starfall.generative.shared.helpers.media.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.providerBase
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.providerBase
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class VideoGeneration(

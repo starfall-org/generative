@@ -18,7 +18,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.model.ModelPickerSheet
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
 
 class ModelPickerToggleTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

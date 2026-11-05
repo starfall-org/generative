@@ -38,8 +38,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.R
 import org.starfall.generative.features.storage.logic.listMediaStorageFiles
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 /** Device UI regression tests using disposable app-private files; never touches the user's MediaStorage. */
 @RunWith(AndroidJUnit4::class)

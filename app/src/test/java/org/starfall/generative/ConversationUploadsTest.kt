@@ -8,11 +8,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.uploadedFileNames
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.uploadedFileNames
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
 import java.io.File
 import java.nio.file.Files
 

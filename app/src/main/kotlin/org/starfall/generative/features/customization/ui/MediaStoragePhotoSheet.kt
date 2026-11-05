@@ -21,8 +21,8 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.ui.media.mediaMimeType
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType
 import org.starfall.generative.shared.ui.sheets.ContentSheet
 
 /** Pick an image from the app's Media Storage without filtering or extra sheet controls. */

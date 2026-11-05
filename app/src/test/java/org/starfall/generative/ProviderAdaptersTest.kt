@@ -25,7 +25,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.SELECTABLE_REASONING_EFFORTS
 import org.starfall.generative.integrations.modelapis.anthropic.CLAUDE_CODE_IDENTITY
 import org.starfall.generative.integrations.modelapis.anthropic.claudeCodeSystemReminder
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 @Config(sdk = [28])
 @RunWith(RobolectricTestRunner::class)

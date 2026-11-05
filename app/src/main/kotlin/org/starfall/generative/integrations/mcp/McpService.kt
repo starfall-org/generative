@@ -45,8 +45,8 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.CredentialLoadState
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.resolvedUrl
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 
 /** MCP client backed by the official Model Context Protocol Kotlin SDK. */
@@ -124,7 +124,7 @@ class McpSession(
             "Connecting to ${info.name}", "transport=${if (legacy) "SSE" else "Streamable HTTP"}")
         val ktor = HttpClient(CIO) {
             install(SSE)
-            install(org.starfall.generative.shared.logging.DebugLogKtorPlugin)
+            install(org.starfall.generative.shared.subfeatures.logging.logic.DebugLogKtorPlugin)
         }
         val transport = if (legacy) {
             SseClientTransport(ktor, endpoint, requestBuilder = { configureRequest() })

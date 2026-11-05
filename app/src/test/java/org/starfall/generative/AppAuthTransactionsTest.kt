@@ -1,6 +1,6 @@
 package org.starfall.generative
 
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
@@ -12,8 +12,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.auth.AppAuthTransactions
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.auth.logic.AppAuthTransactions
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import org.starfall.generative.shared.model.auth.Authorization
 
 @RunWith(RobolectricTestRunner::class)

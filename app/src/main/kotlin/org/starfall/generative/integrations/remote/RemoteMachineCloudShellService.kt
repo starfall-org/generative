@@ -14,17 +14,17 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import org.starfall.generative.shared.auth.AppAuthTransactions
-import org.starfall.generative.shared.auth.OAuthBrowser
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.auth.awaitLoopbackAuthorizationCode
+import org.starfall.generative.shared.subfeatures.auth.logic.AppAuthTransactions
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.auth.logic.awaitLoopbackAuthorizationCode
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.RemoteOAuthToken
 import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 
 
 

@@ -893,8 +893,8 @@
     <string name="speech_engine_api_key_help">Requise par ce moteur de synthèse vocale. Stockée de manière sécurisée sur cet appareil.</string>
     <string name="media_image_generation_failed">Échec de la génération de l’image</string>
     <string name="media_video_generation_failed">Échec de la génération de la vidéo</string>
-    <string name="speech_sentences_per_chunk">Phrases par requête API</string>
-    <string name="speech_chunk_boundaries">Un point ou un saut de ligne termine une phrase. Les séparateurs consécutifs ne comptent qu’une fois.</string>
+    <string name="speech_words_per_chunk">Nombre maximal de mots par requête API</string>
+    <string name="speech_word_chunk_boundaries">Le nombre de mots est ajusté pour terminer au point, point d’exclamation ou d’interrogation le plus proche. Les longues phrases sont divisées.</string>
     <string name="notification_speech_channel">Lecture vocale</string>
     <string name="notification_speech_playing">Lecture à voix haute</string>
     <string name="user_profile_background_transparency">Transparence de l’arrière-plan</string>

@@ -3,12 +3,16 @@ package org.starfall.generative
 import java.util.Base64
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.database.preferences.WordWrapMode
 import org.starfall.generative.features.providers.shared.ui.*
-import org.starfall.generative.shared.preview.*
+import org.starfall.generative.shared.helpers.code.canPreviewCode
+import org.starfall.generative.shared.helpers.code.codePreviewDocument
+import org.starfall.generative.shared.helpers.code.previewLibraryUrls
+import org.starfall.generative.shared.helpers.code.previewRuntimeAssets
+import org.starfall.generative.shared.helpers.code.PREVIEW_ORIGIN
 import org.starfall.generative.shared.ui.code.codeWrapWidth
-import org.starfall.generative.shared.code.CodeTokenKind
-import org.starfall.generative.shared.code.codeTokens
+import org.starfall.generative.shared.helpers.code.CodeTokenKind
+import org.starfall.generative.shared.helpers.code.codeTokens
 import org.starfall.generative.shared.ui.code.highlightedCode
 
 class CodeRenderingTest {

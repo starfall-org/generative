@@ -10,6 +10,7 @@ import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocatio
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerRepository
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteSftpExplorer
+import org.starfall.generative.integrations.remote.RemoteSftpTransferService
 
 /** Remote Machines owns its SFTP browser binding; Storage never imports this feature. */
 class RemoteMachineExplorerRepository(
@@ -57,6 +58,17 @@ class RemoteMachineExplorerRepository(
         requireMachine(item.location)
         if (item.directory) throw FileNotFoundException("Not a file")
         remote.download(machineId, item.location.path, output)
+    }
+
+    fun enqueueUploads(parent: ExplorerLocation, uris: List<Uri>) {
+        requireMachine(parent)
+        RemoteSftpTransferService.upload(app, machineId, parent.path, uris)
+    }
+
+    fun enqueueDownload(item: ExplorerItem, uri: Uri) {
+        requireMachine(item.location)
+        if (item.directory) throw FileNotFoundException("Not a file")
+        RemoteSftpTransferService.download(app, machineId, item.location.path, item.name, uri)
     }
 
     fun documentUri(item: ExplorerItem): Uri {

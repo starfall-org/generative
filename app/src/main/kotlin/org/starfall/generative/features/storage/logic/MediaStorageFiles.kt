@@ -5,7 +5,7 @@ import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** Flatten files under MediaStorage without exposing directory entries or traversing outside its root. */
 fun listMediaStorageFiles(store: ToolFiles): List<File> {

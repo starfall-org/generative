@@ -1,8 +1,8 @@
 package org.starfall.generative.features.home.chat.logic.tool
 
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.features.home.shared.logic.ToolSummary
 
 /**

@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel
-import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferences
 import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate

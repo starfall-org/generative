@@ -9,7 +9,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.toList
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 import org.starfall.generative.integrations.modelapis.githubcopilot.copilotProtocol
 import org.robolectric.annotation.Config
 import kotlinx.serialization.json.*
@@ -26,10 +26,10 @@ import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenStat
 import org.starfall.generative.integrations.modelapis.openaicodex.CodexTokenStore
 import org.starfall.generative.integrations.modelapis.openaicodex.OpenAICodexAdapter
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.networking.*
-import org.starfall.generative.shared.storage.preferences.*
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.*
+import org.starfall.generative.shared.helpers.networking.*
+import org.starfall.generative.database.preferences.*
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.generation.GenerationEvent

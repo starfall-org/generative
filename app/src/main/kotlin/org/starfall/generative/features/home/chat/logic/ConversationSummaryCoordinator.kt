@@ -14,7 +14,7 @@ import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.repositories.ConversationRepository
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 
 internal class ConversationSummaryCoordinator(

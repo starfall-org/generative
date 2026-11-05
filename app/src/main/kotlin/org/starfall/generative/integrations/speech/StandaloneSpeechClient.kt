@@ -9,8 +9,8 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import kotlinx.serialization.json.*
 import java.util.Base64
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -47,7 +47,7 @@ class StandaloneSpeechClient(private val http: ToolHttp = ToolHttp(client = OkHt
                     output.toByteArray()
                 }
                 require(bytes.isNotEmpty() && bytes.size <= 32 * 1024 * 1024) { "Speech audio is empty or exceeds 32 MB." }
-                require(org.starfall.generative.shared.media.audioMime(bytes) != null) { "Speech API returned unsupported audio." }
+                require(org.starfall.generative.shared.helpers.audio.audioMime(bytes) != null) { "Speech API returned unsupported audio." }
                 bytes
             }.also { result ->
                 DebugLog.finishOperation(logId, "Speech synthesized", details = "audioBytes=${result.size}")

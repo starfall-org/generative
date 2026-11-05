@@ -3,10 +3,10 @@ package org.starfall.generative.features.home.chat.logic
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.starfall.generative.shared.model.ToolDefinition
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 internal const val SEND_FILE_TOOL_NAME = "send_file"
 internal val sendFileDefinition = ToolDefinition(

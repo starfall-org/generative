@@ -4,9 +4,9 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.networking.*
-import org.starfall.generative.shared.storage.preferences.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
+import org.starfall.generative.shared.helpers.networking.*
+import org.starfall.generative.database.preferences.*
 import java.io.File
 import java.io.StringReader
 import java.nio.file.Files

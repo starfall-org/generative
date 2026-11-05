@@ -63,7 +63,9 @@ fun ExplorerScreen(
     onOpenFile: suspend (ExplorerItem) -> Unit,
     refreshKey: Int = 0,
     onUploadFile: (suspend (ExplorerLocation, Uri) -> Unit)? = null,
-    onDownloadFile: (suspend (ExplorerItem, Uri) -> Unit)? = null
+    onDownloadFile: (suspend (ExplorerItem, Uri) -> Unit)? = null,
+    onUploadFiles: (suspend (ExplorerLocation, List<Uri>) -> Unit)? = null,
+    showTransferLoading: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -127,13 +129,28 @@ fun ExplorerScreen(
         }
     }
 
+    // Background-transfer hosts display their progress in notifications, not the list overlay.
+    fun runTransfer(refreshAfter: Boolean, block: suspend () -> Unit) {
+        if (showTransferLoading) runOperation(refreshAfter, block)
+        else scope.launch {
+            try {
+                block()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                snackbar.showSnackbar(error.message ?: operationFailed)
+            }
+        }
+    }
+
     // Android owns the document pickers; all file I/O is delegated to the host.
     val uploadPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val destination = pendingUpload
         pendingUpload = null
-        if (destination != null && uris.isNotEmpty() && onUploadFile != null) {
-            runOperation {
-                uris.forEach { uri -> onUploadFile(destination, uri) }
+        if (destination != null && uris.isNotEmpty() && (onUploadFile != null || onUploadFiles != null)) {
+            runTransfer(refreshAfter = true) {
+                if (onUploadFiles != null) onUploadFiles(destination, uris)
+                else uris.forEach { uri -> onUploadFile?.invoke(destination, uri) }
             }
         }
     }
@@ -142,7 +159,7 @@ fun ExplorerScreen(
         pendingDownload = null
         val uri = if (result.resultCode == Activity.RESULT_OK) result.data?.data else null
         if (item != null && uri != null && onDownloadFile != null) {
-            runOperation(refreshAfter = false) { onDownloadFile(item, uri) }
+            runTransfer(refreshAfter = false) { onDownloadFile(item, uri) }
         }
     }
 
@@ -201,7 +218,7 @@ fun ExplorerScreen(
                 }, modifier = Modifier.testTag("explorer-new-folder")) {
                     SharedIcon(Icons.Outlined.CreateNewFolder, stringResource(R.string.explorer_new_folder))
                 }
-                if (onUploadFile != null) {
+                if (onUploadFile != null || onUploadFiles != null) {
                     IconButton(onClick = {
                         pendingUpload = location
                         uploadPicker.launch(arrayOf("*/*"))

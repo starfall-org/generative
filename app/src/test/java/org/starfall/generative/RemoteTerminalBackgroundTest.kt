@@ -14,8 +14,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.terminal.RemoteTerminalView
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalView
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

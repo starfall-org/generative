@@ -44,11 +44,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.terminal.RemoteMouseTouchListener
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.terminal.RemoteTerminalSessions
-import org.starfall.generative.shared.terminal.RemoteTerminalView
-import org.starfall.generative.shared.terminal.TerminalSlot
+import org.starfall.generative.shared.subfeatures.terminal.RemoteMouseTouchListener
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalSessions
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalView
+import org.starfall.generative.shared.subfeatures.terminal.TerminalSlot
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.icons.Icons

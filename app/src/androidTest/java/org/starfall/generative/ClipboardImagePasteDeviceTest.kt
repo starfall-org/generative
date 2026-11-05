@@ -19,7 +19,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import java.io.File
 
 class ClipboardImagePasteDeviceTest {

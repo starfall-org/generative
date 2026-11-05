@@ -31,8 +31,8 @@ import org.starfall.generative.shared.model.withRemoteMachineEnabled
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
-import org.starfall.generative.shared.terminal.RemoteTerminalSessions
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalSessions
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.features.home.shared.ui.ToolControls

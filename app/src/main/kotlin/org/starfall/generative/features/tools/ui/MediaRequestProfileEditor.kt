@@ -30,7 +30,7 @@ import org.starfall.generative.integrations.media.MediaRequestChainExecutor
 import org.starfall.generative.integrations.media.MusicGenerationClient
 import org.starfall.generative.shared.model.media.MediaKind
 import org.starfall.generative.shared.model.media.hasUnsafeMusicHeaders
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.media.MediaGenerationMode
 import org.starfall.generative.shared.model.media.defaultMediaProfile
@@ -43,7 +43,7 @@ import org.starfall.generative.shared.helpers.media.selectMediaPath
 import org.starfall.generative.shared.helpers.media.withOption
 import org.starfall.generative.shared.helpers.media.suggestedImageOptions
 import org.starfall.generative.shared.helpers.media.suggestedVideoOptions
-import org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams
+import org.starfall.generative.shared.subfeatures.media.logic.effectiveMediaDisabledParams
 import org.starfall.generative.shared.helpers.media.validateImageOptions
 import org.starfall.generative.shared.helpers.media.validateVideoOptions
 import org.starfall.generative.shared.ui.menus.DropdownMenu

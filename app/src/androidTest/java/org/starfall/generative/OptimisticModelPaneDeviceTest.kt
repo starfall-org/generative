@@ -29,8 +29,8 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.features.providers.shared.ui.ProviderModelsPane
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.api.ModelApiType

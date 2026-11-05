@@ -10,7 +10,7 @@ import org.starfall.generative.integrations.modelapis.metamuse.MetaMuseAdapter
 import org.starfall.generative.integrations.modelapis.geminicli.GeminiCliAdapter
 import org.starfall.generative.integrations.modelapis.devin.DevinAdapter
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import kotlinx.serialization.json.JsonObject
 
 /** Single integration point between core services and removable account adapters. */

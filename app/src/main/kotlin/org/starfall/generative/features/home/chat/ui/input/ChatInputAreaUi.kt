@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.defaultAgentSkills
@@ -74,15 +74,15 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.InputAreaBackdrop
 import org.starfall.generative.shared.ui.layout.InputAreaBackdropLayer
 import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.model.localizedReasoningEffortLabels
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.localizedReasoningEffortLabels
 import org.starfall.generative.shared.ui.inputs.selectAllOnTripleClick
-import org.starfall.generative.shared.ui.icons.EntityIcon
-import org.starfall.generative.shared.ui.model.reasoningEffortIndex
-import org.starfall.generative.shared.ui.model.reasoningEffortOptions
-import org.starfall.generative.shared.ui.model.reasoningEffortTier
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortOptions
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.reasoningEffortTier
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
@@ -103,7 +103,7 @@ import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.LocalChatForeground
 import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
-import org.starfall.generative.shared.ui.model.modelInitial
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
 
 @Composable
 internal fun UserInputArea(
@@ -190,7 +190,7 @@ internal fun UserInputArea(
                 val sessionKey = latestClipboardSessionKey
                 // Clipboard URI grants are temporary, so copy the bytes into app-private storage.
                 coroutineScope.launch {
-                    val fileContext = sessionId?.let { org.starfall.generative.shared.files.TemporaryChatFiles(it) }
+                    val fileContext = sessionId?.let { org.starfall.generative.shared.subfeatures.media.logic.TemporaryChatFiles(it) }
                         ?: kotlin.coroutines.EmptyCoroutineContext
                     val (saved, failures) = withContext(Dispatchers.IO + fileContext) {
                         val saved = mutableListOf<String>()

@@ -40,8 +40,8 @@ import org.starfall.generative.R
 import kotlin.math.hypot
 import org.starfall.generative.shared.ui.background.LocalProfileModalImages
 import org.starfall.generative.shared.ui.background.ProfileBackground
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.theme.modalScrimColor
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.shared.ui.layout.AmoledBorderEdge
 import org.starfall.generative.shared.ui.layout.amoledEdgeBorder
 import org.starfall.generative.shared.ui.layout.modalContainerColor

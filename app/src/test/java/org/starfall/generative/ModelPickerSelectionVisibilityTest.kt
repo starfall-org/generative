@@ -4,16 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
-import org.starfall.generative.shared.ui.model.*
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.*
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.model.ModelPickerItem
-import org.starfall.generative.shared.ui.model.computeModelPickerItems
-import org.starfall.generative.shared.ui.model.computeModelPickerTabs
-import org.starfall.generative.shared.ui.model.initialModelPickerItemIndex
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.ModelPickerItem
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerItems
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerTabs
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.initialModelPickerItemIndex
 import org.starfall.generative.shared.model.language.withConversationReasoning
 
 class ModelPickerSelectionVisibilityTest {
@@ -54,6 +55,31 @@ class ModelPickerSelectionVisibilityTest {
                 assertEquals(if (providerCollapsed) 5 else 7, items.size)
             }
         }
+    }
+
+    @Test fun hiddenProvidersAreAbsentFromPickerEvenWhenSelectedOrSearched() {
+        val hidden = selected.copy(isHidden = true)
+        val visible = other.copy(id = "visible", groupId = null)
+        val providers = listOf(hidden, visible)
+
+        fun entries(query: String = "", folderId: String? = null) = computeModelPickerItems(
+            providers, listOf(group), emptyMap(), hidden.id, "alpha",
+            query = query, selectedFolderId = folderId
+        )
+
+        assertEquals(listOf(visible.id),
+            entries().filterIsInstance<ModelPickerItem.Provider>().map { it.provider.id })
+        assertTrue(entries().filterIsInstance<ModelPickerItem.Model>().none { it.provider.id == hidden.id })
+        assertFalse(entries().any { it is ModelPickerItem.Group && it.group.id == group.id })
+        assertTrue(entries("Selected provider").isEmpty())
+        assertTrue(entries(folderId = group.id).isEmpty())
+        assertEquals(0, initialModelPickerItemIndex(entries(), hidden.id, "alpha"))
+
+        val unhidden = computeModelPickerItems(
+            listOf(hidden.copy(isHidden = false), visible), listOf(group), emptyMap(),
+            hidden.id, "alpha"
+        )
+        assertTrue(unhidden.any { it is ModelPickerItem.Model && it.provider.id == hidden.id })
     }
 
     @Test fun selectingAModelDoesNotReorderProvidersInAnyTab() {

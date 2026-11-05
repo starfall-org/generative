@@ -19,26 +19,26 @@ import org.starfall.generative.features.appdata.logic.AppDataTransferService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.AgentSkillsStore
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.logging.DebugLog
-import org.starfall.generative.shared.media.SpeechAudioPlayer
-import org.starfall.generative.shared.media.SpeechSynthesisService
-import org.starfall.generative.shared.media.TtsHelper
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.integrations.files.AgentSkillsStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
+import org.starfall.generative.integrations.speech.SpeechAudioPlayer
+import org.starfall.generative.integrations.speech.SpeechSynthesisService
+import org.starfall.generative.integrations.speech.TtsHelper
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.normalizeAgentSkillName
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.ProfileRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
-import org.starfall.generative.shared.storage.preferences.NotificationPermissionStore
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.ProfileRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.ToolSettingsStore
+import org.starfall.generative.database.preferences.NotificationPermissionStore
 import org.starfall.generative.R
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatLabels
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
@@ -121,7 +121,7 @@ class AppContainer(context: Context) {
                 SpeechSynthesisService(providers::resolveProvider),
                 SpeechAudioPlayer(appContext),
                 toolFiles,
-                speechNotification = org.starfall.generative.shared.media.SpeechPlaybackNotification(appContext)
+                speechNotification = org.starfall.generative.integrations.speech.SpeechPlaybackNotification(appContext)
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }

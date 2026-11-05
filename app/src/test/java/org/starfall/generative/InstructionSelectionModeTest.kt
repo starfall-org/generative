@@ -6,10 +6,10 @@ import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.SidebarOrganization
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.ChatRelations
-import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
-import org.starfall.generative.shared.storage.preferences.UNFILED_INSTRUCTION_SCOPE
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.ChatRelations
+import org.starfall.generative.database.preferences.InstructionSelectionMode
+import org.starfall.generative.database.preferences.UNFILED_INSTRUCTION_SCOPE
 
 class InstructionSelectionModeTest {
     private val library = InstructionLibrary(

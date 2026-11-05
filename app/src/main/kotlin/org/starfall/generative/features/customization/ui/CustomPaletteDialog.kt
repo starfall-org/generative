@@ -29,10 +29,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
-import org.starfall.generative.shared.theme.CustomPalette
-import org.starfall.generative.shared.theme.customColorScheme
-import org.starfall.generative.shared.theme.parsePaletteHex
-import org.starfall.generative.shared.theme.toPaletteHex
+import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.shared.ui.theme.customColorScheme
+import org.starfall.generative.shared.ui.theme.parsePaletteHex
+import org.starfall.generative.shared.ui.theme.toPaletteHex
 import org.starfall.generative.shared.ui.dialogs.Dialog
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField

@@ -908,8 +908,8 @@
     <string name="speech_engine_api_key_help">이 음성 엔진에 필요합니다. 이 기기에 안전하게 저장됩니다.</string>
     <string name="media_image_generation_failed">이미지 생성 실패</string>
     <string name="media_video_generation_failed">동영상 생성 실패</string>
-    <string name="speech_sentences_per_chunk">API 요청당 문장 수</string>
-    <string name="speech_chunk_boundaries">마침표나 줄바꿈으로 문장을 구분합니다. 연속된 구분자는 한 번만 셉니다.</string>
+    <string name="speech_words_per_chunk">API 요청당 최대 단어 수</string>
+    <string name="speech_word_chunk_boundaries">단어 수를 유연하게 조정해 가장 가까운 마침표, 느낌표, 물음표에서 나눕니다. 긴 문장은 자동으로 분할됩니다.</string>
     <string name="notification_speech_channel">음성 재생</string>
     <string name="notification_speech_playing">읽어 주는 중</string>
     <string name="user_profile_background_transparency">배경 투명도</string>

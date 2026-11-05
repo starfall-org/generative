@@ -13,7 +13,7 @@ import org.starfall.generative.features.home.shared.ui.*
 import org.starfall.generative.features.speech.ui.SpeechEnginePickerSheet
 import org.starfall.generative.features.customization.ui.MediaStoragePhotoSheet
 import org.starfall.generative.features.storage.ui.MediaStorageSheet
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.SpeechEngine
 import java.io.File
 
@@ -44,7 +44,7 @@ class SheetMigrationVisualDeviceTest {
             QuickActionsSheet(
                 onPickImage = {}, onPickDocument = {}, onTakePhoto = {},
                 onCreateImage = { imageClicks++ }, onCreateVideo = { videoClicks++ },
-                onOpenInstructions = {}, onOpenFeatureTools = {}, onOpenMcpConnectors = {},
+                onOpenFeatureTools = {}, onOpenMcpConnectors = {},
                 onDismiss = {}
             )
         }
@@ -74,12 +74,6 @@ class SheetMigrationVisualDeviceTest {
         setSheet { McpConnectorsSheet(onDismiss = {}) }
         compose.onNodeWithText(compose.activity.getString(R.string.common_mcp_connectors)).assertIsDisplayed()
         screenshot("mcp_connectors")
-    }
-
-    @Test fun instructionsSheetRendersHeader() {
-        setSheet { InstructionsSheet(onDismiss = {}) }
-        compose.onNodeWithText(compose.activity.getString(R.string.common_instructions)).assertIsDisplayed()
-        screenshot("instructions")
     }
 
     @Test fun summarySheetRendersScrollableFields() {

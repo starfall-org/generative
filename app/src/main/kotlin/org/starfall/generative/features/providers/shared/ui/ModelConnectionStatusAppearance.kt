@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.features.providers.shared.model.ModelConnectionProgress
 import org.starfall.generative.features.providers.shared.model.ModelConnectionStatus
-import org.starfall.generative.shared.theme.warningColor
+import org.starfall.generative.shared.ui.theme.warningColor
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 

@@ -17,7 +17,7 @@ import org.starfall.generative.shared.ui.ToolSwitch
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField

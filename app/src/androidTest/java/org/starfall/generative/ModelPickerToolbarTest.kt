@@ -19,7 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.ui.model.ModelPickerToolbar
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerToolbar
 
 class ModelPickerToolbarTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()

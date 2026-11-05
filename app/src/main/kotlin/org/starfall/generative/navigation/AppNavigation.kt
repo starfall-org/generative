@@ -68,7 +68,7 @@ import org.starfall.generative.features.home.chat.ui.RetainedChatConversations
 import org.starfall.generative.features.home.chat.ui.RetainedChatPages
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import kotlinx.coroutines.CancellationException
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.McpInfo
@@ -84,8 +84,8 @@ import org.starfall.generative.shared.model.media.defaultMediaProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.theme.modalScrimColor
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
@@ -399,7 +399,7 @@ internal fun AppNavigation(
     val chatProviderId = conversationModel?.first ?: appPrefs.selectedModel.providerId
     val chatModelId = conversationModel?.second ?: appPrefs.selectedModel.modelId
     LaunchedEffect(Unit) {
-        org.starfall.generative.shared.storage.LocalWriteErrors.errors.collect {
+        org.starfall.generative.shared.state.LocalWriteErrors.errors.collect {
             Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
         }
     }
@@ -846,6 +846,7 @@ internal fun AppNavigation(
                                         ).show()
                                     },
                                     onDismiss = dismissEditor,
+                                    onDelete = configurationViewModel::deleteProvider,
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onSaveIcon = configurationViewModel::saveProviderIcon,
                                     onSaveModelIcon = configurationViewModel::saveModelIcon,
@@ -899,6 +900,7 @@ internal fun AppNavigation(
                                 configurationViewModel.deleteProvider(providerId)
                                 settingsViewModel.setModelPickerCollapsedProviders(appPrefs.modelPickerCollapsedProviders - providerId)
                             },
+                            onSetProviderHidden = configurationViewModel::setProviderHidden,
                             onReorderProviders = configurationViewModel::reorderProviders,
                             onReorderRootItems = configurationViewModel::reorderProviderRootItems,
                             onBack = { navController.popBackStack() }

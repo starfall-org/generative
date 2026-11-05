@@ -124,7 +124,7 @@ class QuickActionsSheetTransitionTest {
         val temporaryChatId = "camera-test".takeIf { temporary }
         val photoDirectory = if (temporary) {
             java.io.File(context.cacheDir, "temporary_chat_media/$temporaryChatId").apply { mkdirs() }
-        } else org.starfall.generative.shared.files.ToolFiles.appStorageDirectory(context)
+        } else org.starfall.generative.shared.subfeatures.media.logic.ToolFiles.appStorageDirectory(context)
         compose.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
                 LinkedQuickActionsHost(ToolControls(settings = ToolSettings()), attachments, temporaryChatId) { attachments = it }

@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.RemoteMachine
-import org.starfall.generative.shared.terminal.RemoteTerminalLaunch
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalLaunch
 
 /**
  * Foreground service that shows one ongoing notification per machine that holds a persistent SSH

@@ -17,10 +17,10 @@ import org.starfall.generative.features.settings.ui.DeveloperOptionsScreen
 import org.starfall.generative.features.settings.ui.SettingsChoice
 import org.starfall.generative.features.settings.ui.SettingsChoicePreference
 import org.starfall.generative.features.settings.ui.SettingsNumberPreference
-import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.database.preferences.McpAttachmentSettings
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)

@@ -41,11 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import java.util.IdentityHashMap
-import org.starfall.generative.shared.theme.AmoledModalScrim
+import org.starfall.generative.shared.ui.theme.AmoledModalScrim
 import org.starfall.generative.shared.ui.background.LocalProfileModalImages
 import org.starfall.generative.shared.ui.background.ProfileBackground
-import org.starfall.generative.shared.theme.LocalAmoledMode
-import org.starfall.generative.shared.theme.LocalDarkMode
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
+import org.starfall.generative.shared.ui.theme.LocalDarkMode
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.modalContainerColor
 import org.starfall.generative.shared.ui.layout.appearanceContainerBorder

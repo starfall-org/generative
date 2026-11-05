@@ -8,18 +8,18 @@ import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
-import org.starfall.generative.shared.theme.CustomPalette
-import org.starfall.generative.shared.storage.preferences.UserProfile
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
-import org.starfall.generative.shared.storage.preferences.MessageFontFamily
-import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
-import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
-import org.starfall.generative.shared.storage.preferences.ToolCallStrategy
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.database.preferences.UserProfile
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.CodeBlockDisplayMode
+import org.starfall.generative.database.preferences.MessageFontFamily
+import org.starfall.generative.database.preferences.ScreenWakelockMode
+import org.starfall.generative.database.preferences.McpAttachmentSettings
+import org.starfall.generative.database.preferences.ToolCallStrategy
+import org.starfall.generative.database.preferences.WordWrapMode
 
 class SettingsViewModel(
     private val repository: AppPreferencesRepository

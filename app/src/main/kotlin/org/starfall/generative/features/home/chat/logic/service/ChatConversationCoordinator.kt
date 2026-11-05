@@ -14,20 +14,20 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.uploadedFileNames
-import org.starfall.generative.shared.files.generatedFileNames
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.uploadedFileNames
+import org.starfall.generative.shared.subfeatures.media.logic.generatedFileNames
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.SidebarOrganization
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.InstructionSelectionMode
 import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Coordinates conversation selection, history mutations, queued sends and persistence ordering. */

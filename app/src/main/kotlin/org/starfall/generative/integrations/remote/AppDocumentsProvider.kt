@@ -27,9 +27,9 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.runBlocking
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.AppDocumentsLocation
-import org.starfall.generative.shared.files.MediaStorageDocuments
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.AppDocumentsLocation
+import org.starfall.generative.shared.subfeatures.media.logic.MediaStorageDocuments
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.RemoteMachine
 
 /** One DocumentsUI root containing MediaStorage, UploadCaches and remote SFTP folders. */

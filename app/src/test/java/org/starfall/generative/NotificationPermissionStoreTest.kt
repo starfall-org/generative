@@ -16,9 +16,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.NotificationPermissionStore
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.NotificationPermissionStore
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

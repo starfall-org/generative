@@ -41,8 +41,8 @@ import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
-import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
-import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession

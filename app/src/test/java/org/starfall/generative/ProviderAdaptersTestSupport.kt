@@ -2,7 +2,7 @@ package org.starfall.generative
 
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.api.ModelApiType

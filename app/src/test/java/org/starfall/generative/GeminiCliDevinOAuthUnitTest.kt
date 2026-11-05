@@ -10,7 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.integrations.modelapis.devin.DevinOAuthProtocol
 import org.starfall.generative.integrations.modelapis.geminicli.GeminiCliOAuthProtocol
-import org.starfall.generative.shared.auth.AppAuthTransactions
+import org.starfall.generative.shared.subfeatures.auth.logic.AppAuthTransactions
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

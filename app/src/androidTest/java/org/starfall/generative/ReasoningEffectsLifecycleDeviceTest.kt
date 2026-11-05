@@ -27,10 +27,10 @@ import org.junit.runner.RunWith
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewSheet
 import org.starfall.generative.shared.model.language.ModelConfiguration
-import org.starfall.generative.shared.ui.model.LocalThinkingScreenBurst
-import org.starfall.generative.shared.ui.model.ThinkingColorBurst
-import org.starfall.generative.shared.ui.model.ThinkingScreenBurstLayer
-import org.starfall.generative.shared.ui.model.rememberThinkingColorBurst
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.LocalThinkingScreenBurst
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ThinkingColorBurst
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ThinkingScreenBurstLayer
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.rememberThinkingColorBurst
 
 /** Real-device regression coverage for the sheet's screen-owned reasoning effect. */
 @RunWith(AndroidJUnit4::class)

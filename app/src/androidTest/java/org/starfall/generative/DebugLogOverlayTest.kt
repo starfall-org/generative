@@ -24,10 +24,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel
-import org.starfall.generative.shared.ui.logging.DebugLogOverlay
+import org.starfall.generative.shared.subfeatures.logging.ui.DebugLogOverlay
 
 class DebugLogOverlayTest {
     @get:Rule val compose = createComposeRule()

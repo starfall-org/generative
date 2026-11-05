@@ -39,18 +39,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import org.starfall.generative.shared.storage.preferences.ScreenWakelockMode
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.database.preferences.ScreenWakelockMode
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.features.providers.shared.logic.ConfigurationViewModel
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.features.machines.shared.logic.RemoteMachinesViewModel
 import org.starfall.generative.shared.model.parseProviderLink
-import org.starfall.generative.shared.files.CrashLogExporter
-import org.starfall.generative.shared.files.CrashReport
-import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
-import org.starfall.generative.shared.ui.logging.DebugLogOverlay
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashLogExporter
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReport
+import org.starfall.generative.shared.subfeatures.crashreports.ui.CrashReportDialog
+import org.starfall.generative.shared.subfeatures.logging.ui.DebugLogOverlay
 import org.starfall.generative.shared.ui.layout.enableTransparentSystemBars
 import org.starfall.generative.navigation.AppNavigation
 import org.starfall.generative.navigation.AppDeepLinkRequest
@@ -61,7 +61,7 @@ import org.starfall.generative.navigation.parseExternalShare
 import org.starfall.generative.navigation.parseAppDeepLink
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
-import org.starfall.generative.shared.terminal.RemoteTerminalLaunch
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalLaunch
 
 private const val SERVICE_STOP_GRACE_MS = 5_000L
 

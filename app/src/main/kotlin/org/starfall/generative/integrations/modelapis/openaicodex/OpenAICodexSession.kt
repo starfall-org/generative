@@ -6,7 +6,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.oauthCredentialId
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Request-only metadata used to carry conversation identity through the manual tool pipeline. */
 internal const val CODEX_SESSION_SCOPE = "_generative_codex_session"

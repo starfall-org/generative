@@ -10,7 +10,7 @@ import org.junit.Test
 import org.starfall.generative.integrations.speech.*
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 
 class SpeechModelCatalogTest {
     @Test fun catalogsFilterOutVoicesAndNonTtsModels() {

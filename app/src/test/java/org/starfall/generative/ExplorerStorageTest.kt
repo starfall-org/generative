@@ -19,7 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
 import org.starfall.generative.features.storage.logic.MediaStorageExplorerRepository
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = LibraryTestApplication::class)

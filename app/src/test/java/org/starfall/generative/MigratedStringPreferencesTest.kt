@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+import org.starfall.generative.database.preferences.MigratedStringPreferences
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)

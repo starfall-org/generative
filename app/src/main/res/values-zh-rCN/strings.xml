@@ -916,8 +916,8 @@
     <string name="speech_engine_api_key_help">此语音引擎需要 API 密钥。密钥会安全地存储在此设备上。</string>
     <string name="media_image_generation_failed">图像生成失败</string>
     <string name="media_video_generation_failed">视频生成失败</string>
-    <string name="speech_sentences_per_chunk">每次 API 请求的句数</string>
-    <string name="speech_chunk_boundaries">句号或换行表示一句结束。连续的分隔符只计一次。</string>
+    <string name="speech_words_per_chunk">每次 API 请求的最多词数</string>
+    <string name="speech_word_chunk_boundaries">自动增减词数，在最近的句号、感叹号或问号处断句；长句将自动拆分。</string>
     <string name="notification_speech_channel">语音播放</string>
     <string name="notification_speech_playing">正在朗读</string>
     <string name="user_profile_background_transparency">背景透明度</string>

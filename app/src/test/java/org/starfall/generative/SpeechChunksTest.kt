@@ -2,8 +2,8 @@ package org.starfall.generative
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.media.speechChunks
-import org.starfall.generative.shared.media.speechText
+import org.starfall.generative.shared.helpers.speech.speechChunks
+import org.starfall.generative.shared.helpers.speech.speechText
 
 class SpeechChunksTest {
     @Test fun symbolsAndColonsAreNotSentToSpeechButAccentsAndSentenceBoundariesRemain() {
@@ -13,31 +13,41 @@ class SpeechChunksTest {
         assertEquals("你好。世界！", speechText("你好。世界！"))
     }
 
-    @Test fun requestSizeUsesTheConfiguredSentenceCount() {
-        for (limit in listOf(1, 3, 10, 15)) for (count in 1..35) {
-            val sentences = (1..count).map { "Sentence $it." }
-            val chunks = speechChunks(sentences.joinToString(" "), sentencesPerChunk = limit)
-            assertEquals(sentences.joinToString(" "), chunks.joinToString(" "))
-            chunks.forEachIndexed { index, chunk ->
-                val actual = Regex("Sentence [0-9]+\\.").findAll(chunk).count()
-                if (index < chunks.lastIndex) assertEquals(limit, actual)
-                else assertTrue(actual in 1..limit)
-            }
-        }
-        assertEquals(3, speechChunks((1..21).joinToString(" ") { "Sentence $it." }).size)
-        assertThrows(IllegalArgumentException::class.java) { speechChunks("Text.", sentencesPerChunk = 0) }
+    @Test fun defaultIsTwentyWordsAndLongSentencesSplitAtTheWordTarget() {
+        val words = (1..43).map { "word$it" }
+        val chunks = speechChunks(words.joinToString(" "))
+        assertEquals(listOf(20, 20, 3), chunks.map { it.split(' ').size })
+        assertEquals(words.joinToString(" "), chunks.joinToString(" "))
+        assertThrows(IllegalArgumentException::class.java) { speechChunks("Text.", maxWordsPerChunk = 0) }
     }
 
-    @Test fun periodsAndNewlinesAreCoalescedAndDecimalsArePreserved() {
-        assertEquals(listOf("One. Two", "Three. Four."), speechChunks("One.\nTwo\nThree. \n \nFour.\n", sentencesPerChunk = 2))
-        assertEquals(listOf("A. B.", "C. D."), speechChunks("A.\n\nB.\r\nC. \nD.", sentencesPerChunk = 2))
-        assertEquals(listOf("alpha beta", "gamma delta"), speechChunks("alpha\nbeta\ngamma\ndelta", sentencesPerChunk = 2))
-        assertEquals(listOf("Value 12.5.", "Next."), speechChunks("Value 12.5.\nNext.", sentencesPerChunk = 1))
+    @Test fun roundsDownOrUpToTheNearestSentenceEnding() {
+        val chunks = speechChunks(
+            "one two three four. five six seven eight nine ten? eleven twelve thirteen fourteen fifteen sixteen.",
+            maxWordsPerChunk = 5
+        )
+        assertEquals(
+            listOf("one two three four.", "five six seven eight nine ten?", "eleven twelve thirteen fourteen fifteen sixteen."),
+            chunks
+        )
+        // When both directions are equally close, prefer the earlier sentence ending.
+        assertEquals(listOf("one two three four.", "five six."), speechChunks(
+            "one two three four. five six.", maxWordsPerChunk = 5
+        ))
     }
 
-    @Test fun longSentencesRespectCharacterLimitAndUnicodeBoundaries() {
+    @Test fun exclamationAndQuestionMarksAreBoundariesButDecimalsAreNot() {
+        assertEquals(listOf("Value 12.5 is good.", "Next question? Done!"),
+            speechChunks("Value 12.5 is good.\nNext question? Done!", maxWordsPerChunk = 3))
+        assertEquals(listOf("One two three.", "Four five!", "Six seven?", "Eight nine。", "Ten eleven！"),
+            speechChunks("One two three. Four five! Six seven? Eight nine。 Ten eleven！", maxWordsPerChunk = 3))
+        assertEquals(listOf("alpha beta", "gamma delta", "epsilon zeta"),
+            speechChunks("alpha\nbeta\ngamma\ndelta\nepsilon\nzeta", maxWordsPerChunk = 2))
+    }
+
+    @Test fun longChunksRespectCharacterLimitAndUnicodeBoundaries() {
         val text = ("Tiếng Việt rất rõ ràng. ").repeat(400).trim()
-        val chunks = speechChunks(text, maxCharacters = 200)
+        val chunks = speechChunks(text, maxWordsPerChunk = 1_000, maxCharacters = 200)
         assertTrue(chunks.all { it.length <= 200 })
         assertEquals(text, chunks.joinToString(" "))
         val surrogateText = "a" + "\uD835\uDC00".repeat(20)

@@ -20,8 +20,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.features.customization.ui.CustomizationScreen
 import org.starfall.generative.features.settings.ui.AppearanceSettingsView
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.UserProfile
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.UserProfile
 
 /** Verify that the palette mixer handles Android pointer input and commits only on Save. */
 @RunWith(AndroidJUnit4::class)

@@ -3,20 +3,20 @@ package org.starfall.generative.features.home.chat.logic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.starfall.generative.R
-import org.starfall.generative.shared.media.SpeechAudioPlayer
-import org.starfall.generative.shared.media.SpeechPlaybackNotification
-import org.starfall.generative.shared.media.SpeechSynthesisService
-import org.starfall.generative.shared.media.TtsHelper
-import org.starfall.generative.shared.media.speechText
-import org.starfall.generative.shared.media.speechChunks
-import org.starfall.generative.shared.media.SpeechPlaybackException
+import org.starfall.generative.integrations.speech.SpeechAudioPlayer
+import org.starfall.generative.integrations.speech.SpeechPlaybackNotification
+import org.starfall.generative.integrations.speech.SpeechSynthesisService
+import org.starfall.generative.integrations.speech.TtsHelper
+import org.starfall.generative.shared.helpers.speech.speechText
+import org.starfall.generative.shared.helpers.speech.speechChunks
+import org.starfall.generative.integrations.speech.SpeechPlaybackException
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferences
 
 internal class ChatSpeechCoordinator(
     private val scope: CoroutineScope,
@@ -77,16 +77,21 @@ internal class ChatSpeechCoordinator(
                     }
                 }
                 val standalone = if (service.engine.standalone) StandaloneSpeechClient() else null
-                for (chunk in speechChunks(plainText, sentencesPerChunk = service.sentencesPerChunk.coerceAtLeast(1),
-                    maxCharacters = if (service.engine == SpeechEngine.SPEECHIFY) 1_900 else 4_000)) {
-                    ensureActive()
-                    val audio = if (standalone != null) standalone.synthesize(service, chunk)
+                val chunks = speechChunks(plainText, maxWordsPerChunk = service.maxWordsPerChunk.coerceAtLeast(1),
+                    maxCharacters = if (service.engine == SpeechEngine.SPEECHIFY) 1_900 else 4_000)
+                synthesizeAndPlaySpeechChunks(
+                    chunks = chunks,
+                    synthesize = { chunk ->
+                        if (standalone != null) standalone.synthesize(service, chunk)
                         else synthesis.synthesize(requireNotNull(provider), service, chunk)
-                    ensureActive()
-                    if (request != requestNumber) return@launch
-                    player.playAndAwait(audio, onStarted,
-                        speed = if (standalone != null) service.speed else 1f)
-                }
+                    },
+                    play = { audio ->
+                        ensureActive()
+                        if (request != requestNumber) throw CancellationException("Speech request was replaced")
+                        player.playAndAwait(audio, onStarted,
+                            speed = if (standalone != null) service.speed else 1f)
+                    }
+                )
             } catch (e: CancellationException) { throw e
             } catch (e: SpeechPlaybackException) {
                 tts.reportError(R.string.speech_playback_failed)

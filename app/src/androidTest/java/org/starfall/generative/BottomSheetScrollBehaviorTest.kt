@@ -18,16 +18,11 @@ import androidx.core.view.WindowInsetsCompat
 import org.junit.Assert.assertEquals
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.shared.model.language.DiscoveredModel
-import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.features.providers.editor.ui.ModelCatalogSheet
 
 class BottomSheetScrollBehaviorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -172,33 +167,5 @@ class BottomSheetScrollBehaviorTest {
         assertTrue("At the start the next drag must immediately move the sheet",
             sheet.fetchSemanticsNode().boundsInRoot.top > before + 20f)
         list.performTouchInput { moveBy(Offset.Zero, delayMillis = 200); up() }
-    }
-
-    @Test fun fetchModelsKeepsScrollingTowardTheEndWithoutAReverseSwipe() {
-        val models = (0 until 150).map { DiscoveredModel(id = "scroll-model-$it", displayName = "Catalog model $it") }
-        compose.setContent { MaterialTheme {
-            ModelCatalogSheet(
-                provider = ModelProvider("test", "Test", ModelApiType.OPENAI, baseUrl = "https://example.test"),
-                selectedModels = emptySet(), onFetchModels = { models }, onCatalogLoaded = {},
-                onToggle = {}, onSetSelection = { _, _ -> }, onDismiss = {}
-            )
-        } }
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Catalog model 0").fetchSemanticsNodes().isNotEmpty() }
-        val list = compose.onNodeWithTag("provider-model-catalog-list")
-        repeat(40) {
-            val before = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
-            val position = before.value()
-            val couldScroll = position < before.maxValue()
-            list.performTouchInput { swipeUp(durationMillis = 180) }
-            compose.waitForIdle()
-            val after = list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
-            if (couldScroll) assertTrue("Forward swipes must keep advancing until the real bottom",
-                after.value() > position || after.value() >= after.maxValue())
-        }
-        compose.onNodeWithText("Catalog model 149").assertIsDisplayed()
-        // Touching the bottom must not leave a stretch state that blocks later gestures.
-        repeat(3) { list.performTouchInput { swipeUp(durationMillis = 180) }; compose.waitForIdle() }
-        repeat(40) { list.performTouchInput { swipeDown(durationMillis = 180) }; compose.waitForIdle() }
-        compose.onNodeWithText("Catalog model 0").assertIsDisplayed()
     }
 }

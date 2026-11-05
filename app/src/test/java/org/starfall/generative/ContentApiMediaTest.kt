@@ -10,10 +10,10 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.isContentApiPreset
 import org.starfall.generative.features.home.chat.logic.tool.resolveContentApiMedia
 import org.starfall.generative.shared.helpers.media.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
 import org.starfall.generative.shared.model.media.*
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.networking.*
-import org.starfall.generative.shared.storage.preferences.*
+import org.starfall.generative.shared.helpers.networking.*
+import org.starfall.generative.database.preferences.*
 import java.nio.file.Files
 
 class ContentApiMediaTest {

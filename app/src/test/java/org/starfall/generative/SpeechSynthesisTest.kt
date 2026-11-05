@@ -12,9 +12,8 @@ import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
 import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.icons.*
-import org.starfall.generative.shared.media.*
+import org.starfall.generative.integrations.speech.*
+import org.starfall.generative.shared.helpers.speech.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64

@@ -9,8 +9,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion

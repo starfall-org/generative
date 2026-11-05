@@ -29,14 +29,13 @@ import org.starfall.generative.features.providers.shared.model.ModelConnectionSt
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.ui.dialogs.Dialog
+import org.starfall.generative.shared.ui.dialogs.ToolbarDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnectionTests, available: Boolean,
     onRemoveModels: (Set<String>) -> Unit, onDismiss: () -> Unit) {
@@ -56,97 +55,92 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
         removals.close(remove = { ids -> tests.forget(ids); onRemoveModels(ids) }, dismiss = onDismiss)
     }
     val removedDescription = stringResource(R.string.model_removed_on_dialog_close)
-    Dialog(
+    ToolbarDialog(
         onDismissRequest = ::close,
         title = { Text(stringResource(R.string.check_connection)) },
-        content = {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth().testTag("connection-toolbar"), verticalAlignment = Alignment.CenterVertically) {
-                    ModelConnectionCounts(progress, showProgress = true,
-                        modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(vertical = 4.dp))
-                    IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
-                        enabled = (testingAny || testableModels.isNotEmpty()) && available) {
-                        if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
-                        else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.provider_test_all_chat_models))
-                    }
-                    if (showUnavailableAction) {
-                        val restore = unavailable.isEmpty()
-                        IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
-                            SharedIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
-                                stringResource(if (restore) R.string.restore_removed_models else R.string.remove_unavailable_models),
-                                tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                        }
-                    }
+        toolbarModifier = Modifier.testTag("connection-toolbar"),
+        toolbarLeading = {
+            ModelConnectionCounts(progress, showProgress = true,
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp))
+        },
+        toolbarActions = {
+            IconButton(onClick = { if (testingAny) tests.cancelAll() else tests.testAll(provider, testableModels, skip = { it in removals.pending }) },
+                enabled = (testingAny || testableModels.isNotEmpty()) && available) {
+                if (testingAny) SharedIcon(Icons.Outlined.StopCircle, stringResource(R.string.common_cancel))
+                else SharedIcon(Icons.Outlined.NetworkCheck, stringResource(R.string.provider_test_all_chat_models))
+            }
+            if (showUnavailableAction) {
+                val restore = unavailable.isEmpty()
+                IconButton(onClick = { if (restore) removals.restoreAll() else removals.mark(unavailable) }) {
+                    SharedIcon(if (restore) Icons.Outlined.Restore else Icons.Outlined.DeleteSweep,
+                        stringResource(if (restore) R.string.restore_removed_models else R.string.remove_unavailable_models),
+                        tint = if (restore) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
-                LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
-                    .testTag("connection-model-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (textModels.isEmpty()) item { Text(stringResource(R.string.provider_test_no_chat_models)) }
-                    items(textModels, key = { it }) { id ->
-                        val testing = tests.running[id] == true
-                        val removed = id in removals.pending
-                        val result = tests.results[id]
-                        val config = provider.config.modelConfigs[id] ?: ModelConfiguration()
-                        val mutedText = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (removed) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                else prominentContainerColor(),
-                            border = if (removed) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                                else prominentContainerBorder(),
-                            modifier = Modifier.fillMaxWidth().testTag("connection-model-$id")
-                                .semantics { if (removed) stateDescription = removedDescription }
-                        ) {
-                            Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(config.displayName.ifBlank { id },
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = if (removed) mutedText else MaterialTheme.colorScheme.onSurface,
-                                        textDecoration = if (removed) TextDecoration.LineThrough else null)
-                                    if (config.displayName.isNotBlank()) Text(id,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (removed) mutedText else MaterialTheme.colorScheme.onSurfaceVariant)
-                                    result?.let { tested ->
-                                        val status = tests.status(id) ?: ModelConnectionStatus.PASSED
-                                        Row(verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            SharedIcon(status.icon(), null,
-                                                tint = if (removed) mutedText else status.accent(),
-                                                modifier = Modifier.size(16.dp))
-                                            Text(status.message(tested), style = MaterialTheme.typography.bodySmall,
-                                                color = if (removed) mutedText else status.textColor())
-                                        }
+            }
+        },
+        content = {
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
+                .testTag("connection-model-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (textModels.isEmpty()) item { Text(stringResource(R.string.provider_test_no_chat_models)) }
+                items(textModels, key = { it }) { id ->
+                    val testing = tests.running[id] == true
+                    val removed = id in removals.pending
+                    val result = tests.results[id]
+                    val config = provider.config.modelConfigs[id] ?: ModelConfiguration()
+                    val mutedText = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (removed) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else prominentContainerColor(),
+                        border = if (removed) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            else prominentContainerBorder(),
+                        modifier = Modifier.fillMaxWidth().testTag("connection-model-$id")
+                            .semantics { if (removed) stateDescription = removedDescription }
+                    ) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(config.displayName.ifBlank { id },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (removed) mutedText else MaterialTheme.colorScheme.onSurface,
+                                    textDecoration = if (removed) TextDecoration.LineThrough else null)
+                                if (config.displayName.isNotBlank()) Text(id,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (removed) mutedText else MaterialTheme.colorScheme.onSurfaceVariant)
+                                result?.let { tested ->
+                                    val status = tests.status(id) ?: ModelConnectionStatus.PASSED
+                                    Row(verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        SharedIcon(status.icon(), null,
+                                            tint = if (removed) mutedText else status.accent(),
+                                            modifier = Modifier.size(16.dp))
+                                        Text(status.message(tested), style = MaterialTheme.typography.bodySmall,
+                                            color = if (removed) mutedText else status.textColor())
                                     }
                                 }
-                                IconButton(
-                                    modifier = Modifier.size(40.dp),
-                                    enabled = available && (testing || (!removed && !testingAny)),
-                                    onClick = { if (testing) tests.cancel(id) else tests.test(provider, id) }
-                                ) {
-                                    SharedIcon(if (testing) Icons.Outlined.StopCircle else Icons.Outlined.NetworkCheck,
-                                        if (testing) stringResource(R.string.common_cancel) else stringResource(R.string.test_model, id),
-                                        modifier = Modifier.size(20.dp))
-                                }
-                                IconButton(
-                                    modifier = Modifier.size(40.dp),
-                                    onClick = { if (!removed && testing) tests.cancel(id); removals.toggle(id) }
-                                ) {
-                                    SharedIcon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
-                                        stringResource(if (removed) R.string.restore_model else R.string.delete_model, id),
-                                        modifier = Modifier.size(20.dp),
-                                        tint = if (removed) mutedText else MaterialTheme.colorScheme.error)
-                                }
+                            }
+                            IconButton(
+                                modifier = Modifier.size(40.dp),
+                                enabled = available && (testing || (!removed && !testingAny)),
+                                onClick = { if (testing) tests.cancel(id) else tests.test(provider, id) }
+                            ) {
+                                SharedIcon(if (testing) Icons.Outlined.StopCircle else Icons.Outlined.NetworkCheck,
+                                    if (testing) stringResource(R.string.common_cancel) else stringResource(R.string.test_model, id),
+                                    modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(
+                                modifier = Modifier.size(40.dp),
+                                onClick = { if (!removed && testing) tests.cancel(id); removals.toggle(id) }
+                            ) {
+                                SharedIcon(if (removed) Icons.Outlined.Restore else Icons.Outlined.Delete,
+                                    stringResource(if (removed) R.string.restore_model else R.string.delete_model, id),
+                                    modifier = Modifier.size(20.dp),
+                                    tint = if (removed) mutedText else MaterialTheme.colorScheme.error)
                             }
                         }
                     }
                 }
-            }
-        },
-        buttons = {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = ::close) { Text(stringResource(R.string.common_close)) }
             }
         }
     )

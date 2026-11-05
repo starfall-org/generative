@@ -5,8 +5,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
@@ -15,10 +15,10 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.isContentApiName
 import org.starfall.generative.shared.model.isContentApiPreset
 import org.starfall.generative.shared.model.resolvedUrl
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.preferences.AppPreferencesRepository
 
 /** Runs startup defaults and initial MCP tool caching; auth repairs belong in migrations. */
 class DefaultDataInitializer(

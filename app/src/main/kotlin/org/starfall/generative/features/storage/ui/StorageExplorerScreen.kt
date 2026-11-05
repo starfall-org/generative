@@ -15,13 +15,13 @@ import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerItem
 import org.starfall.generative.shared.subfeatures.explorer.logic.ExplorerLocation
 import org.starfall.generative.shared.subfeatures.explorer.ui.ExplorerScreen
 import org.starfall.generative.features.storage.logic.MediaStorageExplorerRepository
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.explorerImport
-import org.starfall.generative.shared.files.explorerExport
-import org.starfall.generative.shared.ui.media.MediaViewer
-import org.starfall.generative.shared.ui.media.isPreviewableMedia
-import org.starfall.generative.shared.ui.media.isTextFile
-import org.starfall.generative.shared.ui.media.mediaMimeType
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.explorer.logic.explorerImport
+import org.starfall.generative.shared.subfeatures.explorer.logic.explorerExport
+import org.starfall.generative.shared.subfeatures.media.ui.MediaViewer
+import org.starfall.generative.shared.subfeatures.media.ui.isPreviewableMedia
+import org.starfall.generative.shared.subfeatures.media.ui.isTextFile
+import org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType
 
 /** The Storage feature owns its browsing and viewer lifetime, not the explorer extension. */
 @Composable

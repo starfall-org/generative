@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.helpers.media.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.defaultMediaProfile

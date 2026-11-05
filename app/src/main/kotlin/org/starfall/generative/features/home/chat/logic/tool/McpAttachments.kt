@@ -7,11 +7,11 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.starfall.generative.shared.model.ToolDefinition
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.storage.preferences.McpAttachmentMode
-import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
-import org.starfall.generative.shared.storage.preferences.McpDynamicStrategy
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.database.preferences.McpAttachmentMode
+import org.starfall.generative.database.preferences.McpAttachmentSettings
+import org.starfall.generative.database.preferences.McpDynamicStrategy
 
 internal const val LIST_MCPS_TOOL_NAME = "list_mcps"
 internal const val CONNECT_MCPS_TOOL_NAME = "connect_mcps"

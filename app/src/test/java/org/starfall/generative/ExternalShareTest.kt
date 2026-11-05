@@ -16,7 +16,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.starfall.generative.navigation.parseExternalShare
 import org.starfall.generative.navigation.stageSharedAttachment
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.features.home.chat.ui.ChatAttachmentSelection
 
 @RunWith(RobolectricTestRunner::class)

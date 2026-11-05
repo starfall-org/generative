@@ -915,8 +915,8 @@
     <string name="speech_engine_api_key_help">この音声合成エンジンで必要です。このデバイスに安全に保存されます。</string>
     <string name="media_image_generation_failed">画像の生成に失敗しました</string>
     <string name="media_video_generation_failed">動画の生成に失敗しました</string>
-    <string name="speech_sentences_per_chunk">API リクエストごとの文数</string>
-    <string name="speech_chunk_boundaries">ピリオドまたは改行で文を区切ります。連続する区切りは1回として数えます。</string>
+    <string name="speech_words_per_chunk">API リクエストごとの最大単語数</string>
+    <string name="speech_word_chunk_boundaries">単語数を前後に調整し、最も近い句点・感嘆符・疑問符で区切ります。長い文は自動的に分割されます。</string>
     <string name="notification_speech_channel">音声の再生</string>
     <string name="notification_speech_playing">読み上げ中</string>
     <string name="user_profile_background_transparency">背景の透明度</string>

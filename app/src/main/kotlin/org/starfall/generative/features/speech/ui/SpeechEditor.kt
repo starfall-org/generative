@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.R
-import org.starfall.generative.shared.media.supportsSpeechProvider
+import org.starfall.generative.integrations.speech.supportsSpeechProvider
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.iconMatchName
@@ -30,9 +30,9 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.IconPickerRow
+import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.icons.providerInitials
+import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.inputs.ApiKeyField
@@ -86,7 +86,7 @@ fun SpeechEditor(
     var responseFormat by remember(initialService.id) { mutableStateOf(initialService.responseFormat) }
     var languageCode by remember(initialService.id) { mutableStateOf(initialService.languageCode) }
     var extraBodyText by remember(initialService.id) { mutableStateOf(initialService.extraBody.toString()) }
-    var chunkSizeText by remember(initialService.id) { mutableStateOf(initialService.sentencesPerChunk.coerceAtLeast(1).toString()) }
+    var chunkSizeText by remember(initialService.id) { mutableStateOf(initialService.maxWordsPerChunk.coerceAtLeast(1).toString()) }
     val chunkSize = chunkSizeText.toIntOrNull()?.takeIf { it > 0 }
     var apiKey by remember(initialService.id) { mutableStateOf(initialService.apiKey) }
     var providerExpanded by remember { mutableStateOf(false) }
@@ -136,7 +136,7 @@ fun SpeechEditor(
         modelId = modelId,
         voice = voice.trim(),
         speed = speed,
-        sentencesPerChunk = chunkSize ?: initialService.sentencesPerChunk,
+        maxWordsPerChunk = chunkSize ?: initialService.maxWordsPerChunk,
         pitch = pitch,
         instructions = if (supportsInstructions) instructions else "",
         responseFormat = responseFormat,
@@ -373,8 +373,7 @@ fun SpeechEditor(
                     }
                     OutlinedTextField(
                         value = chunkSizeText, onValueChange = { chunkSizeText = it },
-                        label = { Text(stringResource(R.string.speech_sentences_per_chunk)) },
-                        supportingText = { Text(stringResource(R.string.speech_chunk_boundaries)) },
+                        label = { Text(stringResource(R.string.speech_words_per_chunk)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
                             autoCorrectEnabled = false, keyboardType = KeyboardType.Number),
                         isError = chunkSizeText.isNotBlank() && chunkSize == null,

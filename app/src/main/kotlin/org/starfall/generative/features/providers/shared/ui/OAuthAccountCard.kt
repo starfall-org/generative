@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.ui.auth.DeviceCodeChallengeText
+import org.starfall.generative.shared.subfeatures.auth.ui.DeviceCodeChallengeText
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder

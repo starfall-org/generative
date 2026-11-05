@@ -21,7 +21,7 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
-import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
+import org.starfall.generative.database.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.ui.code.CodeBlockSurface
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -152,7 +152,7 @@ private fun isLongCodeBlock(
     language: String,
     isStreaming: Boolean,
     lineCount: Int?,
-    preferences: org.starfall.generative.shared.storage.preferences.AppPreferences
+    preferences: org.starfall.generative.database.preferences.AppPreferences
 ): Boolean = !isStreaming &&
     (preferences.codeBlockIncludeUndefined || language.isNotBlank()) &&
     lineCount.orZero() > preferences.codeBlockMaxLines

@@ -17,9 +17,9 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ThinkingPassback
 import org.starfall.generative.shared.model.language.passbackMode
-import org.starfall.generative.shared.ui.icons.EntityIcon
+import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.model.modelInitial
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
 
 /** Linked model-settings page. It stays in the same modal sheet and retains its parent overview. */
 @Composable

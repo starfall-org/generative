@@ -6,7 +6,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.generation.TokenUsage
-import org.starfall.generative.shared.networking.providerTokenUsage
+import org.starfall.generative.shared.helpers.networking.providerTokenUsage
 
 class ProviderTokenUsageTest {
     private fun usage(type: ModelApiType, json: String) = providerTokenUsage(type, Json.parseToJsonElement(json).jsonObject)

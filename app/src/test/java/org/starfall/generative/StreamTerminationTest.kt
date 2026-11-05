@@ -12,9 +12,9 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.generation.UNEXPECTED_STREAM_END
 import org.starfall.generative.shared.model.generation.OUTPUT_TOKEN_LIMIT_REACHED
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.modelResponse
-import org.starfall.generative.shared.networking.obj
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.modelResponse
+import org.starfall.generative.shared.helpers.networking.obj
 
 /** EOF is not a protocol completion signal. Partial reasoning must remain visible on failure. */
 @Config(sdk = [28])

@@ -5,8 +5,8 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.StoredMessage
 import kotlinx.serialization.json.JsonPrimitive
-import org.starfall.generative.shared.networking.toolArguments
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.toolArguments
+import org.starfall.generative.shared.helpers.networking.text
 
 /**
  * Gate Agent Skills per user turn. A global skill catalog is not evidence that the user

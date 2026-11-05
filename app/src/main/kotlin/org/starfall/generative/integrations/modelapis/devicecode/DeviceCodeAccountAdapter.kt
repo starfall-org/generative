@@ -23,10 +23,10 @@ import org.starfall.generative.R
 import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.account.OAuthAccountAdapter
 import org.starfall.generative.integrations.modelapis.discoveredModel
-import org.starfall.generative.shared.auth.DeviceCodeChallenge
-import org.starfall.generative.shared.auth.DeviceCodeSignInState
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.auth.logic.DeviceCodeChallenge
+import org.starfall.generative.shared.subfeatures.auth.logic.DeviceCodeSignInState
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.generation.GenerationEvent
@@ -34,7 +34,7 @@ import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.provider.streamEnabledFor
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 internal data class DeviceCodeSession(
     val deviceCode: String,

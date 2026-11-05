@@ -39,8 +39,8 @@ import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.theme.GenerativeTheme
-import org.starfall.generative.shared.theme.ThemePresets
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.ThemePresets
 import org.starfall.generative.shared.ui.layout.LocalItemTransparency
 import org.starfall.generative.shared.ui.layout.appearanceContainerColor
 import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
@@ -289,7 +289,6 @@ class AppSurfaceAndClipConsistencyTest {
                         onTakePhoto = {},
                         onCreateImage = {},
                         onCreateVideo = {},
-                        onOpenInstructions = {},
                         onOpenFeatureTools = {},
                         onOpenMcpConnectors = {},
                         onDismiss = {}

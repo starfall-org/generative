@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import org.starfall.generative.shared.icons.AppImages
+import org.starfall.generative.shared.subfeatures.icons.logic.AppImages
 
 /** Alpha for the background photo ONLY; the screen/sheet/dialog/drawer remains opaque. */
 internal fun backgroundPhotoAlpha(transparency: Float): Float = 1f - transparency.coerceIn(0f, 1f)

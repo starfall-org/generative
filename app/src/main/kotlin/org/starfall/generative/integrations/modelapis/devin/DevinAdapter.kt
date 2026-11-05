@@ -20,10 +20,10 @@ import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.starfall.generative.integrations.modelapis.account.*
-import org.starfall.generative.shared.auth.OAuthBrowser
-import org.starfall.generative.shared.auth.OAuthCallbackService
-import org.starfall.generative.shared.auth.awaitLoopbackAuthorizationCode
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.auth.logic.awaitLoopbackAuthorizationCode
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolDefinition
@@ -38,10 +38,10 @@ import org.starfall.generative.shared.model.language.wireReasoningEffort
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.oauthCredentialId
 import org.starfall.generative.shared.model.provider.streamEnabledFor
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Devin CLI account against native Cognition Connect-RPC, not a fictitious OpenAI endpoint. */
 internal class DevinAdapter(

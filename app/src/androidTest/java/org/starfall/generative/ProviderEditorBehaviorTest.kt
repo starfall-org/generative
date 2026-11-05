@@ -11,7 +11,7 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.ui.model.ModelCapabilityBadges
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelCapabilityBadges
 import org.starfall.generative.features.providers.editor.ui.ProviderEditor
 import org.starfall.generative.features.providers.editor.ui.ModelEditor
 import kotlinx.serialization.json.buildJsonObject
@@ -58,7 +58,7 @@ class ProviderEditorBehaviorTest {
 
     @Test fun faviconDialogShowsUrlValidationResetAndClose() {
         compose.setContent { MaterialTheme {
-            org.starfall.generative.shared.ui.icons.IconPickerRow(null, onChange = {})
+            org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow(null, onChange = {})
         } }
         compose.onNodeWithContentDescription("Get logo automatically").performClick()
         compose.onNode(hasSetTextAction() and hasText("Custom homepage URL")).assertIsDisplayed()
@@ -96,9 +96,9 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         var config by androidx.compose.runtime.mutableStateOf(ModelConfiguration(contextWindowTokens = 128_000))
         compose.setContent { MaterialTheme {
             androidx.compose.foundation.layout.Column {
-                org.starfall.generative.shared.ui.icons.EntityIcon(null, text =
-                    org.starfall.generative.shared.ui.icons.providerInitials("My Provider Name"))
-                org.starfall.generative.shared.ui.model.ModelCapabilityBadges(config)
+                org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon(null, text =
+                    org.starfall.generative.shared.subfeatures.icons.ui.providerInitials("My Provider Name"))
+                org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelCapabilityBadges(config)
             }
         } }
         compose.onNodeWithText("MP").assertIsDisplayed()

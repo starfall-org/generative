@@ -6,8 +6,8 @@ import org.starfall.generative.shared.model.McpToolParameterConfig
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.withSelectedRemoteMachine
 import org.starfall.generative.shared.model.withRemoteMachineEnabled
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.preferences.ToolSettingsStore
 
 /** Writes chat-tool preferences; the ViewModel only exposes these actions to the UI. */
 internal class ChatToolSettingsActions(

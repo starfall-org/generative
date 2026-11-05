@@ -20,10 +20,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.AppLanguage
-import org.starfall.generative.shared.storage.preferences.AppLocale
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.migrateLegacyLocaleKeys
+import org.starfall.generative.database.preferences.AppLanguage
+import org.starfall.generative.database.preferences.AppLocale
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.migrateLegacyLocaleKeys
 
 /** Language pick, resource selection and the locale override that Preferences drives. */
 @RunWith(RobolectricTestRunner::class)

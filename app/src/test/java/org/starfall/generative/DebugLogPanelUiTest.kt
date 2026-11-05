@@ -11,10 +11,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel
-import org.starfall.generative.shared.ui.logging.DebugLogPanel
+import org.starfall.generative.shared.subfeatures.logging.ui.DebugLogPanel
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "en-w420dp-h900dp-xhdpi", application = LibraryTestApplication::class)

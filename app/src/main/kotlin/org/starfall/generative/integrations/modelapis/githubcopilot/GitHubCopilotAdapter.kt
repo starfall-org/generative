@@ -8,15 +8,15 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.starfall.generative.R
 import org.starfall.generative.integrations.modelapis.account.*
-import org.starfall.generative.shared.auth.OAuthCallbackService
+import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.api.*
 import org.starfall.generative.shared.model.auth.*
 import org.starfall.generative.shared.model.generation.*
 import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.helpers.networking.text
 import org.starfall.generative.integrations.modelapis.discoveredModel
 
 internal class GitHubCopilotAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(

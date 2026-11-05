@@ -19,7 +19,7 @@ import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.account.accountTokenFromResponse
 import org.starfall.generative.integrations.modelapis.devicecode.DeviceCodeAccountAdapter
 import org.starfall.generative.integrations.modelapis.devicecode.DeviceCodeSession
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.language.DiscoveredModel
@@ -28,7 +28,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Grok CLI OAuth login and the CLI chat-proxy Responses transport. */
 internal class GrokBuildAdapter(context: Context, attachments: AttachmentResolver) : DeviceCodeAccountAdapter(

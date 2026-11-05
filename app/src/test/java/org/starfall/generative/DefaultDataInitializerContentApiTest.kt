@@ -28,14 +28,14 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.appwiring.DefaultDataInitializer
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.modelapis.AiService
-import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
 import org.starfall.generative.shared.model.McpInfo
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.preferences.AppPreferencesRepository
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)

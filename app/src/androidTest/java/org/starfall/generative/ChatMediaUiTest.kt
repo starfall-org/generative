@@ -19,12 +19,12 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.features.providers.shared.ui.*
-import org.starfall.generative.shared.ui.media.MediaPreviewCover
-import org.starfall.generative.shared.ui.media.MediaFileCard
-import org.starfall.generative.shared.ui.media.ChatFilePreview
-import org.starfall.generative.shared.ui.media.InlineVideoPreview
+import org.starfall.generative.shared.subfeatures.media.ui.MediaPreviewCover
+import org.starfall.generative.shared.subfeatures.media.ui.MediaFileCard
+import org.starfall.generative.shared.subfeatures.media.ui.ChatFilePreview
+import org.starfall.generative.shared.subfeatures.media.ui.InlineVideoPreview
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.ByteArrayOutputStream
 import java.io.File

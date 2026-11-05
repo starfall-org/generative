@@ -17,9 +17,9 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.integrations.remote.AppDocumentsProvider
-import org.starfall.generative.shared.files.AppDocumentsLocation
-import org.starfall.generative.shared.files.MediaStorageDocuments
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.AppDocumentsLocation
+import org.starfall.generative.shared.subfeatures.media.logic.MediaStorageDocuments
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = LibraryTestApplication::class)

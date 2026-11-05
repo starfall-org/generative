@@ -1,7 +1,7 @@
 package org.starfall.generative.integrations.modelapis.account
 
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Refresh responses may rotate credentials while omitting account metadata. */
 internal fun accountTokenFromResponse(

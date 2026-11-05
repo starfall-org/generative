@@ -3,7 +3,7 @@ package org.starfall.generative.integrations.remote
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import org.starfall.generative.shared.storage.preferences.MigratedStringPreferences
+import org.starfall.generative.database.preferences.MigratedStringPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

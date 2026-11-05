@@ -5,7 +5,7 @@ import io.ktor.client.HttpClient
 import kotlinx.serialization.json.Json
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.integrations.modelapis.anthropic.AnthropicMessagesAdapter
 import org.starfall.generative.integrations.modelapis.gemini.GeminiAdapter
 import org.starfall.generative.integrations.modelapis.ollama.OllamaAdapter

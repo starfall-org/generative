@@ -53,7 +53,7 @@ The current implementation is under `app/src/main/kotlin/org/starfall/generative
 - `features/home/`: chat, conversation drawer, and chat-related shared UI and logic.
 - `integrations/`: code whose primary purpose is communicating with external services, including provider APIs, MCP, media-generation APIs, and remote-machine connections.
 - `database/`: Room databases, DAOs, entities, migrations, database-backed repositories, and storage mappers.
-- `shared/`: reusable UI, models, preferences, state/networking primitives, and pure helpers used across layers.
+- `shared/`: reusable `ui/` (presentation only), `subfeatures/` (complete UI or UI + behavior), `helpers/` (logic-only support), `model/` (data contracts), and `state/` (RAM coordination). Persistent preferences belong in `database/preferences/`, and non-UI services belong in `integrations/` or the owning feature.
 - `navigation/`: app navigation destinations and routing.
 - `appwiring/`: application-level dependency construction and initialization.
 
@@ -70,8 +70,8 @@ Before changing package structure or moving a file, inspect its callers, tests, 
 
 ## User data, resources, and configuration
 
-- Keep Room entities, DAOs, migrations, and database-backed repositories in root `database/`. Keep Android Keystore encryption in `integrations/security/`, shared by Room persistence and MCP OAuth. For schema changes, provide a compatible migration and preserve existing users' data.
-- Keep historical Room schema snapshots in `app/schemas/org.starfall.generative.database.AppDatabase/`. A package-only relocation must not change schema contents/hashes, the database filename, schema version, migration SQL, or credential key alias.
+- Keep Room entities, DAOs, and migrations in `database/room/`, repositories in `database/repositories/`, DataStore implementations in `database/preferences/`, and generic state infrastructure in `shared/state/`. Keep Android Keystore encryption in `integrations/security/`, shared by Room persistence and MCP OAuth. For schema changes, provide a compatible migration and preserve existing users' data.
+- Keep the original Room schema snapshots in `app/schemas/org.starfall.generative.database.AppDatabase/` and the copied schema history for the relocated class in `app/schemas/org.starfall.generative.database.room.AppDatabase/`. A package-only relocation must not change schema contents/hashes, the database filename, schema version, migration SQL, or credential key alias.
 - Add app resources under `app/src/main/res/` and raw assets under `app/src/main/assets/`.
 - Do not check in `local.properties`, build outputs, signing material, or machine-specific configuration.
 - Keep credentials out of logs, error messages, test fixtures, sample links, and documentation.

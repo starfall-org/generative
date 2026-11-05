@@ -5,11 +5,12 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.SftpException
+import com.jcraft.jsch.SftpProgressMonitor
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
-import org.starfall.generative.shared.files.AppDocumentsLocation
+import org.starfall.generative.shared.subfeatures.media.logic.AppDocumentsLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -45,7 +46,10 @@ class RemoteSftpExplorer(private val service: RemoteMachineService) {
     }
 
     /** Stage the upload remotely and rename only after the full transfer completes. */
-    suspend fun upload(machineId: String, parent: String, name: String, input: InputStream) =
+    suspend fun upload(
+        machineId: String, parent: String, name: String, input: InputStream,
+        onProgress: (Long) -> Unit = {}
+    ) =
         withLease(machineId, parent) { lease ->
             val safeName = sanitizeSftpName(name)
             require(safeName == name && '\\' !in name) { "Invalid file name" }
@@ -63,7 +67,17 @@ class RemoteSftpExplorer(private val service: RemoteMachineService) {
             if (exists(destination)) throw FileNotFoundException("File already exists: $safeName")
             val temp = lease.absolute(sftpJoinRelative(parent, ".explorer-upload-${UUID.randomUUID()}.part"))
             try {
-                lease.channel.put(input, temp)
+                var transferred = 0L
+                val progress = object : SftpProgressMonitor {
+                    override fun init(op: Int, src: String?, dest: String?, max: Long) = Unit
+                    override fun count(count: Long): Boolean {
+                        transferred += count
+                        onProgress(transferred)
+                        return true
+                    }
+                    override fun end() = Unit
+                }
+                lease.channel.put(input, temp, progress, ChannelSftp.OVERWRITE)
                 if (exists(destination)) throw FileNotFoundException("File already exists: $safeName")
                 lease.channel.rename(temp, destination)
             } catch (error: Throwable) {
@@ -72,12 +86,27 @@ class RemoteSftpExplorer(private val service: RemoteMachineService) {
             }
         }
 
-    suspend fun download(machineId: String, path: String, output: OutputStream) =
+    suspend fun download(
+        machineId: String, path: String, output: OutputStream,
+        onProgress: (Long, Long) -> Unit = { _, _ -> }
+    ) =
         withLease(machineId, path) { lease ->
             if (path.isBlank()) throw FileNotFoundException("Not a file")
             val source = lease.absolute(path)
-            if (lease.channel.stat(source).isDir) throw FileNotFoundException("Not a file")
-            lease.channel.get(source).use { it.copyTo(output) }
+            val attrs = lease.channel.stat(source)
+            if (attrs.isDir) throw FileNotFoundException("Not a file")
+            var transferred = 0L
+            onProgress(0L, attrs.size)
+            lease.channel.get(source).use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    output.write(buffer, 0, count)
+                    transferred += count
+                    onProgress(transferred, attrs.size)
+                }
+            }
             Unit
         }
 

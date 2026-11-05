@@ -12,8 +12,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.files.CrashReport
-import org.starfall.generative.shared.ui.dialogs.CrashReportDialog
+import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReport
+import org.starfall.generative.shared.subfeatures.crashreports.ui.CrashReportDialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h640dp-xhdpi", application = LibraryTestApplication::class)

@@ -2,13 +2,13 @@ package org.starfall.generative.features.home.chat.logic
 
 import kotlinx.coroutines.*
 import kotlin.coroutines.EmptyCoroutineContext
-import org.starfall.generative.shared.files.TemporaryChatFiles
+import org.starfall.generative.shared.subfeatures.media.logic.TemporaryChatFiles
 import kotlinx.coroutines.flow.*
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.logging.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel

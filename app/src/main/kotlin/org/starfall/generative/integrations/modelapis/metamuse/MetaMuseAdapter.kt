@@ -17,7 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.starfall.generative.integrations.modelapis.account.AccountTokenState
 import org.starfall.generative.integrations.modelapis.devicecode.DeviceCodeAccountAdapter
 import org.starfall.generative.integrations.modelapis.devicecode.DeviceCodeSession
-import org.starfall.generative.shared.files.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.auth.AuthMethod
@@ -26,7 +26,7 @@ import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.language.DiscoveredModel
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.oauthCredentialId
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.text
 
 /** Muse Code Device Client Access -> minted API key -> Meta Responses API. */
 internal class MetaMuseAdapter(context: Context, attachments: AttachmentResolver) : DeviceCodeAccountAdapter(

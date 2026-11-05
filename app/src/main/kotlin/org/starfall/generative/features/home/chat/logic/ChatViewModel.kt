@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.media.SpeechAudioPlayer
-import org.starfall.generative.shared.media.SpeechSynthesisService
-import org.starfall.generative.shared.media.TtsHelper
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.integrations.speech.SpeechAudioPlayer
+import org.starfall.generative.integrations.speech.SpeechSynthesisService
+import org.starfall.generative.integrations.speech.TtsHelper
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ConversationListItem
@@ -27,14 +27,14 @@ import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.shared.storage.LocalWriteErrors
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.shared.state.LocalWriteErrors
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.ToolSettingsStore
 import org.starfall.generative.features.home.chat.logic.service.AutomaticConversationSummaryCoordinator
 import org.starfall.generative.features.home.chat.logic.service.ChatConversationCoordinator
 import org.starfall.generative.features.home.chat.logic.service.ChatMessageActions
@@ -92,7 +92,7 @@ class ChatViewModel(
     private val speechSynthesis: SpeechSynthesisService,
     private val speechAudioPlayer: SpeechAudioPlayer,
     private val toolFiles: ToolFiles,
-    private val speechNotification: org.starfall.generative.shared.media.SpeechPlaybackNotification? = null,
+    private val speechNotification: org.starfall.generative.integrations.speech.SpeechPlaybackNotification? = null,
 ) : ViewModel() {
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())

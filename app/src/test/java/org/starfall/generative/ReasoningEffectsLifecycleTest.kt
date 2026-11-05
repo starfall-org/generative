@@ -15,7 +15,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
-import org.starfall.generative.shared.ui.model.*
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.*
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.*
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.features.home.shared.ui.SelectedModelOverviewSheet
 

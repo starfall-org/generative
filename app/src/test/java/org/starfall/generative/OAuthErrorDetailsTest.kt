@@ -2,7 +2,7 @@ package org.starfall.generative
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.auth.oauthErrorDetails
+import org.starfall.generative.shared.subfeatures.auth.logic.oauthErrorDetails
 
 class OAuthErrorDetailsTest {
     @Test fun oauthFailureKeepsExceptionDetailsButRedactsCredentials() {

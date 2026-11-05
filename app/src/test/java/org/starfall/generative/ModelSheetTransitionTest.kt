@@ -131,13 +131,41 @@ class ModelSheetTransitionTest {
             Host(sheets, providerList = listOf(manyModelsProvider))
         }
         compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
         val before = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
+        val beforeTop = before.boundsInRoot.top
         compose.onNodeWithTag("open-model-picker-button").performClick()
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(450)
         val expanded = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode()
         assertEquals("Picker expansion should retain the same modal sheet", before.id, expanded.id)
-        assertTrue("Long picker must expand upward from the overview", expanded.boundsInRoot.top < before.boundsInRoot.top)
+        assertTrue("Long picker must expand upward from the overview", expanded.boundsInRoot.top < beforeTop)
         compose.onNodeWithTag("model-picker-list").assertIsDisplayed()
+    }
+
+    @Test
+    fun longPickerResizesWithTheSlideRatherThanExpandingAfterIt() {
+        val models = listOf("m1") + (0 until 20).map { "other-$it" }
+        val manyModelsProvider = provider.copy(config = provider.config.copy(modelIds = models))
+        compose.setContent {
+            val sheets = remember { BottomSheetsLinkState().apply { openSelectedModelOverview() } }
+            Host(sheets, providerList = listOf(manyModelsProvider))
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val sheet = compose.onNodeWithTag("bottom-sheet-window")
+        val initialTop = sheet.fetchSemanticsNode().boundsInRoot.top
+
+        compose.onNodeWithTag("open-model-picker-button").performClick()
+        compose.mainClock.advanceTimeBy(450) // Beyond the 300 ms content-and-height slide.
+        val afterSlide = sheet.fetchSemanticsNode().boundsInRoot.top
+        compose.mainClock.advanceTimeBy(600)
+        val afterExtraTime = sheet.fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue("The long picker should grow upward during the page transition", afterSlide < initialTop)
+        assertEquals(
+            "The sheet must not expand again after the page slide finishes",
+            afterSlide, afterExtraTime, with(compose.density) { 3.dp.toPx() }
+        )
     }
 
     @Test

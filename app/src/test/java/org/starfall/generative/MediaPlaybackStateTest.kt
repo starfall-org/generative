@@ -5,7 +5,7 @@ import androidx.media3.common.Player
 import java.lang.reflect.Proxy
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.ui.media.MediaPlaybackState
+import org.starfall.generative.shared.subfeatures.media.ui.MediaPlaybackState
 
 class MediaPlaybackStateTest {
     private class Playback {

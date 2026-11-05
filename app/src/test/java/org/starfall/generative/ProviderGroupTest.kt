@@ -15,9 +15,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.shared.model.*
-import org.starfall.generative.database.ModelRepository
+import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.features.providers.list.ui.newProviderId
 import org.starfall.generative.shared.model.api.ModelApiType
@@ -27,8 +27,8 @@ import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
-import org.starfall.generative.shared.ui.model.ModelPickerItem
-import org.starfall.generative.shared.ui.model.computeModelPickerItems
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.ModelPickerItem
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerItems
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -154,7 +154,7 @@ class ProviderGroupTest {
             val repo = ModelRepository(db, AiService(context))
             repo.saveGroup(ProviderGroup("g", "Work", 0))
             for (id in listOf("z-legacy", "a-legacy")) {
-                db.modelProviderDao().insertOrUpdate(org.starfall.generative.database.entities.ModelProviderEntity(
+                db.modelProviderDao().insertOrUpdate(org.starfall.generative.database.room.entities.ModelProviderEntity(
                     id = id,
                     name = id,
                     type = ModelApiType.OPENAI.name,

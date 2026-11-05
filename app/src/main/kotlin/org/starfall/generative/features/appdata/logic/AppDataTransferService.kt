@@ -32,19 +32,19 @@ import org.starfall.generative.features.appdata.model.AppDataBackup
 import org.starfall.generative.features.appdata.model.RemoteTerminalPreferencesState
 import org.starfall.generative.features.appdata.model.ZipAppDataBackup
 import org.starfall.generative.integrations.remote.RemoteMachineService
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.AgentSkillsStore
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.McpRepository
-import org.starfall.generative.database.ModelRepository
-import org.starfall.generative.database.ProfileRepository
-import org.starfall.generative.database.SpeechRepository
-import org.starfall.generative.shared.storage.preferences.AppLocale
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.ToolSettingsStore
-import org.starfall.generative.shared.storage.preferences.RemoteTerminalPreferenceStore
-import org.starfall.generative.shared.storage.preferences.normalizeLegacyTerminalInput
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.integrations.files.AgentSkillsStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.repositories.McpRepository
+import org.starfall.generative.database.repositories.ModelRepository
+import org.starfall.generative.database.repositories.ProfileRepository
+import org.starfall.generative.database.repositories.SpeechRepository
+import org.starfall.generative.database.preferences.AppLocale
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.ToolSettingsStore
+import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.database.preferences.normalizeLegacyTerminalInput
 
 data class AppDataImportResult(
     val itemCount: Int,

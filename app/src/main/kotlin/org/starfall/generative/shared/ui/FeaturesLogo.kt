@@ -17,8 +17,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
 import org.starfall.generative.R
-import org.starfall.generative.shared.icons.IconStore
-import org.starfall.generative.shared.theme.LocalDarkMode
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
+import org.starfall.generative.shared.ui.theme.LocalDarkMode
 
 @Composable
 fun FeaturesLogo(

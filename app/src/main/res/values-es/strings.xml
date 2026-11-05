@@ -903,8 +903,8 @@
     <string name="speech_engine_api_key_help">Obligatoria para este motor de voz. Se almacena de forma segura en este dispositivo.</string>
     <string name="media_image_generation_failed">Error al generar la imagen</string>
     <string name="media_video_generation_failed">Error al generar el vídeo</string>
-    <string name="speech_sentences_per_chunk">Frases por solicitud API</string>
-    <string name="speech_chunk_boundaries">Un punto o salto de línea termina una frase. Los separadores consecutivos cuentan una sola vez.</string>
+    <string name="speech_words_per_chunk">Máximo de palabras por solicitud API</string>
+    <string name="speech_word_chunk_boundaries">Se ajusta la cantidad de palabras para terminar en el punto, signo de exclamación o interrogación más cercano. Las oraciones largas se dividen.</string>
     <string name="notification_speech_channel">Reproducción de voz</string>
     <string name="notification_speech_playing">Leyendo en voz alta</string>
     <string name="user_profile_background_transparency">Transparencia del fondo</string>

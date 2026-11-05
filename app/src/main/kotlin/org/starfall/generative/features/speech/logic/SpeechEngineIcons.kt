@@ -7,7 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
-import org.starfall.generative.shared.icons.IconStore
+import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.iconMatchName
 

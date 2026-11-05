@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import org.starfall.generative.shared.storage.preferences.AppLocale
+import org.starfall.generative.database.preferences.AppLocale
 
 /**
  * Apply DataStore language choices to the live Compose tree. Unlike Activity recreation, this

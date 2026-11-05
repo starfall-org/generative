@@ -12,7 +12,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.starfall.generative.shared.storage.ImmediateState
+import org.starfall.generative.shared.state.ImmediateState
 
 /** Repository reorder callbacks must not suspend for storage or stale invalidations. */
 class ImmediateDropQueueTest {

@@ -17,18 +17,18 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.googleThinkingConfig
 import org.starfall.generative.shared.model.language.wireReasoningEffort
 import org.starfall.generative.shared.model.provider.streamEnabledFor
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.geminiFunctionParameters
-import org.starfall.generative.shared.networking.modelResponse
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.providerBase
-import org.starfall.generative.shared.networking.providerTurn
-import org.starfall.generative.shared.networking.providerTokenUsage
-import org.starfall.generative.shared.networking.requireArray
-import org.starfall.generative.shared.networking.requireObject
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
-import org.starfall.generative.shared.networking.toolArguments
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.geminiFunctionParameters
+import org.starfall.generative.shared.helpers.networking.modelResponse
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.providerBase
+import org.starfall.generative.shared.helpers.networking.providerTurn
+import org.starfall.generative.shared.helpers.networking.providerTokenUsage
+import org.starfall.generative.shared.helpers.networking.requireArray
+import org.starfall.generative.shared.helpers.networking.requireObject
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.toolArguments
 
 /** Builds protocol-specific model requests and normalizes their responses for tool calling. */
 internal class ToolRequestService(

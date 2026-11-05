@@ -67,6 +67,7 @@ fun ProvidersScreen(
     onPlaceProviderImmediately: ((ProviderPlacement) -> Unit)? = null,
     onPlaceProviderTracked: ((ProviderPlacement, (Result<Unit>) -> Unit) -> Unit)? = null,
     onDeleteProvider: (String) -> Unit,
+    onSetProviderHidden: (String, Boolean) -> Unit = { _, _ -> },
     onReorderProviders: (List<String>) -> Unit,
     onReorderRootItems: (List<ProviderRootOrderItem>) -> Unit = {},
     onReorderRootItemsTracked: ((List<ProviderRootOrderItem>, (Result<Unit>) -> Unit) -> Unit)? = null,
@@ -364,7 +365,7 @@ fun ProvidersScreen(
                             ?.let { group -> orderedProviders.filter { it.groupId == group.id } }.orEmpty(),
                         isGrid = isGridView, isDropTarget = false, testTag = false,
                         onEditProvider = {}, onMoveProvider = {}, onDeleteProvider = {},
-                        onOpenGroup = {}
+                        onSetProviderHidden = { _, _ -> }, onOpenGroup = {}
                     )
                 }
             }
@@ -601,6 +602,7 @@ fun ProvidersScreen(
                                         onEditProvider = { onOpenProviderEditor(it, false) },
                                         onMoveProvider = { dialogs.movingProvider = it },
                                         onDeleteProvider = { dialogs.deletingProviderId = it },
+                                        onSetProviderHidden = onSetProviderHidden,
                                         onOpenGroup = { id ->
                                             folderCardBounds[id]?.let { folderOriginBounds[id] = it }
                                             sortedGroups.firstOrNull { it.id == id }?.let {
@@ -663,7 +665,8 @@ fun ProvidersScreen(
                         onOpenProviderEditor(it, false)
                     },
                     onMoveProvider = { dialogs.movingProvider = it },
-                    onDeleteProvider = { dialogs.deletingProviderId = it }
+                    onDeleteProvider = { dialogs.deletingProviderId = it },
+                    onSetProviderHidden = onSetProviderHidden
                 )
             }
         }

@@ -12,8 +12,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
 import org.starfall.generative.shared.model.StoredMessage
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.files.ResolvedAttachment
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.logic.ResolvedAttachment
 import java.util.Base64
 
 internal class SdkAttachmentContent(private val attachments: AttachmentResolver) {

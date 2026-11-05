@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <queries>
         <intent>
@@ -61,9 +62,9 @@
         </provider>
         <activity android:name=".navigation.ExplorerActivity"
             android:exported="false" />
-        <activity android:name=".shared.ui.auth.AppAuthResultActivity" android:exported="false" />
+        <activity android:name=".shared.subfeatures.auth.ui.AppAuthResultActivity" android:exported="false" />
         <activity
-            android:name=".shared.preview.CodePreviewActivity"
+            android:name=".shared.ui.preview.CodePreviewActivity"
             android:exported="false"
             android:theme="@style/Theme.Generative" />
         <activity
@@ -117,7 +118,7 @@
         </activity>
 
         <service
-            android:name="org.starfall.generative.shared.auth.OAuthCallbackService"
+            android:name="org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
@@ -140,6 +141,12 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="@string/fgs_subtype_remote" />
         </service>
+
+        <service
+            android:name="org.starfall.generative.integrations.remote.RemoteSftpTransferService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name="org.starfall.generative.integrations.remote.RemoteConnectionActionReceiver"

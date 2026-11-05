@@ -2,8 +2,8 @@ package org.starfall.generative.integrations.modelapis.anthropic
 
 import java.security.MessageDigest
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 private val mcpName = Regex("^mcp__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+$")
 private val serverToolPrefixes = listOf(

@@ -24,8 +24,8 @@ import org.starfall.generative.shared.model.generation.TokenUsage
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
-import org.starfall.generative.database.ConversationRepository
-import org.starfall.generative.database.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

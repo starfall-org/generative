@@ -11,16 +11,16 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import java.util.UUID
-import org.starfall.generative.shared.helpers.media.mediaInputImageArgument
-import org.starfall.generative.shared.helpers.media.mediaInputImageUrlArgument
-import org.starfall.generative.shared.helpers.media.mediaInputImagesArgument
-import org.starfall.generative.shared.helpers.media.mediaInputVideoArgument
-import org.starfall.generative.shared.helpers.media.mediaInputVideoUrlArgument
-import org.starfall.generative.shared.helpers.media.mediaToolSchema
-import org.starfall.generative.shared.helpers.media.configuredMediaOptions
-import org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams
+import org.starfall.generative.shared.subfeatures.media.logic.mediaInputImageArgument
+import org.starfall.generative.shared.subfeatures.media.logic.mediaInputImageUrlArgument
+import org.starfall.generative.shared.subfeatures.media.logic.mediaInputImagesArgument
+import org.starfall.generative.shared.subfeatures.media.logic.mediaInputVideoArgument
+import org.starfall.generative.shared.subfeatures.media.logic.mediaInputVideoUrlArgument
+import org.starfall.generative.shared.subfeatures.media.logic.mediaToolSchema
+import org.starfall.generative.shared.subfeatures.media.logic.configuredMediaOptions
+import org.starfall.generative.shared.subfeatures.media.logic.effectiveMediaDisabledParams
 import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
-import org.starfall.generative.shared.helpers.media.toolAttachmentReferences
+import org.starfall.generative.shared.subfeatures.media.logic.toolAttachmentReferences
 import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.integrations.mcp.McpSession
 import org.starfall.generative.integrations.mcp.mcpToolWireName
@@ -60,13 +60,13 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.streamEnabledFor
 import org.starfall.generative.shared.model.remoteMachineToolEnabled
 import org.starfall.generative.shared.model.withUniqueWireNames
-import org.starfall.generative.shared.networking.ToolHttp
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.requireObject
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
-import org.starfall.generative.shared.networking.toolArguments
-import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.helpers.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.requireObject
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.toolArguments
+import org.starfall.generative.database.preferences.McpAttachmentSettings
 import org.starfall.generative.features.home.chat.logic.SEND_FILE_TOOL_NAME
 import org.starfall.generative.features.home.chat.logic.SendFileTool
 import org.starfall.generative.features.home.chat.logic.fileDeliveryResult
@@ -330,7 +330,7 @@ class ToolChatViewModel internal constructor(
                     val mediaModel = mediaProvider?.config?.modelConfigs?.get(config.modelId)
                     val profile = settings().resolveMediaProfile(name == "generate_video", mediaModel)
                     val generationMode = profile.mode
-                    val disabledParams = org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams(
+                    val disabledParams = org.starfall.generative.shared.subfeatures.media.logic.effectiveMediaDisabledParams(
                         profile, name, config.disabledParams
                     )
                     tools += ToolDefinition(
@@ -659,7 +659,7 @@ class ToolChatViewModel internal constructor(
                             }
                             val generationMode = profile.mode
                              val builtIn = profile.id == org.starfall.generative.shared.model.media.defaultMediaProfile(name == "generate_video").id
-                             val effectiveDisabled = org.starfall.generative.shared.helpers.media.effectiveMediaDisabledParams(
+                             val effectiveDisabled = org.starfall.generative.shared.subfeatures.media.logic.effectiveMediaDisabledParams(
                                  profile, name, cfg.disabledParams
                              )
                              val effectiveOptions = if (builtIn && profile.options.isEmpty()) {

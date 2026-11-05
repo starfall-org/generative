@@ -18,7 +18,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
-import org.starfall.generative.shared.ui.model.ModelPickerCard
+import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerCard
 
 @Composable
 internal fun ProviderModelsPane(models: List<String>, configurations: Map<String, ModelConfiguration>, listState: LazyListState,

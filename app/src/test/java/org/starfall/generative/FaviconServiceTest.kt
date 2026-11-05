@@ -18,10 +18,8 @@ import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
 import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.icons.*
-import org.starfall.generative.shared.media.*
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.subfeatures.icons.logic.*
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

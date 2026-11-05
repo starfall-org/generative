@@ -894,8 +894,8 @@
     <string name="speech_engine_api_key_help">Für diese Sprachsynthese-Engine erforderlich. Wird auf diesem Gerät sicher gespeichert.</string>
     <string name="media_image_generation_failed">Bilderstellung fehlgeschlagen</string>
     <string name="media_video_generation_failed">Videoerstellung fehlgeschlagen</string>
-    <string name="speech_sentences_per_chunk">Sätze pro API-Anfrage</string>
-    <string name="speech_chunk_boundaries">Ein Punkt oder Zeilenumbruch beendet einen Satz. Aufeinanderfolgende Trennzeichen zählen nur einmal.</string>
+    <string name="speech_words_per_chunk">Maximale Wörter pro API-Anfrage</string>
+    <string name="speech_word_chunk_boundaries">Die Wortzahl wird flexibel angepasst, um am nächsten Punkt, Ausrufe- oder Fragezeichen zu enden. Lange Sätze werden geteilt.</string>
     <string name="notification_speech_channel">Sprachausgabe</string>
     <string name="notification_speech_playing">Wird vorgelesen</string>
     <string name="user_profile_background_transparency">Hintergrundtransparenz</string>

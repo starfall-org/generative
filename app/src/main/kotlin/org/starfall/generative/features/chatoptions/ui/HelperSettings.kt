@@ -39,9 +39,9 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.model.DEFAULT_CHAT_SUMMARY_PROMPT
 import org.starfall.generative.shared.model.DEFAULT_TITLE_GENERATION_PROMPT
 import org.starfall.generative.shared.model.SystemToolConfig
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.MAX_AUTO_SUMMARY_PERCENT
-import org.starfall.generative.shared.storage.preferences.MIN_AUTO_SUMMARY_PERCENT
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.MAX_AUTO_SUMMARY_PERCENT
+import org.starfall.generative.database.preferences.MIN_AUTO_SUMMARY_PERCENT
 import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_MESSAGES
 import org.starfall.generative.shared.model.MAX_TITLE_GENERATION_MIN_WORDS
 import org.starfall.generative.shared.model.MIN_TITLE_GENERATION_MIN_MESSAGES

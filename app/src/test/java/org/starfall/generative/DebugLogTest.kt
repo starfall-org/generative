@@ -13,10 +13,10 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import org.starfall.generative.shared.logging.DebugLog
-import org.starfall.generative.shared.logging.DebugLogInterceptor
-import org.starfall.generative.shared.logging.DebugLogKtorPlugin
-import org.starfall.generative.shared.logging.DebugLogRedactor
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLog
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLogInterceptor
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLogKtorPlugin
+import org.starfall.generative.shared.subfeatures.logging.logic.DebugLogRedactor
 import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogCategory.*
 import org.starfall.generative.shared.model.logging.DebugLogLevel

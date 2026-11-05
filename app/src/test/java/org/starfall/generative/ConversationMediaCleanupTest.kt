@@ -13,12 +13,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.AppDatabase
-import org.starfall.generative.database.ConversationRepository
+import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.database.repositories.ConversationRepository
 import org.starfall.generative.features.home.chat.logic.service.deleteUnreferencedChatUploads
-import org.starfall.generative.shared.files.TemporaryChatFiles
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.files.importUserAttachment
+import org.starfall.generative.shared.subfeatures.media.logic.TemporaryChatFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.importUserAttachment
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion

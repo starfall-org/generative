@@ -21,13 +21,13 @@ import org.robolectric.annotation.Implements
 import org.robolectric.shadow.api.Shadow
 import org.robolectric.shadows.ShadowInputMethodManager
 import org.starfall.generative.shared.model.remote.TerminalInputMode
-import org.starfall.generative.shared.storage.preferences.remoteTerminalImePreferenceKey
-import org.starfall.generative.shared.storage.preferences.remoteTerminalInputModePreferenceKey
-import org.starfall.generative.shared.storage.preferences.remoteTerminalInputPreferences
-import org.starfall.generative.shared.terminal.RemoteTerminalBridge
-import org.starfall.generative.shared.terminal.RemoteTerminalInput
-import org.starfall.generative.shared.terminal.RemoteTerminalInputConnection
-import org.starfall.generative.shared.terminal.RemoteTerminalView
+import org.starfall.generative.database.preferences.remoteTerminalImePreferenceKey
+import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
+import org.starfall.generative.database.preferences.remoteTerminalInputPreferences
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalInput
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalInputConnection
+import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalView
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)

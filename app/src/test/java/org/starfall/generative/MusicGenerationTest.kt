@@ -11,11 +11,11 @@ import okio.Buffer
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.integrations.media.MusicGenerationClient
-import org.starfall.generative.shared.files.ToolFiles
-import org.starfall.generative.shared.media.pcmWave
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
+import org.starfall.generative.integrations.speech.pcmWave
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.model.media.*
-import org.starfall.generative.shared.networking.ToolHttp
+import org.starfall.generative.shared.helpers.networking.ToolHttp
 import java.nio.file.Files
 import java.util.Base64
 

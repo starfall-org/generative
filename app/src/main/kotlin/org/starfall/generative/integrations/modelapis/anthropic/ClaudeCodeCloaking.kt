@@ -1,9 +1,9 @@
 package org.starfall.generative.integrations.modelapis.anthropic
 
 import kotlinx.serialization.json.*
-import org.starfall.generative.shared.networking.obj
-import org.starfall.generative.shared.networking.str
-import org.starfall.generative.shared.networking.text
+import org.starfall.generative.shared.helpers.networking.obj
+import org.starfall.generative.shared.helpers.networking.str
+import org.starfall.generative.shared.helpers.networking.text
 
 internal const val CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 internal const val CLAUDE_CODE_USER_AGENT = "claude-cli/2.1.280 (external, cli)"

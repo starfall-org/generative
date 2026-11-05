@@ -10,9 +10,9 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.shared.ui.model.ModelPickerItem
-import org.starfall.generative.shared.ui.model.chatModelPickerFilter
-import org.starfall.generative.shared.ui.model.computeModelPickerItems
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.ModelPickerItem
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.chatModelPickerFilter
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerItems
 
 class ChatModelPickerFilterTest {
     private val configs = ModelType.entries.associate { it.name to ModelConfiguration(modelType = it, displayName = "Shared Name") }

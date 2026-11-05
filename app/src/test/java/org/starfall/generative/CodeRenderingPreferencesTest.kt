@@ -9,9 +9,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
-import org.starfall.generative.shared.storage.preferences.MessageFontFamily
+import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.database.preferences.WordWrapMode
+import org.starfall.generative.database.preferences.MessageFontFamily
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

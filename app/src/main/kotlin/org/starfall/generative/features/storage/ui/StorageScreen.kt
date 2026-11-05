@@ -34,16 +34,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.FluentUi
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
-import org.starfall.generative.shared.ui.media.MediaViewer
-import org.starfall.generative.shared.ui.media.mediaMimeType
-import org.starfall.generative.shared.ui.media.mediaThumbnail
+import org.starfall.generative.shared.subfeatures.media.ui.MediaViewer
+import org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType
+import org.starfall.generative.shared.subfeatures.media.ui.mediaThumbnail
 import org.starfall.generative.features.storage.logic.listMediaStorageFiles
 import org.starfall.generative.features.storage.logic.deleteMediaStorageFiles
 

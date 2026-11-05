@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.shared.ui.QuickActionsSheetContent
-import org.starfall.generative.shared.theme.GenerativeTheme
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 /** Avoid redundant prose while preserving distinctions that change what an action does. */
 @RunWith(RobolectricTestRunner::class)
@@ -28,7 +28,6 @@ class UiCopyConcisenessTest {
                     onTakePhoto = {},
                     onCreateImage = {},
                     onCreateVideo = {},
-                    onOpenInstructions = {},
                     onOpenFeatureTools = {},
                     onOpenMcpConnectors = {},
                     onDismiss = {},
@@ -45,11 +44,11 @@ class UiCopyConcisenessTest {
 
         for (key in listOf(
             R.string.common_skills,
-            R.string.common_instructions,
             R.string.common_feature_tools,
             R.string.common_mcp_connectors,
             R.string.quick_action_image_description,
             R.string.quick_action_video_description
         )) compose.onNodeWithText(context.getString(key)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.common_instructions)).assertDoesNotExist()
     }
 }

@@ -13,7 +13,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Before
 import org.robolectric.annotation.Config
-import org.starfall.generative.shared.auth.*
+import org.starfall.generative.shared.subfeatures.auth.logic.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.starfall.generative.integrations.modelapis.openaicodex.*
@@ -24,11 +24,9 @@ import org.starfall.generative.features.machines.shared.ui.*
 import org.starfall.generative.integrations.remote.*
 import org.starfall.generative.features.home.chat.*
 import org.starfall.generative.integrations.modelapis.*
-import org.starfall.generative.shared.files.*
-import org.starfall.generative.shared.icons.*
-import org.starfall.generative.shared.media.*
-import org.starfall.generative.shared.networking.*
-import org.starfall.generative.shared.storage.preferences.*
+import org.starfall.generative.shared.subfeatures.media.logic.*
+import org.starfall.generative.shared.helpers.networking.*
+import org.starfall.generative.database.preferences.*
 import java.nio.file.Files
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization

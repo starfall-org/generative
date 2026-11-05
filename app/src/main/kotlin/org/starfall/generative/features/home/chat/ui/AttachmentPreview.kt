@@ -33,14 +33,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.starfall.generative.R
-import org.starfall.generative.shared.files.AttachmentResolver
-import org.starfall.generative.shared.ui.media.ChatFilePreview
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
+import org.starfall.generative.shared.subfeatures.media.ui.ChatFilePreview
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.media.MediaPreviewCover
-import org.starfall.generative.shared.ui.media.mediaThumbnail
-import org.starfall.generative.shared.ui.media.mediaMimeType
-import org.starfall.generative.shared.theme.LocalAmoledMode
+import org.starfall.generative.shared.subfeatures.media.ui.MediaPreviewCover
+import org.starfall.generative.shared.subfeatures.media.ui.mediaThumbnail
+import org.starfall.generative.shared.subfeatures.media.ui.mediaMimeType
+import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 

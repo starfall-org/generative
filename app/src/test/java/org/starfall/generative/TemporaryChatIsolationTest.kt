@@ -9,8 +9,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.shared.files.TemporaryChatFiles
-import org.starfall.generative.shared.files.ToolFiles
+import org.starfall.generative.shared.subfeatures.media.logic.TemporaryChatFiles
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.Conversation
 
 class TemporaryChatIsolationTest {

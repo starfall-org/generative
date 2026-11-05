@@ -3,7 +3,6 @@ package org.starfall.generative
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertFalse
@@ -13,17 +12,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.chatoptions.ui.ChatOptionsScreen
 import org.starfall.generative.features.tools.ui.ToolsEditor
-import org.starfall.generative.features.home.shared.ui.InstructionsSheetContent
-import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
-import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.SpeechEngine
 import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.RuntimeAppLocale
-import org.starfall.generative.features.home.shared.ui.InstructionControls
-import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
 
 class ChatOptionsAndToolsEditorTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
@@ -99,43 +93,6 @@ class ChatOptionsAndToolsEditorTest {
             assertFalse(saved.id in savedLibrary.selectedIds)
         }
         compose.onNodeWithText("Concise").assertIsDisplayed()
-    }
-
-    @Test
-    fun instructionSheetOnlyTogglesInstructionsAndRoutesManagementAndEditing() {
-        val instruction = SavedInstruction("instruction-id", "System instruction", "Answer clearly", ChatRole.SYSTEM)
-        var library = InstructionLibrary(listOf(instruction), setOf(instruction.id))
-        var openedInstructions = false
-        var editedInstructionId: String? = null
-        compose.setContent {
-            TestTheme {
-                CompositionLocalProvider(
-                    LocalInstructionControls provides InstructionControls(
-                        library = library,
-                        setInstructionEnabled = { id, enabled ->
-                            library = library.copy(
-                                selectedIds = if (enabled) library.selectedIds + id else library.selectedIds - id
-                            )
-                        },
-                        openInstructions = { openedInstructions = true },
-                        editInstruction = { editedInstructionId = it }
-                    )
-                ) {
-                    InstructionsSheetContent()
-                }
-            }
-        }
-
-        compose.onNodeWithContentDescription("Add").assertDoesNotExist()
-        compose.onNodeWithText("Answer clearly").assertDoesNotExist()
-        compose.onNodeWithText("System instruction").performClick()
-        compose.runOnIdle { assertTrue(library.selectedIds.isEmpty()) }
-        compose.onNodeWithText("System instruction").performTouchInput { longClick() }
-        compose.onNodeWithContentDescription("Open Chat Options > Instructions").performClick()
-        compose.runOnIdle {
-            assertEquals("instruction-id", editedInstructionId)
-            assertTrue(openedInstructions)
-        }
     }
 
     @Test

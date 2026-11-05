@@ -11,8 +11,8 @@ import org.junit.Test
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.InstructionSelectionMode
 
 class InstructionDateTimeTest {
     private val first = ZonedDateTime.of(2026, 10, 31, 9, 14, 25, 0, ZoneId.of("Asia/Bangkok"))

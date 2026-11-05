@@ -6,8 +6,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
-import org.starfall.generative.shared.storage.preferences.AppPreferences
-import org.starfall.generative.shared.storage.preferences.WordWrapMode
+import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.database.preferences.WordWrapMode
 
 /**
  * App-wide code rendering settings (word wrap, font size, preview toggle). Provided once at the app root,

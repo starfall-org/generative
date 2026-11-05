@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import org.starfall.generative.shared.theme.modalScrimColor
+import org.starfall.generative.shared.ui.theme.modalScrimColor
 
 /**
  * A full-window cover with a tappable scrim. Content is deliberately not click-consuming:
