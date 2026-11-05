@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -20,12 +21,16 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.inputs.KeyValueField
 import org.starfall.generative.shared.ui.inputs.KeyValueValueType
 
-/** Manages a provider's custom HTTP headers; edits are applied to [rows] immediately. */
+/** An original key identifies a pre-existing row, which requires explicit Save to overwrite. */
+internal data class ProviderHeaderRow(val key: String, val value: String, val originalKey: String? = null)
+
+/** Manages draft headers; the editor persists only newly added valid rows on close. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ProviderHeadersDialog(
-    rows: SnapshotStateList<Pair<String, String>>,
+    rows: SnapshotStateList<ProviderHeaderRow>,
     valid: Boolean,
+    onDelete: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val addLabel = stringResource(R.string.common_add)
@@ -46,16 +51,23 @@ internal fun ProviderHeadersDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         KeyValueField(
-                            keyValue = row.first,
-                            onKeyChange = { rows[index] = it to rows[index].second },
-                            value = row.second,
-                            onValueChange = { rows[index] = rows[index].first to it },
+                            keyValue = row.key,
+                            onKeyChange = { rows[index] = rows[index].copy(key = it) },
+                            value = row.value,
+                            onValueChange = { rows[index] = rows[index].copy(value = it) },
                             keyLabel = { Text(stringResource(R.string.common_key)) },
                             valueLabel = { Text(stringResource(R.string.common_value)) },
                             valueType = KeyValueValueType.Literal,
+                            testTag = "provider-header-$index",
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { rows.removeAt(index) }) {
+                        IconButton(
+                            onClick = {
+                                row.originalKey?.let(onDelete)
+                                rows.removeAt(index)
+                            },
+                            modifier = Modifier.testTag("provider-header-$index-delete")
+                        ) {
                             SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
                         }
                     }
@@ -70,7 +82,7 @@ internal fun ProviderHeadersDialog(
             }
         },
         buttons = {
-            TextButton(onClick = { rows.add("" to "") }, modifier = Modifier.semantics { contentDescription = addLabel }) {
+            TextButton(onClick = { rows.add(ProviderHeaderRow("", "")) }, modifier = Modifier.semantics { contentDescription = addLabel }) {
                 SharedIcon(Icons.Default.Add, null)
                 Spacer(Modifier.width(6.dp))
                 Text(addLabel)

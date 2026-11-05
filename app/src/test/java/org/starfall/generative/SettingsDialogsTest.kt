@@ -19,6 +19,7 @@ import org.starfall.generative.features.settings.ui.SettingsChoicePreference
 import org.starfall.generative.features.settings.ui.SettingsNumberPreference
 import org.starfall.generative.shared.storage.preferences.McpAttachmentSettings
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
 import org.starfall.generative.shared.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
@@ -86,6 +87,32 @@ class SettingsDialogsTest {
         compose.onNodeWithText("Developer Options").performClick()
         compose.runOnIdle { assertEquals(1, navigations) }
         compose.onNodeWithText("Enable debug logging").assertDoesNotExist()
+    }
+
+    @Test fun instructionsScopeSettingOffersAllFiveModesAndChangesSelection() {
+        var settings by mutableStateOf(AppPreferences())
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                PreferencesSettingsView(
+                    appPreferences = settings,
+                    onContinueLastConversationChange = {},
+                    onPersistSelectedModelChange = {},
+                    onInstructionSelectionModeChange = { settings = settings.copy(instructionSelectionMode = it) },
+                    onAutoScrollChange = {},
+                    onEnableVibrationChange = {},
+                    onLatexModeChange = {}
+                )
+            }
+        }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("instruction-selection-mode"))
+        compose.onNodeWithTag("instruction-selection-mode").performClick()
+        compose.onNodeWithText("Per conversation").assertExists()
+        compose.onNodeWithText("Global").assertExists()
+        compose.onNodeWithText("Per folder").assertExists()
+        compose.onNodeWithText("Per conversation, remember globally").assertExists()
+        compose.onAllNodesWithText("Per conversation or folder").onFirst().assertExists()
+        compose.onNodeWithText("Per folder").performClick()
+        compose.runOnIdle { assertEquals(InstructionSelectionMode.PER_FOLDER, settings.instructionSelectionMode) }
     }
 
     @Test fun developerScreenKeepsSwitchAndShowsFooterlessCategoryChoices() {

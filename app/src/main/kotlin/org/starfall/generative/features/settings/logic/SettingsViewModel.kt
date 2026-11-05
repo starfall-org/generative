@@ -10,6 +10,7 @@ import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.logging.DebugLogLevel
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
 import org.starfall.generative.shared.theme.CustomPalette
 import org.starfall.generative.shared.storage.preferences.UserProfile
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
@@ -64,6 +65,10 @@ class SettingsViewModel(
     fun setCustomPalette(value: CustomPalette) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setCustomPalette(value) }
     }
+    fun setInstructionSelectionMode(value: InstructionSelectionMode) {
+        viewModelScope.launch(LocalWriteErrors.handler) { repository.setInstructionSelectionMode(value) }
+    }
+
     fun setContinueLastConversation(value: Boolean) {
         viewModelScope.launch(LocalWriteErrors.handler) { repository.setContinueLastConversation(value) }
     }

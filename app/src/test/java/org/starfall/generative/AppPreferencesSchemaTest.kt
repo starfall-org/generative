@@ -25,6 +25,9 @@ import org.starfall.generative.shared.files.AgentSkillsStore
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.storage.preferences.UNFILED_INSTRUCTION_SCOPE
+import org.starfall.generative.shared.model.ChatFolder
 import org.starfall.generative.shared.storage.preferences.SelectedModel
 
 @RunWith(RobolectricTestRunner::class)
@@ -57,6 +60,31 @@ class AppPreferencesSchemaTest {
             val bundled = AgentSkillsStore(context).readBundledCreateSkill(context)
             assertEquals(listOf(bundled, skill), restored.agentSkills.skills)
             assertTrue(bundled.content.contains("Call `create_skill`"))
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+
+    @Test
+    fun instructionModeAndFolderSelectionsSurvivePersistenceAndFolderRemoval() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        try {
+            repository.updateSidebar {
+                it.copy(folders = listOf(ChatFolder("folder", "Work"))).moveChats(setOf("chat-a"), "folder")
+            }
+            repository.setInstructionSelectionMode(InstructionSelectionMode.PER_FOLDER)
+            repository.setFolderInstructionSelection("folder", setOf("instruction-1"))
+            repository.setFolderInstructionSelection(UNFILED_INSTRUCTION_SCOPE, emptySet())
+            val restored = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertEquals(InstructionSelectionMode.PER_FOLDER, restored.instructionSelectionMode)
+            assertEquals(setOf("instruction-1"), restored.chatRelations.folderInstructionSelections["folder"])
+            assertEquals(emptySet<String>(), restored.chatRelations.folderInstructionSelections[UNFILED_INSTRUCTION_SCOPE])
+            assertEquals("folder", restored.chatRelations.sidebar.chatFolders["chat-a"])
+            repository.updateSidebar { it.removeFolder("folder") }
+            val afterRemoval = AppPreferencesRepository(context).appPreferencesFlow.first()
+            assertFalse("folder" in afterRemoval.chatRelations.folderInstructionSelections)
+            assertTrue(UNFILED_INSTRUCTION_SCOPE in afterRemoval.chatRelations.folderInstructionSelections)
         } finally {
             repository.replace(AppPreferences())
         }
@@ -138,7 +166,7 @@ class AppPreferencesSchemaTest {
             assertEquals(3, migrated.formatVersion)
             assertEquals("provider-legacy", migrated.appPreferences.selectedModel.providerId)
             assertEquals("model-legacy", migrated.appPreferences.selectedModel.modelId)
-            assertEquals("Keep this legacy prompt", migrated.appPreferences.systemPromptFor(null))
+            assertEquals("Keep this legacy prompt", migrated.appPreferences.instructionLibrary.systemPrompt())
             assertEquals("chat-legacy", migrated.appPreferences.chatRelations.lastActiveConversationId)
             assertTrue(migrated.appPreferences.chatRelations.mcpPresetsInitialized)
             assertTrue(migrated.appPreferences.chatRelations.contentApiPresetInitialized)

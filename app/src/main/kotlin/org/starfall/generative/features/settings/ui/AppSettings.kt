@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import org.starfall.generative.shared.storage.preferences.AppLanguage
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
 import org.starfall.generative.shared.storage.preferences.CodeBlockDisplayMode
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_CALL_CONCURRENT_LIMIT
 import org.starfall.generative.shared.storage.preferences.DEFAULT_TOOL_ROUND_LIMIT
@@ -142,6 +143,7 @@ fun PreferencesSettingsView(
     appPreferences: AppPreferences,
     onContinueLastConversationChange: (Boolean) -> Unit,
     onPersistSelectedModelChange: (Boolean) -> Unit,
+    onInstructionSelectionModeChange: (InstructionSelectionMode) -> Unit = {},
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
     onLatexModeChange: (String) -> Unit,
@@ -197,6 +199,30 @@ fun PreferencesSettingsView(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 PreferenceToggle(stringResource(R.string.settings_persist_selected_model), null,
                     appPreferences.persistSelectedModel, onPersistSelectedModelChange)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                SettingsChoicePreference(
+                    title = stringResource(R.string.settings_instruction_scope),
+                    value = appPreferences.instructionSelectionMode,
+                    choices = listOf(
+                        SettingsChoice(InstructionSelectionMode.PER_CHAT,
+                            stringResource(R.string.settings_instruction_scope_chat),
+                            stringResource(R.string.settings_instruction_scope_chat_description)),
+                        SettingsChoice(InstructionSelectionMode.GLOBAL,
+                            stringResource(R.string.settings_instruction_scope_global),
+                            stringResource(R.string.settings_instruction_scope_global_description)),
+                        SettingsChoice(InstructionSelectionMode.PER_FOLDER,
+                            stringResource(R.string.settings_instruction_scope_folder),
+                            stringResource(R.string.settings_instruction_scope_folder_description)),
+                        SettingsChoice(InstructionSelectionMode.PER_CHAT_REMEMBER_GLOBAL,
+                            stringResource(R.string.settings_instruction_scope_remember),
+                            stringResource(R.string.settings_instruction_scope_remember_description)),
+                        SettingsChoice(InstructionSelectionMode.PER_CHAT_OR_FOLDER,
+                            stringResource(R.string.settings_instruction_scope_auto),
+                            stringResource(R.string.settings_instruction_scope_auto_description))
+                    ),
+                    onSelected = onInstructionSelectionModeChange,
+                    modifier = Modifier.testTag("instruction-selection-mode")
+                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 PreferenceToggle(stringResource(R.string.settings_auto_scroll), null,
                     appPreferences.autoScroll, onAutoScrollChange)
@@ -295,6 +321,7 @@ fun AppSettings(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit,
     onContinueLastConversationChange: (Boolean) -> Unit,
     onPersistSelectedModelChange: (Boolean) -> Unit,
+    onInstructionSelectionModeChange: (InstructionSelectionMode) -> Unit = {},
     onAutoScrollChange: (Boolean) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
     onLatexModeChange: (String) -> Unit,
@@ -341,6 +368,7 @@ fun AppSettings(
                     appPreferences = appPreferences,
                     onContinueLastConversationChange = onContinueLastConversationChange,
                     onPersistSelectedModelChange = onPersistSelectedModelChange,
+                    onInstructionSelectionModeChange = onInstructionSelectionModeChange,
                     onAutoScrollChange = onAutoScrollChange,
                     onEnableVibrationChange = onEnableVibrationChange,
                     onLatexModeChange = onLatexModeChange,

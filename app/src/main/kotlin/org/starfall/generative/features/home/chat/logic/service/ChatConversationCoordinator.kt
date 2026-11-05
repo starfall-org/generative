@@ -27,6 +27,7 @@ import org.starfall.generative.database.ConversationRepository
 import org.starfall.generative.shared.storage.LocalWriteErrors
 import org.starfall.generative.shared.storage.preferences.AppPreferences
 import org.starfall.generative.shared.storage.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
 import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Coordinates conversation selection, history mutations, queued sends and persistence ordering. */
@@ -391,32 +392,49 @@ internal class ChatConversationCoordinator(
         }
     }
 
-    /**
-     * Switches one instruction on or off for the open chat. Like the selected model, the choice stays with
-     * the chat and also becomes the default that new chats start from.
-     */
+    /** Toggle at the selected scope; folder/global changes must not overwrite per-chat snapshots. */
     fun setInstructionEnabled(instructionId: String, enabled: Boolean) = withRestoreGuard(onRejected = {}) {
         val current = currentConversation.value
-        val library = appPreferences.value.instructionLibraryFor(current)
+        val preferences = appPreferences.value
+        val library = preferences.instructionLibraryFor(current)
         if (library.instructions.none { it.id == instructionId }) return@withRestoreGuard
         val selected = if (enabled) library.selectedIds + instructionId else library.selectedIds - instructionId
-        val updated = current?.copy(selectedInstructionIds = selected, updatedAt = System.currentTimeMillis())
-        // A chat that is generating keeps its live snapshot; edit that instead of the stale copy.
-        val generation = current?.let { chat -> existingGeneration(chat.id)?.takeIf { it.snapshot?.id == chat.id } }
-        if (updated != null) {
-            if (generation != null) {
-                generation.updateConversation { it.copy(selectedInstructionIds = selected, updatedAt = updated.updatedAt) }
-            } else if (updated.messages.isNotEmpty()) {
-                if (!writeConversation(beforeLaunch = { currentConversation.value = updated }) {
-                        conversationRepo.saveConversation(updated)
-                    }
-                ) return@withRestoreGuard
-            } else {
-                currentConversation.value = updated
+
+        when {
+            preferences.usesFolderInstructions(current?.id) -> {
+                val folderKey = preferences.instructionFolderKey(current?.id)
+                scope.launch(LocalWriteErrors.handler) {
+                    if (!restoreInProgress) prefsRepo.setFolderInstructionSelection(folderKey, selected)
+                }
             }
-        }
-        scope.launch(LocalWriteErrors.handler) {
-            if (!restoreInProgress) prefsRepo.setInstructionLibrary(library.copy(selectedIds = selected))
+            preferences.instructionSelectionMode == InstructionSelectionMode.GLOBAL -> {
+                scope.launch(LocalWriteErrors.handler) {
+                    if (!restoreInProgress) prefsRepo.setInstructionLibrary(preferences.instructionLibrary.copy(selectedIds = selected))
+                }
+            }
+            else -> {
+                val updated = current?.copy(selectedInstructionIds = selected, updatedAt = System.currentTimeMillis())
+                    ?: return@withRestoreGuard
+                // A generating conversation owns a live snapshot which must be updated instead of a stale copy.
+                val generation = existingGeneration(updated.id)?.takeIf { it.snapshot?.id == updated.id }
+                if (generation != null) {
+                    generation.updateConversation {
+                        it.copy(selectedInstructionIds = selected, updatedAt = updated.updatedAt)
+                    }
+                } else if (updated.messages.isNotEmpty()) {
+                    if (!writeConversation(beforeLaunch = { currentConversation.value = updated }) {
+                            conversationRepo.saveConversation(updated)
+                        }
+                    ) return@withRestoreGuard
+                } else {
+                    currentConversation.value = updated
+                }
+                if (preferences.instructionSelectionMode == InstructionSelectionMode.PER_CHAT_REMEMBER_GLOBAL) {
+                    scope.launch(LocalWriteErrors.handler) {
+                        if (!restoreInProgress) prefsRepo.setInstructionLibrary(preferences.instructionLibrary.copy(selectedIds = selected))
+                    }
+                }
+            }
         }
     }
 

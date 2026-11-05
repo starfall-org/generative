@@ -162,7 +162,9 @@ internal class ChatMessageActions(
                 providerId = baseProvider?.id.orEmpty(),
                 modelId = modelId,
                 profileId = null,
-                selectedInstructionIds = existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(null).selectedIds,
+                selectedInstructionIds = if (prefs.shouldSnapshotInstructions(existing?.id)) {
+                    existing?.selectedInstructionIds ?: prefs.instructionLibraryFor(existing).selectedIds
+                } else existing?.selectedInstructionIds,
                 structuralRevision = (existing?.structuralRevision ?: 0L) + 1L
             )
 

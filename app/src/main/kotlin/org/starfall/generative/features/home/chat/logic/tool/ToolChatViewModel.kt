@@ -127,7 +127,7 @@ data class ToolChatLabels(
     val roundLimit: (Int) -> String = { "Stopped after $it tool rounds. Send another message to continue." },
 )
 
-/** Native structured tool calls, bounded rounds, no executable text extracted from answers. */
+/** Native structured tool calls, optionally bounded rounds, no executable text extracted from answers. */
 class ToolChatViewModel internal constructor(
     private val http: ToolHttp,
     private val mcp: McpService,
@@ -456,7 +456,6 @@ class ToolChatViewModel internal constructor(
                 }
             }
 
-            val budget = ToolBudget()
             val fileSender = SendFileTool(http)
             var fileDeliveryAvailable = false
             var round = 0
@@ -561,8 +560,6 @@ class ToolChatViewModel internal constructor(
                     var result: JsonObject
                     try {
                         require(tool != null) { "Tool is not enabled" }
-                        // Listing and loading MCPs is bookkeeping and does not count against the per-message tool limit.
-                        if (!mcpAttachmentTool) budget.consume(if (tool.serverId == null) name else null)
                         val args = toolArguments(function["arguments"])
                         result = if (tool.remoteMachineId != null) {
                             val machine = configuredMachines.firstOrNull { it.id == tool.remoteMachineId }

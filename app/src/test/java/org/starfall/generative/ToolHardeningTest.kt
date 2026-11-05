@@ -17,7 +17,6 @@ import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.features.home.chat.logic.tool.ToolBudget
 import org.starfall.generative.features.home.chat.logic.tool.prepareGenericToolResult
 import org.starfall.generative.features.home.shared.logic.prepareToolResult
 
@@ -52,10 +51,11 @@ class ToolHardeningTest {
         assertEquals("https://host/foo/v1",providerBase(ModelProvider("p","p",ModelApiType.OPENAI,baseUrl="https://host/foo/v1/chat/completions")))
         rejected { providerBase(ModelProvider("p","p",ModelApiType.OPENAI,baseUrl="file:///tmp")) }
     }
-    @Test fun budgetsIncludeTotalAndMedia() {
-        val total = ToolBudget(); repeat(24) { total.consume(null) }; rejected { total.consume(null) }
-        val media = ToolBudget(); repeat(2) { media.consume("generate_image") }; rejected { media.consume("generate_image") }
-        media.consume("generate_video"); rejected { media.consume("generate_video") }
+    @Test fun toolRoundsAreUnlimitedUnlessTheUserEnablesALimit() {
+        val defaults = AppPreferences()
+        assertNull(defaults.effectiveToolRoundLimit)
+        assertNull(defaults.copy(toolRoundLimit = 30).effectiveToolRoundLimit)
+        assertEquals(30, defaults.copy(toolRoundLimitEnabled = true, toolRoundLimit = 30).effectiveToolRoundLimit)
     }
     @Test fun summaryKeepsLargeResponseAndNoResponseFileIsSaved() = runBlocking {
         val root=Files.createTempDirectory("summary").toFile()

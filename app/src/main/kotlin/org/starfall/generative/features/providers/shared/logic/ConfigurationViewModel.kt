@@ -23,6 +23,7 @@ import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.withSelectedReasoningEffort
 import org.starfall.generative.shared.model.language.withThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
@@ -274,6 +275,12 @@ class ConfigurationViewModel(
                 prefsRepo.setSelectedModel(provider.id, modelIds.firstOrNull().orEmpty())
             }
         }
+    }
+
+    fun saveProviderAuxiliaryChange(providerId: String, change: ProviderAuxiliaryChange) {
+        // Enqueue synchronously to retain Add/Select/Delete ordering under rapid input.
+        val pending = modelRepo.queueProviderAuxiliaryChange(providerId, change)
+        viewModelScope.launch(LocalWriteErrors.handler) { pending.await() }
     }
 
     /** Logo changes save independently of the editor's other draft fields. */

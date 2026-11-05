@@ -5,19 +5,6 @@ import org.starfall.generative.shared.networking.obj
 import org.starfall.generative.shared.networking.str
 import org.starfall.generative.features.home.shared.logic.ToolSummary
 
-internal class ToolBudget {
-    private var total = 0
-    private var images = 0
-    private var videos = 0
-    fun consume(systemTool: String?) {
-        check(total < 24) { "Tool limit reached: 24 calls per message. Send another message to continue." }
-        check(systemTool != "generate_image" || images < 2) { "Image generation limit reached: 2 calls per message." }
-        check(systemTool != "generate_video" || videos < 1) { "Video generation limit reached: 1 call per message." }
-        total++
-        if (systemTool == "generate_image") images++
-        if (systemTool == "generate_video") videos++
-    }
-}
 /**
  * Keep the complete result for the model. `preview` is app-only activity metadata and is never
  * substituted for the result placed in the model conversation history.

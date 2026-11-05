@@ -5,6 +5,7 @@ import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
 
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -41,7 +42,10 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (String) -> String, onDismiss: () -> Unit) {
+internal fun ProviderApiKeysDialog(
+    state: ProviderApiKeysState, identity: (String) -> String,
+    onChange: (ProviderAuxiliaryChange) -> Unit, onDismiss: () -> Unit
+) {
     var editing by remember { mutableStateOf(false) }
     var editingId by remember { mutableStateOf<String?>(null) }
     var label by remember { mutableStateOf("") }
@@ -62,7 +66,8 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
     Dialog(
         onDismissRequest = { if (editing) editing = false else onDismiss() },
         title = {
-            Text(stringResource(if (editing) R.string.provider_edit_api_key else R.string.provider_manage_api_keys),
+            Text(stringResource(if (!editing) R.string.provider_manage_api_keys else
+                if (editingId == null) R.string.provider_add_api_key else R.string.provider_edit_api_key),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
         content = {
@@ -111,7 +116,9 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                     .fillMaxWidth()
                                     .clip(itemShape)
                                     .selectable(selected = selected, role = Role.RadioButton, onClick = {
-                                        state.currentKey = entry.value; onDismiss()
+                                        state.currentKey = entry.value
+                                        onChange(ProviderAuxiliaryChange.SelectApiKey(entry.value))
+                                        onDismiss()
                                     })
                                     .padding(start = 16.dp, end = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -135,7 +142,12 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                                             ),
                                             ContextMenuAction(
                                                 stringResource(R.string.common_delete),
-                                                onClick = { state.delete(entry.id, identity) },
+                                                onClick = {
+                                                    val wasSelected = state.selectedId(identity) == entry.id
+                                                    state.delete(entry.id, identity)
+                                                    onChange(ProviderAuxiliaryChange.DeleteApiKey(
+                                                        entry.id, if (wasSelected) state.currentKey else null))
+                                                },
                                                 icon = Icons.Outlined.Delete,
                                                 destructive = true
                                             )
@@ -161,12 +173,20 @@ internal fun ProviderApiKeysDialog(state: ProviderApiKeysState, identity: (Strin
                 Text(closeLabel)
             }
             if (editing) {
-                Button(enabled = value.isNotBlank(), modifier = Modifier.semantics { contentDescription = saveKeyLabel }, onClick = {
+                Button(enabled = value.isNotBlank(), modifier = Modifier.semantics {
+                    contentDescription = if (editingId == null) addLabel else saveKeyLabel
+                }, onClick = {
+                    val wasSelected = editingId != null && state.selectedId(identity) == editingId
+                    val wasEmpty = state.currentKey.isBlank()
                     runCatching {
                         state.save(editingId, label, value, identity,
                             blankError = keyRequiredError, duplicateError = keyDuplicateError)
-                    }.onSuccess { editing = false }.onFailure { error = it.message }
-                }) { Text(stringResource(R.string.common_save)) }
+                    }.onSuccess { entry ->
+                        onChange(ProviderAuxiliaryChange.SaveApiKey(entry,
+                            if (wasSelected || wasEmpty) state.currentKey else null))
+                        editing = false
+                    }.onFailure { error = it.message }
+                }) { Text(stringResource(if (editingId == null) R.string.common_add else R.string.common_save)) }
             }
         }
     )

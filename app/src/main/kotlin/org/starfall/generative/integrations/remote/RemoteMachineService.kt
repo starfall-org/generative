@@ -131,6 +131,7 @@ class RemoteMachineService(
             connectTimeoutSeconds = machine.connectTimeoutSeconds.coerceIn(1, 300),
             keepAliveSeconds = machine.keepAliveSeconds.coerceIn(0, 3_600),
             sshOptions = normalizeSshOptions(machine.sshOptions),
+            sshCertificate = machine.sshCertificate.takeIf(String::isNotBlank)?.let(::normalizeOpenSshUserCertificate).orEmpty(),
             websocketProxy = machine.websocketProxy?.normalized()?.takeIf { it.isConfigured },
             proxyMachineId = machine.proxyMachineId.trim(),
             sftpDirectory = machine.sftpDirectory.trim().ifBlank { REMOTE_SFTP_HOME },
@@ -462,8 +463,7 @@ class RemoteMachineService(
         if (machine.identityFile.isNotBlank()) {
             val identity = assets.resolveIdentity(machine.identityFile)
                 ?: error("Identity file not found: ${machine.identityFile.substringAfterLast('/')}. Upload it in Remote Settings or fix IdentityFile.")
-            if (machine.identityPassphrase.isBlank()) jsch.addIdentity(identity.absolutePath)
-            else jsch.addIdentity(identity.absolutePath, machine.identityPassphrase.toByteArray(Charsets.UTF_8))
+            addMachineSshIdentity(jsch, identity, machine.identityPassphrase, machine.sshCertificate)
         }
         val session = jsch.getSession(machine.username, machine.host, machine.port)
         val passwordMode = machine.authentication == RemoteAuthentication.PASSWORD

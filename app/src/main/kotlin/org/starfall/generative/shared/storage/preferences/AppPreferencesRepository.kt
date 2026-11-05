@@ -72,6 +72,22 @@ enum class ToolCallStrategy(val value: String) {
 }
 
 @Serializable
+enum class InstructionSelectionMode(val value: String) {
+    PER_CHAT("per_chat"),
+    GLOBAL("global"),
+    PER_FOLDER("per_folder"),
+    PER_CHAT_REMEMBER_GLOBAL("per_chat_remember_global"),
+    PER_CHAT_OR_FOLDER("per_chat_or_folder");
+
+    companion object {
+        fun fromValue(value: String?) = entries.firstOrNull { it.value == value } ?: PER_CHAT_OR_FOLDER
+    }
+}
+
+/** Unfiled conversations are one group only in the explicit per-folder mode. */
+const val UNFILED_INSTRUCTION_SCOPE = "__unfiled__"
+
+@Serializable
 enum class ScreenWakelockMode(val value: String) {
     NONE("none"), ALL("all"), EXCEPT_TOOL_CALLS("except_tool_calls");
 
@@ -94,6 +110,7 @@ const val MAX_TOOL_CALL_CONCURRENT_LIMIT = 16
 @Serializable
 data class ChatRelations(
     val sidebar: SidebarOrganization = SidebarOrganization(),
+    val folderInstructionSelections: Map<String, Set<String>> = emptyMap(),
     /** Null means the app has not recorded a restoration choice; an empty string explicitly clears it. */
     val lastActiveConversationId: String? = null,
     val mcpPresetsInitialized: Boolean = false,
@@ -122,6 +139,7 @@ data class AppPreferences(
     val inputAreaTransparency: Float = 0.6f,
     val inputAreaBlur: Float = 2f,
     val instructionLibrary: InstructionLibrary = InstructionLibrary(),
+    val instructionSelectionMode: InstructionSelectionMode = InstructionSelectionMode.PER_CHAT_OR_FOLDER,
     val agentSkills: AgentSkills = AgentSkills(),
     val continueLastConversation: Boolean = false,
     val persistSelectedModel: Boolean = true,
@@ -174,11 +192,38 @@ data class AppPreferences(
     val effectiveMessageFontSize: Int get() = if (messageFontSizeCustom) messageFontSize else DEFAULT_MESSAGE_FONT_SIZE
     /** Null means tool rounds are unlimited. */
     val effectiveToolRoundLimit: Int? get() = toolRoundLimit.takeIf { toolRoundLimitEnabled }
-    /** The instruction library as [conversation] sees it; without its own instruction selection it uses the default. */
+    /** Resolve the active selection at request time, so moving chats between folders takes effect immediately. */
     fun instructionLibraryFor(conversation: Conversation?): InstructionLibrary =
-        instructionLibraryForSelection(conversation?.selectedInstructionIds)
-    fun instructionLibraryForSelection(selectedInstructionIds: Set<String>?): InstructionLibrary =
-        instructionLibrary.forChat(selectedInstructionIds)
+        instructionLibraryForSelection(conversation?.selectedInstructionIds, conversation?.id)
+
+    fun instructionFolderKey(conversationId: String?): String =
+        conversationId?.let(chatRelations.sidebar.chatFolders::get) ?: UNFILED_INSTRUCTION_SCOPE
+
+    fun usesFolderInstructions(conversationId: String?): Boolean = when (instructionSelectionMode) {
+        InstructionSelectionMode.PER_FOLDER -> true
+        InstructionSelectionMode.PER_CHAT_OR_FOLDER -> instructionFolderKey(conversationId) != UNFILED_INSTRUCTION_SCOPE
+        else -> false
+    }
+
+    fun shouldSnapshotInstructions(conversationId: String?): Boolean = when (instructionSelectionMode) {
+        InstructionSelectionMode.PER_CHAT, InstructionSelectionMode.PER_CHAT_REMEMBER_GLOBAL -> true
+        InstructionSelectionMode.PER_CHAT_OR_FOLDER -> !usesFolderInstructions(conversationId)
+        else -> false
+    }
+
+    fun instructionLibraryForSelection(selectedInstructionIds: Set<String>?, conversationId: String? = null): InstructionLibrary {
+        val selection = when (instructionSelectionMode) {
+            InstructionSelectionMode.GLOBAL -> instructionLibrary.selectedIds
+            InstructionSelectionMode.PER_FOLDER ->
+                chatRelations.folderInstructionSelections[instructionFolderKey(conversationId)].orEmpty()
+            InstructionSelectionMode.PER_CHAT_OR_FOLDER -> if (usesFolderInstructions(conversationId)) {
+                chatRelations.folderInstructionSelections[instructionFolderKey(conversationId)].orEmpty()
+            } else selectedInstructionIds.orEmpty()
+            InstructionSelectionMode.PER_CHAT -> selectedInstructionIds.orEmpty()
+            InstructionSelectionMode.PER_CHAT_REMEMBER_GLOBAL -> selectedInstructionIds ?: instructionLibrary.selectedIds
+        }
+        return instructionLibrary.copy(selectedIds = selection)
+    }
     fun systemPromptFor(conversation: Conversation?, at: java.time.ZonedDateTime = java.time.ZonedDateTime.now()): String =
         instructionLibraryFor(conversation).systemPrompt(at)
     fun instructionRoleMessagesFor(conversation: Conversation?, at: java.time.ZonedDateTime = java.time.ZonedDateTime.now()) =
@@ -227,6 +272,7 @@ class AppPreferencesRepository(private val context: Context) {
         val INPUT_AREA_BLUR = floatPreferencesKey("input_area_blur")
         val ITEM_TRANSPARENCY = floatPreferencesKey("item_transparency")
         val INSTRUCTION_LIBRARY = stringPreferencesKey("prompt_library")
+        val INSTRUCTION_SELECTION_MODE = stringPreferencesKey("instruction_selection_mode")
         val AGENT_SKILLS = stringPreferencesKey("agent_skills")
         val CONTINUE_LAST_CONVERSATION = booleanPreferencesKey("continue_last_conversation")
         val PERSIST_SELECTED_MODEL = booleanPreferencesKey("persist_chat_selection")
@@ -331,6 +377,7 @@ class AppPreferencesRepository(private val context: Context) {
             itemTransparency = ((if (includeCustomization) preferences[PreferenceKeys.ITEM_TRANSPARENCY] else null)
                 ?: defaults.itemTransparency).coerceIn(0f, 1f),
             instructionLibrary = decodeInstructionLibrary(preferences),
+            instructionSelectionMode = InstructionSelectionMode.fromValue(preferences[PreferenceKeys.INSTRUCTION_SELECTION_MODE]),
             agentSkills = agentSkillsFromFiles(),
             continueLastConversation = preferences[PreferenceKeys.CONTINUE_LAST_CONVERSATION] ?: false,
             persistSelectedModel = preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] ?: true,
@@ -540,7 +587,16 @@ class AppPreferencesRepository(private val context: Context) {
     } ?: SidebarOrganization()
 
     suspend fun updateSidebar(transform: (SidebarOrganization) -> SidebarOrganization) {
-        updateChatRelations { relations -> relations.copy(sidebar = transform(relations.sidebar)) }
+        updateChatRelations { relations ->
+            val sidebar = transform(relations.sidebar)
+            val validFolders = sidebar.folders.mapTo(mutableSetOf()) { it.id }
+            relations.copy(
+                sidebar = sidebar,
+                folderInstructionSelections = relations.folderInstructionSelections.filterKeys {
+                    it == UNFILED_INSTRUCTION_SCOPE || it in validFolders
+                }
+            )
+        }
     }
 
     suspend fun setSelectedModel(providerId: String, modelId: String) {
@@ -690,6 +746,18 @@ class AppPreferencesRepository(private val context: Context) {
             context.dataStore.edit { preferences ->
                 preferences[PreferenceKeys.PERSIST_SELECTED_MODEL] = enable
             }
+        }
+    }
+
+    suspend fun setInstructionSelectionMode(mode: InstructionSelectionMode) {
+        state.mutate({ it.copy(instructionSelectionMode = mode) }) {
+            context.dataStore.edit { it[PreferenceKeys.INSTRUCTION_SELECTION_MODE] = mode.value }
+        }
+    }
+
+    suspend fun setFolderInstructionSelection(folderKey: String, selectedIds: Set<String>) {
+        updateChatRelations { relations ->
+            relations.copy(folderInstructionSelections = relations.folderInstructionSelections + (folderKey to selectedIds))
         }
     }
 
@@ -1035,6 +1103,7 @@ class AppPreferencesRepository(private val context: Context) {
                 stored[PreferenceKeys.INPUT_AREA_BLUR] = preferences.inputAreaBlur.coerceIn(0f, 32f)
                 stored[PreferenceKeys.ITEM_TRANSPARENCY] = preferences.itemTransparency.coerceIn(0f, 1f)
                 stored[PreferenceKeys.INSTRUCTION_LIBRARY] = Json.encodeToString(preferences.instructionLibrary)
+                stored[PreferenceKeys.INSTRUCTION_SELECTION_MODE] = preferences.instructionSelectionMode.value
                 stored[PreferenceKeys.CONTINUE_LAST_CONVERSATION] = preferences.continueLastConversation
                 stored[PreferenceKeys.PERSIST_SELECTED_MODEL] = preferences.persistSelectedModel
                 stored[PreferenceKeys.AUTO_SCROLL] = preferences.autoScroll

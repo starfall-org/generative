@@ -24,6 +24,8 @@ import org.starfall.generative.shared.model.language.LanguageModel
 import org.starfall.generative.shared.model.language.Capabilities
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
+import org.starfall.generative.shared.model.provider.withAuxiliaryChange
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderModels
 import org.starfall.generative.shared.model.provider.ProviderPlacement
@@ -471,6 +473,21 @@ class ModelRepository(private val db: AppDatabase, private val service: AiServic
             }
         }
     }
+
+    /** Persist one key/header action on the latest stored provider, not the editor's draft. */
+    fun queueProviderAuxiliaryChange(providerId: String, change: ProviderAuxiliaryChange) = state.enqueue(
+        { catalog -> catalog.copy(providers = catalog.providers.map { provider ->
+            if (provider.id == providerId) provider.withAuxiliaryChange(change).metadata() else provider
+        }) },
+        {
+            db.withTransaction {
+                val current = providerDao.getProviderById(providerId)?.let { mapper.selected(it) }
+                    ?: return@withTransaction
+                val updated = current.withAuxiliaryChange(change)
+                if (updated != current) mapper.persist(updated)
+            }
+        }
+    )
 
     /** Restore the exported layout directly; editor saves append providers when their group changes. */
     suspend fun importProviders(providers: List<ModelProvider>, groups: List<ProviderGroup>?) {

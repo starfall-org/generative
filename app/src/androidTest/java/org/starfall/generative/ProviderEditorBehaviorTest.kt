@@ -24,6 +24,8 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
+import org.starfall.generative.shared.model.provider.withAuxiliaryChange
 
 class ProviderEditorBehaviorTest {
     @Test fun modelJsonExpandsAndManualModelsShowEmptyObject() {
@@ -243,7 +245,7 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
         compose.onNodeWithTag("provider_managed_api_key").performTextReplacement("backup-secret-key")
         compose.onNode(hasContentDescription("Show API key") and hasAnyAncestor(isDialog())).performClick()
         compose.onNodeWithTag("provider_managed_api_key").assertTextContains("backup-secret-key")
-        compose.onNodeWithContentDescription("Save API key").performClick()
+        compose.onNodeWithContentDescription("Add").performClick()
         compose.onNodeWithText("Backup").assertExists()
         assertTrue(compose.onNodeWithText("sk-e••••6789").fetchSemanticsNode().boundsInRoot.top <
             compose.onNodeWithText("Backup").fetchSemanticsNode().boundsInRoot.top)
@@ -266,6 +268,77 @@ compose.onNode(hasText("Reasoning")).performScrollTo().performClick()
             assertTrue(saved!!.config.multipleApiKeys)
             assertEquals(1, saved.config.apiKeys.size)
             assertEquals("sk-existing-0123456789", saved.auth.token)
+        }
+    }
+
+    @Test fun newApiKeysPersistWithoutProviderSaveAndEditedLabelCanBeCleared() {
+        var persisted = provider.copy(auth = Authorization(value = "primary-secret"))
+        var fullSaves = 0
+        compose.setContent { MaterialTheme {
+            ProviderEditor(persisted, false,
+                onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+                onDismiss = {}, onSave = { fullSaves++ },
+                onUpdateAuxiliary = { _, change -> persisted = persisted.withAuxiliaryChange(change) })
+        } }
+        compose.onNodeWithText("Multiple API Keys").performScrollTo().performClick()
+        compose.onNodeWithText("Manage API Keys").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.onNodeWithTag("provider_api_key_label").performTextReplacement("Backup")
+        compose.onNodeWithTag("provider_managed_api_key").performTextReplacement("backup-secret")
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.runOnIdle {
+            assertTrue(persisted.config.multipleApiKeys)
+            assertEquals(listOf("primary-secret", "backup-secret"), persisted.config.apiKeys.map { it.value })
+            assertEquals("primary-secret", persisted.auth.token)
+            assertEquals(0, fullSaves)
+        }
+        compose.onNodeWithContentDescription("API key actions for Backup").performClick()
+        compose.onNodeWithText("Edit").performClick()
+        compose.onNodeWithTag("provider_api_key_label").performTextReplacement("")
+        compose.onNodeWithContentDescription("Save API key").performClick()
+        compose.runOnIdle {
+            assertEquals("", persisted.config.apiKeys.last().label)
+            assertEquals(0, fullSaves)
+        }
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.onNodeWithText("Manage API Keys").performScrollTo().performClick()
+        compose.onNodeWithText("Backup").assertDoesNotExist()
+        compose.onNodeWithText("back••••cret").assertExists()
+    }
+
+    @Test fun addingHeaderAutoSavesButOverwritingExistingHeaderNeedsProviderSave() {
+        var persisted = provider.copy(config = provider.config.copy(headers = mapOf("X-Existing" to "old")))
+        var fullSaved: ModelProvider? = null
+        compose.setContent { MaterialTheme {
+            ProviderEditor(persisted, false,
+                onSaveModels = { _, _ -> }, onReorderModels = { _, _ -> },
+                onDismiss = {}, onSave = { fullSaved = it },
+                onUpdateAuxiliary = { _, change -> persisted = persisted.withAuxiliaryChange(change) })
+        } }
+        compose.onNodeWithText("Headers").performScrollTo().performClick()
+        compose.onNodeWithTag("provider-header-0-value").performTextReplacement("changed")
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.runOnIdle { assertEquals("old", persisted.config.headers["X-Existing"]) }
+        compose.onNodeWithText("Headers").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.onNodeWithTag("provider-header-1-key").performTextReplacement("X-New")
+        compose.onNodeWithTag("provider-header-1-value").performTextReplacement("added")
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.runOnIdle {
+            assertEquals(mapOf("X-Existing" to "old", "X-New" to "added"), persisted.config.headers)
+            assertNull(fullSaved)
+        }
+        compose.onNodeWithText("Save").performClick()
+        compose.runOnIdle {
+            assertEquals("changed", fullSaved?.config?.headers?.get("X-Existing"))
+            assertEquals("added", fullSaved?.config?.headers?.get("X-New"))
+        }
+        compose.onNodeWithText("Headers").performScrollTo().performClick()
+        compose.onNodeWithTag("provider-header-1-key").assertExists()
+        compose.onNodeWithTag("provider-header-1-delete").performClick()
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.runOnIdle {
+            assertEquals(mapOf("X-Existing" to "old"), persisted.config.headers)
         }
     }
 

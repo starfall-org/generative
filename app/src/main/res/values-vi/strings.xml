@@ -443,6 +443,7 @@
     <string name="provider_prompt_cache_ttl_5m">5 phút</string>
     <string name="provider_prompt_cache_ttl_1h">1 giờ</string>
     <string name="provider_prompt_cache_hint">Bộ nhớ đệm 1 giờ tốn kém hơn bộ nhớ đệm 5 phút.</string>
+    <string name="provider_add_api_key">Thêm API Key</string>
     <string name="provider_edit_api_key">Sửa khoá API</string>
     <string name="provider_save_api_key">Lưu khoá API</string>
     <string name="provider_api_key_required">Hãy nhập khoá API.</string>
@@ -575,6 +576,17 @@
     <string name="settings_auto_summary">Tự động tóm tắt</string>
     <string name="settings_auto_summary_description">Tự động tóm tắt khi ngữ cảnh gần đầy</string>
     <string name="settings_auto_summary_threshold">Tự động tóm tắt ở %1$d%% ngữ cảnh</string>
+    <string name="settings_instruction_scope">Phạm vi bật/tắt Instructions</string>
+    <string name="settings_instruction_scope_chat">Lưu theo phiên</string>
+    <string name="settings_instruction_scope_chat_description">Phiên mới không bật sẵn Instruction nào.</string>
+    <string name="settings_instruction_scope_global">Lưu toàn cục</string>
+    <string name="settings_instruction_scope_global_description">Tất cả phiên chat dùng chung một trạng thái bật/tắt.</string>
+    <string name="settings_instruction_scope_folder">Lưu theo thư mục</string>
+    <string name="settings_instruction_scope_folder_description">Các phiên cùng thư mục dùng chung trạng thái; các phiên ngoài thư mục cũng tạo thành một nhóm chung.</string>
+    <string name="settings_instruction_scope_remember">Lưu theo phiên và ghi nhớ toàn cục</string>
+    <string name="settings_instruction_scope_remember_description">Mỗi phiên giữ trạng thái riêng; phiên mới kế thừa thiết lập gần nhất.</string>
+    <string name="settings_instruction_scope_auto">Lưu theo phiên hoặc theo thư mục nếu có</string>
+    <string name="settings_instruction_scope_auto_description">Trong thư mục thì dùng chung trạng thái của thư mục; ngoài thư mục thì mỗi phiên độc lập, không bật sẵn Instruction nào.</string>
     <string name="settings_conversations">Cuộc trò chuyện</string>
     <string name="settings_continue_last_chat">Khôi phục phiên trước</string>
     <string name="settings_persist_selected_model">Ghi nhớ mô hình theo từng cuộc trò chuyện</string>
@@ -672,6 +684,9 @@
     <string name="remote_server_show_password">Hiện mật khẩu</string>
     <string name="remote_server_hide_password">Ẩn mật khẩu</string>
     <string name="remote_server_keyboard_interactive">Dùng xác thực tương tác qua bàn phím</string>
+    <string name="remote_server_certificate_optional">Chứng chỉ người dùng OpenSSH không bắt buộc (*-cert.pub)</string>
+    <string name="remote_server_import_certificate">Chọn tệp chứng chỉ SSH</string>
+    <string name="remote_server_certificate_import_failed">Không thể nhập chứng chỉ SSH: %1$s</string>
     <string name="remote_server_choose_key">Chọn khoá đã tải lên</string>
     <string name="remote_server_no_uploaded_keys">Chưa có khoá nào được tải lên</string>
     <string name="remote_server_upload_ssh_key">Tải tệp khoá SSH lên</string>

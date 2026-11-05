@@ -8,6 +8,7 @@ import org.starfall.generative.shared.ui.menus.DropdownMenuItem
 import org.starfall.generative.shared.ui.LoadingIndicator
 
 import android.app.Activity
+import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,9 +52,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.features.machines.shared.ui.RemoteErrorText
 import org.starfall.generative.features.machines.shared.ui.RemoteIconTile
@@ -65,6 +68,7 @@ import org.starfall.generative.features.machines.shared.ui.RemoteToggle
 import org.starfall.generative.features.machines.shared.ui.remoteLiteralKeyboardOptions
 import org.starfall.generative.integrations.remote.GCloudIdentityAuthorization
 import org.starfall.generative.integrations.remote.GCloudIdentityOAuth
+import org.starfall.generative.integrations.remote.normalizeOpenSshUserCertificate
 import org.starfall.generative.shared.model.GCloudOAuthClient
 import org.starfall.generative.shared.model.GoogleOAuthClientType
 import org.starfall.generative.shared.model.REMOTE_SFTP_HOME
@@ -99,6 +103,8 @@ internal fun MachineDetailsScreen(
     var showPassword by remember(initial.id) { mutableStateOf(false) }
     var keyboardInteractive by remember(initial.id) { mutableStateOf(initial.keyboardInteractive) }
     var identityFile by remember(initial.id) { mutableStateOf(initial.identityFile) }
+    var sshCertificate by remember(initial.id) { mutableStateOf(initial.sshCertificate) }
+    var sshCertificateName by remember(initial.id) { mutableStateOf(initial.sshCertificateName) }
     var passphrase by remember(initial.id) { mutableStateOf(initial.identityPassphrase) }
     var websocketProxy by remember(initial.id) { mutableStateOf(initial.websocketProxy) }
     var proxyMachineId by remember(initial.id) { mutableStateOf(initial.proxyMachineId) }
@@ -123,6 +129,37 @@ internal fun MachineDetailsScreen(
     val localizedResources = LocalResources.current
     val identityOAuth = remember(context) { GCloudIdentityOAuth(context) }
     var pendingAndroidOAuthClient by remember { mutableStateOf<GCloudOAuthClient?>(null) }
+    val certificateLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val resolver = context.contentResolver
+                    val content = resolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+                        buildString {
+                            val chunk = CharArray(4096)
+                            while (true) {
+                                val count = reader.read(chunk)
+                                if (count < 0) break
+                                require(length + count <= 48_000) { "SSH certificate file is too large." }
+                                append(chunk, 0, count)
+                            }
+                        }
+                    } ?: error("Cannot read SSH certificate file.")
+                    val normalized = normalizeOpenSshUserCertificate(content)
+                    val filename = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                        if (it.moveToFirst()) it.getString(0) else null
+                    }?.takeIf(String::isNotBlank) ?: "certificate.pub"
+                    filename to normalized
+                }
+            }.onSuccess { (filename, certificate) ->
+                sshCertificateName = filename
+                sshCertificate = certificate
+                error = null
+            }.onFailure { failure ->
+                error = localizedResources.getString(R.string.remote_server_certificate_import_failed, failure.message.orEmpty())
+            }
+        }
+    }
     val androidOAuthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         val client = pendingAndroidOAuthClient
         pendingAndroidOAuthClient = null
@@ -168,6 +205,8 @@ internal fun MachineDetailsScreen(
             password = password,
             keyboardInteractive = keyboardInteractive,
             identityFile = identityFile,
+            sshCertificate = sshCertificate,
+            sshCertificateName = sshCertificateName,
             identityPassphrase = passphrase,
             websocketProxy = websocketProxy,
             proxyMachineId = proxyMachineId,
@@ -347,6 +386,25 @@ internal fun MachineDetailsScreen(
                             }
                         }
                     }
+                    RemoteListRow(
+                        title = stringResource(R.string.remote_server_certificate_file),
+                        subtitle = sshCertificateName.ifBlank {
+                            stringResource(R.string.remote_server_certificate_optional)
+                        },
+                        leading = { RemoteIconTile(Icons.Outlined.Key) },
+                        trailing = {
+                            if (sshCertificate.isNotBlank()) {
+                                IconButton(onClick = { sshCertificate = ""; sshCertificateName = "" }) {
+                                    SharedIcon(Icons.Default.Close, stringResource(R.string.common_remove))
+                                }
+                            }
+                            IconButton(onClick = {
+                                certificateLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+                            }) {
+                                SharedIcon(Icons.Outlined.UploadFile, stringResource(R.string.remote_server_import_certificate))
+                            }
+                        }
+                    )
                     RemoteTextField(
                         passphrase, { passphrase = it }, stringResource(R.string.remote_server_key_passphrase),
                         visual = PasswordVisualTransformation(),

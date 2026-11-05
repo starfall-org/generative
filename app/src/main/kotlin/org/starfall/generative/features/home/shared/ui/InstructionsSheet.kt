@@ -39,7 +39,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.sheets.BottomSheet
 
-/** Bottom sheet that turns each saved instruction on or off for the open chat. */
+/** Bottom sheet that toggles instructions for the configured conversation, folder or global scope. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionsSheet(onDismiss: () -> Unit) {

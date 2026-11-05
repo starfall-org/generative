@@ -1,6 +1,8 @@
 package org.starfall.generative
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
@@ -19,6 +21,7 @@ import org.junit.Assert.assertNull
 import org.starfall.generative.integrations.remote.PasswordKeyboardInteractiveUserInfo
 import org.starfall.generative.integrations.remote.SshConfigParser
 import org.starfall.generative.integrations.remote.normalizeSshOptions
+import org.starfall.generative.integrations.remote.normalizeOpenSshUserCertificate
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.WebSocketProxyConfig
 import org.starfall.generative.shared.model.remote.RemoteSecretRequest
@@ -29,6 +32,40 @@ import org.starfall.generative.shared.model.withSelectedRemoteMachine
 import org.starfall.generative.shared.model.withRemoteMachineEnabled
 
 class RemoteMachineTest {
+    @Test
+    fun sshUserCertificateIsValidatedAndNormalized() {
+        val algorithm = "ssh-ed25519-cert-v01@openssh.com"
+        val bytes = java.nio.ByteBuffer.allocate(4 + algorithm.length + 8)
+            .putInt(algorithm.length)
+            .put(algorithm.toByteArray(Charsets.US_ASCII))
+            .put(ByteArray(8))
+            .array()
+        val encoded = java.util.Base64.getEncoder().encodeToString(bytes)
+        assertEquals("$algorithm $encoded", normalizeOpenSshUserCertificate("  $algorithm  $encoded  user@example  "))
+
+        for (invalid in listOf(
+            "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+            "ssh-ed25519 $encoded",
+            "$algorithm !!!",
+            "ssh-rsa-cert-v01@openssh.com $encoded"
+        )) {
+            assertTrue(runCatching { normalizeOpenSshUserCertificate(invalid) }.isFailure)
+        }
+    }
+
+    @Test
+    fun sshCertificateSurvivesSerializationAndOlderMachinesRemainReadable() {
+        val machine = RemoteMachine(
+            id = "cert", name = "Signed SSH", identityFile = "/keys/client",
+            sshCertificateName = "client-cert.pub", sshCertificate = "ssh-ed25519-cert-v01@openssh.com AAAA"
+        )
+        val restored = Json.decodeFromString<RemoteMachine>(Json.encodeToString(machine))
+        assertEquals(machine, restored)
+        val legacy = Json.decodeFromString<RemoteMachine>("""{"id":"old","name":"Old machine"}""")
+        assertEquals("", legacy.sshCertificate)
+        assertEquals("", legacy.sshCertificateName)
+    }
+
     @Test
     fun sshConfigImportsConnectionAndCommandOptions() {
         val hosts = SshConfigParser.parse(

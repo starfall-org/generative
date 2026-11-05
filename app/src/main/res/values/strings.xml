@@ -567,6 +567,7 @@
     <string name="provider_prompt_cache_tools" translatable="false">Cache tools</string>
     <string name="provider_prompt_cache_conversation" translatable="false">Cache conversation history</string>
     <string name="provider_prompt_cache_hint">Caching for 1 hour costs more than for 5 minutes.</string>
+    <string name="provider_add_api_key">Add API Key</string>
     <string name="provider_edit_api_key">Edit API Key</string>
     <string name="provider_save_api_key">Save API key</string>
     <string name="provider_api_key_required">Enter an API key.</string>
@@ -731,6 +732,17 @@
     <string name="settings_auto_summary">Auto summarize</string>
     <string name="settings_auto_summary_description">Summarize automatically when the context fills up</string>
     <string name="settings_auto_summary_threshold">Auto summarize at %1$d%% of the context</string>
+    <string name="settings_instruction_scope">Instruction activation scope</string>
+    <string name="settings_instruction_scope_chat">Per conversation</string>
+    <string name="settings_instruction_scope_chat_description">Each new conversation starts with all instructions off.</string>
+    <string name="settings_instruction_scope_global">Global</string>
+    <string name="settings_instruction_scope_global_description">All conversations use the same on/off selection.</string>
+    <string name="settings_instruction_scope_folder">Per folder</string>
+    <string name="settings_instruction_scope_folder_description">Conversations in a folder share a selection; conversations outside folders share another.</string>
+    <string name="settings_instruction_scope_remember">Per conversation, remember globally</string>
+    <string name="settings_instruction_scope_remember_description">Each conversation keeps its selection. New conversations inherit the latest selection.</string>
+    <string name="settings_instruction_scope_auto">Per conversation or folder</string>
+    <string name="settings_instruction_scope_auto_description">Conversations in a folder share its selection. Outside folders, each conversation starts with none selected.</string>
     <string name="settings_conversations">Conversations</string>
     <string name="settings_continue_last_chat">Restore last session</string>
     <string name="settings_persist_selected_model">Remember the model for each conversation</string>
@@ -871,6 +883,10 @@
     <string name="remote_server_show_password">Show password</string>
     <string name="remote_server_hide_password">Hide password</string>
     <string name="remote_server_keyboard_interactive">Use keyboard-interactive authentication</string>
+    <string name="remote_server_certificate_file" translatable="false">CertificateFile</string>
+    <string name="remote_server_certificate_optional">Optional OpenSSH user certificate (*-cert.pub)</string>
+    <string name="remote_server_import_certificate">Choose SSH certificate file</string>
+    <string name="remote_server_certificate_import_failed">Unable to import SSH certificate: %1$s</string>
     <string name="remote_server_choose_key">Choose uploaded key</string>
     <string name="remote_server_identity_file" translatable="false">IdentityFile</string>
     <string name="remote_server_no_uploaded_keys">No keys uploaded yet</string>

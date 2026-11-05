@@ -12,6 +12,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.shared.storage.preferences.AppPreferences
+import org.starfall.generative.shared.storage.preferences.InstructionSelectionMode
 
 class InstructionDateTimeTest {
     private val first = ZonedDateTime.of(2026, 10, 31, 9, 14, 25, 0, ZoneId.of("Asia/Bangkok"))
@@ -27,7 +28,7 @@ class InstructionDateTimeTest {
             ),
             selectedIds = setOf("system", "user", "assistant")
         )
-        val preferences = AppPreferences(instructionLibrary = library)
+        val preferences = AppPreferences(instructionLibrary = library, instructionSelectionMode = InstructionSelectionMode.GLOBAL)
         val expected = "2026-10-31T09:14:25+07:00"
         assertEquals("Now: $expected. Again: $expected", preferences.systemPromptFor(null, first))
         val messages = preferences.instructionRoleMessagesFor(null, first)

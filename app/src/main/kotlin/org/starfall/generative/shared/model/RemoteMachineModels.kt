@@ -130,6 +130,9 @@ data class RemoteMachine(
     val keyboardInteractive: Boolean = true,
     val identityFile: String = "",
     val identityPassphrase: String = "",
+    /** Uploaded OpenSSH user certificate; embedded so encrypted settings and backups remain self-contained. */
+    val sshCertificate: String = "",
+    val sshCertificateName: String = "",
     /** Effective SSH config value. Empty means use the app's auth-mode default. */
     val preferredAuthentications: String = "",
     val strictHostKeyChecking: Boolean = false,

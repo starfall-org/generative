@@ -111,7 +111,7 @@ class SpeechServicesScreenTest {
 }
 
 @Composable
-private fun EnglishTestTheme(content: @Composable () -> Unit) {
+internal fun EnglishTestTheme(content: @Composable () -> Unit) {
     RuntimeAppLocale(useSystemLanguage = false, selectedLanguage = "en") {
         MaterialTheme(content = content)
     }

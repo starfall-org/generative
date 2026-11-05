@@ -102,7 +102,7 @@ data class Conversation(
     @SerialName("profile_id") val profileId: String? = null,
     val summary: ConversationSummary? = null,
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
-    /** Instructions switched on for this chat; null until chosen, then the library default applies. */
+    /** This chat's own instruction selection; null delegates to the configured instruction scope. */
     @SerialName("selected_prompt_ids") val selectedInstructionIds: Set<String>? = null,
     /** Process-local list-structure epoch; serialized conversations always restore at revision zero. */
     @kotlinx.serialization.Transient val structuralRevision: Long = 0L,

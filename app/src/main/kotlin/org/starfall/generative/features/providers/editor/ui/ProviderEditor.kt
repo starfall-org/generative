@@ -44,6 +44,8 @@ import org.starfall.generative.features.providers.shared.ui.AntigravityProjectId
 import org.starfall.generative.features.providers.shared.ui.GeminiCliProjectIdField
 import org.starfall.generative.features.providers.shared.ui.CodexClientVersionField
 import org.starfall.generative.features.providers.shared.ui.ProviderApiKeysDialog
+import org.starfall.generative.features.providers.shared.ui.ProviderHeaderRow
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
 import org.starfall.generative.features.providers.shared.ui.ProviderAuthField
 import org.starfall.generative.features.providers.shared.ui.ProviderBaseUrlField
@@ -116,7 +118,9 @@ fun ProviderEditor(
     customImageMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     customVideoMediaProfiles: Map<String, MediaRequestProfile> = emptyMap(),
     onSaveIcon: (ModelProvider) -> Unit = {},
-    onSaveModelIcon: (String, String, String?) -> Unit = { _, _, _ -> }
+    onSaveModelIcon: (String, String, String?) -> Unit = { _, _, _ -> },
+    onUpdateAuxiliary: (String, ProviderAuxiliaryChange) -> Unit = { _, _ -> },
+    onAutoCreateProvider: (ModelProvider) -> Unit = onSave
 ) {
     val scope = rememberCoroutineScope()
     var name by remember {
@@ -195,7 +199,11 @@ fun ProviderEditor(
         if ("catalog" !in it && !initialProvider.config.customListModelsUrl.isNullOrBlank()) it + ("catalog" to initialProvider.config.customListModelsUrl.orEmpty()) else it
     }) }
     var showHeaders by rememberSaveable { mutableStateOf(false) }
-    val headerRows = remember { mutableStateListOf<Pair<String, String>>().apply { addAll(initialProvider.config.headers.entries.map { it.key to it.value }) } }
+    val headerRows = remember(initialProvider.id) {
+        mutableStateListOf<ProviderHeaderRow>().apply {
+            addAll(initialProvider.config.headers.map { (key, value) -> ProviderHeaderRow(key, value, key) })
+        }
+    }
     val pager = rememberPagerState(pageCount = { 2 })
     // This state outlives the nested model editor, retaining its scroll position.
     val modelList = rememberSaveable(initialProvider.id, saver = LazyListState.Saver) { LazyListState() }
@@ -217,7 +225,8 @@ fun ProviderEditor(
     // running state while the dialog is closed and testing still stops when the editor is left.
     val testScope = order.filter { models[it]?.modelType == ModelType.TEXT_GENERATION }
     val testingConnection = tests.batchRunning.value || testScope.any { tests.running[it] == true }
-    val activeHeaders = headerRows.filterNot { (key, value) -> key.isBlank() && value.isBlank() }
+    val activeHeaders = headerRows.map { it.key to it.value }
+        .filterNot { (key, value) -> key.isBlank() && value.isBlank() }
     val headersValid = activeHeaders.all { (key, value) -> key.isNotBlank() && key.none { it <= ' ' || it == ':' || it.code >= 127 } && value.none { it == '\r' || it == '\n' } } &&
         activeHeaders.map { it.first.lowercase() }.distinct().size == activeHeaders.size
     val parsedHeaders = if (headersValid) activeHeaders.associate { it.first.trim() to it.second } else null
@@ -250,6 +259,30 @@ fun ProviderEditor(
             baseUrl = if (type.isAccountProvider) type.defaultBaseUrl else baseUrl.trim(),
             auth = authorization(), config = requestConfig(modelOrder, modelValues))
     }
+    fun persistAuxiliary(change: ProviderAuxiliaryChange) {
+        if (providerPersisted) onUpdateAuxiliary(initialProvider.id, change)
+        else {
+            // First key/header addition can create a previously unsaved provider.
+            onAutoCreateProvider(draft())
+            providerPersisted = true
+        }
+    }
+    fun closeHeaders() {
+        // Only rows created with Add may be committed without the editor's Save.
+        // Editing existing names/values and renaming still require the editor Save.
+        headerRows.toList().forEachIndexed { index, row ->
+            val name = row.key.trim()
+            if (row.originalKey != null || name.isBlank() || name != row.key ||
+                name.any { it <= ' ' || it == ':' || it.code >= 127 } ||
+                row.value.any { it == '\r' || it == '\n' } ||
+                headerRows.count { it.key.equals(name, ignoreCase = true) } != 1
+            ) return@forEachIndexed
+            persistAuxiliary(ProviderAuxiliaryChange.AddHeader(name, row.value))
+            headerRows[index] = row.copy(originalKey = name)
+        }
+        showHeaders = false
+    }
+
     fun selectOAuthAccount(account: ProviderOAuthAccount) {
         oauthAccountId = account.id; oauthIdentity = account.identity; oauthMarker = account.marker
         oauthAuthorized = true; oauthAuthError = null
@@ -446,6 +479,7 @@ fun ProviderEditor(
                                         .toggleable(value = apiKeys.enabled, role = Role.Checkbox, onValueChange = {
                                             apiKeys.enabled = it
                                             if (it) apiKeys.ensureCurrent(::keyIdentity)
+                                            persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
                                         }),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -484,7 +518,10 @@ fun ProviderEditor(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
                                         .toggleable(value = apiKeys.enabled, role = Role.Checkbox,
-                                            enabled = !oauthAuthorizing, onValueChange = { apiKeys.enabled = it }),
+                                            enabled = !oauthAuthorizing, onValueChange = {
+                                                apiKeys.enabled = it
+                                                persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
+                                            }),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(checked = apiKeys.enabled, onCheckedChange = null, enabled = !oauthAuthorizing)
@@ -535,8 +572,11 @@ fun ProviderEditor(
                 onDelete = { removeOAuthAccount(it) }, onDismiss = { showOAuthAccounts = false }
             )
             if (showEndpoints) ProviderEndpointsDialog(type, baseUrl, endpoints, { endpoints = it }, onDismiss = { showEndpoints = false })
-            if (showHeaders) ProviderHeadersDialog(headerRows, headersValid, onDismiss = { showHeaders = false })
-            if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, onDismiss = { showApiKeys = false })
+            if (showHeaders) ProviderHeadersDialog(headerRows, headersValid,
+                onDelete = { persistAuxiliary(ProviderAuxiliaryChange.DeleteHeader(it)) },
+                onDismiss = ::closeHeaders)
+            if (showApiKeys) ProviderApiKeysDialog(apiKeys, ::keyIdentity, ::persistAuxiliary,
+                onDismiss = { showApiKeys = false })
             if (showTestDialog) ModelConnectionDialog(draft().copy(name = name.trim().ifEmpty { localizedResources.getString(R.string.provider_default_name) }), tests, onTestConnection != null,
                 onRemoveModels = { updateModels(models - it) }, onDismiss = { showTestDialog = false })
             if (showCatalog) ModelCatalogSheet(

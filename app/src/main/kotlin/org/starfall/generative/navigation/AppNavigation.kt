@@ -493,7 +493,7 @@ internal fun AppNavigation(
             org.starfall.generative.shared.ui.layout.InputAreaAppearance(appPrefs.inputAreaTransparency, appPrefs.inputAreaBlur),
         LocalChatAttachmentSelection provides chatAttachments,
         LocalInstructionControls provides InstructionControls(
-            library = appPrefs.instructionLibraryForSelection(currentConvInstructionIds),
+            library = appPrefs.instructionLibraryForSelection(currentConvInstructionIds, currentConvId),
             setInstructionEnabled = viewModel::setInstructionEnabled,
             openInstructions = { openInstructions() },
             editInstruction = { instructionId -> openInstructions(instructionId) }
@@ -782,6 +782,11 @@ internal fun AppNavigation(
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onSaveIcon = configurationViewModel::saveProviderIcon,
                                     onSaveModelIcon = configurationViewModel::saveModelIcon,
+                                    onUpdateAuxiliary = configurationViewModel::saveProviderAuxiliaryChange,
+                                    onAutoCreateProvider = { newProvider ->
+                                        configurationViewModel.saveProvider(newProvider)
+                                        pendingNewProvider = ProviderEditorPage(newProvider, false)
+                                    },
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onReorderModelsTracked = configurationViewModel::reorderProviderModelsTracked,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
@@ -844,6 +849,7 @@ internal fun AppNavigation(
                                     onSaveModels = configurationViewModel::saveProviderModels,
                                     onSaveIcon = configurationViewModel::saveProviderIcon,
                                     onSaveModelIcon = configurationViewModel::saveModelIcon,
+                                    onUpdateAuxiliary = configurationViewModel::saveProviderAuxiliaryChange,
                                     onReorderModels = configurationViewModel::reorderProviderModels,
                                     onReorderModelsTracked = configurationViewModel::reorderProviderModelsTracked,
                                     onAuthorizeProvider = configurationViewModel::authorizeProvider,
@@ -1233,6 +1239,7 @@ internal fun AppNavigation(
                                     onPersistSelectedModelChange = { value ->
                                         viewModel.setPersistSelectedModel(value)
                                     },
+                                    onInstructionSelectionModeChange = settingsViewModel::setInstructionSelectionMode,
                                     onAutoScrollChange = settingsViewModel::setAutoScroll,
                                     onEnableVibrationChange = { value ->
                                         settingsViewModel.setEnableVibration(value)

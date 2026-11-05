@@ -10,6 +10,9 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderApiKey
+import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
+import org.starfall.generative.shared.model.provider.withAuxiliaryChange
+import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.auth.requestHeaders
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
@@ -76,6 +79,39 @@ class ProviderApiKeysTest {
         assertEquals(mapOf("Authorization" to "Bearer active-key"), restored.auth.requestHeaders(restored.type))
         val state = ProviderApiKeysState(restored.auth.token, restored.config.multipleApiKeys, restored.config.apiKeys)
         assertEquals("a", state.selectedId(identity))
+    }
+
+    @Test fun auxiliaryChangesAreAdditiveAndPreserveUnrelatedProviderFields() {
+        val original = ModelProvider("id", "Original", ModelApiType.OPENAI, baseUrl = "https://example.com",
+            auth = Authorization(AuthMethod.BEARER_TOKEN, "Authorization", "Bearer first"),
+            config = ProviderConfiguration(headers = mapOf("X-Existing" to "old"),
+                modelConfigs = mapOf("model" to org.starfall.generative.shared.model.language.ModelConfiguration()),
+                apiKeys = listOf(ProviderApiKey("one", "Main", "first"))))
+        val enabled = original.withAuxiliaryChange(ProviderAuxiliaryChange.SetMultipleApiKeys(true,
+            listOf(ProviderApiKey("one", "Main", "first"))))
+        assertTrue(enabled.config.multipleApiKeys)
+        assertEquals(1, enabled.config.apiKeys.size)
+        val added = enabled.withAuxiliaryChange(ProviderAuxiliaryChange.SaveApiKey(
+            ProviderApiKey("two", "Backup", "second")))
+        val withHeader = added.withAuxiliaryChange(ProviderAuxiliaryChange.AddHeader("X-New", "added"))
+        val refusedOverwrite = withHeader.withAuxiliaryChange(ProviderAuxiliaryChange.AddHeader("x-existing", "wrong"))
+        assertEquals(withHeader, refusedOverwrite)
+        assertEquals(mapOf("X-Existing" to "old", "X-New" to "added"), refusedOverwrite.config.headers)
+        assertEquals("Original", refusedOverwrite.name)
+        assertEquals(original.baseUrl, refusedOverwrite.baseUrl)
+        assertEquals(original.config.modelConfigs, refusedOverwrite.config.modelConfigs)
+        assertEquals("Bearer first", refusedOverwrite.auth.value)
+        val selected = refusedOverwrite.withAuxiliaryChange(ProviderAuxiliaryChange.SelectApiKey("second"))
+        assertEquals("Bearer second", selected.auth.value)
+        val renamed = selected.withAuxiliaryChange(ProviderAuxiliaryChange.SaveApiKey(
+            ProviderApiKey("two", "", "third"), selectedValue = "third"))
+        assertEquals("", renamed.config.apiKeys.last().label)
+        assertEquals("Bearer third", renamed.auth.value)
+        val removed = renamed.withAuxiliaryChange(ProviderAuxiliaryChange.DeleteApiKey("two", "first"))
+        assertEquals(listOf("one"), removed.config.apiKeys.map { it.id })
+        assertEquals("Bearer first", removed.auth.value)
+        val withoutHeader = removed.withAuxiliaryChange(ProviderAuxiliaryChange.DeleteHeader("x-existing"))
+        assertEquals(mapOf("X-New" to "added"), withoutHeader.config.headers)
     }
 
     @Test fun unlabeledKeysShowOnlySmallFragmentsIncludingForShortKeys() {
