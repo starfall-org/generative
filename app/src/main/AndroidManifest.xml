@@ -61,6 +61,7 @@
             </intent-filter>
         </provider>
         <activity android:name=".navigation.ExplorerActivity"
+            android:configChanges="orientation|screenSize"
             android:exported="false" />
         <activity android:name=".shared.subfeatures.auth.ui.AppAuthResultActivity" android:exported="false" />
         <activity
@@ -70,6 +71,7 @@
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="true"
             android:theme="@style/Theme.Generative">

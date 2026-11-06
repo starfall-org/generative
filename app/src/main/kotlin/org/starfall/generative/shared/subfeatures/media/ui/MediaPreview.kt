@@ -5,7 +5,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.graphics.Matrix
 import android.view.TextureView
 import android.net.Uri
@@ -38,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.VideoSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -108,7 +112,7 @@ fun MediaContent(reference: String, mime: String, onImageZoomChanged: (Boolean) 
     key(reference, mime) {
         when {
             mime.startsWith("image/") -> ZoomableMediaImage(reference, onImageZoomChanged)
-            mime.startsWith("video/") -> MediaTapShield { VideoPlayback(reference) }
+            mime.startsWith("video/") -> PreviewVideo(reference)
             mime.startsWith("audio/") -> MediaTapShield { AudioPlayback(reference, onDarkBackground = true) }
             else -> MediaTapShield { Text(stringResource(R.string.media_preview_unsupported), color = Color.White) }
         }
@@ -153,17 +157,50 @@ private fun ZoomableMediaImage(reference: String, onZoomChanged: (Boolean) -> Un
 }
 
 @Composable
+private fun PreviewVideo(reference: String) {
+    var fullscreen by remember(reference) { mutableStateOf(false) }
+    var resumePosition by remember(reference) { mutableIntStateOf(0) }
+    var resumePlaying by remember(reference) { mutableStateOf(true) }
+    var landscape by remember(reference) { mutableStateOf(false) }
+
+    if (!fullscreen) MediaTapShield {
+        VideoPlayback(
+            reference,
+            initialPosition = resumePosition,
+            autoPlay = resumePlaying,
+            onPositionChanged = { resumePosition = it },
+            onPlayingChanged = { resumePlaying = it },
+            onVideoLandscapeChanged = { landscape = it },
+            onFullscreen = { fullscreen = true }
+        )
+    }
+    if (fullscreen) FullscreenVideoCover(
+        reference = reference,
+        initialPosition = resumePosition,
+        autoPlay = resumePlaying,
+        landscape = landscape,
+        onPositionChanged = { resumePosition = it },
+        onPlayingChanged = { resumePlaying = it },
+        onVideoLandscapeChanged = { landscape = it },
+        onDismiss = { fullscreen = false }
+    )
+}
+
+@Composable
 fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Modifier = Modifier,
     overlay: @Composable BoxScope.() -> Unit = {}) {
     var activated by remember(reference) { mutableStateOf(false) }
     var fullscreen by remember(reference) { mutableStateOf(false) }
     var resumePosition by remember(reference) { mutableIntStateOf(0) }
     var resumePlaying by remember(reference) { mutableStateOf(true) }
+    var decodedLandscape by remember(reference) { mutableStateOf<Boolean?>(null) }
+    val landscape = decodedLandscape ?: (thumbnail?.let { it.width > it.height } ?: false)
     val ratio = thumbnail?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } ?: (16f / 9f)
     BoundedMediaFrame(ratio, modifier) {
         if (activated && !fullscreen) key(reference) {
             VideoPlayback(reference, inline = true, initialPosition = resumePosition, autoPlay = resumePlaying,
-                onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it }, onFullscreen = { fullscreen = true })
+                onPositionChanged = { resumePosition = it }, onPlayingChanged = { resumePlaying = it },
+                onVideoLandscapeChanged = { decodedLandscape = it }, onFullscreen = { fullscreen = true })
         }
         else Box(Modifier.fillMaxSize().clickable(onClickLabel = stringResource(R.string.media_play_video)) { activated = true },
             contentAlignment = Alignment.Center) {
@@ -177,36 +214,84 @@ fun InlineVideoPreview(reference: String, thumbnail: ImageBitmap?, modifier: Mod
         }
         overlay()
     }
-    if (fullscreen) {
-        org.starfall.generative.shared.ui.layout.ScreenCover(onDismiss = { fullscreen = false }) {
-            Box(Modifier.fillMaxSize().background(Color.Black)) {
-                VideoPlayback(
-                    reference,
-                    fullscreen = true,
-                    initialPosition = resumePosition,
-                    autoPlay = resumePlaying,
-                    onPositionChanged = { resumePosition = it },
-                    onPlayingChanged = { resumePlaying = it },
-                    onFullscreen = { fullscreen = false })
-                IconButton(
-                    onClick = { fullscreen = false },
-                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp).statusBarsPadding()
-                ) {
-                    SharedIcon(
-                        Icons.Outlined.Close,
-                        stringResource(R.string.video_exit_fullscreen),
-                        tint = Color.White
-                    )
-                }
+    if (fullscreen) FullscreenVideoCover(
+        reference = reference,
+        initialPosition = resumePosition,
+        autoPlay = resumePlaying,
+        landscape = landscape,
+        onPositionChanged = { resumePosition = it },
+        onPlayingChanged = { resumePlaying = it },
+        onVideoLandscapeChanged = { decodedLandscape = it },
+        onDismiss = { fullscreen = false }
+    )
+}
+
+/** Only the fullscreen video may lock rotation; leaving it restores the host's prior policy. */
+@Composable
+private fun FullscreenVideoCover(
+    reference: String,
+    initialPosition: Int,
+    autoPlay: Boolean,
+    landscape: Boolean,
+    onPositionChanged: (Int) -> Unit,
+    onPlayingChanged: (Boolean) -> Unit,
+    onVideoLandscapeChanged: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = remember(context) { context.findHostActivity() }
+    DisposableEffect(activity, landscape) {
+        val originalOrientation = activity?.requestedOrientation
+        if (landscape) activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose {
+            if (landscape && activity != null && originalOrientation != null) {
+                activity.requestedOrientation = originalOrientation
             }
         }
+    }
+    org.starfall.generative.shared.ui.layout.ScreenCover(onDismiss = onDismiss) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            VideoPlayback(
+                reference,
+                fullscreen = true,
+                initialPosition = initialPosition,
+                autoPlay = autoPlay,
+                onPositionChanged = onPositionChanged,
+                onPlayingChanged = onPlayingChanged,
+                onVideoLandscapeChanged = onVideoLandscapeChanged,
+                onFullscreen = onDismiss
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp).statusBarsPadding()
+            ) {
+                SharedIcon(Icons.Outlined.Close, stringResource(R.string.video_exit_fullscreen), tint = Color.White)
+            }
+        }
+    }
+}
+
+private tailrec fun Context.findHostActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findHostActivity()
+    else -> null
+}
+
+internal fun isLandscapeVideo(videoSize: VideoSize): Boolean {
+    if (videoSize.width <= 0 || videoSize.height <= 0) return false
+    val displayWidth = videoSize.width * videoSize.pixelWidthHeightRatio
+    return if (videoSize.unappliedRotationDegrees % 180 != 0) {
+        videoSize.height > displayWidth
+    } else {
+        displayWidth > videoSize.height
     }
 }
 
 @Composable
 private fun VideoPlayback(reference: String, inline: Boolean = false,
     fullscreen: Boolean = false, initialPosition: Int = 0, autoPlay: Boolean = true,
-    onPositionChanged: (Int) -> Unit = {}, onPlayingChanged: (Boolean) -> Unit = {}, onFullscreen: (() -> Unit)? = null) {
+    onPositionChanged: (Int) -> Unit = {}, onPlayingChanged: (Boolean) -> Unit = {},
+    onVideoLandscapeChanged: (Boolean) -> Unit = {}, onFullscreen: (() -> Unit)? = null) {
     val playback = rememberMediaPlayback(reference, initialPosition, autoPlay, onPositionChanged, onPlayingChanged)
     val player = playback.player
     var textureView by remember { mutableStateOf<TextureView?>(null) }
@@ -228,11 +313,20 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
             setScale(width * ratio / view.width, video.height * ratio / view.height, view.width / 2f, view.height / 2f)
         })
     }
+    val landscapeChanged by rememberUpdatedState(onVideoLandscapeChanged)
     DisposableEffect(player) {
         val listener = object : androidx.media3.common.Player.Listener {
-            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) { textureView?.let(::fitVideo) }
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    landscapeChanged(isLandscapeVideo(videoSize))
+                }
+                textureView?.let(::fitVideo)
+            }
         }
         player.addListener(listener)
+        if (player.videoSize.width > 0 && player.videoSize.height > 0) {
+            landscapeChanged(isLandscapeVideo(player.videoSize))
+        }
         onDispose { player.removeListener(listener) }
     }
     fun togglePlayback() = playback.toggle()
@@ -289,7 +383,9 @@ private fun VideoPlayback(reference: String, inline: Boolean = false,
         } else Text(stringResource(R.string.media_video_play_failed),
             color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.padding(16.dp))
         if ((inline || fullscreen) && ready && !error) {
-            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.45f))) { controls() }
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .then(if (fullscreen) Modifier.navigationBarsPadding() else Modifier)) { controls() }
         }
     }
     if (!inline && !fullscreen && ready && !error) Box(Modifier.background(Color.Black)) { controls() }
