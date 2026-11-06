@@ -218,7 +218,7 @@ internal fun DrawerQuickShortcuts(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 SharedIcon(
-                                    imageVector = FluentUi.Regular.FolderOpen,
+                                    imageVector = FluentUi.Regular.Image,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(22.dp)
