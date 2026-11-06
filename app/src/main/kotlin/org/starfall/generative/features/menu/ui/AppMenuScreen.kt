@@ -56,6 +56,7 @@ import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.icons.FluentUi
+import org.starfall.generative.shared.ui.icons.generated.vscode_codicons.VscodeCodiconsMcp
 import org.starfall.generative.shared.ui.icons.Icons
 
 // Compatibility aliases retained for the existing AppMenu shape tests and callers.
@@ -176,7 +177,7 @@ fun AppMenuScreen(
                             onNavigateToToolsEditor, modifier, shape, "feature-tools")
                     },
                     ComponentGroupSlot("mcp") { modifier, shape ->
-                        FeatureButton(stringResource(R.string.mcp), FluentUi.Regular.PuzzlePiece,
+                        FeatureButton(stringResource(R.string.mcp), VscodeCodiconsMcp,
                             onNavigateToMcp, modifier, shape, "mcp")
                     }
                 )
@@ -196,11 +197,11 @@ fun AppMenuScreen(
                 modifier = Modifier.testTag("app-menu-group-media"),
                 items = listOf(
                     ComponentGroupSlot("media") { modifier, shape ->
-                        FeatureButton(stringResource(R.string.media_management), FluentUi.Regular.FolderOpen,
+                        FeatureButton(stringResource(R.string.media_management), FluentUi.Regular.Image,
                             onNavigateToStorage, modifier, shape, "media")
                     },
                     ComponentGroupSlot("icons") { modifier, shape ->
-                        FeatureButton(stringResource(R.string.icons_management), FluentUi.Regular.Image,
+                        FeatureButton(stringResource(R.string.icons_management), FluentUi.Regular.Shapes,
                             onNavigateToIcons, modifier, shape, "icons")
                     }
                 )

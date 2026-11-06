@@ -71,6 +71,7 @@ import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIc
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSearch as SearchFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSend as SendFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSettings as SettingsFluentVector
+import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsShapes as ShapesFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsShare as ShareFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSignOut as SignOutFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSpeaker2 as Speaker2FluentVector
@@ -158,6 +159,7 @@ object FluentUi {
         val Search: ImageVector get() = SearchFluentVector
         val Send: ImageVector get() = SendFluentVector
         val Settings: ImageVector get() = SettingsFluentVector
+        val Shapes: ImageVector get() = ShapesFluentVector
         val Share: ImageVector get() = ShareFluentVector
         val SignOut: ImageVector get() = SignOutFluentVector
         val Speaker2: ImageVector get() = Speaker2FluentVector
