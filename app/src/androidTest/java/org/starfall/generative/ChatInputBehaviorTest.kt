@@ -79,6 +79,41 @@ class ChatInputBehaviorTest {
         compose.runOnIdle { assertEquals(1, stops) }
     }
 
+    @Test fun wrappingFirstLineMovesControlsDownAndWidensTheEditor() {
+        compose.setContent {
+            MaterialTheme {
+                UserInputArea(
+                    isGenerating = false,
+                    onSendMessage = { _, _ -> true },
+                    onSendMedia = { false },
+                    bottomSheets = BottomSheetsLinkState(),
+                    onEditMessage = { _, _, _ -> false },
+                    editDraft = null,
+                    onCancelEdit = {},
+                    onStopGenerating = {},
+                    selectedModelName = "",
+                    providers = emptyList(),
+                    selectedProviderId = "",
+                    onSelectModel = { _, _ -> },
+                    conversationReasoningEffort = null,
+                    onSetReasoningEffort = {}
+                )
+            }
+        }
+
+        val editor = compose.onNode(hasSetTextAction())
+        val initialWidth = editor.fetchSemanticsNode().boundsInRoot.width
+        editor.performTextInput("First line\nSecond line")
+        val expanded = editor.fetchSemanticsNode().boundsInRoot
+        val modelButton = compose.onNodeWithContentDescription("Select model")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Editor should widen after wrapping", expanded.width > initialWidth)
+        assertTrue("Controls should move below the editor", modelButton.top >= expanded.bottom)
+
+        editor.performTextClearance()
+        assertTrue(editor.fetchSemanticsNode().boundsInRoot.width < expanded.width)
+    }
+
     @Test fun sendingWithoutAModelPersistsRapidMessagesAndAttachments() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()

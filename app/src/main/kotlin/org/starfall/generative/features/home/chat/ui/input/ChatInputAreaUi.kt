@@ -233,17 +233,14 @@ internal fun UserInputArea(
     val inputTextStyle = MaterialTheme.typography.bodyLarge.copy(
         color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, lineHeight = 22.sp
     )
-    // Measure against the horizontal layout so switching to wider text does not toggle back.
-    val horizontalTextWidthPx = inputRowWidthPx - with(density) { (48.dp + 50.dp + 48.dp + 16.dp).roundToPx() }
-    val inputLineCount = if (horizontalTextWidthPx > 0) textMeasurer.measure(
+    // Use the inline width even after the buttons move, preventing layout oscillation.
+    val inlineTextWidthPx = inputRowWidthPx - with(density) { (48.dp + 50.dp + 54.dp + 16.dp).roundToPx() }
+    val buttonsBelow = inlineTextWidthPx > 0 && textMeasurer.measure(
         text = textState,
         style = inputTextStyle,
-        constraints = Constraints(maxWidth = horizontalTextWidthPx),
-        maxLines = 6
-    ).lineCount else 1
-    val stackInputActions = attachments.isNotEmpty() || inputLineCount >= 3
-    // From five lines on, the buttons drop below the text so it can use the full width.
-    val buttonsBelow = inputLineCount >= 5
+        constraints = Constraints(maxWidth = inlineTextWidthPx),
+        maxLines = 2
+    ).lineCount > 1
     // The whole input grows to half the screen for text only, 60% when attachments are shown.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
@@ -616,7 +613,7 @@ internal fun UserInputArea(
                         .weight(1f, fill = false)
                         .padding(start = 6.dp, top = 6.dp, end = 6.dp, bottom = if (buttonsBelow) 0.dp else 6.dp)
                         .onSizeChanged { inputRowWidthPx = it.width },
-                    verticalAlignment = if (stackInputActions) Alignment.Bottom else Alignment.CenterVertically
+                    verticalAlignment = if (attachments.isNotEmpty()) Alignment.Bottom else Alignment.CenterVertically
                 ) {
                     // The text field keeps its position in this Row, so it keeps focus when the buttons move.
                     if (!buttonsBelow) addButton()
