@@ -17,6 +17,17 @@ import org.starfall.generative.shared.model.RemoteMachine
 
 
 
+/**
+ * Limit permission repair to private keys owned by the app. Never chmod an arbitrary IdentityFile
+ * path provided by the user. This also recovers keys restored with the old write-only permissions.
+ */
+internal fun ensureManagedIdentityPermissions(filesDir: File, file: File) {
+    val identityDirectory = File(filesDir, "remote-machines/identities").canonicalFile
+    if (file.canonicalFile.parentFile == identityDirectory) {
+        Os.chmod(file.absolutePath, 0b110_000_000) // owner read + write, no group/other access
+    }
+}
+
 /** Handles SSH identity files and OAuth client-file parsing for remote machines. */
 internal class RemoteMachineAssetsService(
     context: Context,
@@ -66,12 +77,11 @@ internal class RemoteMachineAssetsService(
             ?: UUID.randomUUID().toString()
         val directory = File(appContext.filesDir, "remote-machines/identities").apply { mkdirs() }
         val target = File(directory, id)
+        if (target.isFile) ensureManagedIdentityPermissions(appContext.filesDir, target)
         resolver.openInputStream(uri)?.use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
         } ?: error("Could not read the selected identity file.")
-        target.setReadable(false, false)
-        target.setWritable(true, true)
-        runCatching { Os.chmod(target.absolutePath, 0b110_000_000) }
+        ensureManagedIdentityPermissions(appContext.filesDir, target)
         // A replaced private key may no longer match its old public key, so that one is dropped too.
         state.value.identities.firstOrNull { it.id == id }?.publicKeyPath?.takeIf(String::isNotBlank)
             ?.let { runCatching { File(it).delete() } }
@@ -123,10 +133,16 @@ internal class RemoteMachineAssetsService(
      */
     internal fun resolveIdentity(pointer: String): File? {
         val trimmed = pointer.trim()
-        File(trimmed).takeIf { it.isFile }?.let { return it }
+        File(trimmed).takeIf { it.isFile }?.let { file ->
+            if (state.value.identities.any { it.path == file.absolutePath }) {
+                ensureManagedIdentityPermissions(appContext.filesDir, file)
+            }
+            return file
+        }
         val name = trimmed.substringAfterLast('/')
         return state.value.identities.firstOrNull { it.name == trimmed || it.name == name }
             ?.let { File(it.path) }?.takeIf { it.isFile }
+            ?.also { ensureManagedIdentityPermissions(appContext.filesDir, it) }
     }
 
     /** Converts the configured private key to the OpenSSH public-key line Cloud Shell expects. */

@@ -71,6 +71,7 @@ class RemoteMachineService(
     internal fun exportIdentityFiles(): Map<String, Pair<File, File?>> = state.value.identities.associate { identity ->
         val privateKey = File(identity.path).takeIf { it.isFile }
             ?: error("The private key for SSH identity ${identity.name} is missing.")
+        ensureManagedIdentityPermissions(appContext.filesDir, privateKey)
         val publicKey = identity.publicKeyPath.takeIf(String::isNotBlank)?.let(::File)?.takeIf { it.isFile }
         identity.id to (privateKey to publicKey)
     }
@@ -172,8 +173,7 @@ class RemoteMachineService(
             val assets = identityFiles[identity.id] ?: error("The SSH identity ${identity.name} is missing from the backup.")
             val privateFile = File(identityDirectory, identity.id)
             assets.first.inputStream().use { input -> privateFile.outputStream().use { input.copyTo(it) } }
-            privateFile.setReadable(false, false)
-            privateFile.setWritable(true, true)
+            ensureManagedIdentityPermissions(appContext.filesDir, privateFile)
             val publicFile = assets.second?.let { source ->
                 val destination = File(identityDirectory, "${identity.id}.pub")
                 source.inputStream().use { input -> destination.outputStream().use { input.copyTo(it) } }
