@@ -136,7 +136,7 @@ data class AppPreferences(
     val colorSchemeName: String = "SLATE", // ORANGE, VIOLET, SLATE, CUSTOM
     val customPalette: CustomPalette = CustomPalette(),
     val itemTransparency: Float = 0.5f,
-    val inputAreaTransparency: Float = 0.6f,
+    val inputAreaTransparency: Float = 0.1f,
     val inputAreaBlur: Float = 2f,
     val instructionLibrary: InstructionLibrary = InstructionLibrary(),
     val instructionSelectionMode: InstructionSelectionMode = InstructionSelectionMode.PER_CHAT_OR_FOLDER,

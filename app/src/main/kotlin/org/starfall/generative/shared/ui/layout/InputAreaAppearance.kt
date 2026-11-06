@@ -19,7 +19,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 
 /** Composer appearance is independent of component and background-photo transparency. */
-data class InputAreaAppearance(val transparency: Float = 0.6f, val blur: Float = 2f) {
+data class InputAreaAppearance(val transparency: Float = 0.1f, val blur: Float = 2f) {
     val alpha: Float get() = 1f - transparency.coerceIn(0f, 1f)
     val blurRadius: Float get() = blur.coerceIn(0f, 32f)
     fun surfaceColor(color: Color): Color = color.copy(alpha = alpha)

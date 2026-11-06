@@ -61,7 +61,7 @@ class InputAreaCustomizationTest {
         }
         compose.onNodeWithTag("input-area-appearance-reset").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(0.6f, preferences.inputAreaTransparency, 0f)
+            assertEquals(0.1f, preferences.inputAreaTransparency, 0f)
             assertEquals(2f, preferences.inputAreaBlur, 0f)
             assertEquals(0.4f, preferences.itemTransparency, 0f)
         }
