@@ -70,6 +70,9 @@ class SpeechRepository(private val db: AppDatabase) {
             put("engine", service.engine.name)
             put("voiceName", service.voiceName)
             put("maxWordsPerChunk", service.maxWordsPerChunk)
+            put("parallelRequests", service.parallelRequests)
+            put("requestSpacingSeconds", service.requestSpacingSeconds)
+            put("maxConcurrentRequests", service.maxConcurrentRequests)
         }))
         val old = structured.getDocument("speech_service", service.id, "extra_body")
         if (service.extraBody.isNotEmpty()) structured.replaceDocument(StructuredJsonDocument("speech_service", service.id, "extra_body", service.extraBody))
@@ -129,7 +132,12 @@ class SpeechRepository(private val db: AppDatabase) {
             languageCode = entity.languageCode,
             engine = engine,
             voiceName = settings?.get("voiceName")?.jsonPrimitive?.contentOrNull.orEmpty(),
-            maxWordsPerChunk = (settings?.get("maxWordsPerChunk") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 } ?: 20,
+            maxWordsPerChunk = (settings?.get("maxWordsPerChunk") as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 } ?: 100,
+            parallelRequests = (settings?.get("parallelRequests") as? JsonPrimitive)?.booleanOrNull ?: false,
+            requestSpacingSeconds = (settings?.get("requestSpacingSeconds") as? JsonPrimitive)?.floatOrNull
+                ?.takeIf { it.isFinite() && it >= 0f } ?: 1f,
+            maxConcurrentRequests = (settings?.get("maxConcurrentRequests") as? JsonPrimitive)?.intOrNull
+                ?.takeIf { it > 0 } ?: 5,
             extraBody = extraBody
         )
     }

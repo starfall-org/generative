@@ -42,6 +42,7 @@ class SpeechServiceStorageTest {
         try {
             val service = SpeechService("s", "Voice", icon = "https://example.com/voice.png", provider = "p", modelId = "tts", voice = "Kore",
                 instructions = "Speak calmly", responseFormat = "wav", languageCode = "vi-VN",
+                parallelRequests = true, requestSpacingSeconds = 1.5f, maxConcurrentRequests = 3,
                 extraBody = buildJsonObject { put("custom", "value") })
             SpeechRepository(db).saveService(service)
             assertEquals(service, SpeechRepository(db).getById("s"))
@@ -68,6 +69,21 @@ class SpeechServiceStorageTest {
         } finally { db.close() }
     }
 
+    @Test fun anExistingTwentyWordSettingRemainsUnchanged() = runBlocking {
+        installTestAndroidKeyStore()
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
+        try {
+            val existing = SpeechService("existing", "Voice", maxWordsPerChunk = 20)
+            SpeechRepository(db).saveService(existing)
+            assertEquals(20, SpeechRepository(db).getById(existing.id)?.maxWordsPerChunk)
+            val defaults = SpeechService("new", "Voice")
+            assertEquals(100, defaults.maxWordsPerChunk)
+            assertFalse(defaults.parallelRequests)
+            assertEquals(1f, defaults.requestSpacingSeconds, 0f)
+            assertEquals(5, defaults.maxConcurrentRequests)
+        } finally { db.close() }
+    }
+
     @Test fun legacyRowsWithoutOptionsKeepDefaults() = runBlocking {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
@@ -78,7 +94,10 @@ class SpeechServiceStorageTest {
                 responseFormat = "mp3", languageCode = "", authId = null
             ))
             val service = SpeechRepository(db).getById("s")!!
-            assertEquals(20, service.maxWordsPerChunk)
+            assertEquals(100, service.maxWordsPerChunk)
+            assertFalse(service.parallelRequests)
+            assertEquals(1f, service.requestSpacingSeconds, 0f)
+            assertEquals(5, service.maxConcurrentRequests)
             assertEquals("mp3", service.responseFormat)
             assertEquals("", service.instructions)
             assertTrue(service.extraBody.isEmpty())

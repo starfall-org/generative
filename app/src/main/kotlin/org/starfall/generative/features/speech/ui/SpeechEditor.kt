@@ -88,6 +88,12 @@ fun SpeechEditor(
     var extraBodyText by remember(initialService.id) { mutableStateOf(initialService.extraBody.toString()) }
     var chunkSizeText by remember(initialService.id) { mutableStateOf(initialService.maxWordsPerChunk.coerceAtLeast(1).toString()) }
     val chunkSize = chunkSizeText.toIntOrNull()?.takeIf { it > 0 }
+    var parallelRequests by remember(initialService.id) { mutableStateOf(initialService.parallelRequests) }
+    var spacingText by remember(initialService.id) { mutableStateOf(initialService.requestSpacingSeconds.toString().removeSuffix(".0")) }
+    val spacingSeconds = spacingText.replace(',', '.').toFloatOrNull()
+        ?.takeIf { it.isFinite() && it >= 0f }
+    var concurrencyText by remember(initialService.id) { mutableStateOf(initialService.maxConcurrentRequests.toString()) }
+    val maxConcurrent = concurrencyText.toIntOrNull()?.takeIf { it > 0 }
     var apiKey by remember(initialService.id) { mutableStateOf(initialService.apiKey) }
     var providerExpanded by remember { mutableStateOf(false) }
     var modelExpanded by remember { mutableStateOf(false) }
@@ -137,6 +143,9 @@ fun SpeechEditor(
         voice = voice.trim(),
         speed = speed,
         maxWordsPerChunk = chunkSize ?: initialService.maxWordsPerChunk,
+        parallelRequests = parallelRequests,
+        requestSpacingSeconds = spacingSeconds ?: initialService.requestSpacingSeconds,
+        maxConcurrentRequests = maxConcurrent ?: initialService.maxConcurrentRequests,
         pitch = pitch,
         instructions = if (supportsInstructions) instructions else "",
         responseFormat = responseFormat,
@@ -148,7 +157,8 @@ fun SpeechEditor(
     val engineValidationError = if (standalone && extraBody != null) runCatching {
         adapter(engine).synthesis(currentService(), "Test")
     }.exceptionOrNull()?.message else null
-    val canSave = name.isNotBlank() && (system || chunkSize != null) &&
+    val canSave = name.isNotBlank() && (system || chunkSize != null &&
+        (!parallelRequests || (spacingSeconds != null && maxConcurrent != null))) &&
         (system || if (standalone) extraBody != null && engineValidationError == null else (modelId in availableModels && extraBody != null))
 
     if (showVoices && standalone) SpeechVoiceSheet(currentService(), onChoose = {
@@ -379,6 +389,40 @@ fun SpeechEditor(
                         isError = chunkSizeText.isNotBlank() && chunkSize == null,
                         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("speech-chunk-size")
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(stringResource(R.string.speech_parallel_requests))
+                        Switch(
+                            checked = parallelRequests,
+                            onCheckedChange = { parallelRequests = it },
+                            modifier = Modifier.testTag("speech-parallel-requests")
+                        )
+                    }
+                    if (parallelRequests) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = spacingText, onValueChange = { spacingText = it },
+                                label = { Text(stringResource(R.string.speech_request_spacing_seconds)) },
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                                    autoCorrectEnabled = false, keyboardType = KeyboardType.Decimal),
+                                isError = spacingSeconds == null,
+                                singleLine = true,
+                                modifier = Modifier.weight(1f).testTag("speech-request-spacing")
+                            )
+                            OutlinedTextField(
+                                value = concurrencyText, onValueChange = { concurrencyText = it },
+                                label = { Text(stringResource(R.string.speech_max_concurrent_requests)) },
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                                    autoCorrectEnabled = false, keyboardType = KeyboardType.Number),
+                                isError = maxConcurrent == null,
+                                singleLine = true,
+                                modifier = Modifier.weight(1f).testTag("speech-max-concurrency")
+                            )
+                        }
+                    }
                     if (standalone) TextButton(onClick = { advancedExpanded = !advancedExpanded }) {
                         Text(stringResource(R.string.image_tool_advanced_json), Modifier.weight(1f))
                         SharedIcon(if (advancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null)

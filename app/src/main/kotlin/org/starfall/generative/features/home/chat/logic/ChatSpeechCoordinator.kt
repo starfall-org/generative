@@ -2,6 +2,7 @@ package org.starfall.generative.features.home.chat.logic
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import androidx.annotation.StringRes
 import org.starfall.generative.R
 import org.starfall.generative.integrations.speech.SpeechAudioPlayer
 import org.starfall.generative.integrations.speech.SpeechPlaybackNotification
@@ -39,6 +40,7 @@ internal class ChatSpeechCoordinator(
         val plainText = speechText(text, includeCodeBlocks = preferences.value.ttsReadCodeBlocks)
         if (plainText.isBlank()) return
         stop()
+        notification?.clearFailure()
         val request = requestNumber
         activeMessage.value = messageId
         if (isTest) activeTestService.value = service.id
@@ -53,6 +55,11 @@ internal class ChatSpeechCoordinator(
             if (request == requestNumber) notification?.show(service.name) { stop() }
             Unit
         }
+        fun reportFailure(@StringRes reasonRes: Int, detail: String? = null) {
+            if (request != requestNumber) return
+            notification?.showFailure(reasonRes)
+            tts.reportError(detail, reasonRes)
+        }
         if (service.engine == SpeechEngine.SYSTEM) {
             tts.speak(plainText, service.speed, service.pitch, service.voice, onStarted = onStarted, onFinished = onFinished)
             return
@@ -62,17 +69,17 @@ internal class ChatSpeechCoordinator(
                 val provider = if (service.engine.standalone) null else providers.value.find { it.id == service.provider }
                 if (!service.engine.standalone) {
                     if (provider == null) {
-                        tts.reportError(R.string.speech_provider_missing)
+                        reportFailure(R.string.speech_provider_missing)
                         return@launch
                     }
                     val modelId = service.modelId
                     if (modelId == null) {
-                        tts.reportError(R.string.speech_model_missing)
+                        reportFailure(R.string.speech_model_missing)
                         return@launch
                     }
                     if (provider.config.modelConfigs[modelId]?.modelType != ModelType.TEXT_TO_SPEECH ||
                         provider.config.modelIds?.contains(modelId) == false) {
-                        tts.reportError(R.string.speech_model_unavailable)
+                        reportFailure(R.string.speech_model_unavailable)
                         return@launch
                     }
                 }
@@ -81,6 +88,9 @@ internal class ChatSpeechCoordinator(
                     maxCharacters = if (service.engine == SpeechEngine.SPEECHIFY) 1_900 else 4_000)
                 synthesizeAndPlaySpeechChunks(
                     chunks = chunks,
+                    parallelRequests = service.parallelRequests,
+                    requestSpacingMillis = (service.requestSpacingSeconds.coerceAtLeast(0f) * 1_000).toLong(),
+                    maxConcurrentRequests = service.maxConcurrentRequests.coerceAtLeast(1),
                     synthesize = { chunk ->
                         if (standalone != null) standalone.synthesize(service, chunk)
                         else synthesis.synthesize(requireNotNull(provider), service, chunk)
@@ -94,9 +104,9 @@ internal class ChatSpeechCoordinator(
                 )
             } catch (e: CancellationException) { throw e
             } catch (e: SpeechPlaybackException) {
-                tts.reportError(R.string.speech_playback_failed)
+                reportFailure(R.string.speech_playback_failed)
             } catch (e: Exception) {
-                tts.reportError(e.localizedMessage, R.string.speech_synthesis_failed)
+                reportFailure(R.string.speech_synthesis_failed, e.localizedMessage)
             } finally { onFinished() }
         }
     }

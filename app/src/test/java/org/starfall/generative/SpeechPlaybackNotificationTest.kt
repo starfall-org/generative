@@ -33,6 +33,31 @@ class SpeechPlaybackNotificationTest {
         } finally { notification.hide() }
     }
 
+    @Test fun failedSpeechLeavesDismissibleNotificationAfterPlaybackCleanup() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val notification = SpeechPlaybackNotification(context)
+        try {
+            notification.show("ElevenLabs") {}
+            notification.showFailure(org.starfall.generative.R.string.speech_synthesis_failed)
+            notification.hide()
+
+            assertFalse(manager.activeNotifications.any { it.id == SpeechPlaybackNotification.NOTIFICATION_ID })
+            val posted = manager.activeNotifications.single { it.id == SpeechPlaybackNotification.ERROR_NOTIFICATION_ID }.notification
+            assertEquals("Speech playback interrupted", posted.extras.getCharSequence("android.title").toString())
+            assertEquals("Speech synthesis failed.", posted.extras.getCharSequence("android.text").toString())
+            assertTrue(posted.actions.isNullOrEmpty()) // No stale Stop button.
+            assertNotNull(posted.contentIntent) // Opens the app.
+            assertTrue(posted.flags and android.app.Notification.FLAG_AUTO_CANCEL != 0)
+
+            notification.clearFailure()
+            assertFalse(manager.activeNotifications.any { it.id == SpeechPlaybackNotification.ERROR_NOTIFICATION_ID })
+        } finally {
+            notification.hide()
+            notification.clearFailure()
+        }
+    }
+
     @Test fun oldStopActionCannotStopANewPlaybackSession() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val manager = context.getSystemService(NotificationManager::class.java)

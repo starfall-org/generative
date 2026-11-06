@@ -142,7 +142,9 @@ class TtsHelper(context: Context) {
 
     fun reportError(message: String?, @StringRes fallbackRes: Int) {
         handler.post {
-            Toast.makeText(appContext, message ?: appContext.getString(fallbackRes), Toast.LENGTH_LONG).show()
+            val summary = appContext.getString(fallbackRes)
+            val detail = message?.takeIf { it.isNotBlank() && it != summary }?.take(240)
+            Toast.makeText(appContext, if (detail == null) summary else "$summary $detail", Toast.LENGTH_LONG).show()
         }
     }
 

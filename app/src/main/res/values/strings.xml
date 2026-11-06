@@ -1244,8 +1244,13 @@
     <string name="reasoning_level_active" translatable="false">Active</string>
     <string name="media_image_generation_failed">Image generation failed</string>
     <string name="media_video_generation_failed">Video generation failed</string>
+    <string name="speech_parallel_requests">Parallel TTS requests</string>
+    <string name="speech_request_spacing_seconds">Spacing (seconds)</string>
+    <string name="speech_max_concurrent_requests">Max concurrent</string>
     <string name="speech_words_per_chunk">Maximum words per API request</string>
     <string name="speech_word_chunk_boundaries">Approximate limit: rounds up or down to a nearby period, exclamation mark, or question mark. Long sentences are split at the limit.</string>
+    <string name="notification_speech_error_channel">Speech errors</string>
+    <string name="notification_speech_failed">Speech playback interrupted</string>
     <string name="notification_speech_channel">Speech playback</string>
     <string name="sftp_transfer_channel">SFTP file transfers</string>
     <string name="sftp_transfer_preparing">Preparing SFTP transfer…</string>

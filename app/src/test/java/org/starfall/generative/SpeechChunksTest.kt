@@ -13,10 +13,10 @@ class SpeechChunksTest {
         assertEquals("你好。世界！", speechText("你好。世界！"))
     }
 
-    @Test fun defaultIsTwentyWordsAndLongSentencesSplitAtTheWordTarget() {
-        val words = (1..43).map { "word$it" }
+    @Test fun defaultIsHundredWordsAndLongSentencesSplitAtTheWordTarget() {
+        val words = (1..213).map { "word$it" }
         val chunks = speechChunks(words.joinToString(" "))
-        assertEquals(listOf(20, 20, 3), chunks.map { it.split(' ').size })
+        assertEquals(listOf(100, 100, 13), chunks.map { it.split(' ').size })
         assertEquals(words.joinToString(" "), chunks.joinToString(" "))
         assertThrows(IllegalArgumentException::class.java) { speechChunks("Text.", maxWordsPerChunk = 0) }
     }

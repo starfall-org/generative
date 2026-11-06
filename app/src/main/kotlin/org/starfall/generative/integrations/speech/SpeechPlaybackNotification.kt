@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.annotation.StringRes
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -32,9 +33,13 @@ class SpeechPlaybackNotification(context: Context) {
     }
 
     init {
-        this.context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, this.context.getString(R.string.notification_speech_channel), NotificationManager.IMPORTANCE_LOW)
-                .apply { setSound(null, null); enableVibration(false) })
+        this.context.getSystemService(NotificationManager::class.java).apply {
+            createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, context.getString(R.string.notification_speech_channel), NotificationManager.IMPORTANCE_LOW)
+                    .apply { setSound(null, null); enableVibration(false) })
+            createNotificationChannel(NotificationChannel(ERROR_CHANNEL_ID,
+                context.getString(R.string.notification_speech_error_channel), NotificationManager.IMPORTANCE_DEFAULT))
+        }
         manager.cancel(NOTIFICATION_ID)
     }
 
@@ -68,6 +73,38 @@ class SpeechPlaybackNotification(context: Context) {
         } catch (_: SecurityException) { hide() }
     }
 
+    /**
+     * Persistent, dismissible failure alert, independent from the short-lived playback
+     * notification. Never show provider exception text in a system notification.
+     */
+    fun showFailure(@StringRes reasonRes: Int) {
+        hide()
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        if (!manager.areNotificationsEnabled()) return
+        try {
+            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+                PendingIntent.getActivity(context, 1,
+                    it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            }
+            manager.notify(ERROR_NOTIFICATION_ID, NotificationCompat.Builder(context, ERROR_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setContentTitle(context.getString(R.string.notification_speech_failed))
+                .setContentText(context.getString(reasonRes))
+                .setContentIntent(launch)
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build())
+        } catch (_: SecurityException) { /* The in-app error toast remains available. */ }
+    }
+
+    fun clearFailure() {
+        manager.cancel(ERROR_NOTIFICATION_ID)
+    }
+
     fun hide() {
         stopAction = null
         session = null
@@ -80,6 +117,8 @@ class SpeechPlaybackNotification(context: Context) {
 
     internal companion object {
         const val CHANNEL_ID = "speech_playback"
+        const val ERROR_CHANNEL_ID = "speech_error"
         const val NOTIFICATION_ID = 7104
+        const val ERROR_NOTIFICATION_ID = 7105
     }
 }

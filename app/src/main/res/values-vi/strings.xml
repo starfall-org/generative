@@ -927,8 +927,13 @@
     <string name="speech_engine_api_key_help">Bắt buộc đối với dịch vụ giọng nói này. Được lưu an toàn trên thiết bị này.</string>
     <string name="media_image_generation_failed">Tạo ảnh thất bại</string>
     <string name="media_video_generation_failed">Tạo video thất bại</string>
+    <string name="speech_parallel_requests">Gửi yêu cầu TTS song song</string>
+    <string name="speech_request_spacing_seconds">Giãn cách (giây)</string>
+    <string name="speech_max_concurrent_requests">Đồng thời tối đa</string>
     <string name="speech_words_per_chunk">Số từ tối đa mỗi lần gọi API</string>
     <string name="speech_word_chunk_boundaries">Giới hạn tương đối: linh hoạt tăng hoặc giảm số từ để ngắt tại dấu chấm, chấm than hoặc chấm hỏi gần nhất. Câu quá dài sẽ được chia nhỏ.</string>
+    <string name="notification_speech_error_channel">Lỗi đọc giọng nói</string>
+    <string name="notification_speech_failed">Đọc giọng nói bị gián đoạn</string>
     <string name="notification_speech_channel">Phát giọng nói</string>
     <string name="sftp_transfer_channel">Truyền tệp SFTP</string>
     <string name="sftp_transfer_preparing">Đang chuẩn bị truyền tệp SFTP…</string>

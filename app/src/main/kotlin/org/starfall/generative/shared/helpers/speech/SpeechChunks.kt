@@ -10,7 +10,7 @@ private val sentenceEnding = Regex("""[.!?。！？]+["'”’»)\]]*$""")
  * within half the target length. Long sentences still split at the target size.
  * Apply the provider's character limit separately.
  */
-internal fun speechChunks(text: String, maxWordsPerChunk: Int = 20, maxCharacters: Int = 4_000): List<String> {
+internal fun speechChunks(text: String, maxWordsPerChunk: Int = 100, maxCharacters: Int = 4_000): List<String> {
     require(maxWordsPerChunk > 0)
     require(maxCharacters >= 2)
     val words = speechWord.findAll(text).map { it.value }.toList()

@@ -35,7 +35,10 @@ data class SpeechService(
     val languageCode: String = "",
     val engine: SpeechEngine = if (provider.equals("system", true)) SpeechEngine.SYSTEM else SpeechEngine.PROVIDER,
     val voiceName: String = "",
-    val maxWordsPerChunk: Int = 20,
+    val maxWordsPerChunk: Int = 100,
+    val parallelRequests: Boolean = false,
+    val requestSpacingSeconds: Float = 1f,
+    val maxConcurrentRequests: Int = 5,
     val extraBody: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(emptyMap())
 )
 
