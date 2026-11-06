@@ -35,7 +35,7 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
         onClick = onEdit,
         modifier = modifier,
             icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
-                fallback = Icons.Outlined.Extension, matchName = server.name) },
+                fallback = Icons.Outlined.Mcp, matchName = server.name) },
             actions = {
                 ItemContextMenu(
                     onEdit = onEdit,

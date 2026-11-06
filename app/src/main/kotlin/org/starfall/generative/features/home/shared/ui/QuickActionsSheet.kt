@@ -138,7 +138,7 @@ internal fun QuickActionsSheetContent(
             onClick = onOpenFeatureTools
         )
         AddActionRow(
-            icon = Icons.Outlined.Extension,
+            icon = Icons.Outlined.Mcp,
             title = stringResource(R.string.common_mcp_connectors),
             onClick = onOpenMcpConnectors
         )

@@ -49,7 +49,7 @@ internal fun McpConnectionSettings(
 ) {
     var oauthAdvancedExpanded by remember { mutableStateOf(false) }
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Extension,
+        IconPickerRow(icon, onIconChange, text = providerInitials(name), fallback = Icons.Outlined.Mcp,
             onBusyChange = onIconBusyChange, matchName = name, faviconBaseUrl = url)
         OutlinedTextField(
             value = name,

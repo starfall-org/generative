@@ -56,7 +56,6 @@ import org.starfall.generative.shared.ui.layout.appearanceContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.icons.FluentUi
-import org.starfall.generative.shared.ui.icons.generated.vscode_codicons.VscodeCodiconsMcp
 import org.starfall.generative.shared.ui.icons.Icons
 
 // Compatibility aliases retained for the existing AppMenu shape tests and callers.
@@ -177,7 +176,7 @@ fun AppMenuScreen(
                             onNavigateToToolsEditor, modifier, shape, "feature-tools")
                     },
                     ComponentGroupSlot("mcp") { modifier, shape ->
-                        FeatureButton(stringResource(R.string.mcp), VscodeCodiconsMcp,
+                        FeatureButton(stringResource(R.string.mcp), Icons.Outlined.Mcp,
                             onNavigateToMcp, modifier, shape, "mcp")
                     }
                 )

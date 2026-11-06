@@ -110,7 +110,7 @@ fun WebSearchProviderSettings(
                             selected = server.id == settings.webSearchProviderId,
                             icon = {
                                 EntityIcon(image = server.icon, modifier = Modifier.size(42.dp),
-                                    text = providerInitials(server.name), fallback = Icons.Outlined.Extension,
+                                    text = providerInitials(server.name), fallback = Icons.Outlined.Mcp,
                                     matchName = server.name)
                             },
                             onClick = { onProviderChange(server.id); expanded = false },

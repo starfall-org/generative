@@ -103,7 +103,7 @@ private fun McpToolItem(
                 supportingContent = {
                     if (tool.description.isNotBlank()) Text(tool.description, maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
                 },
-                leadingContent = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Extension) },
+                leadingContent = { EntityIcon(null, Modifier.size(42.dp), fallback = Icons.Outlined.Mcp) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(enabled, onCheckedChange = onEnabledChange)

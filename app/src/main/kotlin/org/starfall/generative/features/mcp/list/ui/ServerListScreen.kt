@@ -80,7 +80,7 @@ fun ServerListScreen(
             Box(Modifier.fillMaxSize()) {
                 if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SharedIcon(Icons.Outlined.Extension, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
+                        SharedIcon(Icons.Outlined.Mcp, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
                     }

@@ -3,6 +3,7 @@
 package org.starfall.generative.shared.ui.icons
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import org.starfall.generative.shared.ui.icons.generated.vscode_codicons.VscodeCodiconsMcp
 
 import org.starfall.generative.R
 
@@ -50,6 +51,7 @@ object Icons {
         val ExpandLess: ImageVector get() = FluentUi.Regular.ChevronUp
         val ExpandMore: ImageVector get() = FluentUi.Regular.ChevronDown
         val Extension: ImageVector get() = FluentUi.Regular.PuzzlePiece
+        val Mcp: ImageVector get() = VscodeCodiconsMcp
         val FileDownload: ImageVector get() = FluentUi.Regular.ArrowDownload
         val FileOpen: ImageVector get() = FluentUi.Regular.FolderOpen
         val FilterList: ImageVector get() = FluentUi.Regular.Filter

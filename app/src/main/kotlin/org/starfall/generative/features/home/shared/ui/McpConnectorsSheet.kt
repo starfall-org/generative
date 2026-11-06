@@ -70,7 +70,7 @@ internal fun McpConnectorsSheetContent(
                         image = server.icon,
                         modifier = Modifier.size(44.dp),
                         text = server.name.take(2).uppercase(),
-                        fallback = org.starfall.generative.shared.ui.icons.Icons.Outlined.Extension,
+                        fallback = org.starfall.generative.shared.ui.icons.Icons.Outlined.Mcp,
                         matchName = server.name
                     )
                     Spacer(Modifier.size(12.dp))
