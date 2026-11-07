@@ -45,7 +45,7 @@ class BottomSheetResizeBehaviorTest {
         compose.onNodeWithText("Last item").assertIsDisplayed()
     }
 
-    @Test fun lazyItemsUseMeasuredPeekAndCanExpandToMaximum() {
+    @Test fun lazyItemsOpenAtContentHeightWithoutAnExtraExpandedStop() {
         compose.setContent {
             fullHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
             MaterialTheme {
@@ -65,7 +65,7 @@ class BottomSheetResizeBehaviorTest {
         compose.onNodeWithTag("bottom-sheet-drag-handle").performTouchInput { swipeUp() }
         compose.waitForIdle()
         val expandedTop = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().boundsInRoot.top
-        assertTrue("Maximum must still be reachable", expandedTop < defaultTop)
+        assertEquals("Dragging up keeps the content-sized height", defaultTop, expandedTop, 2f)
     }
 
     @Test fun linkedSheetBackNavigatesWithinDialogBeforeRootDismissal() {
@@ -98,8 +98,27 @@ class BottomSheetResizeBehaviorTest {
                 }
             }
         }
-        compose.onNodeWithTag("bottom-sheet-scrim").performClick()
+        compose.onNode(isDialog()).performTouchInput { click(Offset(10f, 10f)) }
         compose.runOnIdle { assertTrue(dismissed) }
+    }
+
+    @Test fun backWaitsForTheExitAnimationBeforeDismissal() {
+        var dismissals = 0
+        compose.setContent {
+            MaterialTheme {
+                BottomSheet(onDismissRequest = { dismissals++ }) {
+                    Text("Animated sheet", Modifier.padding(16.dp))
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        Espresso.pressBack()
+        compose.runOnIdle { assertEquals("Back must wait for hide()", 0, dismissals) }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(1, dismissals) }
     }
 
     @Test fun longContentOpensAtMaximumWithoutHalfHeightStop() {
