@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -104,6 +108,19 @@ import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.LocalChatForeground
 import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 import org.starfall.generative.shared.subfeatures.modelpicker.logic.modelInitial
+
+/** Shrink both the rendered control and its layout space, including icons and internal padding. */
+private fun Modifier.compactInputControl(scale: Float): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout((placeable.width * scale).toInt(), (placeable.height * scale).toInt()) {
+            placeable.placeWithLayer(0, 0) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
+        }
+    }
 
 @Composable
 internal fun UserInputArea(
@@ -241,6 +258,11 @@ internal fun UserInputArea(
         constraints = Constraints(maxWidth = inlineTextWidthPx),
         maxLines = 2
     ).lineCount > 1
+    val controlScale by animateFloatAsState(
+        targetValue = if (buttonsBelow) 0.5f else 1f,
+        animationSpec = tween(180),
+        label = "input-control-scale"
+    )
     // The whole input grows to half the screen for text only, 60% when attachments are shown.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
@@ -385,7 +407,7 @@ internal fun UserInputArea(
             // No shadowElevation: the surface is translucent, so its shadow would show through inside.
             shadowElevation = 0.dp
         ) {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
+            Column(modifier = Modifier.fillMaxWidth().animateContentSize(tween(180)).heightIn(max = maxInputHeight)) {
                 if (mediaKind != null) {
                     // Mode chip lives inside the input; tapping it leaves the generation mode.
                     Row(
@@ -470,7 +492,7 @@ internal fun UserInputArea(
                             focusManager.clearFocus()
                             bottomSheets.openAddMenu()
                         },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.compactInputControl(controlScale).size(48.dp)
                     ) {
                         SharedIcon(
                             imageVector = Icons.Default.Add,
@@ -486,6 +508,7 @@ internal fun UserInputArea(
                     val contextUsedLabel = contextRingStatus?.let { stringResource(R.string.context_window_percent_used, it.percentage) }
                     Box(
                         modifier = Modifier
+                            .compactInputControl(controlScale)
                             .size(50.dp)
                             .clip(CircleShape)
                             .semantics {
@@ -540,6 +563,7 @@ internal fun UserInputArea(
                     ) {
                     Box(
                         modifier = Modifier
+                            .compactInputControl(controlScale)
                             .padding(start = 6.dp)
                             .size(48.dp)
                             .clip(CircleShape)
@@ -671,7 +695,7 @@ internal fun UserInputArea(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
+                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp * controlScale),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         addButton()

@@ -102,16 +102,38 @@ class ChatInputBehaviorTest {
         }
 
         val editor = compose.onNode(hasSetTextAction())
+        editor.performTextInput("Hi")
         val initialWidth = editor.fetchSemanticsNode().boundsInRoot.width
-        editor.performTextInput("First line\nSecond line")
-        val expanded = editor.fetchSemanticsNode().boundsInRoot
-        val modelButton = compose.onNodeWithContentDescription("Select model")
-            .fetchSemanticsNode().boundsInRoot
-        assertTrue("Editor should widen after wrapping", expanded.width > initialWidth)
-        assertTrue("Controls should move below the editor", modelButton.top >= expanded.bottom)
+        val controls = listOf("Attachments and tools", "Select model", "Send message")
+        val initialBounds = controls.associateWith {
+            compose.onNodeWithContentDescription(it).fetchSemanticsNode().boundsInRoot
+        }
+        val initialComposer = compose.onNodeWithTag("chat-input").fetchSemanticsNode().boundsInRoot
+        val initialModel = initialBounds.getValue("Select model")
+        val initialRowHeight = initialComposer.bottom - initialModel.top
+        for (text in listOf("A long message that wraps naturally. ".repeat(20), "First line\nSecond line")) {
+            editor.performTextReplacement(text)
+            val expanded = editor.fetchSemanticsNode().boundsInRoot
+            assertTrue("Editor should widen after wrapping", expanded.width > initialWidth)
+            for (description in controls) {
+                val bounds = compose.onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot
+                val initial = initialBounds.getValue(description)
+                assertTrue("Controls should move below the editor", bounds.top >= expanded.bottom)
+                assertEquals("$description width should halve", initial.width / 2f, bounds.width, 1f)
+                assertEquals("$description height should halve", initial.height / 2f, bounds.height, 1f)
+            }
+            val composer = compose.onNodeWithTag("chat-input").fetchSemanticsNode().boundsInRoot
+            val model = compose.onNodeWithContentDescription("Select model").fetchSemanticsNode().boundsInRoot
+            assertEquals("The control row and bottom inset should halve",
+                initialRowHeight / 2f, composer.bottom - model.top, 1f)
 
-        editor.performTextClearance()
-        assertTrue(editor.fetchSemanticsNode().boundsInRoot.width < expanded.width)
+            editor.performTextReplacement("Hi")
+            for (description in controls) {
+                val restored = compose.onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot
+                assertEquals(initialBounds.getValue(description).height, restored.height, 1f)
+            }
+            assertTrue(editor.fetchSemanticsNode().boundsInRoot.width < expanded.width)
+        }
     }
 
     @Test fun sendingWithoutAModelPersistsRapidMessagesAndAttachments() {
