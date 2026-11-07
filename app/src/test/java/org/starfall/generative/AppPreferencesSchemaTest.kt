@@ -132,6 +132,32 @@ class AppPreferencesSchemaTest {
     }
 
     @Test
+    fun saveAndRestoreNormalizeSkillsIdenticallyWithoutOverwritingBundledInstructions() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = AppPreferencesRepository(context)
+        val skills = listOf(
+            AgentSkill("legacy-id", " Review Code ", "  Review carefully.  ", "  Check changes.  "),
+            AgentSkill("duplicate", "review-code", "Duplicate instructions"),
+            AgentSkill("empty", "Empty", " \n "),
+            AgentSkill("custom-id", "Create Skill", "Replace bundled instructions")
+        )
+        try {
+            repository.setAgentSkills(skills)
+            val saved = repository.appPreferencesFlow.first().agentSkills
+            repository.replace(AppPreferences(agentSkills = AgentSkills(skills)))
+            val restored = AppPreferencesRepository(context).appPreferencesFlow.first().agentSkills
+
+            assertEquals(saved, restored)
+            assertEquals(listOf(DEFAULT_AGENT_SKILL_ID, "review-code"), restored.skills.map { it.id })
+            assertEquals("Review carefully.", restored.skills.last().content)
+            assertEquals("Check changes.", restored.skills.last().description)
+            assertEquals(AgentSkillsStore(context).readBundledCreateSkill(context), restored.skills.first())
+        } finally {
+            repository.replace(AppPreferences())
+        }
+    }
+
+    @Test
     fun versionTwoBackupMigratesFlatPreferencesAndLegacySystemPrompt() {
         val legacyManifest = """
             {

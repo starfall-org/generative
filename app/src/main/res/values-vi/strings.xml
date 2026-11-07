@@ -1018,4 +1018,6 @@
         <string name="providers_demo_editor_title">Provider mẫu</string>
     <string name="content_list_no_results">Không tìm thấy mục phù hợp.</string>
     <string name="drawer_instructions_selected">Đã bật %1$d/%2$d</string>
+    <string name="serverside_cli_missing">Không tìm thấy Serverside CLI trong PATH trên %1$s. Tính năng Serverside CLI đã được tắt.</string>
+    <string name="serverside_handshake_failed">Không thể kết nối với Serverside CLI trên %1$s. Hãy kiểm tra daemon đang chạy.</string>
 </resources>

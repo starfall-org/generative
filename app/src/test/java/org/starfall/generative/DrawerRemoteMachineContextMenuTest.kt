@@ -57,6 +57,9 @@ class DrawerRemoteMachineContextMenuTest {
                         selectMachine = { settings = settings.withSelectedRemoteMachine(it, machines.map { machine -> machine.id }) },
                         setMachine = { id, enabled ->
                             settings = settings.withRemoteMachineEnabled(id, enabled, machines.map { machine -> machine.id })
+                        },
+                        setServerside = { machine, enabled ->
+                            settings = settings.copy(serversideMachines = settings.serversideMachines + (machine.id to enabled))
                         }
                     )
                 ) {
@@ -95,6 +98,16 @@ class DrawerRemoteMachineContextMenuTest {
             assertEquals(setOf(production.id), settings.enabledMachines.filterValues { it }.keys)
             assertEquals(production.id, settings.selectedMachineId)
         }
+        compose.onNodeWithText("Serverside CLI").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_serverside_switch_machine-2").assertIsOff().performClick()
+        compose.onNodeWithTag("drawer_serverside_switch_machine-2").assertIsOn()
+        compose.runOnIdle {
+            assertEquals(true, settings.serversideMachines[production.id])
+            assertTrue(remoteMachineToolEnabled(settings, production, REMOTE_TOOL_EXECUTE))
+        }
+        compose.onNodeWithText("Serverside CLI").performClick()
+        compose.onNodeWithTag("drawer_machine_options_machine-2").performClick()
+        compose.onNodeWithTag("drawer_serverside_switch_machine-2").assertIsOff()
         compose.onNodeWithText("Open terminal").assertIsDisplayed()
         compose.onNodeWithText("Port Forward").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(production, forwarded) }

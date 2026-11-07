@@ -177,7 +177,9 @@ data class ToolSettings(
     /** Optional built-in tool allowing the model to find tool names and enablement. */
     val searchToolsEnabled: Boolean = false,
     /** Opt-in discovery; Agent Skills stay detached until a search or explicit user selection. */
-    val agentSkillsSearchEnabled: Boolean = false
+    val agentSkillsSearchEnabled: Boolean = false,
+    /** Opt-in only; never implies an authenticated connection or stores pairing credentials. */
+    val serversideMachines: Map<String, Boolean> = emptyMap()
 )
 
 /** Resolves a media model's profile from the shared library, including legacy selections. */

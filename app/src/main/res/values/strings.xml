@@ -1316,4 +1316,7 @@
     <string name="providers_demo_title">ProvidersScreen demo</string>
         <string name="providers_demo_editor_title">Demo provider</string>
     <string name="content_list_no_results">No matching items.</string>
+    <string name="serverside_cli" translatable="false">Serverside CLI</string>
+    <string name="serverside_cli_missing">Serverside CLI was not found in PATH on %1$s. Serverside CLI has been turned off.</string>
+    <string name="serverside_handshake_failed">Could not connect to Serverside CLI on %1$s. Check that the daemon is running.</string>
 </resources>

@@ -93,7 +93,14 @@ class ChatViewModel(
     private val speechAudioPlayer: SpeechAudioPlayer,
     private val toolFiles: ToolFiles,
     private val speechNotification: org.starfall.generative.integrations.speech.SpeechPlaybackNotification? = null,
+    private val serversideService: org.starfall.generative.integrations.remote.RemoteMachineService? = null,
 ) : ViewModel() {
+
+    val serverside = org.starfall.generative.features.home.shared.logic.ServersideCoordinator(
+        viewModelScope, toolStore,
+        handshake = { machine -> requireNotNull(serversideService).serversideHandshake(machine) },
+        probe = { machine -> requireNotNull(serversideService).probeServerside(machine) }
+    )
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())
     private val toolSettingsActions = ChatToolSettingsActions(viewModelScope, toolStore)
@@ -115,8 +122,10 @@ class ChatViewModel(
     fun setMachinesEnabled(enabled: Boolean) = toolSettingsActions.setMachinesEnabled(enabled)
     fun setMachineEnabled(machineId: String, enabled: Boolean, knownMachineIds: List<String> = emptyList()) =
         toolSettingsActions.setMachineEnabled(machineId, enabled, knownMachineIds)
-    fun selectRemoteMachine(machineId: String?, knownMachineIds: List<String>) =
+    fun selectRemoteMachine(machineId: String?, knownMachineIds: List<String>) {
+        serverside.selectionChanged(machineId)
         toolSettingsActions.selectMachine(machineId, knownMachineIds)
+    }
 
     fun setMachineToolEnabled(machineId: String, toolName: String, enabled: Boolean) =
         toolSettingsActions.setMachineToolEnabled(machineId, toolName, enabled)
@@ -128,13 +137,20 @@ class ChatViewModel(
         prompt: String,
         conversationId: String,
         createSkillRequested: Boolean
-    ) =
-        toolChat.generate(provider, model, messages, prompt, mcpServers.value, providers.value,
+    ) = flow {
+        val machineId = toolSettings.value.selectedMachineId
+        if (machineId != null && toolSettings.value.serversideMachines[machineId] == true) {
+            serversideService?.state?.value?.machines?.firstOrNull { it.id == machineId }?.let {
+                serverside.checkBeforeSend(it)
+            }
+        }
+        emitAll(toolChat.generate(provider, model, messages, prompt, mcpServers.value, providers.value,
             settings = { toolSettings.value },
             maxToolRounds = { appPreferences.value.effectiveToolRoundLimit },
             takePendingMessage = { takePendingMessage(conversationId) },
             mcpAttachmentSettings = { appPreferences.value.mcpAttachments },
-            createSkillRequested = createSkillRequested)
+            createSkillRequested = createSkillRequested))
+    }
 
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())

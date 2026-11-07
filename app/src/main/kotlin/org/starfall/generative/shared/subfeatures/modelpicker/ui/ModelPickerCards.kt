@@ -362,6 +362,11 @@ private fun ModelContextChip(
 
 @Composable
 fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modifier) {
+    val badgeColors = AssistChipDefaults.assistChipColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    )
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -385,31 +390,19 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
                 ModelType.EMBEDDING, ModelType.RERANKING -> null
                 ModelType.REALTIME -> Icons.Outlined.ChatBubbleOutline
             },
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            colors = badgeColors
         )
         if (config.modelType != ModelType.TEXT_GENERATION) return@Row
         ModelBadge(
             label = compactContextWindow(config.contextWindowTokens),
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            colors = badgeColors
         )
         if (config.supportsVision) {
             ModelBadge(
                 label = stringResource(R.string.common_image),
                 iconOnly = true,
                 icon = Icons.Outlined.Image,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors = badgeColors
             )
         }
         if (config.supportsVideoInput) {
@@ -417,11 +410,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
                 label = stringResource(R.string.common_video),
                 iconOnly = true,
                 icon = Icons.Outlined.Videocam,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors = badgeColors
             )
         }
         if (config.supportsAudioInput) {
@@ -429,11 +418,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
                 label = stringResource(R.string.common_audio),
                 iconOnly = true,
                 icon = Icons.Outlined.Audiotrack,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors = badgeColors
             )
         }
         if (config.supportsThinking) {
@@ -441,11 +426,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
                 label = stringResource(R.string.thinking),
                 iconOnly = true,
                 icon = Icons.Outlined.Psychology,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors = badgeColors
             )
         }
         if (config.supportsToolCalls) {
@@ -453,11 +434,7 @@ fun ModelCapabilityBadges(config: ModelConfiguration, modifier: Modifier = Modif
                 label = stringResource(R.string.common_tools),
                 iconOnly = true,
                 icon = Icons.Outlined.Build,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors = badgeColors
             )
         }
     }

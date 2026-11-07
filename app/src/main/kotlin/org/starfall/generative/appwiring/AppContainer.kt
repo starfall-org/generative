@@ -121,6 +121,7 @@ class AppContainer(context: Context) {
                 SpeechSynthesisService(providers::resolveProvider),
                 SpeechAudioPlayer(appContext),
                 toolFiles,
+                serversideService = remoteMachineService,
                 speechNotification = org.starfall.generative.integrations.speech.SpeechPlaybackNotification(appContext)
             )
         }

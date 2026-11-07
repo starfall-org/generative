@@ -401,16 +401,30 @@ internal class RemoteMachineConnectionManager(
         }
     }
 
-    /** Runs a command over the machine's persistent connection, opening it first when needed. */
+    /** Fixed Serverside bootstrap command; does not grant generic background tool execution. */
+    suspend fun serversideHandshake(machine: RemoteMachine): RemoteCommandResult = runSshCommand(
+        machine,
+        "if command -v serverside >/dev/null 2>&1; then serverside handshake --stdio; else printf '%s' 'GENERATIVE_SERVERSIDE_MISSING'; exit 73; fi",
+        15,
+        null,
+        requireTerminal = false
+    )
+
+    suspend fun probeServerside(machine: RemoteMachine): RemoteCommandResult = runSshCommand(
+        machine, "if command -v serverside >/dev/null 2>&1; then serverside version; else printf '%s' 'GENERATIVE_SERVERSIDE_MISSING'; exit 73; fi",
+        15, null, requireTerminal = false
+    )
+
     private suspend fun runSshCommand(
         machine: RemoteMachine,
         command: String,
         timeoutSeconds: Int,
-        terminalId: String?
+        terminalId: String?,
+        requireTerminal: Boolean = true
     ): RemoteCommandResult {
         val terminal = terminalId?.let { terminals[machine.id]?.get(it) }
             ?: terminals[machine.id]?.values?.filter { it.isOpen }?.maxByOrNull { it.createdAtNanos }
-        require(terminal != null && terminal.isOpen) {
+        require(!requireTerminal || (terminal != null && terminal.isOpen)) {
             "Open a terminal before executing a command on this remote machine."
         }
         var retried = false

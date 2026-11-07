@@ -21,6 +21,8 @@ data class ToolControls(
     val setSendFile: (Boolean)->Unit = {},
     val setWebSearch: (Boolean)->Unit = {},
     val setSearchTools: (Boolean)->Unit = {},
-    val setAgentSkillsSearch: (Boolean)->Unit = {}
+    val setAgentSkillsSearch: (Boolean)->Unit = {},
+    val setServerside: (RemoteMachine, Boolean) -> Unit = { _, _ -> },
+    val serversidePending: Set<String> = emptySet()
 )
 val LocalToolControls = staticCompositionLocalOf { ToolControls() }

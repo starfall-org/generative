@@ -295,6 +295,12 @@ class RemoteMachineService(
 
     suspend fun startGCloudMachine(machine: RemoteMachine): Result<RemoteMachine> = cloudShell.startGCloudMachine(machine)
 
+    suspend fun probeServerside(machine: RemoteMachine): RemoteCommandResult =
+        connectionManager.probeServerside(machine)
+
+    suspend fun serversideHandshake(machine: RemoteMachine): RemoteCommandResult =
+        connectionManager.serversideHandshake(machine)
+
     suspend fun execute(
         machine: RemoteMachine,
         command: String,

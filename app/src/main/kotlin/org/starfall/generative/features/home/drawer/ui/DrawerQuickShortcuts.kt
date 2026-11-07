@@ -133,6 +133,10 @@ internal fun DrawerQuickShortcuts(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 if (machineMenu) {
+                                    val serversideLabel = stringResource(R.string.serverside_cli)
+                                    val serversidePending = selectedMachine.id in controls.serversidePending
+                                    val serversideChecked = serversidePending ||
+                                        controls.settings.serversideMachines[selectedMachine.id] == true
                                     val checked = remoteMachineEnabled(controls.settings, selectedMachine)
                                     val toggleLabel = stringResource(
                                         if (checked) R.string.remote_server_disable_action
@@ -152,6 +156,24 @@ internal fun DrawerQuickShortcuts(
                                                         modifier = Modifier.testTag("drawer_machine_switch_" + selectedMachine.id)
                                                             .semantics { contentDescription = toggleLabel }
                                                     )
+                                                }
+                                            ),
+                                            ContextMenuAction(
+                                                label = serversideLabel,
+                                                iconRes = Icons.Outlined.Terminal,
+                                                onClick = { controls.setServerside(selectedMachine, !serversideChecked) },
+                                                trailingContent = {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        if (serversidePending) {
+                                                            org.starfall.generative.shared.ui.LoadingIndicator(Modifier.size(24.dp))
+                                                        }
+                                                        Switch(
+                                                            checked = serversideChecked,
+                                                            onCheckedChange = { controls.setServerside(selectedMachine, it) },
+                                                            modifier = Modifier.testTag("drawer_serverside_switch_${selectedMachine.id}")
+                                                                .semantics { contentDescription = serversideLabel }
+                                                        )
+                                                    }
                                                 }
                                             ),
                                             ContextMenuAction(
