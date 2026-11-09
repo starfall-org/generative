@@ -1317,7 +1317,7 @@
         <string name="providers_demo_editor_title">Demo provider</string>
     <string name="content_list_no_results">No matching items.</string>
     <string name="remote_server_tool_set_workspace">Set workspace</string>
-    <string name="custom_http_tools" translatable="false">Custom HTTP Tools</string>
+    <string name="custom_http_tools" translatable="false">Custom Tools</string>
     <string name="http_tool_name" translatable="false">Tool name</string>
     <string name="http_tool_method" translatable="false">HTTP Method</string>
     <string name="http_tool_url" translatable="false">URL</string>

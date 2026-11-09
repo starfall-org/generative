@@ -264,12 +264,12 @@ class QuickActionsSheetTransitionTest {
         }
         compose.waitForIdle()
         val nodeId = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id
-        compose.onNodeWithText("Custom HTTP Tools").performScrollTo().performClick()
+        compose.onNodeWithText("Custom Tools").performScrollTo().performClick()
         compose.mainClock.advanceTimeBy(450)
         assertEquals(nodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("weather").performClick()
         assertEquals(tool.id to true, toggled)
-        compose.onNodeWithContentDescription("Open Custom HTTP Tools settings").performClick()
+        compose.onNodeWithContentDescription("Open Custom Tools settings").performClick()
         compose.waitForIdle()
         assertTrue(settingsOpened)
     }
