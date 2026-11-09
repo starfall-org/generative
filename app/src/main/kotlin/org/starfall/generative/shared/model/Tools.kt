@@ -225,7 +225,8 @@ data class ToolDefinition(
     val serverId: String? = null,
     val originalName: String = name,
     /** A tool owned by a Remote Machine, mutually exclusive with [serverId]. */
-    val remoteMachineId: String? = null
+    val remoteMachineId: String? = null,
+    val customHttpToolId: String? = null
 )
 
 

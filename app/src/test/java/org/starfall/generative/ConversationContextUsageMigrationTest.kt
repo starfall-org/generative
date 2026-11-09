@@ -45,10 +45,11 @@ class ConversationContextUsageMigrationTest {
             }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
                 .addMigrations(AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13,
-                    AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15).build()
+                    AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15,
+                    AppDatabase.MIGRATION_15_16, AppDatabase.MIGRATION_16_17).build()
             room = migrated
             val sql = migrated.openHelper.writableDatabase
-            assertEquals(15, sql.version)
+            assertEquals(17, sql.version)
             assertEquals(originalRowIds, versionRowIds(sql))
             assertUsageColumns(sql)
 
@@ -64,12 +65,15 @@ class ConversationContextUsageMigrationTest {
 
             val usage = ContextUsageSnapshot(TokenUsage(256, null), "context-key", "messages-fingerprint")
             val answer = restored.messages.single()
-            val updated = restored.copy(messages = listOf(answer.copy(versions = answer.versions.mapIndexed { index, version ->
+            val updated = restored.copy(remoteWorkspaces = mapOf("ssh" to "/home/dev/project"), messages = listOf(answer.copy(versions = answer.versions.mapIndexed { index, version ->
                 if (index == answer.activeVersionIndex) version.copy(contextUsage = usage) else version
             })))
             ConversationRepository(migrated).saveConversation(updated)
             assertEquals(updated, ConversationRepository(migrated).loadById(updated.id))
             assertEquals(originalRowIds, versionRowIds(sql))
+            val cleared = updated.copy(remoteWorkspaces = emptyMap())
+            ConversationRepository(migrated).saveConversation(cleared)
+            assertEquals(cleared, ConversationRepository(migrated).loadById(cleared.id))
             sql.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
         } finally {
             room?.close()

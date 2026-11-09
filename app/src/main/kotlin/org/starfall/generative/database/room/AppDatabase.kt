@@ -1,5 +1,8 @@
 package org.starfall.generative.database.room
 
+import org.starfall.generative.database.room.dao.CustomHttpToolDao
+import org.starfall.generative.database.room.entities.CustomHttpToolEntity
+
 
 import org.starfall.generative.database.room.migrations.ConfigurationMigration9To10
 import org.starfall.generative.database.room.migrations.ConversationMigration9To10
@@ -83,9 +86,10 @@ import org.starfall.generative.database.room.entities.ConfigurationMigrationQuar
         StructuredJsonDocumentEntity::class,
         StructuredJsonNodeEntity::class,
         ConfigurationMigrationQuarantineEntity::class,
-        OAuthTokenRecordEntity::class
+        OAuthTokenRecordEntity::class,
+        CustomHttpToolEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -96,6 +100,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mcpServerDao(): McpServerDao
     abstract fun speechServiceDao(): SpeechServiceDao
     abstract fun structuredJsonDao(): StructuredJsonDao
+    abstract fun customHttpToolDao(): CustomHttpToolDao
     abstract fun oauthTokenDao(): OAuthTokenDao
 
     companion object {
@@ -210,6 +215,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN remoteWorkspacesJson TEXT NOT NULL DEFAULT '{}'")
+            }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS custom_http_tools (id TEXT NOT NULL PRIMARY KEY, encryptedPayload TEXT NOT NULL)")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -219,7 +236,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "generative_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17).build()
                 INSTANCE = instance
                 instance
             }

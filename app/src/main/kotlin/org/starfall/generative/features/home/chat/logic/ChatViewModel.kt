@@ -134,7 +134,17 @@ class ChatViewModel(
             maxToolRounds = { appPreferences.value.effectiveToolRoundLimit },
             takePendingMessage = { takePendingMessage(conversationId) },
             mcpAttachmentSettings = { appPreferences.value.mcpAttachments },
-            createSkillRequested = createSkillRequested)
+            createSkillRequested = createSkillRequested,
+            remoteWorkspaces = { existingGeneration(conversationId)?.snapshot?.remoteWorkspaces.orEmpty() },
+            onRemoteWorkspaceChanged = { machineId, path ->
+                existingGeneration(conversationId)?.updateConversation { conversation ->
+                    conversation.copy(remoteWorkspaces = if (path == null) {
+                        conversation.remoteWorkspaces - machineId
+                    } else {
+                        conversation.remoteWorkspaces + (machineId to path)
+                    })
+                }
+            })
 
     private val deletingAllConversations = MutableStateFlow(false)
     private val deletingConversations = MutableStateFlow<Set<String>>(emptySet())

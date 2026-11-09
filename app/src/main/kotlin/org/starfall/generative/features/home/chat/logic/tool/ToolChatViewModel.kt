@@ -1,5 +1,7 @@
 package org.starfall.generative.features.home.chat.logic.tool
 
+import org.starfall.generative.integrations.httptools.CustomHttpToolService
+import org.starfall.generative.shared.model.CustomHttpTool
 import org.starfall.generative.shared.model.resolveMediaProfile
 import org.starfall.generative.shared.model.media.ContentApiMediaResult
 import org.starfall.generative.shared.model.media.MediaGenerationMode
@@ -35,6 +37,8 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_READ_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
+import org.starfall.generative.features.home.shared.logic.RemoteWorkspaceTools
+import org.starfall.generative.shared.model.REMOTE_TOOL_SET_WORKSPACE
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
@@ -137,8 +141,10 @@ class ToolChatViewModel internal constructor(
     private val saveSkill: suspend (String, String, String) -> AgentSkill = { _, _, _ -> error("Skill storage unavailable") },
     private val availableSkills: suspend () -> List<AgentSkill> = { emptyList() },
     private val skillResources: suspend (String) -> List<String> = { emptyList() },
-    private val readSkillResource: suspend (String, String) -> String = { _, _ -> error("Skill resource unavailable") }
+    private val readSkillResource: suspend (String, String) -> String = { _, _ -> error("Skill resource unavailable") },
+    private val customHttpTools: suspend () -> List<CustomHttpTool> = { emptyList() }
 ) {
+    private val customHttpService = CustomHttpToolService(http)
     private val toolRequest = ToolRequestService(http, aiService)
     private val mediaGeneration = ToolMediaGenerationService(http, aiService)
     private val toolExecution = ToolExecutionService(mcp, remoteMachines)
@@ -183,8 +189,11 @@ class ToolChatViewModel internal constructor(
         maxToolRounds: () -> Int? = { null },
         takePendingMessage: () -> StoredMessage? = { null },
         mcpAttachmentSettings: () -> McpAttachmentSettings = { McpAttachmentSettings() },
-        createSkillRequested: Boolean = false
+        createSkillRequested: Boolean = false,
+        remoteWorkspaces: () -> Map<String, String> = { emptyMap() },
+        onRemoteWorkspaceChanged: (String, String?) -> Unit = { _, _ -> }
     ): Flow<GenerationEvent> = channelFlow {
+        val workspaceTools = RemoteWorkspaceTools(remoteWorkspaces(), onRemoteWorkspaceChanged)
         val selectedProvider = aiService.resolveProvider(provider)
         val allSkills = availableSkills().filter {
             it.name.isNotBlank() && it.description.isNotBlank() && it.name != DEFAULT_AGENT_SKILL_ID
@@ -259,6 +268,10 @@ class ToolChatViewModel internal constructor(
                 }
             }
 
+            val httpCatalog = customHttpTools()
+            tools += httpCatalog.filter { it.enabled }.map { it.definition() }
+            searchable += httpCatalog.map { SearchableTool(it.definition().name, it.enabled) }
+
             configuredMachines.forEach { machine ->
                     machine.supportedToolNames()
                         .filter { toolName -> remoteMachineToolEnabled(settings(), machine, toolName) }
@@ -270,8 +283,13 @@ class ToolChatViewModel internal constructor(
                                     "Start the Google Cloud Shell environment of the remote machine '${machine.name}' before using it."
                                 REMOTE_TOOL_DISCONNECT ->
                                     "Close every terminal and the SSH connection to the remote machine '${machine.name}'."
+                                REMOTE_TOOL_SET_WORKSPACE ->
+                                    "Set the working directory for execute and new AI terminals on '${machine.name}' in this chat. " +
+                                        "Supply an absolute path, or omit all parameters to clear the workspace. " +
+                                        "The directory must already exist when executing commands. " +
+                                        "Current workspace: ${workspaceTools.workspace(machine.id) ?: "not set"}."
                                 REMOTE_TOOL_OPEN_TERMINAL ->
-                                    "Open a new interactive terminal on '${machine.name}' and return its terminal_id."
+                                    "Open a new interactive terminal on '${machine.name}' in this chat's workspace, if set, and return its terminal_id."
                                 REMOTE_TOOL_CLOSE_TERMINAL ->
                                     "Close one terminal on '${machine.name}'. If terminal_id is omitted, close the newest terminal."
                                 REMOTE_TOOL_LIST_TERMINAL ->
@@ -463,8 +481,11 @@ class ToolChatViewModel internal constructor(
             while (maxToolRounds().let { limit -> limit == null || round < limit }) {
                 round++
                 currentCoroutineContext().ensureActive()
+                val enabledHttpIds = customHttpTools().filter { it.enabled }.map { it.id }.toSet()
                 val allowed = tools.filter { tool ->
-                    if (tool.remoteMachineId != null) {
+                    if (tool.customHttpToolId != null) {
+                        tool.customHttpToolId in enabledHttpIds
+                    } else if (tool.remoteMachineId != null) {
                         configuredMachines.firstOrNull { it.id == tool.remoteMachineId }?.let { machine ->
                             remoteMachineToolEnabled(settings(), machine, tool.originalName)
                         } == true
@@ -561,13 +582,17 @@ class ToolChatViewModel internal constructor(
                     try {
                         require(tool != null) { "Tool is not enabled" }
                         val args = toolArguments(function["arguments"])
-                        result = if (tool.remoteMachineId != null) {
+                        result = if (tool.customHttpToolId != null) {
+                            val configured = customHttpTools().firstOrNull { it.id == tool.customHttpToolId }
+                                ?: error("Custom HTTP tool no longer exists")
+                            customHttpService.execute(configured, args)
+                        } else if (tool.remoteMachineId != null) {
                             val machine = configuredMachines.firstOrNull { it.id == tool.remoteMachineId }
                                 ?: error("Remote Machine is no longer configured")
                             check(remoteMachineToolEnabled(settings(), machine, tool.originalName)) {
                                 "Remote Machine or tool disabled"
                             }
-                            toolExecution.executeRemoteTool(machine, tool.originalName, args)
+                            workspaceTools.call(machine, tool.originalName, args, toolExecution::executeRemoteTool)
                         } else if (tool.serverId != null) {
                             check(
                                 mcpServerEnabled(settings(), tool.serverId) &&
@@ -579,7 +604,7 @@ class ToolChatViewModel internal constructor(
                                 tool.originalName, configuredMcpArguments(tool, args, settings())
                             )
                         } else if (name == SEARCH_TOOLS_TOOL_NAME) {
-                            check(settings().searchToolsEnabled) { "Search Tools disabled" }
+                            check(settings().searchToolsEnabled) { "Tools Search disabled" }
                             obj("tools" to searchToolCatalog(args.text("query"), searchable))
                         } else if (name == AGENT_SKILLS_SEARCH_TOOL_NAME) {
                             check(searchEnabled && settings().agentSkillsSearchEnabled) {
@@ -691,7 +716,7 @@ class ToolChatViewModel internal constructor(
                         val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull == true
                         val contentApiMedia = if (contentApi) resolveContentApiMedia(result, http) else null
                         if (contentApiMedia != null) result = contentApiMedia.content
-                        val summary = if (contentApi || mediaTool) {
+                        val summary = if (contentApi || mediaTool || tool.customHttpToolId != null) {
                             prepareToolResult(result, http.requireFiles())
                         } else {
                             prepareGenericToolResult(result)
@@ -735,7 +760,7 @@ class ToolChatViewModel internal constructor(
                                         name == SEND_FILE_TOOL_NAME -> sentFileNames(result)
                                         else -> summary.files
                                     },
-                                    inlineMedia = (mediaTool && name == "generate_music") || contentApiMedia?.files?.isNotEmpty() == true ||
+                                    inlineMedia = (tool.customHttpToolId != null && summary.files.isNotEmpty()) || (mediaTool && name == "generate_music") || contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responsePreviewLimit = if (contentApi || mediaTool) 0 else 6_000,
                                     response = completeResponse
@@ -822,6 +847,15 @@ class ToolChatViewModel internal constructor(
         REMOTE_TOOL_START_MACHINE, REMOTE_TOOL_UPDATE_IP, REMOTE_TOOL_OPEN_TERMINAL, REMOTE_TOOL_LIST_TERMINAL, REMOTE_TOOL_DISCONNECT -> buildJsonObject {
             put("type", "object")
             put("properties", buildJsonObject { })
+        }
+        REMOTE_TOOL_SET_WORKSPACE -> buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject {
+                put("path", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Absolute remote directory for this chat. Omit to clear the workspace.")
+                })
+            })
         }
         REMOTE_TOOL_CLOSE_TERMINAL -> buildJsonObject {
             put("type", "object")

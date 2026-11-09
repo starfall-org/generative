@@ -72,3 +72,11 @@ class RemoteTerminal internal constructor(
         }.apply { isDaemon = true; name = "remote-terminal-disconnect" }.start()
     }
 }
+
+/** Initialize only AI-created shells; a failed directory change must not leave a usable shell elsewhere. */
+internal fun remoteTerminalWorkspaceCommand(workspace: String): String {
+    require(workspace.startsWith('/') && '\u0000' !in workspace) { "workspace must be an absolute directory path" }
+    require(workspace.none { it < ' ' || it == '\u007f' }) { "workspace must not contain terminal control characters" }
+    val quotedPath = "'" + workspace.replace("'", "'\"'\"'") + "'"
+    return "cd $quotedPath || exit\n"
+}

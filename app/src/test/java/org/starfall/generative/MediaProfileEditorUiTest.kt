@@ -213,7 +213,7 @@ class MediaProfileEditorUiTest {
         }
         compose.onNodeWithTag("built-in-tools-media-tab").assertIsDisplayed()
         compose.onNodeWithTag("built-in-tools-others-tab").assertIsDisplayed().performClick()
-        compose.onNodeWithText("Search Tools").assertIsDisplayed()
+        compose.onNodeWithText("Tools Search").assertIsDisplayed()
         compose.onNodeWithText("Image Generation").assertDoesNotExist()
         compose.onNodeWithTag("built-in-tools-media-tab").performClick()
         compose.onNodeWithTag("media_profile_picker_generate_image").assertIsEnabled().performClick()

@@ -231,6 +231,7 @@ fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) 
         REMOTE_TOOL_CLOSE_TERMINAL,
         REMOTE_TOOL_LIST_TERMINAL,
         REMOTE_TOOL_READ_TERMINAL,
+        REMOTE_TOOL_SET_WORKSPACE,
         REMOTE_TOOL_EXECUTE,
         REMOTE_TOOL_DISCONNECT
     )
@@ -241,6 +242,7 @@ fun remoteMachineToolNames(type: RemoteMachineType): List<String> = when (type) 
             REMOTE_TOOL_CLOSE_TERMINAL,
             REMOTE_TOOL_LIST_TERMINAL,
             REMOTE_TOOL_READ_TERMINAL,
+            REMOTE_TOOL_SET_WORKSPACE,
             REMOTE_TOOL_EXECUTE,
             REMOTE_TOOL_DISCONNECT
         )
@@ -253,6 +255,7 @@ const val REMOTE_TOOL_OPEN_TERMINAL = "open_terminal"
 const val REMOTE_TOOL_CLOSE_TERMINAL = "close_terminal"
 const val REMOTE_TOOL_LIST_TERMINAL = "list_terminal"
 const val REMOTE_TOOL_READ_TERMINAL = "read_terminal"
+const val REMOTE_TOOL_SET_WORKSPACE = "set_workspace"
 const val REMOTE_TOOL_EXECUTE = "execute"
 const val REMOTE_TOOL_DISCONNECT = "disconnect"
 const val REMOTE_TOOL_START_MACHINE = "start_machine"

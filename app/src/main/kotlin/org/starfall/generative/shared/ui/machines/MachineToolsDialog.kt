@@ -22,6 +22,7 @@ import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_LIST_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_READ_TERMINAL
 import org.starfall.generative.shared.model.REMOTE_TOOL_OPEN_TERMINAL
+import org.starfall.generative.shared.model.REMOTE_TOOL_SET_WORKSPACE
 import org.starfall.generative.shared.model.REMOTE_TOOL_UPDATE_IP
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.remoteMachineToolNames
@@ -61,6 +62,7 @@ fun MachineToolsDialog(
                             REMOTE_TOOL_OPEN_TERMINAL -> R.string.remote_server_open_terminal
                             REMOTE_TOOL_CLOSE_TERMINAL -> R.string.remote_server_tool_close_terminal
                             REMOTE_TOOL_LIST_TERMINAL -> R.string.remote_server_tool_list_terminal
+                            REMOTE_TOOL_SET_WORKSPACE -> R.string.remote_server_tool_set_workspace
                             REMOTE_TOOL_READ_TERMINAL -> R.string.remote_server_tool_read_terminal
                             else -> R.string.remote_server_tool_execute
                         }

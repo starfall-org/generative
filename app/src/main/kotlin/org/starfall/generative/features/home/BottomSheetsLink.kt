@@ -1,5 +1,7 @@
 package org.starfall.generative.features.home
 
+import org.starfall.generative.features.home.shared.ui.CustomHttpToolsSheetContent
+import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import android.content.Intent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -61,6 +63,7 @@ internal enum class QuickActionsPage {
     ROOT,
     FEATURE_TOOLS,
     MCP_CONNECTORS,
+    CUSTOM_HTTP_TOOLS,
 }
 
 internal enum class ModelSheetPage {
@@ -102,6 +105,7 @@ internal class BottomSheetsLinkState {
     fun openMcpConnectors() {
         quickActionsPage = QuickActionsPage.MCP_CONNECTORS
     }
+    fun openCustomHttpTools() { quickActionsPage = QuickActionsPage.CUSTOM_HTTP_TOOLS }
     fun backToQuickActions() { quickActionsPage = QuickActionsPage.ROOT }
     fun openFilesUnavailableDialog() { showFilesSheet = true }
     fun dismissAddMenu() { quickActionsPage = null }
@@ -150,6 +154,7 @@ internal fun BottomSheetsLink(
     attachmentSessionKey: String? = null,
     onAttachmentImportingChange: (Boolean) -> Unit = {}
 ) {
+    val customHttpControls = LocalToolControls.current
     val context = LocalContext.current
     val files = remember(context) { ToolFiles(context) }
     val scope = rememberCoroutineScope()
@@ -300,6 +305,9 @@ internal fun BottomSheetsLink(
                         onOpenMcpConnectors = {
                             if (pageActive) sheets.openMcpConnectors()
                         },
+                        onOpenCustomHttpTools = {
+                            if (pageActive) sheets.openCustomHttpTools()
+                        },
                         onDismiss = {
                             if (pageActive) sheets.dismissAddMenu()
                         }
@@ -310,6 +318,15 @@ internal fun BottomSheetsLink(
                             if (pageActive) {
                                 sheets.dismissAddMenu()
                                 onOpenFeatureToolsSettings()
+                            }
+                        }
+                    )
+                    QuickActionsPage.CUSTOM_HTTP_TOOLS -> CustomHttpToolsSheetContent(
+                        onBack = { if (pageActive) sheets.backToQuickActions() },
+                        onOpenSettings = {
+                            if (pageActive) {
+                                sheets.dismissAddMenu()
+                                customHttpControls.openCustomHttpTools()
                             }
                         }
                     )

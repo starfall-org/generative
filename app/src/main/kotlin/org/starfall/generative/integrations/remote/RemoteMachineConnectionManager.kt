@@ -93,7 +93,7 @@ internal class RemoteMachineConnectionManager(
     }
 
     /** Tool-created terminals have no UI reader, so drain their output into the same capture buffer. */
-    suspend fun openToolTerminal(machine: RemoteMachine): RemoteTerminal {
+    suspend fun openToolTerminal(machine: RemoteMachine, workspace: String? = null): RemoteTerminal {
         val terminal = openTerminal(machine)
         ioScope.launch {
             val buffer = ByteArray(4096)
@@ -108,6 +108,15 @@ internal class RemoteMachineConnectionManager(
             } finally {
                 terminal.close()
             }
+        }
+        try {
+            if (workspace != null) withContext(Dispatchers.IO) {
+                terminal.output.write(remoteTerminalWorkspaceCommand(workspace).toByteArray(Charsets.UTF_8))
+                terminal.output.flush()
+            }
+        } catch (error: Throwable) {
+            terminal.close()
+            throw error
         }
         return terminal
     }

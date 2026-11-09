@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.shared.ui
 
+import org.starfall.generative.shared.model.CustomHttpTool
 import androidx.compose.runtime.staticCompositionLocalOf
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.RemoteMachine
@@ -8,6 +9,9 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 data class ToolControls(
+    val customHttpTools: List<CustomHttpTool> = emptyList(),
+    val setCustomHttpTool: (String, Boolean) -> Unit = { _, _ -> },
+    val openCustomHttpTools: () -> Unit = {},
     val servers: List<McpInfo> = emptyList(),
     val machines: List<RemoteMachine> = emptyList(),
     val settings: ToolSettings = ToolSettings(),

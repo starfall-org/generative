@@ -1,5 +1,6 @@
 package org.starfall.generative
 
+import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ChatViewModel by viewModels { container.viewModelFactory }
     private val configurationViewModel: ConfigurationViewModel by viewModels { container.viewModelFactory }
     private val settingsViewModel: SettingsViewModel by viewModels { container.viewModelFactory }
+    private val customHttpToolsViewModel: CustomHttpToolsViewModel by viewModels { container.viewModelFactory }
     private val remoteMachinesViewModel: RemoteMachinesViewModel by viewModels { container.viewModelFactory }
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -180,6 +182,7 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.fillMaxSize(), propagateMinConstraints = true) {
                         AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
                             container.toolFiles, container.appDataTransfer,
+                            customHttpToolsViewModel = customHttpToolsViewModel,
                             pendingTerminalMachineId = pendingTerminalMachineId,
                             onTerminalLaunchHandled = { pendingTerminalMachineId = null },
                             pendingAppDeepLink = pendingAppDeepLink,

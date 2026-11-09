@@ -104,6 +104,8 @@ data class Conversation(
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
     /** This chat's own instruction selection; null delegates to the configured instruction scope. */
     @SerialName("selected_prompt_ids") val selectedInstructionIds: Set<String>? = null,
+    /** Remote working directories keyed by machine ID, owned by this chat. */
+    @SerialName("remote_workspaces") val remoteWorkspaces: Map<String, String> = emptyMap(),
     /** Process-local list-structure epoch; serialized conversations always restore at revision zero. */
     @kotlinx.serialization.Transient val structuralRevision: Long = 0L,
     /** Memory-only session: it must never be added to history, backups, or persistent storage. */

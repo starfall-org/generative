@@ -1,5 +1,6 @@
 package org.starfall.generative.features.appdata.logic
 
+import org.starfall.generative.database.repositories.CustomHttpToolRepository
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -63,7 +64,8 @@ class AppDataTransferService(
     private val toolSettingsStore: ToolSettingsStore,
     private val iconStore: IconStore,
     private val toolFiles: ToolFiles,
-    private val remoteMachineService: RemoteMachineService
+    private val remoteMachineService: RemoteMachineService,
+    private val customHttpTools: CustomHttpToolRepository? = null
 ) {
     private val restoreMutex = Mutex()
     private val agentSkillsStore = AgentSkillsStore(context)
@@ -98,6 +100,7 @@ class AppDataTransferService(
             providers = modelRepository.loadProvidersForExport(),
             providerGroups = modelRepository.allGroups.first(),
             mcpServers = mcpRepository.loadServersForExport(),
+            customHttpTools = customHttpTools?.snapshot().orEmpty(),
             speechServices = speechRepository.allServices.first(),
             conversations = conversationRepository.conversationList.first().mapNotNull { conversationRepository.loadById(it.id) },
             storedFileNames = storedFiles.keys.sorted(),
@@ -297,7 +300,7 @@ class AppDataTransferService(
                 val backup = readZipBackup(buffered, staging)
                 restoreFullBackup(backup, beforeFullRestore)
                 AppDataImportResult(itemCount = backup.data.providers.size + backup.data.providerGroups.size +
-                    backup.data.mcpServers.size + backup.data.speechServices.size + backup.data.conversations.size +
+                    backup.data.mcpServers.size + backup.data.customHttpTools.size + backup.data.speechServices.size + backup.data.conversations.size +
                     backup.data.profiles.size, fullRestore = true)
             } finally {
                 staging.deleteRecursively()
@@ -377,6 +380,10 @@ class AppDataTransferService(
 
     private fun validateBackupFiles(imported: ZipAppDataBackup) {
         val data = imported.data
+        data.customHttpTools.forEach { it.validate() }
+        require(data.customHttpTools.map { it.id }.distinct().size == data.customHttpTools.size) {
+            "The backup contains duplicate Custom HTTP Tool IDs."
+        }
         require(data.icons.files.toSet() == imported.iconFiles.keys) {
             "The icon files in the backup do not match its manifest."
         }
@@ -406,6 +413,7 @@ class AppDataTransferService(
         val data = imported.data
         modelRepository.replaceAll(data.providers, data.providerGroups)
         mcpRepository.replaceAll(data.mcpServers)
+        customHttpTools?.replaceAll(data.customHttpTools)
         speechRepository.replaceAll(data.speechServices)
         profileRepository.replaceAll(data.profiles)
         conversationRepository.replaceAll(data.conversations)

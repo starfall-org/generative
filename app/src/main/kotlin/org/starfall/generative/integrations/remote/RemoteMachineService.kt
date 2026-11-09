@@ -305,7 +305,12 @@ class RemoteMachineService(
         return connectionManager.execute(machine, command, timeoutSeconds, terminalId)
     }
 
-    suspend fun executeTool(machine: RemoteMachine, toolName: String, arguments: JsonObject): JsonObject {
+    suspend fun executeTool(
+        machine: RemoteMachine,
+        toolName: String,
+        arguments: JsonObject,
+        workspace: String? = null
+    ): JsonObject {
         require(machine.isToolEnabled(toolName)) { "Remote Machine tool is disabled." }
         return when (toolName) {
             REMOTE_TOOL_UPDATE_IP -> refreshGCloudIp(machine, forceRefresh = true).fold(
@@ -329,7 +334,7 @@ class RemoteMachineService(
                 onFailure = { throw it }
             )
             REMOTE_TOOL_OPEN_TERMINAL -> {
-                val terminal = connectionManager.openToolTerminal(machine)
+                val terminal = connectionManager.openToolTerminal(machine, workspace)
                 buildJsonObject {
                     put("status", "opened")
                     put("terminal_id", terminal.id)

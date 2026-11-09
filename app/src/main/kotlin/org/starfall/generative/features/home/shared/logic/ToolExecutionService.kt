@@ -28,8 +28,9 @@ internal class ToolExecutionService(
     suspend fun executeRemoteTool(
         machine: RemoteMachine,
         name: String,
-        arguments: JsonObject
-    ): JsonObject = remoteMachineService?.executeTool(machine, name, arguments)
+        arguments: JsonObject,
+        workspace: String? = null
+    ): JsonObject = remoteMachineService?.executeTool(machine, name, arguments, workspace)
         ?: error("Remote Machine service is unavailable")
 
     fun disconnectRemoteMachines() {

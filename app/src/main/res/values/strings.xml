@@ -1216,7 +1216,7 @@
     <string name="user_profile_image_error">Unable to use image</string>
     <string name="user_profile_photos_gallery">Photos Gallery</string>
     <string name="user_profile_no_photos">No photos in Media Storage</string>
-    <string name="tool_search_tools_title" translatable="false">Search Tools</string>
+    <string name="tool_search_tools_title" translatable="false">Tools Search</string>
     <string name="tool_search_tools_description">Find tool names and enabled states</string>
     <string name="ollama_error_text">[Error: %1$s]</string>
     <string name="ollama_network_error">Network error</string>
@@ -1316,4 +1316,58 @@
     <string name="providers_demo_title">ProvidersScreen demo</string>
         <string name="providers_demo_editor_title">Demo provider</string>
     <string name="content_list_no_results">No matching items.</string>
+    <string name="remote_server_tool_set_workspace">Set workspace</string>
+    <string name="custom_http_tools" translatable="false">Custom HTTP Tools</string>
+    <string name="http_tool_name" translatable="false">Tool name</string>
+    <string name="http_tool_method" translatable="false">HTTP Method</string>
+    <string name="http_tool_url" translatable="false">URL</string>
+    <string name="http_tool_parameters" translatable="false">Parameters (JSON Schema)</string>
+    <string name="http_tool_query" translatable="false">Query (JSON)</string>
+    <string name="http_tool_headers" translatable="false">Headers (JSON)</string>
+    <string name="http_tool_body" translatable="false">Body</string>
+    <string name="http_tool_response_mode" translatable="false">Response Mode</string>
+    <string name="http_tool_response_mapping" translatable="false">Response Mapping (JSON Pointer)</string>
+    <string name="http_tool_editor">HTTP tool editor</string>
+    <string name="http_tools_empty">No custom HTTP tools. Add a tool to get started.</string>
+    <string name="http_tool_enabled">Enabled</string>
+    <string name="http_tool_disabled">Disabled</string>
+    <string name="http_tool_enable">Enable</string>
+    <string name="http_tool_disable">Disable</string>
+    <string name="http_tool_parameters_help">Use an object JSON Schema with properties, required, types, descriptions and optional defaults. Tool names use letters, digits and underscores (up to 59 characters).</string>
+    <string name="http_tool_mapping_help">Use {{parameter}} in query, headers or body. Example: {\"q\":\"{{query}}\"}. Exact JSON tokens preserve numbers, booleans, arrays and objects. Missing optional parameters omit their exact-token fields. GET and HEAD have no body.</string>
+    <string name="http_tool_response_help">AUTO detects the content type; RAW returns text; JSON parses JSON; MEDIA saves the response as a file. Use {} to keep the response, or map output fields to JSON Pointers, e.g. {\"items\":\"/data/items\",\"total\":\"/meta/count\"}. Nested objects and arrays are supported. An empty pointer selects the full response.</string>
+    <string name="http_tool_invalid">Check the HTTP URL, tool name, object JSON Schema, JSON mappings and body. Response mapping leaves must be JSON Pointers.</string>
+    <string name="http_parameter_name" translatable="false">Parameter name</string>
+    <string name="http_parameter_type" translatable="false">Type</string>
+    <string name="http_parameter_default" translatable="false">Default value</string>
+    <string name="http_parameter_enum" translatable="false">Allowed values (JSON array)</string>
+    <string name="http_parameter_constraints" translatable="false">Constraints (JSON Schema)</string>
+    <string name="http_parameter_add">Add parameter</string>
+    <string name="http_parameter_edit">Edit parameter</string>
+    <string name="http_parameter_required">Required</string>
+    <string name="http_parameter_use_default">Use a default value</string>
+    <string name="http_parameter_invalid">Enter a unique parameter name. Check the default value, allowed values and JSON Schema constraints. Values must match the selected type.</string>
+    <string name="http_parameter_constraints_help">Optional constraints include minimum, maximum, minLength, pattern, nested properties or array items. String defaults are plain text; other defaults and allowed values use JSON.</string>
+    <string name="http_parameter_advanced">Advanced JSON configuration</string>
+    <string name="http_tool_request_section" translatable="false">Request</string>
+    <string name="http_tool_response_section" translatable="false">Response</string>
+    <string name="http_tool_response_mapping_section" translatable="false">Response fields</string>
+    <string name="http_response_field" translatable="false">Field</string>
+    <string name="http_response_path" translatable="false">JSON Pointer</string>
+    <string name="http_response_mapping_add">Add response field</string>
+    <string name="http_response_mapping_invalid">Enter a unique field name and a valid JSON Pointer.</string>
+    <string name="http_tool_entire_response">Entire response</string>
+    <string name="http_request_insert_parameter">Insert parameter</string>
+    <string name="http_request_insert">Insert</string>
+    <string name="http_request_format_json">Format JSON</string>
+    <string name="http_request_body_format" translatable="false">Body format</string>
+    <string name="http_request_json_invalid">Enter valid JSON. Put parameter tokens inside double quotes.</string>
+    <string name="http_request_object_invalid">Enter a JSON object with field names and values.</string>
+    <string name="http_request_headers_invalid">Enter a JSON object with valid, unique header names and simple values. Header names ignore letter case.</string>
+    <string name="http_request_body_not_allowed">GET and HEAD cannot send a body. Clear the body or change the method.</string>
+    <string name="http_request_preview">Preview request</string>
+    <string name="http_request_preview_help">Enter sample parameter values as a JSON object. Defaults are applied automatically. This preview stays on your device and sends no request.</string>
+    <string name="http_request_sample">Sample parameter values (JSON)</string>
+    <string name="http_request_preview_invalid">Check the request templates and sample values. Provide required parameters, use the declared types and allowed values, and remove references to deleted parameters.</string>
+    <string name="http_request_parameter_invalid">Template references a parameter that is not declared. Insert an existing parameter or update the template.</string>
 </resources>

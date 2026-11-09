@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.shared.model.PortForwardRule
 import org.starfall.generative.shared.model.PortForwardingConfig
+import org.starfall.generative.shared.model.REMOTE_TOOL_SET_WORKSPACE
 import org.starfall.generative.shared.model.REMOTE_TOOL_DISCONNECT
 import org.starfall.generative.shared.model.REMOTE_TOOL_EXECUTE
 import org.starfall.generative.shared.model.REMOTE_TOOL_READ_TERMINAL
@@ -93,11 +94,11 @@ class RemoteMachineTest {
     @Test
     fun everyMachineExposesDisconnectAndExecuteAndCloudShellAddsUpdateIp() {
         assertEquals(
-            listOf("open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_READ_TERMINAL, REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
+            listOf("open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_READ_TERMINAL, REMOTE_TOOL_SET_WORKSPACE, REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("ssh", "SSH").supportedToolNames()
         )
         assertEquals(
-            listOf(REMOTE_TOOL_UPDATE_IP, "open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_READ_TERMINAL, REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
+            listOf(REMOTE_TOOL_UPDATE_IP, "open_terminal", "close_terminal", "list_terminal", REMOTE_TOOL_READ_TERMINAL, REMOTE_TOOL_SET_WORKSPACE, REMOTE_TOOL_EXECUTE, REMOTE_TOOL_DISCONNECT),
             RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).supportedToolNames()
         )
         assertTrue(RemoteMachine("cloud", "Cloud", type = RemoteMachineType.GCLOUD_SHELL).displayHost.isNotBlank())

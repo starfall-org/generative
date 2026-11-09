@@ -114,18 +114,19 @@ class ChatInputBehaviorTest {
         for (text in listOf("A long message that wraps naturally. ".repeat(20), "First line\nSecond line")) {
             editor.performTextReplacement(text)
             val expanded = editor.fetchSemanticsNode().boundsInRoot
+            editor.assertIsFocused()
             assertTrue("Editor should widen after wrapping", expanded.width > initialWidth)
             for (description in controls) {
                 val bounds = compose.onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot
                 val initial = initialBounds.getValue(description)
                 assertTrue("Controls should move below the editor", bounds.top >= expanded.bottom)
-                assertEquals("$description width should halve", initial.width / 2f, bounds.width, 1f)
-                assertEquals("$description height should halve", initial.height / 2f, bounds.height, 1f)
+                assertEquals("$description width should shrink to 75%", initial.width * 0.75f, bounds.width, 1f)
+                assertEquals("$description height should shrink to 75%", initial.height * 0.75f, bounds.height, 1f)
             }
             val composer = compose.onNodeWithTag("chat-input").fetchSemanticsNode().boundsInRoot
             val model = compose.onNodeWithContentDescription("Select model").fetchSemanticsNode().boundsInRoot
-            assertEquals("The control row and bottom inset should halve",
-                initialRowHeight / 2f, composer.bottom - model.top, 1f)
+            assertEquals("The control row and bottom inset should shrink to 75%",
+                initialRowHeight * 0.75f, composer.bottom - model.top, 1f)
 
             editor.performTextReplacement("Hi")
             for (description in controls) {

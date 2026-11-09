@@ -311,7 +311,10 @@ class ConversationRepository @JvmOverloads constructor(
             profileId = entity.profileId,
             summary = dao.getSummary(entity.id)?.toModel(),
             reasoningEffort = entity.reasoningEffort,
-            selectedInstructionIds = entity.selectedInstructionIds?.let(::decodeInstructionIds)
+            selectedInstructionIds = entity.selectedInstructionIds?.let(::decodeInstructionIds),
+            remoteWorkspaces = runCatching {
+                json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), entity.remoteWorkspacesJson)
+            }.getOrDefault(emptyMap())
         )
     }
 
@@ -443,7 +446,9 @@ class ConversationRepository @JvmOverloads constructor(
         modelId = conversation.modelId,
         profileId = conversation.profileId,
         reasoningEffort = conversation.reasoningEffort,
-        selectedInstructionIds = conversation.selectedInstructionIds?.let(::encodeInstructionIds)
+        selectedInstructionIds = conversation.selectedInstructionIds?.let(::encodeInstructionIds),
+        remoteWorkspacesJson = json.encodeToString(
+            MapSerializer(String.serializer(), String.serializer()), conversation.remoteWorkspaces)
     )
 
     private fun encodeInstructionIds(ids: Set<String>): String =

@@ -252,4 +252,26 @@ class QuickActionsSheetTransitionTest {
         assertEquals(nodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Photos").assertIsDisplayed()
     }
+    @Test
+    fun customHttpToolsFollowMcpAndToggleInsideTheSameSheet() {
+        val tool = org.starfall.generative.shared.model.CustomHttpTool(name = "weather", url = "https://example.test")
+        var toggled: Pair<String, Boolean>? = null
+        var settingsOpened = false
+        compose.setContent {
+            LinkedQuickActionsHost(ToolControls(customHttpTools = listOf(tool),
+                setCustomHttpTool = { id, enabled -> toggled = id to enabled },
+                openCustomHttpTools = { settingsOpened = true }))
+        }
+        compose.waitForIdle()
+        val nodeId = compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id
+        compose.onNodeWithText("Custom HTTP Tools").performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(450)
+        assertEquals(nodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
+        compose.onNodeWithText("weather").performClick()
+        assertEquals(tool.id to true, toggled)
+        compose.onNodeWithContentDescription("Open Custom HTTP Tools settings").performClick()
+        compose.waitForIdle()
+        assertTrue(settingsOpened)
+    }
+
 }

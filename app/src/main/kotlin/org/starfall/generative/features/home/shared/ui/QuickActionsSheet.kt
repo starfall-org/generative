@@ -33,7 +33,8 @@ fun QuickActionsSheet(
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenSkills: () -> Unit = {}
+    onOpenSkills: () -> Unit = {},
+    onOpenCustomHttpTools: () -> Unit = {}
 ) {
     BottomSheet(
         onDismissRequest = onDismiss,
@@ -48,7 +49,8 @@ fun QuickActionsSheet(
             onOpenFeatureTools = onOpenFeatureTools,
             onOpenMcpConnectors = onOpenMcpConnectors,
             onDismiss = onDismiss,
-            onOpenSkills = onOpenSkills
+            onOpenSkills = onOpenSkills,
+            onOpenCustomHttpTools = onOpenCustomHttpTools
         )
     }
 }
@@ -63,7 +65,8 @@ internal fun QuickActionsSheetContent(
     onOpenFeatureTools: () -> Unit,
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenSkills: () -> Unit = {}
+    onOpenSkills: () -> Unit = {},
+    onOpenCustomHttpTools: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     Column(
@@ -141,6 +144,11 @@ internal fun QuickActionsSheetContent(
             icon = Icons.Outlined.Mcp,
             title = stringResource(R.string.common_mcp_connectors),
             onClick = onOpenMcpConnectors
+        )
+        AddActionRow(
+            icon = Icons.Outlined.Build,
+            title = stringResource(R.string.custom_http_tools),
+            onClick = onOpenCustomHttpTools
         )
     }
 }

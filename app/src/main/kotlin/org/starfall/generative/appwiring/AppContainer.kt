@@ -1,5 +1,8 @@
 package org.starfall.generative.appwiring
 
+import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
+import org.starfall.generative.database.repositories.CustomHttpToolRepository
+
 
 import android.content.Context
 import org.starfall.generative.BuildConfig
@@ -59,6 +62,7 @@ class AppContainer(context: Context) {
     private val icons = IconStore(appContext)
     private val providers = ModelRepository(database, aiService, icons)
     private val mcp = McpRepository(database, mcpService, icons, mcpOAuth, BuildConfig.CONTENT_API_MCP_URL)
+    private val httpTools = CustomHttpToolRepository(database)
     private val speech = SpeechRepository(database)
     private val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
@@ -66,7 +70,7 @@ class AppContainer(context: Context) {
     val remoteMachineService = RemoteMachineService(appContext)
     val appDataTransfer = AppDataTransferService(
         appContext, providers, mcp, speech, profiles, conversations, preferences, toolSettings,
-        icons, toolFiles, remoteMachineService
+        icons, toolFiles, remoteMachineService, httpTools
     )
     val defaultDataInitializer = DefaultDataInitializer(providers, mcp, speech, preferences, icons)
 
@@ -91,6 +95,7 @@ class AppContainer(context: Context) {
                 mcp,
                 preferences,
                 ToolChatViewModel(toolHttp, mcpService, aiService, remoteMachineService, toolChatLabels(appContext),
+                    customHttpTools = httpTools::snapshot,
                     saveSkill = { name, description, content ->
                         val cleanName = normalizeAgentSkillName(name)
                         require(cleanName != DEFAULT_AGENT_SKILL_ID) {
@@ -125,6 +130,7 @@ class AppContainer(context: Context) {
             )
         }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }
+        initializer { CustomHttpToolsViewModel(httpTools) }
         initializer { SettingsViewModel(preferences) }
         initializer { RemoteMachinesViewModel(remoteMachineService) }
     }

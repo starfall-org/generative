@@ -1,5 +1,6 @@
 package org.starfall.generative.features.appdata.model
 
+import org.starfall.generative.shared.model.CustomHttpTool
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.JsonObject
@@ -22,6 +23,7 @@ data class AppDataBackup(
     val type: String = "full_backup",
     val providers: List<ModelProvider> = emptyList(),
     val providerGroups: List<ProviderGroup> = emptyList(),
+    val customHttpTools: List<CustomHttpTool> = emptyList(),
     val mcpServers: List<McpInfo> = emptyList(),
     val speechServices: List<SpeechService> = emptyList(),
     val conversations: List<Conversation> = emptyList(),

@@ -8,8 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -258,11 +256,7 @@ internal fun UserInputArea(
         constraints = Constraints(maxWidth = inlineTextWidthPx),
         maxLines = 2
     ).lineCount > 1
-    val controlScale by animateFloatAsState(
-        targetValue = if (buttonsBelow) 0.5f else 1f,
-        animationSpec = tween(180),
-        label = "input-control-scale"
-    )
+    val controlScale = if (buttonsBelow) 0.75f else 1f
     // The whole input grows to half the screen for text only, 60% when attachments are shown.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val maxInputHeight = (screenHeightDp * if (attachments.isNotEmpty()) 0.6f else 0.5f).dp
@@ -407,7 +401,7 @@ internal fun UserInputArea(
             // No shadowElevation: the surface is translucent, so its shadow would show through inside.
             shadowElevation = 0.dp
         ) {
-            Column(modifier = Modifier.fillMaxWidth().animateContentSize(tween(180)).heightIn(max = maxInputHeight)) {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxInputHeight)) {
                 if (mediaKind != null) {
                     // Mode chip lives inside the input; tapping it leaves the generation mode.
                     Row(

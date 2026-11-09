@@ -1,5 +1,9 @@
 package org.starfall.generative.navigation
 
+import org.starfall.generative.shared.model.CustomHttpTool
+import org.starfall.generative.features.httptools.ui.CustomHttpToolsScreen
+import org.starfall.generative.features.httptools.ui.HttpToolEditor
+import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -121,6 +125,7 @@ enum class AppDestination(val route: String) {
     CHAT("chat"),
     PROVIDERS("providers"),
     MCP("mcp"),
+    CUSTOM_HTTP_TOOLS("custom_http_tools"),
     SPEECH("speech"),
     FEATURES("features"),
     CUSTOMIZATION("user_profile"),
@@ -156,7 +161,10 @@ internal fun AppNavigation(
     onAppDeepLinkHandled: (Long) -> Unit = {},
     pendingExternalShare: ExternalShareRequest? = null,
     onExternalShareHandled: (Long) -> Unit = {},
+    customHttpToolsViewModel: CustomHttpToolsViewModel,
 ) {
+    val httpTools by customHttpToolsViewModel.tools.collectAsStateWithLifecycle()
+    var httpEditor by remember { mutableStateOf<CustomHttpTool?>(null) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showMediaSheet by rememberSaveable { mutableStateOf(false) }
     val drawerFocusManager = LocalFocusManager.current
@@ -500,6 +508,9 @@ internal fun AppNavigation(
         ),
         LocalToolControls provides ToolControls(
             servers = mcpServers,
+            customHttpTools = httpTools,
+            setCustomHttpTool = customHttpToolsViewModel::setEnabled,
+            openCustomHttpTools = { openConfiguration(AppDestination.CUSTOM_HTTP_TOOLS) },
             machines = remoteMachineState.machines,
             settings = toolSettings,
             providers = providers,
@@ -907,6 +918,25 @@ internal fun AppNavigation(
                         )
                     }
 
+                    composable(AppDestination.CUSTOM_HTTP_TOOLS.route) {
+                        DisposableEffect(Unit) { onDispose { httpEditor = null } }
+                        RetainedScreenContent(editor = httpEditor) { tool ->
+                            if (tool != null) {
+                                HttpToolEditor(
+                                    tool = tool, onSave = customHttpToolsViewModel::save,
+                                    onBack = { httpEditor = null }
+                                )
+                            } else {
+                                CustomHttpToolsScreen(
+                                    tools = httpTools, onOpenEditor = { httpEditor = it },
+                                    onSetEnabled = customHttpToolsViewModel::setEnabled,
+                                    onDelete = customHttpToolsViewModel::delete,
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                    }
+
                     composable(AppDestination.MCP.route) {
                         DisposableEffect(Unit) { onDispose { mcpEditor = null } }
                         RetainedScreenContent(editor = mcpEditor) { page ->
@@ -1198,6 +1228,7 @@ internal fun AppNavigation(
                             onNavigateToToolsEditor = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                             onNavigateToProviders = { openConfiguration(AppDestination.PROVIDERS) },
                             onNavigateToMcp = { openConfiguration(AppDestination.MCP) },
+                            onNavigateToCustomHttpTools = { openConfiguration(AppDestination.CUSTOM_HTTP_TOOLS) },
                             onNavigateToSpeech = { openConfiguration(AppDestination.SPEECH) },
                             onNavigateToRemoteMachines = { openConfiguration(AppDestination.REMOTE_MACHINES) },
                             onNavigateToStorage = { openConfiguration(AppDestination.STORAGE) },

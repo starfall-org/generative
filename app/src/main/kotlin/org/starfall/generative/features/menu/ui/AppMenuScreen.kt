@@ -77,6 +77,7 @@ fun AppMenuScreen(
     onNavigateToToolsEditor: () -> Unit = {},
     onNavigateToProviders: () -> Unit = {},
     onNavigateToMcp: () -> Unit = {},
+    onNavigateToCustomHttpTools: () -> Unit = {},
     onNavigateToSpeech: () -> Unit = {},
     onNavigateToRemoteMachines: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
@@ -178,6 +179,10 @@ fun AppMenuScreen(
                     ComponentGroupSlot("mcp") { modifier, shape ->
                         FeatureButton(stringResource(R.string.mcp), Icons.Outlined.Mcp,
                             onNavigateToMcp, modifier, shape, "mcp")
+                    },
+                    ComponentGroupSlot("custom-http-tools") { modifier, shape ->
+                        FeatureButton(stringResource(R.string.custom_http_tools), FluentUi.Regular.Globe,
+                            onNavigateToCustomHttpTools, modifier, shape, "custom-http-tools")
                     }
                 )
             )

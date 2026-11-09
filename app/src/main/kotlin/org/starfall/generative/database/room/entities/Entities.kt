@@ -21,7 +21,8 @@ data class ConversationEntity(
     val profileId: String?,
     val reasoningEffort: String?,
     /** JSON array of the instruction ids switched on for this chat; null while it follows the library default. */
-    @ColumnInfo(name = "selectedPromptIds") val selectedInstructionIds: String? = null
+    @ColumnInfo(name = "selectedPromptIds") val selectedInstructionIds: String? = null,
+    @ColumnInfo(defaultValue = "'{}'") val remoteWorkspacesJson: String = "{}"
 )
 
 @Entity(tableName = "chat_profiles")
