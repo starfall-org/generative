@@ -2,7 +2,7 @@ package org.starfall.generative.integrations.httptools
 
 import kotlinx.serialization.json.*
 
-private val parameterToken = Regex("\\{\\{\\s*([^{}]+?)\\s*}}")
+private val parameterToken = Regex("\\{\\{\\s*([^{}]+?)\\s*\\}\\}")
 
 /** Exact tokens keep JSON types; interpolation inside a string produces text. */
 internal fun mapHttpValue(value: JsonElement, arguments: JsonObject): JsonElement = when (value) {

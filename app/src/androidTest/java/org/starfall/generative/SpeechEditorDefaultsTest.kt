@@ -101,7 +101,7 @@ class SpeechEditorDefaultsTest {
         }
     }
 
-    @Test fun sentenceCountDefaultsToTenAndIsSavedWithTheService() {
+    @Test fun wordCountDefaultsToOneHundredAndIsSavedWithTheService() {
         val provider = org.starfall.generative.shared.model.provider.ModelProvider("p", "Provider",
             org.starfall.generative.shared.model.api.ModelApiType.OPENAI, baseUrl = "https://example.test/v1",
             config = org.starfall.generative.shared.model.provider.ProviderConfiguration(modelConfigs = mapOf(
@@ -112,10 +112,10 @@ class SpeechEditorDefaultsTest {
             SpeechEditor(SpeechService("s", "Voice", provider = "p", modelId = "tts"), false, listOf(provider), false,
                 onTest = { _, _ -> }, onDismiss = {}, onSave = { saved = it })
         } }
-        compose.onNodeWithTag("speech-chunk-size").performScrollTo().assertTextContains("10")
+        compose.onNodeWithTag("speech-chunk-size").performScrollTo().assertTextContains("100")
             .performTextReplacement("6")
         compose.onNodeWithText("Save").performClick()
-        compose.runOnIdle { org.junit.Assert.assertEquals(6, saved?.sentencesPerChunk) }
+        compose.runOnIdle { org.junit.Assert.assertEquals(6, saved?.maxWordsPerChunk) }
     }
 
 }

@@ -23,6 +23,7 @@ import org.starfall.generative.features.httptools.logic.unknownHttpRequestParame
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
+import org.starfall.generative.shared.ui.inputs.TemplateAutocompleteMenu
 import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.inputs.selectAllOnTripleClick
 
@@ -62,19 +63,32 @@ internal fun HttpRequestTemplateField(
                 SharedIcon(Icons.Outlined.Add, stringResource(R.string.http_request_insert_parameter))
             }
         }
-        // Own the selection so inserting a token replaces the selection at the cursor.
-        OutlinedTextField(value = field, onValueChange = {
-            field = it.copy(composition = null)
-            onChange(it.text)
-        }, modifier = Modifier.fillMaxWidth().testTag(tag).selectAllOnTripleClick {
-            field = field.copy(selection = TextRange(0, field.text.length), composition = null)
-        }, readOnly = readOnly, isError = invalid, minLines = 3,
-            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
-            supportingText = if (invalid) { { Text(stringResource(if (unknown) R.string.http_request_parameter_invalid
-                else if (headers) R.string.http_request_headers_invalid
-                else if (objectOnly) R.string.http_request_object_invalid else R.string.http_request_json_invalid)) } } else null)
+        TemplateAutocompleteMenu(
+            value = field,
+            onValueChange = { field = it.copy(composition = null); onChange(it.text) },
+            enabled = insertable && !readOnly,
+            matches = { httpParameterMatches(parameters, it, json) },
+            complete = { current, token, name -> completeHttpParameter(current, token, name, json) },
+            optionTag = { "${tag}_parameter_$it" },
+            optionText = { name, active ->
+                Text("{{$name}}", fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+            }
+        ) { completionModifier ->
+            OutlinedTextField(value = field, onValueChange = {
+                field = it.copy(composition = null)
+                onChange(it.text)
+            }, modifier = Modifier.fillMaxWidth().testTag(tag).then(completionModifier).selectAllOnTripleClick {
+                field = field.copy(selection = TextRange(0, field.text.length), composition = null)
+            }, readOnly = readOnly, isError = invalid, minLines = 3,
+                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                supportingText = if (invalid) { { Text(stringResource(if (unknown) R.string.http_request_parameter_invalid
+                    else if (headers) R.string.http_request_headers_invalid
+                    else if (objectOnly) R.string.http_request_object_invalid else R.string.http_request_json_invalid)) } } else null)
+        }
     }
     if (inserting) AlertDialog(onDismissRequest = { inserting = false },
         title = { Text(stringResource(R.string.http_request_insert_parameter)) }, text = {

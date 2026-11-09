@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome version of the canonical ring-and-dot logo in docs/generative_logo.png. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@color/generative_logo_foreground"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M15.9,21.9 A10.6,10.6 0,1 1,21.9 15.9" />
+    <path
+        android:fillColor="@color/generative_logo_foreground"
+        android:pathData="M19.7,17.4 A2.3,2.3 0,1 0,19.7 22 A2.3,2.3 0,1 0,19.7 17.4" />
+</vector>

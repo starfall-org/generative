@@ -42,7 +42,7 @@ class OAuthCallbackService : Service() {
                 returnIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             startForeground(NOTIFICATION_ID, NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_info_details)
+                .setSmallIcon(R.drawable.ic_generative_logo)
                 .setContentTitle(getString(R.string.notification_oauth_title))
                 .setContentText(getString(R.string.oauth_browser_pending))
                 .setContentIntent(returnToApp)

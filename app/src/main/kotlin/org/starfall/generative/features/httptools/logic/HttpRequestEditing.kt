@@ -9,7 +9,7 @@ internal val httpEditorJson = Json { prettyPrint = true }
 
 internal fun unknownHttpRequestParameters(text: String, json: Boolean, parameters: List<String>): Set<String> {
     val references = mutableSetOf<String>()
-    val token = Regex("\\{\\{\\s*([^{}]+?)\\s*}}")
+    val token = Regex("\\{\\{\\s*([^{}]+?)\\s*\\}\\}")
     fun scan(text: String) { token.findAll(text).forEach { references += it.groupValues[1] } }
     fun visit(value: JsonElement) {
         when (value) {

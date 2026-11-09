@@ -9,12 +9,7 @@ import kotlinx.serialization.json.Json
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.media.MediaRequestStep
 
-/** The unfinished (or cursor-edited) {{variable}} containing the caret. */
-internal data class MediaVariableToken(
-    val start: Int,
-    val end: Int,
-    val prefix: String
-)
+internal typealias MediaVariableToken = org.starfall.generative.shared.ui.inputs.TemplateVariableToken
 
 internal data class MediaVariableCandidate(
     val value: String,
@@ -23,16 +18,8 @@ internal data class MediaVariableCandidate(
     val pathHint: String? = null
 )
 
-internal fun mediaVariableToken(text: String, cursor: Int): MediaVariableToken? {
-    if (cursor < 2 || cursor > text.length) return null
-    val start = text.lastIndexOf("{{", cursor - 1)
-    if (start < 0) return null
-    val closing = text.indexOf("}}", start + 2)
-    if (closing >= 0 && closing < cursor) return null
-    val prefix = text.substring(start + 2, cursor)
-    if (prefix.any { it == '{' || it == '}' || it == '\n' }) return null
-    return MediaVariableToken(start, if (closing >= cursor) closing + 2 else cursor, prefix.trimStart())
-}
+internal fun mediaVariableToken(text: String, cursor: Int): MediaVariableToken? =
+    org.starfall.generative.shared.ui.inputs.templateVariableToken(text, cursor)
 
 internal fun mediaVariableMatches(
     candidates: List<MediaVariableCandidate>, prefix: String, limit: Int = 10

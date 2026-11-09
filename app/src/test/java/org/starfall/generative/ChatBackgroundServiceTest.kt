@@ -24,6 +24,7 @@ class ChatBackgroundServiceTest {
             assertEquals(Service.START_NOT_STICKY, service.onStartCommand(Intent(), 0, 1))
             val notification = shadowOf(service).lastForegroundNotification
             assertNotNull(notification)
+            assertEquals(R.drawable.ic_generative_logo, notification.smallIcon.resId)
             assertEquals(Notification.CATEGORY_SERVICE, notification.category)
             assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
             assertTrue(notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)

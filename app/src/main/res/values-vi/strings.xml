@@ -1026,7 +1026,7 @@
     <string name="http_tool_enable">Bật</string>
     <string name="http_tool_disable">Tắt</string>
     <string name="http_tool_parameters_help">Khai báo JSON Schema kiểu object với properties, required, kiểu dữ liệu, mô tả và giá trị mặc định nếu cần. Tên công cụ dùng chữ cái, chữ số và dấu gạch dưới (tối đa 59 ký tự).</string>
-    <string name="http_tool_mapping_help">Dùng {{parameter}} trong query, headers hoặc body. Ví dụ: {\"q\":\"{{query}}\"}. Token chiếm toàn bộ giá trị JSON giữ nguyên kiểu số, boolean, mảng và object. Tham số tùy chọn chưa được cung cấp sẽ được bỏ khỏi các trường chỉ chứa token đó. GET và HEAD không có body.</string>
+    <string name="http_tool_mapping_help">Dùng {{parameter}} trong query, headers hoặc body. Gõ {{ để chọn và hoàn thành tham số đã khai báo ngay tại con trỏ. Ví dụ: {\"q\":\"{{query}}\"}. Token chiếm toàn bộ giá trị JSON giữ nguyên kiểu số, boolean, mảng và object. Tham số tùy chọn chưa được cung cấp sẽ được bỏ khỏi các trường chỉ chứa token đó. GET và HEAD không có body.</string>
     <string name="http_tool_response_help">AUTO nhận diện kiểu nội dung; RAW trả về văn bản; JSON phân tích JSON; MEDIA lưu phản hồi thành tệp. Dùng {} để giữ nguyên phản hồi, hoặc ánh xạ các trường đầu ra bằng JSON Pointer, ví dụ: {\"items\":\"/data/items\",\"total\":\"/meta/count\"}. Hỗ trợ object và mảng lồng nhau. Pointer rỗng chọn toàn bộ phản hồi.</string>
     <string name="http_tool_invalid">Kiểm tra URL HTTP, tên công cụ, JSON Schema kiểu object, ánh xạ JSON và body. Giá trị cuối trong ánh xạ phản hồi phải là JSON Pointer.</string>
     <string name="http_parameter_add">Thêm tham số</string>

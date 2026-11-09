@@ -1,6 +1,5 @@
 package org.starfall.generative.features.home.shared.logic
 
-import android.R
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -160,7 +159,7 @@ class ChatBackgroundService : Service() {
                 else org.starfall.generative.R.string.notification_ai_thinking
             ))
             .setContentText(summary?.label ?: getString(org.starfall.generative.R.string.notification_generation_text))
-            .setSmallIcon(R.drawable.ic_menu_info_details)
+            .setSmallIcon(org.starfall.generative.R.drawable.ic_generative_logo)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)

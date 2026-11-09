@@ -57,7 +57,7 @@ private fun parameterValueMatchesType(value: JsonElement, type: String): Boolean
 
 /** Rename references through parsed JSON so identifiers containing quotes remain escaped. */
 internal fun renameHttpParameterTokens(template: String, originalName: String, name: String): String {
-    val token = Regex("\\{\\{\\s*" + Regex.escape(originalName) + "\\s*}}")
+    val token = Regex("\\{\\{\\s*" + Regex.escape(originalName) + "\\s*\\}\\}")
     fun replace(text: String) = token.replace(text) { "{{" + name + "}}" }
     fun rewrite(value: JsonElement): JsonElement = when (value) {
         is JsonObject -> JsonObject(value.mapValues { rewrite(it.value) })

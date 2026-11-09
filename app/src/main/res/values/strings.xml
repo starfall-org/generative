@@ -1334,7 +1334,7 @@
     <string name="http_tool_enable">Enable</string>
     <string name="http_tool_disable">Disable</string>
     <string name="http_tool_parameters_help">Use an object JSON Schema with properties, required, types, descriptions and optional defaults. Tool names use letters, digits and underscores (up to 59 characters).</string>
-    <string name="http_tool_mapping_help">Use {{parameter}} in query, headers or body. Example: {\"q\":\"{{query}}\"}. Exact JSON tokens preserve numbers, booleans, arrays and objects. Missing optional parameters omit their exact-token fields. GET and HEAD have no body.</string>
+    <string name="http_tool_mapping_help">Use {{parameter}} in query, headers or body. Type {{ to complete a declared parameter at the cursor. Example: {\"q\":\"{{query}}\"}. Exact JSON tokens preserve numbers, booleans, arrays and objects. Missing optional parameters omit their exact-token fields. GET and HEAD have no body.</string>
     <string name="http_tool_response_help">AUTO detects the content type; RAW returns text; JSON parses JSON; MEDIA saves the response as a file. Use {} to keep the response, or map output fields to JSON Pointers, e.g. {\"items\":\"/data/items\",\"total\":\"/meta/count\"}. Nested objects and arrays are supported. An empty pointer selects the full response.</string>
     <string name="http_tool_invalid">Check the HTTP URL, tool name, object JSON Schema, JSON mappings and body. Response mapping leaves must be JSON Pointers.</string>
     <string name="http_parameter_name" translatable="false">Parameter name</string>

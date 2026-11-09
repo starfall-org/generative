@@ -55,7 +55,7 @@ data class CustomHttpTool(
         require(headers.keys.map { it.lowercase(java.util.Locale.ROOT) }.distinct().size == headers.size) {
             "Header names must be unique (case-insensitive)"
         }
-        val token = Regex("\\{\\{\\s*([^{}]+?)\\s*}}")
+        val token = Regex("\\{\\{\\s*([^{}]+?)\\s*\\}\\}")
         fun validateText(text: String) {
             token.findAll(text).forEach { match ->
                 require(match.groupValues[1] in properties) { "Unknown parameter: ${match.groupValues[1]}" }

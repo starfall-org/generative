@@ -221,7 +221,7 @@ class ChatOptionsAndToolsEditorTest {
 }
 
 @Composable
-private fun TestTheme(content: @Composable () -> Unit) {
+internal fun TestTheme(content: @Composable () -> Unit) {
     RuntimeAppLocale(useSystemLanguage = false, selectedLanguage = "en") {
         MaterialTheme(content = content)
     }
