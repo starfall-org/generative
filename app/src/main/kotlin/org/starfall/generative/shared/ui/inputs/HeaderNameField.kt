@@ -62,6 +62,7 @@ fun HeaderNameField(
             if (updated.text != value) onValueChange(updated.text)
         },
         modifier = modifier
+            .dismissInputFocusOnOutsidePress()
             .fillMaxWidth()
             .selectAllOnTripleClick { fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length)) },
         enabled = enabled,

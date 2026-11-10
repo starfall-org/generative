@@ -8,6 +8,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -20,8 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
  */
 @Composable
 fun AppBarSearchField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
@@ -45,6 +46,6 @@ fun AppBarSearchField(
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent
         ),
-        modifier = modifier
+        modifier = modifier.dismissInputFocusOnOutsidePress()
     )
 }

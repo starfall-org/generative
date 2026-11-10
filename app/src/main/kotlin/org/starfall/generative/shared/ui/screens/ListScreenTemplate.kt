@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.screens
 
+import org.starfall.generative.shared.ui.inputs.rememberClearInputFocus
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -28,6 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -48,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import org.starfall.generative.shared.ui.inputs.withExternalText
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.inputs.AppBarSearchField
@@ -102,12 +106,18 @@ fun ListScreenTemplate(
     emptyContent: @Composable BoxScope.() -> Unit = {},
     content: @Composable BoxScope.(PaddingValues) -> Unit
 ) {
+    var searchValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(searchQuery.orEmpty(), TextRange(searchQuery.orEmpty().length)))
+    }
+    LaunchedEffect(searchQuery.orEmpty()) {
+        searchValue = searchValue.withExternalText(searchQuery.orEmpty())
+    }
     var ownSearchExpanded by remember { mutableStateOf(false) }
     val searching = searchQuery != null && (searchExpanded ?: ownSearchExpanded)
     val searchFocus = remember { FocusRequester() }
     var searchWasFocused by remember { mutableStateOf(false) }
     var imeWasVisible by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
+    val clearInputFocus = rememberClearInputFocus()
     val keyboard = LocalSoftwareKeyboardController.current
     val imeVisible = WindowInsets.isImeVisible
 
@@ -119,7 +129,7 @@ fun ListScreenTemplate(
         setSearching(false)
         imeWasVisible = false
         if (clearSearchOnClose && !searchQuery.isNullOrEmpty()) onSearchQueryChange("")
-        focusManager.clearFocus(force = true)
+        clearInputFocus()
         keyboard?.hide()
     }
     BackHandler(enabled = LocalScreenTransitionActive.current && handleBack && selectionTitle == null && !searching, onBack = onBack)
@@ -176,8 +186,11 @@ fun ListScreenTemplate(
                                 exit = shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)) + fadeOut(tween(120))
                             ) {
                                 AppBarSearchField(
-                                    value = searchQuery.orEmpty(),
-                                    onValueChange = onSearchQueryChange,
+                                    value = searchValue,
+                                    onValueChange = { updated ->
+                                        searchValue = updated
+                                        if (updated.text != searchQuery.orEmpty()) onSearchQueryChange(updated.text)
+                                    },
                                     placeholder = searchPlaceholder,
                                     trailingIcon = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {

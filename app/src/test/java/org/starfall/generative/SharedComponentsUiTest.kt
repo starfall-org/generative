@@ -1,6 +1,11 @@
 package org.starfall.generative
 
+import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.semantics.SemanticsProperties
+import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -30,7 +35,7 @@ class SharedComponentsUiTest {
         var expanded by mutableStateOf(false)
         var query by mutableStateOf("")
         compose.setContent {
-            MaterialTheme {
+            MaterialTheme { InputFocusHost {
                 ExpandableSearchField(
                     value = query,
                     onValueChange = { query = it },
@@ -40,10 +45,11 @@ class SharedComponentsUiTest {
                     placeholder = "Search",
                     testTag = "shared-search"
                 )
-            }
+            } }
         }
         compose.onNodeWithTag("shared-search-button").performClick()
         compose.onNodeWithTag("shared-search").performTextInput("alpha")
+        compose.onNodeWithTag("shared-search").performTextInputSelection(TextRange(2))
         compose.onNodeWithTag("shared-search").performImeAction()
         compose.runOnIdle {
             check(query == "alpha")
@@ -51,13 +57,34 @@ class SharedComponentsUiTest {
         }
         compose.onNodeWithTag("shared-search-button").performClick()
         compose.onNodeWithTag("shared-search").assertTextContains("alpha")
+        assertEquals(TextRange(2), compose.onNodeWithTag("shared-search")
+            .fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
+        compose.onNodeWithTag("shared-search").performTextInput("X")
+        compose.runOnIdle { assertEquals("alXpha", query) }
+    }
+
+    @Test fun expandableSearchWithExistingQueryStartsAtEndAndClearsNormally() {
+        var expanded by mutableStateOf(false)
+        var query by mutableStateOf("alpha")
+        compose.setContent {
+            MaterialTheme { InputFocusHost {
+                ExpandableSearchField(query, { query = it }, expanded, { expanded = it },
+                    placeholder = "Search", testTag = "prefilled-search")
+            } }
+        }
+        compose.onNodeWithTag("prefilled-search-button").performClick()
+        compose.onNodeWithTag("prefilled-search").performTextInput("X")
+        compose.runOnIdle { assertEquals("alphaX", query) }
+        compose.runOnIdle { query = "" }
+        compose.onNodeWithTag("prefilled-search").performTextInput("new")
+        compose.runOnIdle { assertEquals("new", query) }
     }
 
     @Test fun keyValueFieldShowsEditableKeySuggestions() {
         var key by mutableStateOf("")
         var value by mutableStateOf("")
         compose.setContent {
-            MaterialTheme {
+            MaterialTheme { InputFocusHost {
                 KeyValueField(
                     keyValue = key,
                     onKeyChange = { key = it },
@@ -66,7 +93,7 @@ class SharedComponentsUiTest {
                     keySuggestions = listOf(KeyValueSuggestion("Authorization")),
                     testTag = "header"
                 )
-            }
+            } }
         }
         compose.onNodeWithTag("header-key").performClick()
         compose.onNodeWithTag("header-key").performTextInput("Auth")

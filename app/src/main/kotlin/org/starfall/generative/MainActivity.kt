@@ -1,5 +1,6 @@
 package org.starfall.generative
 
+import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
 import android.content.Intent
 import android.Manifest
@@ -20,7 +21,6 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -179,7 +179,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Keep Surface's behaviour of forcing its content to fill the window.
-                    Box(Modifier.fillMaxSize(), propagateMinConstraints = true) {
+                    InputFocusHost(Modifier.fillMaxSize(), propagateMinConstraints = true) {
                         AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
                             container.toolFiles, container.appDataTransfer,
                             customHttpToolsViewModel = customHttpToolsViewModel,

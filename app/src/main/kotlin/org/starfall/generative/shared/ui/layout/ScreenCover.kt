@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.layout
 
+import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,7 +32,7 @@ fun ScreenCover(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Box(
+        InputFocusHost(
             modifier = Modifier
                 .fillMaxSize()
                 .background(scrimColor)

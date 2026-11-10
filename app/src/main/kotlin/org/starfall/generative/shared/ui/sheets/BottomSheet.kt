@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.sheets
 
+import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import android.view.View
 import android.view.Window
 import androidx.compose.foundation.layout.*
@@ -95,7 +96,7 @@ fun BottomSheet(
             LocalResources provides hostResources
         ) {
             ConfigureBottomSheetWindow(navigationBarColor ?: containerColor)
-            Box(
+            InputFocusHost(
                 Modifier.fillMaxWidth().testTag("bottom-sheet-window")
                     .then(if (amoled) Modifier.amoledEdgeBorder(
                         shape, MaterialTheme.colorScheme.outlineVariant, 1.dp, AmoledBorderEdge.Top

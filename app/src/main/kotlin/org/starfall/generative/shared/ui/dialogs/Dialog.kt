@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.dialogs
 
+import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import android.app.Activity
 import android.content.ContextWrapper
 import android.graphics.drawable.ColorDrawable
@@ -148,7 +149,7 @@ fun Dialog(
     androidx.compose.ui.window.Dialog(onDismissRequest, properties = properties) {
         ConfigureAmoledDialogWindow()
         val insets = if (edgeToEdge) Modifier else Modifier.safeDrawingPadding().imePadding()
-        Box(insets) {
+        InputFocusHost(insets) {
             val surfaceModifier = if (edgeToEdge) modifier.fillMaxSize()
                 else modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.9f)
             Surface(

@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.layout
 
+import org.starfall.generative.shared.ui.inputs.rememberClearInputFocus
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +10,9 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -70,6 +74,12 @@ fun AppSwipeTabs(
     pageContent: @Composable (Int) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val clearInputFocus = rememberClearInputFocus()
+    LaunchedEffect(pagerState, clearInputFocus) {
+        snapshotFlow { pagerState.currentPage }.drop(1).collect {
+            clearInputFocus()
+        }
+    }
     Column(modifier) {
         AppTabRow(
             tabs = tabs,

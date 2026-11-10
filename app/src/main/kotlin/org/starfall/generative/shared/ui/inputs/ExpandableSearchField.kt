@@ -12,6 +12,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +30,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -65,8 +67,14 @@ fun ExpandableSearchField(
     buttonTestTag: String = "$testTag-button",
     tonalCollapsedButton: Boolean = true
 ) {
+    var searchValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(value, TextRange(value.length)))
+    }
+    LaunchedEffect(value) {
+        searchValue = searchValue.withExternalText(value)
+    }
     val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
+    val clearInputFocus = rememberClearInputFocus()
     val keyboard = LocalSoftwareKeyboardController.current
     val imeVisible = WindowInsets.isImeVisible
     var wasFocused by remember { mutableStateOf(false) }
@@ -74,7 +82,7 @@ fun ExpandableSearchField(
 
     fun collapse() {
         imeWasVisible = false
-        focusManager.clearFocus(force = true)
+        clearInputFocus()
         keyboard?.hide()
         if (clearOnCollapse && value.isNotEmpty()) onValueChange("")
         onExpandedChange(false)
@@ -98,8 +106,11 @@ fun ExpandableSearchField(
         Box(Modifier.width(searchWidth), contentAlignment = Alignment.CenterStart) {
             if (expanded || searchWidth > 41.dp) {
                 OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
+                    value = searchValue,
+                    onValueChange = { updated ->
+                        searchValue = updated
+                        if (updated.text != value) onValueChange(updated.text)
+                    },
                     leadingIcon = { SharedIcon(Icons.Outlined.Search, contentDescription = null) },
                     trailingIcon = {
                         if (value.isNotEmpty()) {

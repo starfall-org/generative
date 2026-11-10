@@ -124,7 +124,7 @@ fun OutlinedTextField(
             fieldValue = updated
             if (updated.text != value) onValueChange(updated.text)
         },
-        modifier = modifier.selectAllOnTripleClick {
+        modifier = modifier.dismissInputFocusOnOutsidePress().selectAllOnTripleClick {
             fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length))
         },
         enabled = enabled,
@@ -158,9 +158,14 @@ fun OutlinedTextField(
     modifier: Modifier = Modifier,
     textStyle: TextStyle = LocalTextStyle.current,
     label: (@Composable () -> Unit)? = null,
+    placeholder: (@Composable () -> Unit)? = null,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
     supportingText: (@Composable () -> Unit)? = null,
     isError: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    shape: Shape = OutlinedTextFieldDefaults.shape,
     singleLine: Boolean = false,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
@@ -169,14 +174,19 @@ fun OutlinedTextField(
     MaterialOutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.selectAllOnTripleClick {
+        modifier = modifier.dismissInputFocusOnOutsidePress().selectAllOnTripleClick {
             onValueChange(value.copy(selection = TextRange(0, value.text.length)))
         },
         textStyle = textStyle,
         label = label,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
         supportingText = supportingText,
         isError = isError,
         keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        shape = shape,
         singleLine = singleLine,
         minLines = minLines,
         maxLines = maxLines,

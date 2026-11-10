@@ -44,7 +44,7 @@ fun EditorTextField(
             fieldValue = updated
             if (updated.text != value) onValueChange(updated.text)
         },
-        modifier = modifier.selectAllOnTripleClick {
+        modifier = modifier.dismissInputFocusOnOutsidePress().selectAllOnTripleClick {
             fieldValue = fieldValue.copy(selection = TextRange(0, fieldValue.text.length))
         },
         textStyle = textStyle,
