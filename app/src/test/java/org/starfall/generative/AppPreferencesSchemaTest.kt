@@ -23,12 +23,12 @@ import org.starfall.generative.shared.model.InstructionLibrary
 import org.starfall.generative.shared.model.SavedInstruction
 import org.starfall.generative.integrations.files.AgentSkillsStore
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
-import org.starfall.generative.database.preferences.InstructionSelectionMode
-import org.starfall.generative.database.preferences.UNFILED_INSTRUCTION_SCOPE
+import org.starfall.generative.shared.model.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.model.preferences.UNFILED_INSTRUCTION_SCOPE
 import org.starfall.generative.shared.model.ChatFolder
-import org.starfall.generative.database.preferences.SelectedModel
+import org.starfall.generative.shared.model.preferences.SelectedModel
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])

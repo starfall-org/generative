@@ -88,7 +88,7 @@ import org.starfall.generative.shared.model.media.defaultMediaProfile
 import org.starfall.generative.shared.model.media.withDefaultMediaProfile
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator

@@ -1,7 +1,7 @@
 package org.starfall.generative.shared.subfeatures.icons.logic
 
 import android.content.Context
-import org.starfall.generative.database.preferences.MigratedStringPreferences
+import org.starfall.generative.shared.state.preferences.applicationPreferences
 import org.starfall.generative.shared.model.icons.IconRule
 import org.starfall.generative.shared.model.icons.IconStoreState
 import org.starfall.generative.shared.model.icons.StoredIcon
@@ -65,12 +65,12 @@ class IconLookup(val data: Any?)
 class IconStore(private val context: Context) {
     private val directory get() = File(context.filesDir, "entity-icons").apply { mkdirs() }
 
-    private val preferences = MigratedStringPreferences.get(context, "named-entity-icons")
-    private val assets = MigratedStringPreferences.get(context, "icon-assets")
-    private val automatic = MigratedStringPreferences.get(context, "automatic-entity-icons")
-    private val variants = MigratedStringPreferences.get(context, "icon-variants")
+    private val preferences = context.applicationPreferences().stringPreferences("named-entity-icons")
+    private val assets = context.applicationPreferences().stringPreferences("icon-assets")
+    private val automatic = context.applicationPreferences().stringPreferences("automatic-entity-icons")
+    private val variants = context.applicationPreferences().stringPreferences("icon-variants")
     /** Original file names of app-owned (non-shared) icons, for display next to the logo. */
-    private val names = MigratedStringPreferences.get(context, "icon-file-names")
+    private val names = context.applicationPreferences().stringPreferences("icon-file-names")
     companion object {
         private val changes = MutableStateFlow(0L)
         val revision = changes.asStateFlow()

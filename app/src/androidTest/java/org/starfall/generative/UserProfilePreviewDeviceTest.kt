@@ -15,7 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.features.customization.ui.CustomizationScreen
-import org.starfall.generative.database.preferences.UserProfile
+import org.starfall.generative.shared.model.preferences.UserProfile
 
 @RunWith(AndroidJUnit4::class)
 class UserProfilePreviewDeviceTest {

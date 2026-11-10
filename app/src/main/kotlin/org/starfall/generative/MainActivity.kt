@@ -40,7 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import org.starfall.generative.database.preferences.ScreenWakelockMode
+import org.starfall.generative.shared.model.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.state.LocalWriteErrors
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.RuntimeAppLocale

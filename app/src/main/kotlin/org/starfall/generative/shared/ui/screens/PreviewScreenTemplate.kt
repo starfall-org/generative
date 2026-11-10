@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -44,9 +46,10 @@ fun PreviewScreenTemplate(
 ) {
     BackHandler(enabled = LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
-        modifier = modifier.testTag("preview-screen-template"),
+        modifier = modifier.imePadding().testTag("preview-screen-template"),
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        // Scaffold passes safe edges to content; scroll containers keep their full viewport.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
@@ -64,7 +67,6 @@ fun PreviewScreenTemplate(
         Column(
             modifier = Modifier.fillMaxSize()
                 .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
-                .imePadding().navigationBarsPadding()
                 .padding(scrollableScaffoldPadding(
                     scaffoldPadding, horizontal = horizontalPadding,
                     top = topPadding, bottom = bottomPadding

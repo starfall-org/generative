@@ -60,7 +60,7 @@ import org.starfall.generative.shared.ui.layout.SettingsCard
 import org.starfall.generative.shared.ui.screens.RetainedScreenContent
 import org.starfall.generative.shared.subfeatures.modelpicker.ui.DefaultModelSelector
 import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 
 private sealed interface ChatOptionsEditor {
     data class InstructionEditor(val instructionId: String?) : ChatOptionsEditor

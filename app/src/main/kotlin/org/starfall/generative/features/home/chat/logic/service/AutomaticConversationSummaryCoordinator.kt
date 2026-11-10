@@ -8,7 +8,7 @@ import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 
 /** Applies the token-threshold and duplicate-attempt policy for automatic conversation summaries. */
 internal class AutomaticConversationSummaryCoordinator(

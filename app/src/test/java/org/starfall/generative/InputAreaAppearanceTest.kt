@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.ui.layout.InputAreaAppearance
 

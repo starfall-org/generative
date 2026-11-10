@@ -57,6 +57,7 @@ Preserve the Room schema history under `app/schemas/`; package-only moves must n
 
 ### Storage policy
 
+- Preference value types live in `shared/model/preferences/`, independently of DataStore and Compose. Locale configuration lives in `shared/helpers/locale/`. `ApplicationPreferencesOwner` supplies the application-owned settings flow and `StringPreferences` contract to shared consumers and integrations; the migration-aware DataStore adapter remains in `database/preferences/`. Application wiring supplies terminal-preference cleanup to the remote-machine service.
 - Use Jetpack Preferences DataStore for application settings, customization and other reusable preference state. Migrate existing SharedPreferences values without loss.
 - Store dynamic, capability-specific data in Room/SQLite, including credentials, model providers, MCP servers, speech services, Feature Tools profiles and instructions. Keep database access in `database/` and encrypt credentials before persistence.
 - Keep one application-scoped instance for each database and DataStore; share repositories and stores through application wiring. Read one Room snapshot to initialize an application-owned memory catalog. Room/SQLite is passive persistence and must not publish invalidations or re-read/reorder active UI after writes; repositories explicitly publish RAM edits immediately, then persist through their serial writers. DataStore preferences retain their reactive flow.

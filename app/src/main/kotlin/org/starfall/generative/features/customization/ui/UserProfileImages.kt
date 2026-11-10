@@ -56,7 +56,7 @@ internal object UserProfileImages {
     }
 
     /** Only delete a profile-owned image if no other slot still references it. */
-    fun cleanup(context: Context, removed: String?, retained: org.starfall.generative.database.preferences.UserProfile) {
+    fun cleanup(context: Context, removed: String?, retained: org.starfall.generative.shared.model.preferences.UserProfile) {
         val file = removed?.let(::File) ?: return
         if (file.parentFile?.canonicalFile != folder(context).canonicalFile) return
         if (removed in listOfNotNull(retained.photo, retained.chatBackground,

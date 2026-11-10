@@ -25,8 +25,8 @@ import org.junit.runner.RunWith
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.features.customization.ui.CustomizationScreen
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.database.preferences.UserProfile
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.UserProfile
 import org.starfall.generative.shared.ui.layout.*
 
 @RunWith(AndroidJUnit4::class)

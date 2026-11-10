@@ -17,9 +17,9 @@ import org.starfall.generative.features.settings.ui.DeveloperOptionsScreen
 import org.starfall.generative.features.settings.ui.SettingsChoice
 import org.starfall.generative.features.settings.ui.SettingsChoicePreference
 import org.starfall.generative.features.settings.ui.SettingsNumberPreference
-import org.starfall.generative.database.preferences.McpAttachmentSettings
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.database.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.model.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.InstructionSelectionMode
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)

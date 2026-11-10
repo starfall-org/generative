@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -135,10 +137,11 @@ fun ListScreenTemplate(
     }
 
     Scaffold(
-        modifier = modifier.testTag("list-screen-template"),
+        modifier = modifier.imePadding().testTag("list-screen-template"),
         snackbarHost = snackbarHost,
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        // Scaffold passes safe edges to content; scroll containers keep their full viewport.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
                 modifier = appBarModifier,
@@ -251,7 +254,7 @@ fun ListScreenTemplate(
             scaffoldPadding, horizontal = horizontalPadding,
             top = topPadding, bottom = bottomPadding
         )
-        Box(Modifier.fillMaxSize().imePadding().navigationBarsPadding().testTag("list-screen-content")) {
+        Box(Modifier.fillMaxSize().testTag("list-screen-content")) {
             when {
                 isLoading -> loadingContent()
                 isEmpty -> emptyContent()

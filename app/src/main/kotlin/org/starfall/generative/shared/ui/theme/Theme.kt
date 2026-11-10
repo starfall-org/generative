@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.theme
 
+import org.starfall.generative.shared.model.preferences.CustomPalette
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*

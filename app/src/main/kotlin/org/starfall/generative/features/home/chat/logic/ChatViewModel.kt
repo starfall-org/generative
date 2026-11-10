@@ -32,7 +32,7 @@ import org.starfall.generative.shared.state.LocalWriteErrors
 import org.starfall.generative.database.repositories.McpRepository
 import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.database.repositories.SpeechRepository
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.database.preferences.ToolSettingsStore
 import org.starfall.generative.features.home.chat.logic.service.AutomaticConversationSummaryCoordinator

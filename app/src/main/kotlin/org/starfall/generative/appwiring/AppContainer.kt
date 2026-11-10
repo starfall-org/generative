@@ -5,6 +5,9 @@ import org.starfall.generative.database.repositories.CustomHttpToolRepository
 
 
 import android.content.Context
+import androidx.datastore.preferences.core.stringPreferencesKey
+import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
+import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.BuildConfig
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -64,10 +67,14 @@ class AppContainer(context: Context) {
     private val mcp = McpRepository(database, mcpService, icons, mcpOAuth, BuildConfig.CONTENT_API_MCP_URL)
     private val httpTools = CustomHttpToolRepository(database)
     private val speech = SpeechRepository(database)
-    private val preferences = AppPreferencesRepository(appContext)
+    val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
     val notificationPermissionStore = NotificationPermissionStore(appContext)
-    val remoteMachineService = RemoteMachineService(appContext)
+    val remoteMachineService = RemoteMachineService(appContext, clearTerminalInputMode = { id ->
+        RemoteTerminalPreferenceStore.getInstance(appContext).updateAndWait {
+            it.remove(stringPreferencesKey(remoteTerminalInputModePreferenceKey(id)))
+        }
+    })
     val appDataTransfer = AppDataTransferService(
         appContext, providers, mcp, speech, profiles, conversations, preferences, toolSettings,
         icons, toolFiles, remoteMachineService, httpTools

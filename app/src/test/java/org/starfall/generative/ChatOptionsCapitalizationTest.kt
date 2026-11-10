@@ -25,7 +25,7 @@ import org.starfall.generative.features.chatoptions.ui.HelperSettingsSheet
 import org.starfall.generative.features.chatoptions.ui.InstructionEditor
 import org.starfall.generative.shared.model.SystemToolConfig
 import org.starfall.generative.shared.model.ToolSettings
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @OptIn(ExperimentalComposeUiApi::class)

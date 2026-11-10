@@ -17,7 +17,7 @@ import org.starfall.generative.integrations.speech.StandaloneSpeechClient
 import org.starfall.generative.shared.model.effectiveTtsProviderId
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 
 internal class ChatSpeechCoordinator(
     private val scope: CoroutineScope,

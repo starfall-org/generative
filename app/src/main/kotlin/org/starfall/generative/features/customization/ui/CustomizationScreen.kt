@@ -35,10 +35,10 @@ import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.subfeatures.icons.logic.AppImages
 import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
-import org.starfall.generative.database.preferences.UserProfile
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.shared.ui.theme.CustomPalette
-import org.starfall.generative.database.preferences.UserProfileImageSlot
+import org.starfall.generative.shared.model.preferences.UserProfile
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.CustomPalette
+import org.starfall.generative.shared.model.preferences.UserProfileImageSlot
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons

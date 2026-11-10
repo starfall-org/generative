@@ -1,6 +1,7 @@
 package org.starfall.generative.database.preferences
 
 import android.content.Context
+import org.starfall.generative.shared.state.preferences.StringPreferences
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
@@ -26,7 +27,7 @@ import java.util.IdentityHashMap
 internal class MigratedStringPreferences private constructor(
     context: Context,
     legacyFile: String
-) {
+) : StringPreferences {
     private val store = PreferenceDataStoreFactory.create(
         migrations = listOf(SharedPreferencesMigration(context, legacyFile)),
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -41,25 +42,25 @@ internal class MigratedStringPreferences private constructor(
         }.toMap()
     }.also { cached = it }
 
-    val all: Map<String, String>
+    override val all: Map<String, String>
         get() = synchronized(lock) { snapshot().toMap() }
 
-    fun getString(key: String, default: String? = null): String? =
+    override fun getString(key: String, default: String?): String? =
         synchronized(lock) { snapshot()[key] ?: default }
 
-    fun contains(key: String): Boolean = synchronized(lock) { key in snapshot() }
+    override fun contains(key: String): Boolean = synchronized(lock) { key in snapshot() }
 
-    fun putString(key: String, value: String) = update { put(key, value) }
+    override fun putString(key: String, value: String) = update { put(key, value) }
 
-    fun remove(key: String) = update { remove(key) }
+    override fun remove(key: String) = update { remove(key) }
 
-    fun replaceAll(values: Map<String, String>) = update {
+    override fun replaceAll(values: Map<String, String>) = update {
         clear()
         putAll(values)
     }
 
     /** The entire change is one atomic DataStore transaction. Failed writes leave cache unchanged. */
-    fun update(change: MutableMap<String, String>.() -> Unit) {
+    override fun update(change: MutableMap<String, String>.() -> Unit) {
         synchronized(lock) {
             val old = snapshot()
             val next = old.toMutableMap().apply(change).toMap()

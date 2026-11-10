@@ -33,7 +33,7 @@ import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.streamEnabledFor
 import org.starfall.generative.shared.helpers.networking.requireNetworkCredentials
-import org.starfall.generative.database.preferences.ModelConfigurationMemory
+import org.starfall.generative.shared.state.preferences.ModelConfigurationMemory
 import java.util.Base64
 
 class AiService(

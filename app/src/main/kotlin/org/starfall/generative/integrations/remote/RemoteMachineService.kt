@@ -41,9 +41,6 @@ import org.starfall.generative.shared.model.RemoteIdentityKey
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.RemoteMachineType
 import org.starfall.generative.shared.model.remote.REMOTE_GOOGLE_CLOUD_SCOPE
-import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
-import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 
@@ -55,7 +52,9 @@ import org.starfall.generative.shared.model.remote.RemoteTerminalSession
  */
 class RemoteMachineService(
     private val context: Context,
-    val store: RemoteMachineStore = RemoteMachineStore(context)
+    val store: RemoteMachineStore = RemoteMachineStore(context),
+    /** Optional host UI state is removed by the application, outside the SSH integration. */
+    private val clearTerminalInputMode: suspend (String) -> Unit = {}
 ) {
     private val appContext = context.applicationContext
     private val assets = RemoteMachineAssetsService(context, store)
@@ -219,9 +218,7 @@ class RemoteMachineService(
         }
         runCatching { File(appContext.filesDir, "remote-machines/keys/$id").delete() }
         try {
-            RemoteTerminalPreferenceStore.getInstance(appContext).updateAndWait {
-                it.remove(stringPreferencesKey(remoteTerminalInputModePreferenceKey(id)))
-            }
+            clearTerminalInputMode(id)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

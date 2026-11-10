@@ -20,8 +20,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.preferences.AppLanguage
-import org.starfall.generative.database.preferences.AppLocale
+import org.starfall.generative.shared.helpers.locale.AppLanguage
+import org.starfall.generative.shared.helpers.locale.AppLocale
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.database.preferences.migrateLegacyLocaleKeys
 

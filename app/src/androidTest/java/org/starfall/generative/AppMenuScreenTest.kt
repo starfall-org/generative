@@ -27,7 +27,7 @@ import org.starfall.generative.features.about.ui.AboutScreen
 import org.starfall.generative.features.menu.ui.AppMenuScreen
 import org.starfall.generative.features.settings.ui.AppSettings
 import org.starfall.generative.features.settings.ui.MainAppbar
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.starfall.generative.navigation.RetainedNavHost

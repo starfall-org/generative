@@ -11,6 +11,7 @@ import org.starfall.generative.integrations.mcp.McpService
 import org.starfall.generative.shared.subfeatures.media.logic.*
 import org.starfall.generative.shared.helpers.networking.*
 import org.starfall.generative.database.preferences.*
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import java.io.StringReader
 import java.nio.file.Files
 import org.starfall.generative.shared.model.auth.AuthMethod

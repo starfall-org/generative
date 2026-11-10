@@ -25,9 +25,9 @@ import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.database.repositories.ConversationRepository
 import org.starfall.generative.shared.state.LocalWriteErrors
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
-import org.starfall.generative.database.preferences.InstructionSelectionMode
+import org.starfall.generative.shared.model.preferences.InstructionSelectionMode
 import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkdownAstCache
 
 /** Coordinates conversation selection, history mutations, queued sends and persistence ordering. */

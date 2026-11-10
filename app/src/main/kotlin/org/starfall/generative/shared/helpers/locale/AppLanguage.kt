@@ -1,4 +1,4 @@
-package org.starfall.generative.database.preferences
+package org.starfall.generative.shared.helpers.locale
 
 import android.content.Context
 import android.content.res.Configuration

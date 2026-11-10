@@ -1,6 +1,7 @@
 package org.starfall.generative
 
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.*
 import org.junit.Test
@@ -8,12 +9,27 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.database.preferences.MigratedStringPreferences
+import org.starfall.generative.shared.state.preferences.applicationPreferences
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class MigratedStringPreferencesTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    @Test fun applicationPortReusesTheMigrationAdapterAcrossWrappedContexts() {
+        val namespace = "preferences-port-${UUID.randomUUID()}"
+        context.getSharedPreferences(namespace, Context.MODE_PRIVATE)
+            .edit().putString("legacy", "kept").commit()
+        val port = ContextWrapper(context).applicationPreferences().stringPreferences(namespace)
+        val adapter = MigratedStringPreferences.get(context, namespace)
+        assertSame(adapter, port)
+        assertEquals("kept", port.getString("legacy"))
+        port.update { put("new", "durable") }
+        assertEquals("durable", adapter.getString("new"))
+        adapter.remove("legacy")
+        assertFalse(port.contains("legacy"))
+    }
 
     @Test fun legacyValuesAreMigratedOnceAndSubsequentWritesAreDurable() {
         val fileName = "migrated-string-test-${UUID.randomUUID()}"

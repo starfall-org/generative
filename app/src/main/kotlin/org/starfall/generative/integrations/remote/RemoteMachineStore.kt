@@ -3,7 +3,7 @@ package org.starfall.generative.integrations.remote
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import org.starfall.generative.database.preferences.MigratedStringPreferences
+import org.starfall.generative.shared.state.preferences.applicationPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -134,7 +134,7 @@ private data class PersistedSshMachineV2(
  */
 class RemoteMachineStore(context: Context) {
     private val appContext = context.applicationContext
-    private val preferences = MigratedStringPreferences.get(appContext, REMOTE_MACHINE_STORE_PREFERENCES)
+    private val preferences = appContext.applicationPreferences().stringPreferences(REMOTE_MACHINE_STORE_PREFERENCES)
     private val sshConfigFile = remoteMachineSshConfigFile(appContext)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val lock = Mutex()

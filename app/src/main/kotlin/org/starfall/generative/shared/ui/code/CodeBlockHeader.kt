@@ -38,7 +38,7 @@ import kotlinx.coroutines.delay
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.preview.CodePreviewActivity
 import org.starfall.generative.shared.helpers.code.canPreviewCode
-import org.starfall.generative.database.preferences.WordWrapMode
+import org.starfall.generative.shared.model.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons

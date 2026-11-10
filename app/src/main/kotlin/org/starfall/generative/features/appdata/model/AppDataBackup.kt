@@ -13,7 +13,7 @@ import org.starfall.generative.shared.model.SpeechService
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 
 /** Complete application snapshot stored in the manifest of a ZIP backup. */
 @Serializable

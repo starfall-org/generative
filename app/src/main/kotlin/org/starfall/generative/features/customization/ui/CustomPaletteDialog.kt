@@ -1,5 +1,6 @@
 package org.starfall.generative.features.customization.ui
 
+import org.starfall.generative.shared.ui.theme.color
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -29,7 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.shared.model.preferences.CustomPalette
 import org.starfall.generative.shared.ui.theme.customColorScheme
 import org.starfall.generative.shared.ui.theme.parsePaletteHex
 import org.starfall.generative.shared.ui.theme.toPaletteHex

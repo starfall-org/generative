@@ -21,8 +21,8 @@ import org.starfall.generative.R
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.UUID
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.database.preferences.AppPreferencesRepository
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.state.preferences.applicationPreferences
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.RuntimeAppLocale
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -42,7 +42,7 @@ class CodePreviewActivity : ComponentActivity() {
         previewFile = name?.takeIf { it.matches(Regex("[a-f0-9-]{36}\\.html")) }?.let { File(cacheDir, "code-preview/$it") }
         val document = previewFile?.let { runCatching { it.readText() }.getOrNull() }
         setContent {
-            val preferencesFlow = remember { AppPreferencesRepository(applicationContext).appPreferencesFlow }
+            val preferencesFlow = remember { applicationContext.applicationPreferences().appPreferences }
             val appearance by preferencesFlow.collectAsState(initial = AppPreferences())
             RuntimeAppLocale(appearance.useSystemLanguage, appearance.selectedLanguage) {
             GenerativeTheme(

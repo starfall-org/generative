@@ -33,7 +33,7 @@ import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.database.repositories.ProviderRepairResult
 import org.starfall.generative.database.repositories.ProfileRepository
 import org.starfall.generative.database.repositories.SpeechRepository
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 
 class ConfigurationViewModel(

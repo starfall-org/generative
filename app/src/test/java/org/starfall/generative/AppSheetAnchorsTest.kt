@@ -105,7 +105,8 @@ class AppSheetAnchorsTest {
         compose.waitForIdle()
         assertEquals("Entrance must not dismiss the sheet", 0, dismissals)
         val sheet = compose.onNodeWithTag("bottom-sheet-window")
-        val height = with(compose.density) { sheet.getUnclippedBoundsInRoot().height.toPx() }
+        val bounds = sheet.getUnclippedBoundsInRoot()
+        val height = with(compose.density) { (bounds.bottom - bounds.top).toPx() }
         compose.onNodeWithTag(if (throughList) "dismiss-list" else "bottom-sheet-drag-handle").performTouchInput {
             down(center)
             moveBy(Offset(0f, height * 0.8f), delayMillis = 1000)

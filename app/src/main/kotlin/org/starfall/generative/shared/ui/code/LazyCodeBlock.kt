@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.starfall.generative.database.preferences.WordWrapMode
+import org.starfall.generative.shared.model.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
 import org.starfall.generative.shared.ui.layout.nestedContainerColor
 import org.starfall.generative.shared.ui.LoadingIndicator

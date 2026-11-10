@@ -12,9 +12,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.features.home.chat.logic.tool.McpAttachments
 import org.starfall.generative.shared.model.ToolDefinition
-import org.starfall.generative.database.preferences.McpAttachmentMode
-import org.starfall.generative.database.preferences.McpAttachmentSettings
-import org.starfall.generative.database.preferences.McpDynamicStrategy
+import org.starfall.generative.shared.model.preferences.McpAttachmentMode
+import org.starfall.generative.shared.model.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.model.preferences.McpDynamicStrategy
 
 class McpAttachmentsTest {
     private fun entries(count: Int, toolsEach: Int = 4) = (1..count).map { index ->

@@ -6,30 +6,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
-import kotlinx.serialization.Serializable
+import org.starfall.generative.shared.model.preferences.CustomPalette
 
-/** User-selected color seeds. Roles are toned for readable light/dark Material palettes. */
-@Serializable
-data class CustomPalette(
-    val primary: String = "#6B4FA0",
-    val secondary: String = "#537A80",
-    val tertiary: String = "#B26C60",
-    val neutral: String = "#73717A"
-) {
-    fun color(role: Int): Color = parsePaletteHex(when (role) {
-        0 -> primary
-        1 -> secondary
-        2 -> tertiary
-        else -> neutral
-    }) ?: Color(0xFF73717A)
-
-    fun withColor(role: Int, hex: String): CustomPalette = when (role) {
-        0 -> copy(primary = hex)
-        1 -> copy(secondary = hex)
-        2 -> copy(tertiary = hex)
-        else -> copy(neutral = hex)
-    }
-}
+fun CustomPalette.color(role: Int): Color = parsePaletteHex(when (role) {
+    0 -> primary
+    1 -> secondary
+    2 -> tertiary
+    else -> neutral
+}) ?: Color(0xFF73717A)
 
 /** Hex is always an opaque #RRGGBB string; reject invalid persisted/imported values. */
 fun parsePaletteHex(hex: String): Color? {

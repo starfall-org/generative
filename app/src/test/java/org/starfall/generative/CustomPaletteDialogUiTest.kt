@@ -14,9 +14,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.customization.ui.CustomizationScreen
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.database.preferences.UserProfile
-import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.UserProfile
+import org.starfall.generative.shared.model.preferences.CustomPalette
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.theme.customColorScheme
 

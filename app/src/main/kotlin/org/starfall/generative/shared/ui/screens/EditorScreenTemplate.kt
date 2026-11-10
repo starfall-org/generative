@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -36,9 +38,10 @@ fun EditorScreenTemplate(
 ) {
     BackHandler(enabled = handleSystemBack && LocalScreenTransitionActive.current, onBack = onBack)
     Scaffold(
-        modifier = modifier.testTag("editor-screen-template"),
+        modifier = modifier.imePadding().testTag("editor-screen-template"),
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        // Scaffold passes safe edges to content; scroll containers keep their full viewport.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
                 colors = edgeToEdgeTopAppBarColors(),
@@ -52,7 +55,7 @@ fun EditorScreenTemplate(
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().imePadding().navigationBarsPadding().testTag("editor-screen-content")) {
+        Box(Modifier.fillMaxSize().testTag("editor-screen-content")) {
             content(padding)
         }
     }

@@ -21,8 +21,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.R
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.shared.ui.theme.CustomPalette
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.CustomPalette
+import org.starfall.generative.shared.ui.theme.color
 import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import org.starfall.generative.shared.ui.theme.ThemePresets
 import org.starfall.generative.shared.ui.icons.Icons

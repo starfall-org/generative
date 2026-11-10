@@ -17,7 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.starfall.generative.features.machines.shared.ui.RemoteMachineFilesScreen
 import org.starfall.generative.features.storage.ui.StorageExplorerScreen
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.ui.RuntimeAppLocale

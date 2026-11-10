@@ -70,7 +70,7 @@ import org.starfall.generative.shared.helpers.networking.requireObject
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
 import org.starfall.generative.shared.helpers.networking.toolArguments
-import org.starfall.generative.database.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.model.preferences.McpAttachmentSettings
 import org.starfall.generative.features.home.chat.logic.SEND_FILE_TOOL_NAME
 import org.starfall.generative.features.home.chat.logic.SendFileTool
 import org.starfall.generative.features.home.chat.logic.fileDeliveryResult

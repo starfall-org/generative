@@ -1,5 +1,8 @@
 package org.starfall.generative
 
+import org.starfall.generative.shared.state.preferences.ApplicationPreferencesOwner
+import org.starfall.generative.shared.state.preferences.StringPreferences
+import org.starfall.generative.database.preferences.MigratedStringPreferences
 import android.app.Application
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
@@ -21,8 +24,12 @@ import org.starfall.generative.shared.subfeatures.auth.logic.OAuthReturnIntentPr
 import java.io.File
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 
-class GenerativeApplication : Application(), RemoteMachineServiceOwner, OAuthRecordStorageOwner,
+class GenerativeApplication : Application(), ApplicationPreferencesOwner, RemoteMachineServiceOwner, OAuthRecordStorageOwner,
     OAuthReturnIntentProvider, coil3.SingletonImageLoader.Factory {
+    override val appPreferences by lazy { container.preferences.appPreferencesFlow }
+    override fun stringPreferences(namespace: String): StringPreferences =
+        MigratedStringPreferences.get(this, namespace)
+
     override fun createOAuthReturnIntent(context: android.content.Context): android.content.Intent =
         android.content.Intent(context, MainActivity::class.java)
 

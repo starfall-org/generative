@@ -3,7 +3,7 @@ package org.starfall.generative
 import java.util.Base64
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.database.preferences.WordWrapMode
+import org.starfall.generative.shared.model.preferences.WordWrapMode
 import org.starfall.generative.features.providers.shared.ui.*
 import org.starfall.generative.shared.helpers.code.canPreviewCode
 import org.starfall.generative.shared.helpers.code.codePreviewDocument

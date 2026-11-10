@@ -22,15 +22,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
-import org.starfall.generative.database.preferences.DEFAULT_MCP_DYNAMIC_MIN_MCPS
-import org.starfall.generative.database.preferences.DEFAULT_MCP_DYNAMIC_MIN_TOOLS
-import org.starfall.generative.database.preferences.DEFAULT_MCP_LIST_LIMIT
-import org.starfall.generative.database.preferences.MAX_MCP_DYNAMIC_MIN
-import org.starfall.generative.database.preferences.MAX_MCP_LIST_LIMIT
-import org.starfall.generative.database.preferences.MAX_MCP_LOAD_LIMIT
-import org.starfall.generative.database.preferences.McpAttachmentMode
-import org.starfall.generative.database.preferences.McpAttachmentSettings
-import org.starfall.generative.database.preferences.McpDynamicStrategy
+import org.starfall.generative.shared.model.preferences.DEFAULT_MCP_DYNAMIC_MIN_MCPS
+import org.starfall.generative.shared.model.preferences.DEFAULT_MCP_DYNAMIC_MIN_TOOLS
+import org.starfall.generative.shared.model.preferences.DEFAULT_MCP_LIST_LIMIT
+import org.starfall.generative.shared.model.preferences.MAX_MCP_DYNAMIC_MIN
+import org.starfall.generative.shared.model.preferences.MAX_MCP_LIST_LIMIT
+import org.starfall.generative.shared.model.preferences.MAX_MCP_LOAD_LIMIT
+import org.starfall.generative.shared.model.preferences.McpAttachmentMode
+import org.starfall.generative.shared.model.preferences.McpAttachmentSettings
+import org.starfall.generative.shared.model.preferences.McpDynamicStrategy
 import org.starfall.generative.shared.ui.dialogs.Dialog
 
 /** Direct switches, immediate choice dialogs and a single Save/Cancel editor for all MCP limits. */

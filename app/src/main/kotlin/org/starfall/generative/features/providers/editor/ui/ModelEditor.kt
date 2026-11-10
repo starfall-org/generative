@@ -34,7 +34,7 @@ import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.language.supportedReasoningEfforts
 import org.starfall.generative.shared.model.language.withThinkingPassback
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.preferences.ModelConfigurationMemory
+import org.starfall.generative.shared.state.preferences.ModelConfigurationMemory
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons

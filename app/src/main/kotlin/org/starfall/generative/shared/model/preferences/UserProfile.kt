@@ -1,4 +1,4 @@
-package org.starfall.generative.database.preferences
+package org.starfall.generative.shared.model.preferences
 
 import kotlinx.serialization.Serializable
 

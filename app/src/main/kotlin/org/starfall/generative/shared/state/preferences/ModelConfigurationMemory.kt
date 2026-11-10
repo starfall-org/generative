@@ -1,4 +1,4 @@
-package org.starfall.generative.database.preferences
+package org.starfall.generative.shared.state.preferences
 
 
 import android.content.Context
@@ -26,7 +26,7 @@ internal fun rememberedModelName(modelId: String): String =
 
 /** Portable model behavior, independent of provider prefixes and entity-specific icons. */
 class ModelConfigurationMemory(context: Context) {
-    private val preferences = MigratedStringPreferences.get(context, "model-configuration-memory")
+    private val preferences = context.applicationPreferences().stringPreferences("model-configuration-memory")
     private companion object {
         // Editor callbacks must not synchronously await DataStore during a click.
         val backgroundWrites = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler)

@@ -10,13 +10,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
 import kotlin.math.roundToInt
-import org.starfall.generative.database.preferences.AppPreferences
-import org.starfall.generative.database.preferences.CodeBlockDisplayMode
-import org.starfall.generative.database.preferences.DEFAULT_MESSAGE_FONT_SIZE
-import org.starfall.generative.database.preferences.DEFAULT_CODE_BLOCK_MAX_LINES
-import org.starfall.generative.database.preferences.DEFAULT_WORD_WRAP_COLUMN
-import org.starfall.generative.database.preferences.MessageFontFamily
-import org.starfall.generative.database.preferences.WordWrapMode
+import org.starfall.generative.shared.model.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.CodeBlockDisplayMode
+import org.starfall.generative.shared.model.preferences.DEFAULT_MESSAGE_FONT_SIZE
+import org.starfall.generative.shared.model.preferences.DEFAULT_CODE_BLOCK_MAX_LINES
+import org.starfall.generative.shared.model.preferences.DEFAULT_WORD_WRAP_COLUMN
+import org.starfall.generative.shared.model.preferences.MessageFontFamily
+import org.starfall.generative.shared.model.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 

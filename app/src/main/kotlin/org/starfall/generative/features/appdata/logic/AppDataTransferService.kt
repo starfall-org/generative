@@ -41,7 +41,7 @@ import org.starfall.generative.database.repositories.McpRepository
 import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.database.repositories.ProfileRepository
 import org.starfall.generative.database.repositories.SpeechRepository
-import org.starfall.generative.database.preferences.AppLocale
+import org.starfall.generative.shared.helpers.locale.AppLocale
 import org.starfall.generative.database.preferences.AppPreferencesRepository
 import org.starfall.generative.database.preferences.ToolSettingsStore
 import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore

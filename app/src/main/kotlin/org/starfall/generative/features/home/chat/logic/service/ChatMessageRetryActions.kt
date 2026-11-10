@@ -10,7 +10,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.provider.ModelProvider
-import org.starfall.generative.database.preferences.AppPreferences
+import org.starfall.generative.shared.model.preferences.AppPreferences
 
 /** Owns retry/resend/regenerate branching rules, leaving the main message action service smaller. */
 internal class ChatMessageRetryActions(
