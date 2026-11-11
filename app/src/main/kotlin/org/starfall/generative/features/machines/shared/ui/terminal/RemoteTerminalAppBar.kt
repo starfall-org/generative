@@ -65,6 +65,10 @@ internal fun TerminalAppBar(
             val localVisible = bridge?.inputMode?.usesLocalInput == true
             IconToggleButton(
                 checked = localVisible,
+                colors = IconButtonDefaults.iconToggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
                 enabled = bridge != null,
                 onCheckedChange = { visible ->
                     onInputModeChange(if (visible) TerminalInputMode.LOCAL else TerminalInputMode.REMOTE)
