@@ -90,7 +90,8 @@ internal fun RetainedNavHost(
     val fromRoute = retainedEntries.firstOrNull { it.id == transition.currentState }?.destination?.route
     val toRoute = retainedEntries.firstOrNull { it.id == transition.targetState }?.destination?.route
     val moveMenuBackground = movesMenuBackground(fromRoute, toRoute)
-    val frontMotion = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    // A full-screen move needs more time than the fast spec intended for small components.
+    val frontMotion = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val backMotion = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     val previousIds = remember { mutableListOf<String>() }
     val returning = remember(current?.id) { current?.id in previousIds }

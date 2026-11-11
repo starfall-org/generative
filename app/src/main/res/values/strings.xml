@@ -968,6 +968,10 @@
     <string name="remote_server_terminal_ime">Enable IME composition</string>
     <string name="remote_server_terminal_open_browser">Open in browser</string>
     <string name="remote_terminal_input_mode">Terminal input mode</string>
+    <string name="remote_terminal_show_local_input">Show local input</string>
+    <string name="remote_terminal_hide_local_input">Hide local input</string>
+    <string name="remote_terminal_edit_local_input">Edit local input</string>
+    <string name="remote_terminal_local_input_hint">Tap to type a local command</string>
     <string name="remote_server_terminal_force_mouse">Mouse events · tap = click, drag = wheel</string>
     <string name="remote_server_terminal_add">Open another terminal</string>
     <string translatable="false" name="remote_server_terminal_tab">Terminal %1$d</string>

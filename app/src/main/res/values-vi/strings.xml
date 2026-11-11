@@ -735,6 +735,10 @@
     <string name="remote_server_terminal_ime">Bật soạn thảo bằng IME</string>
     <string name="remote_server_terminal_open_browser">Mở bằng trình duyệt</string>
     <string name="remote_terminal_input_mode">Chế độ nhập Terminal</string>
+    <string name="remote_terminal_show_local_input">Hiện ô nhập local</string>
+    <string name="remote_terminal_hide_local_input">Ẩn ô nhập local</string>
+    <string name="remote_terminal_edit_local_input">Nhập lệnh local</string>
+    <string name="remote_terminal_local_input_hint">Chạm để nhập lệnh local</string>
     <string name="remote_server_terminal_force_mouse">Sự kiện chuột · chạm = nhấp, kéo = cuộn</string>
     <string name="remote_server_terminal_add">Mở terminal khác</string>
     <string name="remote_server_terminal_sessions">Phiên</string>

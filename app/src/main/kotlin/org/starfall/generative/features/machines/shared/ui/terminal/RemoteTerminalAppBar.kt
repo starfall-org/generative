@@ -1,9 +1,6 @@
 package org.starfall.generative.features.machines.shared.ui.terminal
 
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
-import org.starfall.generative.shared.ui.menus.DropdownMenu
-import org.starfall.generative.shared.ui.menus.DropdownMenuItem
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -14,10 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -39,7 +32,6 @@ internal fun TerminalAppBar(
     onToggleIme: () -> Unit,
     onToggleForceMouse: () -> Unit
 ) {
-    var inputMenuOpen by remember { mutableStateOf(false) }
     TopAppBar(
         colors = edgeToEdgeTopAppBarColors(),
         title = {},
@@ -70,28 +62,19 @@ internal fun TerminalAppBar(
                 Text(stringResource(R.string.remote_server_terminal_input_ime_short),
                     style = MaterialTheme.typography.labelMedium)
             }
-            Box {
-                val mode = bridge?.inputMode ?: TerminalInputMode.REMOTE
-                val modeLabel = stringResource(if (mode == TerminalInputMode.LOCAL)
-                    R.string.remote_server_terminal_input_local_short else R.string.remote_server_terminal_input_remote_short)
-                IconButton(enabled = bridge != null, onClick = { inputMenuOpen = true }) {
-                    val description = stringResource(R.string.remote_terminal_input_mode) + ": " + modeLabel
-                    if (mode == TerminalInputMode.LOCAL) SharedIcon(Icons.Outlined.Edit, description)
-                    else SharedIcon(Icons.Outlined.Computer, description)
+            val localVisible = bridge?.inputMode?.usesLocalInput == true
+            IconToggleButton(
+                checked = localVisible,
+                enabled = bridge != null,
+                onCheckedChange = { visible ->
+                    onInputModeChange(if (visible) TerminalInputMode.LOCAL else TerminalInputMode.REMOTE)
                 }
-                DropdownMenu(expanded = inputMenuOpen, onDismissRequest = { inputMenuOpen = false }) {
-                    TerminalInputMode.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(if (option == TerminalInputMode.LOCAL)
-                                R.string.remote_server_terminal_input_local_short else R.string.remote_server_terminal_input_remote_short)) },
-                            leadingIcon = {
-                                if (option == mode) SharedIcon(Icons.Default.Check, null)
-                            },
-                            enabled = bridge != null,
-                            onClick = { onInputModeChange(option); inputMenuOpen = false }
-                        )
-                    }
-                }
+            ) {
+                SharedIcon(
+                    Icons.Outlined.Edit,
+                    stringResource(if (localVisible) R.string.remote_terminal_hide_local_input
+                        else R.string.remote_terminal_show_local_input)
+                )
             }
             IconToggleButton(
                 checked = bridge?.forceMouse == true,

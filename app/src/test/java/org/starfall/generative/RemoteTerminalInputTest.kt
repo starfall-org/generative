@@ -1,26 +1,33 @@
 package org.starfall.generative
 
 import android.content.Context
+import android.app.Activity
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import android.text.InputType
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.test.core.app.ApplicationProvider
 import java.io.ByteArrayOutputStream
+import java.io.ByteArrayInputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Robolectric
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadow.api.Shadow
 import org.robolectric.shadows.ShadowInputMethodManager
 import org.starfall.generative.shared.model.remote.TerminalInputMode
+import org.starfall.generative.shared.model.remote.RemoteTerminalSession
 import org.starfall.generative.database.preferences.remoteTerminalImePreferenceKey
 import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.database.preferences.remoteTerminalInputPreferences
@@ -162,7 +169,7 @@ class RemoteTerminalInputTest {
         bridge.updateImeEnabled(true)
         assertTrue(bridge.imeEnabled)
         assertTrue(view.onCheckIsTextEditor())
-        assertSame(view, view.inputTarget)
+        assertSame(view.terminalView, view.inputTarget)
         val composing = EditorInfo()
         assertNotNull(view.onCreateInputConnection(composing))
         assertEquals(InputType.TYPE_CLASS_TEXT, composing.inputType and InputType.TYPE_MASK_CLASS)
@@ -178,7 +185,107 @@ class RemoteTerminalInputTest {
         bridge.setInputMode(TerminalInputMode.LOCAL)
         bridge.updateImeEnabled(true)
         assertTrue(bridge.imeEnabled)
-        assertSame(view, view.inputTarget)
+        assertSame(view.terminalView, view.inputTarget)
+        bridge.close()
+    }
+
+    @Test
+    fun localEditorAndTerminalStayFocusableWhileLocalInputIsVisible() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val bridge = RemoteTerminalBridge(activity, TerminalInputMode.REMOTE)
+        val view = RemoteTerminalView(activity, bridge)
+        bridge.inputView = view
+        bridge.view = view.terminalView
+        view.terminalView.setTerminalViewClient(bridge)
+        view.terminalView.visibility = View.VISIBLE
+        activity.setContentView(view)
+        view.terminalView.requestFocus()
+        assertTrue(view.terminalView.isFocused)
+        val focusTargets = mutableListOf<View?>()
+        view.viewTreeObserver.addOnGlobalFocusChangeListener { _, focused -> focusTargets.add(focused) }
+
+        repeat(3) {
+            bridge.setInputMode(TerminalInputMode.LOCAL)
+            bridge.updateImeEnabled(true)
+            assertTrue(view.terminalView.isFocused)
+            assertTrue(view.terminalView.isFocusableInTouchMode)
+            view.requestFocus()
+            assertTrue(view.isFocused)
+            assertTrue(bridge.localInputFocused)
+            assertSame(view, view.inputTarget)
+            val connection = view.onCreateInputConnection(EditorInfo())!!
+            connection.setSelection(0, bridge.localInputForIme.length)
+            connection.setComposingText("chào", 1)
+            val tap = MotionEvent.obtain(0, 0, MotionEvent.ACTION_UP, 0f, 0f, 0)
+            try {
+                bridge.onSingleTapUp(tap)
+            } finally {
+                tap.recycle()
+            }
+            assertTrue(view.terminalView.isFocused)
+            assertFalse(bridge.localInputFocused)
+            assertEquals(TerminalInputMode.LOCAL, bridge.inputMode)
+            assertEquals("chào", bridge.localInputForIme)
+            assertEquals("chào", bridge.localDraftForDisplay())
+            // Changing the local editor's IME option must not steal focus back from the terminal.
+            bridge.updateImeEnabled(false)
+            assertTrue(view.terminalView.isFocused)
+            view.requestFocus()
+            assertNotNull(view.onCreateInputConnection(EditorInfo()))
+            bridge.setInputMode(TerminalInputMode.REMOTE)
+            assertTrue(view.terminalView.isFocused)
+            assertEquals("chào", bridge.localInputForIme)
+        }
+
+        assertEquals(12, focusTargets.size)
+        assertTrue(focusTargets.all { it === view || it === view.terminalView })
+        bridge.close()
+        activity.finish()
+    }
+
+    @Test
+    fun remoteKeyEventsBypassTheVisibleLocalDraft() {
+        val bridge = RemoteTerminalBridge(context, TerminalInputMode.LOCAL)
+        val view = RemoteTerminalView(context, bridge)
+        bridge.inputView = view
+        view.terminalView.setTerminalViewClient(bridge)
+        bridge.updateImeEnabled(true)
+        bridge.updateLocalImeDraft("echo chào", 4)
+        val writes = CountDownLatch(2)
+        val output = object : ByteArrayOutputStream() {
+            override fun flush() { writes.countDown() }
+        }
+        bridge.attachRemote(object : RemoteTerminalSession {
+            override val id = "focus-routing"
+            override val input = ByteArrayInputStream(byteArrayOf())
+            override val output = output
+            override val isOpen = true
+            override val exitStatus = 0
+            override fun resize(columns: Int, rows: Int) = Unit
+            override fun close() = Unit
+        })
+        try {
+            val session = bridge.createSession(context.filesDir)
+            bridge.onCodePoint('r'.code, false, session)
+            bridge.onKeyDown(KeyEvent.KEYCODE_ENTER, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER), session)
+            assertTrue(writes.await(3, TimeUnit.SECONDS))
+            assertEquals("r\r", output.toString("UTF-8"))
+            assertEquals("echo chào", bridge.localInputForIme)
+            assertEquals(4, bridge.localCursorForIme)
+            assertEquals(TerminalInputMode.LOCAL, bridge.inputMode)
+        } finally {
+            bridge.close()
+        }
+    }
+
+    @Test
+    fun enablingLocalImeDoesNotFocusAnInactiveTerminal() {
+        val bridge = RemoteTerminalBridge(context, TerminalInputMode.REMOTE)
+        val view = RemoteTerminalView(context, bridge)
+        bridge.inputView = view
+        bridge.setInputMode(TerminalInputMode.LOCAL)
+        bridge.updateImeEnabled(true)
+        assertFalse(view.hasFocus())
         bridge.close()
     }
 

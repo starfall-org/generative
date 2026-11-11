@@ -1,6 +1,7 @@
 package org.starfall.generative.features.machines.shared.ui.terminal
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -181,25 +182,8 @@ private fun BoxScope.TerminalOverlay(
     terminalForeground: Color,
     onOpenTerminal: () -> Unit
 ) {
-    val draft = activeBridge?.localDraftForDisplay().orEmpty()
-    if (draft.isNotEmpty()) {
-        Surface(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(8.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = prominentContainerColor(),
-            border = prominentContainerBorder()
-        ) {
-            val draftScroll = rememberScrollState()
-            LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
-            Text(
-                draft,
-                fontFamily = FontFamily.Monospace,
-                softWrap = true,
-                modifier = Modifier.heightIn(max = 140.dp)
-                    .verticalScroll(draftScroll)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-            )
-        }
+    if (activeBridge?.inputMode?.usesLocalInput == true) {
+        TerminalLocalInput(activeBridge, Modifier.align(Alignment.BottomStart))
     }
     if (connecting && error == null && !secretRequestVisible) {
         Surface(
@@ -253,6 +237,36 @@ private fun BoxScope.TerminalOverlay(
             title = stringResource(R.string.remote_server_terminal_connection_error),
             onRetry = onOpenTerminal,
             modifier = Modifier.align(Alignment.Center).padding(16.dp)
+        )
+    }
+}
+
+/** The panel stays visible when the terminal takes focus, so the draft can be resumed by tapping it. */
+@Composable
+internal fun TerminalLocalInput(bridge: RemoteTerminalBridge, modifier: Modifier = Modifier) {
+    val draft = bridge.localDraftForDisplay().orEmpty()
+    Surface(
+        modifier.fillMaxWidth().padding(8.dp)
+            .clickable(onClickLabel = stringResource(R.string.remote_terminal_edit_local_input)) {
+                bridge.focusLocalInput()
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = prominentContainerColor(),
+        border = prominentContainerBorder()
+    ) {
+        val draftScroll = rememberScrollState()
+        LaunchedEffect(draft) { draftScroll.scrollTo(draftScroll.maxValue) }
+        Text(
+            draft.ifEmpty {
+                if (bridge.localInputFocused) "▏" else stringResource(R.string.remote_terminal_local_input_hint)
+            },
+            fontFamily = FontFamily.Monospace,
+            color = if (draft.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface,
+            softWrap = true,
+            modifier = Modifier.heightIn(max = 140.dp)
+                .verticalScroll(draftScroll)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
         )
     }
 }

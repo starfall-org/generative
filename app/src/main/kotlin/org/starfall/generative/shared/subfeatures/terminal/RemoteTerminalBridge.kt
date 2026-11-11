@@ -69,6 +69,8 @@ internal class RemoteTerminalBridge(
         get() = input.shiftActive
         set(value) { input.shiftActive = value }
     val inputMode: TerminalInputMode get() = input.inputMode
+    var localInputFocused by mutableStateOf(false)
+        internal set
 
     val localInputForIme: String get() = input.localInput
     val localCursorForIme: Int get() = input.localCursorPosition
@@ -90,14 +92,7 @@ internal class RemoteTerminalBridge(
         if (imeEnabled == localImeEnabled) return
         inputView?.finishImeComposition()
         imeEnabled = localImeEnabled
-        inputView?.let { host ->
-            val focused = host.hasFocus()
-            host.updateInputMode()
-            if (focused) {
-                host.inputTarget.requestFocus()
-                context.getSystemService(InputMethodManager::class.java)?.restartInput(host.inputTarget)
-            }
-        }
+        inputView?.restartImeConnection()
     }
 
     fun setInputMode(mode: TerminalInputMode) {
@@ -105,6 +100,7 @@ internal class RemoteTerminalBridge(
         val oldMode = inputMode
         input.changeInputMode(mode)
         if (mode != oldMode) {
+            inputView?.updateInputMode()
             if (!mode.usesLocalInput && imeEnabled) {
                 // Disable composition before the view can create an IME connection in Remote mode.
                 updateImeEnabled(false)
@@ -144,7 +140,7 @@ internal class RemoteTerminalBridge(
         }
     }
 
-    fun localDraftForDisplay(): String? = input.localDraftForDisplay()
+    fun localDraftForDisplay(): String? = input.localDraftForDisplay(showCursor = localInputFocused)
 
     /**
      * Creates the silent local session TerminalView needs for its emulator lifecycle. Called again
@@ -171,6 +167,7 @@ internal class RemoteTerminalBridge(
     fun detachView(released: RemoteTerminalView) {
         if (inputView !== released) return
         released.finishImeComposition()
+        localInputFocused = false
         view = null
         inputView = null
         emulatorReady = false
@@ -299,7 +296,7 @@ internal class RemoteTerminalBridge(
 
     private fun sendText(value: String) {
         inputView?.finishImeComposition()
-        input.sendText(value)
+        input.sendText(value, forceRemote = !localInputFocused)
         syncLocalImeDraft()
     }
 
@@ -373,8 +370,8 @@ internal class RemoteTerminalBridge(
         return scale
     }
 
-    private fun focusAndShowKeyboard() {
-        val terminalView = inputView?.inputTarget ?: view ?: return
+    private fun focusAndShowKeyboard(target: View? = inputView?.inputTarget ?: view) {
+        val terminalView = target ?: return
         terminalView.post {
             if (closed) return@post
             terminalView.requestFocus()
@@ -393,6 +390,10 @@ internal class RemoteTerminalBridge(
                 }, 120)
             }
         }
+    }
+
+    fun focusLocalInput() {
+        if (inputMode.usesLocalInput) focusAndShowKeyboard(inputView)
     }
 
     /**
@@ -427,7 +428,9 @@ internal class RemoteTerminalBridge(
     }
 
     override fun onSingleTapUp(e: MotionEvent) {
-        if (!forceMouse) focusAndShowKeyboard()
+        // A terminal tap always selects remote input, even with the local editor visible.
+        view?.requestFocus()
+        if (!forceMouse) focusAndShowKeyboard(view)
     }
     override fun shouldBackButtonBeMappedToEscape(): Boolean = false
     override fun shouldEnforceCharBasedInput(): Boolean = true
@@ -435,7 +438,7 @@ internal class RemoteTerminalBridge(
     override fun isTerminalViewSelected(): Boolean = true
     override fun copyModeChanged(copyMode: Boolean) = Unit
     override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean =
-        inputView?.sendKeyToIme(e) ?: input.sendKey(keyCode, e)
+        inputView?.sendKeyToIme(e) ?: input.sendKey(keyCode, e, forceRemote = !localInputFocused)
     override fun onKeyUp(keyCode: Int, e: KeyEvent): Boolean = true
     override fun onLongPress(event: MotionEvent): Boolean = false
     override fun readControlKey(): Boolean = ctrlActive
@@ -443,7 +446,7 @@ internal class RemoteTerminalBridge(
     override fun readShiftKey(): Boolean = false
     override fun readFnKey(): Boolean = false
     override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession): Boolean {
-        input.sendCodePoint(codePoint, ctrlDown, altActive)
+        input.sendCodePoint(codePoint, ctrlDown, altActive, forceRemote = !localInputFocused)
         input.clearModifiers()
         return true
     }

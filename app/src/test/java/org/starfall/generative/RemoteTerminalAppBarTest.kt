@@ -21,6 +21,7 @@ import org.starfall.generative.shared.model.remote.TerminalInputMode
 import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalBridge
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.features.machines.shared.ui.terminal.TerminalAppBar
+import org.starfall.generative.features.machines.shared.ui.terminal.TerminalLocalInput
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w320dp-h800dp-xhdpi", application = LibraryTestApplication::class)
@@ -28,7 +29,7 @@ class RemoteTerminalAppBarTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun inputModeOpensMenuAndImeIsOnlyAvailableInLocalMode() {
+    fun localInputToggleShowsAndHidesEditorWithoutAModeMenu() {
         val bridge = RemoteTerminalBridge(ApplicationProvider.getApplicationContext<Context>(), TerminalInputMode.REMOTE)
         var modeChanges = 0
         compose.setContent {
@@ -45,27 +46,45 @@ class RemoteTerminalAppBarTest {
             }
         }
         compose.onNodeWithContentDescription("Enable IME composition").assertIsNotEnabled().assertIsOff()
-        compose.onNodeWithContentDescription("Terminal input mode: Remote").performClick()
-        compose.runOnIdle { assertEquals(0, modeChanges) }
-        compose.onNodeWithText("Local").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Show local input").assertIsOff().performClick()
+        compose.onNodeWithContentDescription("Hide local input").assertIsOn()
+        compose.runOnIdle { assertEquals(1, modeChanges) }
+        compose.onNodeWithText("Remote").assertDoesNotExist()
         compose.runOnIdle { assertEquals(TerminalInputMode.LOCAL, bridge.inputMode) }
         compose.onNodeWithContentDescription("Enable IME composition").performClick().assertIsOn()
         compose.runOnIdle {
             assertEquals(TerminalInputMode.LOCAL, bridge.inputMode)
             bridge.updateLocalImeDraft("unsent command", 5)
         }
-        compose.onNodeWithContentDescription("Terminal input mode: Local").performClick()
-        compose.onNodeWithText("Remote").assertIsEnabled().performClick()
+        compose.onNodeWithContentDescription("Hide local input").performClick()
+        compose.onNodeWithContentDescription("Show local input").assertIsOff()
         compose.runOnIdle { assertEquals("unsent command", bridge.localInputForIme) }
         compose.onNodeWithContentDescription("Enable IME composition").assertIsNotEnabled().assertIsOff()
         compose.runOnIdle { assertEquals(false, bridge.imeEnabled) }
-        compose.onNodeWithContentDescription("Terminal input mode: Remote").performClick()
-        compose.onNodeWithText("Local").performClick()
+        compose.onNodeWithContentDescription("Show local input").performClick()
         compose.onNodeWithContentDescription("Enable IME composition").assertIsEnabled().assertIsOff()
         compose.onNodeWithContentDescription("Mouse events · tap = click, drag = wheel").performClick().assertIsOn()
         compose.onNodeWithContentDescription("Show or hide terminal sessions").assertIsDisplayed()
         compose.onNodeWithContentDescription("Terminal font size").assertDoesNotExist()
         bridge.close()
+    }
+
+    @Test
+    fun localPanelIsVisibleWhenEmptyAndKeepsItsDraftWithoutLocalFocus() {
+        val bridge = RemoteTerminalBridge(ApplicationProvider.getApplicationContext<Context>(), TerminalInputMode.LOCAL)
+        try {
+            compose.setContent {
+                GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                    TerminalLocalInput(bridge)
+                }
+            }
+            compose.onNodeWithText("Tap to type a local command").assertIsDisplayed()
+            compose.runOnIdle { bridge.updateLocalImeDraft("echo draft", 4) }
+            compose.onNodeWithText("echo draft").assertIsDisplayed()
+            compose.runOnIdle { assertEquals(false, bridge.localInputFocused) }
+        } finally {
+            bridge.close()
+        }
     }
 
     @Test

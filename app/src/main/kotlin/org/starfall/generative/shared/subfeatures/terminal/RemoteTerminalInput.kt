@@ -47,7 +47,7 @@ internal class RemoteTerminalInput(
         clearModifiers()
     }
 
-    fun localDraftForDisplay(): String? {
+    fun localDraftForDisplay(showCursor: Boolean = true): String? {
         if (!inputMode.usesLocalInput) return null
         val submitted = submittedLocalInput
         if (submitted == null && localInput.isEmpty()) return null
@@ -56,7 +56,7 @@ internal class RemoteTerminalInput(
             if (localInput.isNotEmpty()) {
                 if (submitted != null) append("  ·  ")
                 append(localInput, 0, localCursor)
-                append('▏')
+                if (showCursor) append('▏')
                 append(localInput.substring(localCursor))
             }
         }
@@ -66,9 +66,9 @@ internal class RemoteTerminalInput(
         submittedLocalInput = null
     }
 
-    fun sendText(value: String) {
+    fun sendText(value: String, forceRemote: Boolean = false) {
         snapToBottom()
-        if (inputMode.usesLocalInput) insertLocalText(value)
+        if (inputMode.usesLocalInput && !forceRemote) insertLocalText(value)
         else sendRemote(value.toByteArray(Charsets.UTF_8))
     }
 
@@ -157,7 +157,7 @@ internal class RemoteTerminalInput(
         sendRemote(codePointBytes(shiftedPoint, ctrl, alt))
     }
 
-    fun sendKey(keyCode: Int, event: KeyEvent): Boolean {
+    fun sendKey(keyCode: Int, event: KeyEvent, forceRemote: Boolean = false): Boolean {
         val sequence = when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> "\r"
             KeyEvent.KEYCODE_TAB -> "\t"
@@ -177,12 +177,12 @@ internal class RemoteTerminalInput(
         val ctrl = event.isCtrlPressed || ctrlActive
         val alt = event.isAltPressed || altActive
         if (sequence != null) {
-            sendSpecial(sequence, ctrl, alt)
+            sendSpecial(sequence, ctrl, alt, forceRemote)
             return true
         }
         val unicode = event.unicodeChar
         if (unicode != 0) {
-            sendCodePoint(unicode, ctrl, alt)
+            sendCodePoint(unicode, ctrl, alt, forceRemote)
             clearModifiers()
         }
         return true

@@ -12,15 +12,21 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.termux.view.TerminalView
 
-/** Uses Termux's raw key input or a composing Android editor, independently of Local/Remote. */
+/** Keeps the remote terminal and the optional local editor independently focusable. */
 internal class RemoteTerminalView(context: Context, private val bridge: RemoteTerminalBridge) : FrameLayout(context) {
     val terminalView = TerminalView(context, null)
-    val inputTarget: View get() = if (bridge.imeEnabled && bridge.inputMode.usesLocalInput) this else terminalView
+    val inputTarget: View get() = if (isFocused && onCheckIsTextEditor()) this else terminalView
     private var composingConnection: RemoteTerminalInputConnection? = null
 
     init {
         isFocusable = true
         isFocusableInTouchMode = true
+        terminalView.isFocusable = true
+        terminalView.isFocusableInTouchMode = true
+        setOnFocusChangeListener { _, focused ->
+            if (!focused) finishImeComposition()
+            bridge.localInputFocused = focused
+        }
         // Termux paints solid black while its emulator is null, ignoring the View background.
         // Keep the renderer hidden until onEmulatorSet applies the current theme palette;
         // the FrameLayout behind it displays the actual screen background in the meantime.
@@ -52,17 +58,18 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
     }
 
     fun updateInputMode() {
-        val useIme = bridge.imeEnabled && bridge.inputMode.usesLocalInput
-        terminalView.isFocusable = !useIme
-        terminalView.isFocusableInTouchMode = !useIme
+        // Visibility does not select an input destination or disable terminal focus.
+        // Only hiding the editor while it owns focus needs a handoff to the terminal.
+        if (!bridge.inputMode.usesLocalInput && isFocused) terminalView.requestFocus()
     }
 
-    override fun onCheckIsTextEditor(): Boolean = bridge.imeEnabled && bridge.inputMode.usesLocalInput
+    override fun onCheckIsTextEditor(): Boolean = bridge.inputMode.usesLocalInput
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
         finishImeComposition()
         composingConnection = null
         if (!onCheckIsTextEditor()) return null
+        if (!bridge.imeEnabled) return terminalView.onCreateInputConnection(outAttrs)
         // Single-line editor + Send action: some keyboards do not emit Enter for multiline text.
         outAttrs.inputType = InputType.TYPE_CLASS_TEXT
         outAttrs.imeOptions = EditorInfo.IME_ACTION_SEND or
@@ -81,7 +88,7 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
     fun restartImeConnection() {
         finishImeComposition()
         composingConnection = null
-        if (onCheckIsTextEditor() && hasFocus()) {
+        if (onCheckIsTextEditor() && isFocused) {
             context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
                 ?.restartInput(this)
         }
@@ -96,7 +103,7 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
     }
 
     fun sendKeyToIme(event: KeyEvent): Boolean? =
-        if (onCheckIsTextEditor()) composingConnection?.sendKeyEvent(event) else null
+        if (isFocused && bridge.imeEnabled && onCheckIsTextEditor()) composingConnection?.sendKeyEvent(event) else null
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) return super.onKeyDown(keyCode, event)
