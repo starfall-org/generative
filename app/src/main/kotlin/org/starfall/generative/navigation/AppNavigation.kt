@@ -71,6 +71,7 @@ import org.starfall.generative.features.home.chat.ui.ChatScreen
 import org.starfall.generative.features.home.chat.ui.RetainedChatConversations
 import org.starfall.generative.features.home.chat.ui.RetainedChatPages
 import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
+import org.starfall.generative.shared.ui.code.LocalOpenCodePreview
 import org.starfall.generative.features.home.drawer.ui.ConversationSideDrawer
 import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import kotlinx.coroutines.CancellationException
@@ -95,7 +96,7 @@ import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
-import org.starfall.generative.shared.ui.screens.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.ScreenDestination
 import org.starfall.generative.features.home.chat.ui.LocalChatAttachmentSelection
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
@@ -491,6 +492,9 @@ internal fun AppNavigation(
 
     CompositionLocalProvider(
         org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences provides appPrefs,
+        LocalOpenCodePreview provides { language, code ->
+            openCodePreview(context, navController, language, code)
+        },
         org.starfall.generative.shared.ui.layout.LocalItemTransparency provides appPrefs.itemTransparency,
         org.starfall.generative.shared.ui.background.LocalProfileModalImages provides
             org.starfall.generative.shared.ui.background.ProfileModalImages(
@@ -625,7 +629,8 @@ internal fun AppNavigation(
                             state = retainedChats,
                             conversation = currentConvState.value,
                             availableIds = availableChatIds,
-                            foreground = chatOnTop
+                            foreground = chatOnTop,
+                            keepOverlayState = navBackStackEntry?.destination?.route == BrowserRoutes.CODE_PREVIEW
                         ) { chatPage, active ->
                     ChatScreen(
                         backgroundImage = appPrefs.userProfile.chatBackground,
@@ -920,7 +925,7 @@ internal fun AppNavigation(
 
                     composable(AppDestination.CUSTOM_HTTP_TOOLS.route) {
                         DisposableEffect(Unit) { onDispose { httpEditor = null } }
-                        RetainedScreenContent(editor = httpEditor) { tool ->
+                        ScreenDestination(page = httpEditor, onClosed = { httpEditor = null }) { tool ->
                             if (tool != null) {
                                 HttpToolEditor(
                                     tool = tool, onSave = customHttpToolsViewModel::save,
@@ -939,7 +944,7 @@ internal fun AppNavigation(
 
                     composable(AppDestination.MCP.route) {
                         DisposableEffect(Unit) { onDispose { mcpEditor = null } }
-                        RetainedScreenContent(editor = mcpEditor) { page ->
+                        ScreenDestination(page = mcpEditor, onClosed = { mcpEditor = null }) { page ->
                             if (page != null) {
                                 TargetedEditorContent(
                                     recordId = page.first.id,
@@ -1148,9 +1153,10 @@ internal fun AppNavigation(
                         StorageScreen(
                             store = toolFiles,
                             onBack = { navController.popBackStack() },
-                            onBrowseFiles = { ExplorerActivity.open(context) }
+                            onBrowseFiles = { navController.navigate(BrowserRoutes.explorer()) }
                         )
                     }
+                    browserScreens(navController)
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings page on re-entry.
                         DisposableEffect(Unit) {
@@ -1158,8 +1164,9 @@ internal fun AppNavigation(
                                 remoteMachinePage = null
                             }
                         }
-                        RetainedScreenContent(
-                            editor = remoteMachinePage
+                        ScreenDestination(
+                            page = remoteMachinePage,
+                            onClosed = { remoteMachinePage = null }
                         ) { selected ->
                             when {
                                 selected is MachineEditorPage -> MachineDetailsScreen(
@@ -1197,7 +1204,7 @@ internal fun AppNavigation(
                                     onOpenTerminal = { machine ->
                                         openTerminal(machine)
                                     },
-                                    onOpenFiles = { machine -> ExplorerActivity.open(context, machineId = machine.id) }
+                                    onOpenFiles = { machine -> navController.navigate(BrowserRoutes.explorer(machine.id)) }
                                 )
                             }
                         }

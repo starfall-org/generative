@@ -12,6 +12,7 @@ import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,15 +48,16 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 private val toolJson = Json { prettyPrint = true }
 
 @Composable
-internal fun ToolDetailsSheetHost(state: ToolSheetState, activities: List<ToolActivity>) {
+internal fun ToolDetailsSheetHost(state: ToolSheetState, activities: List<ToolActivity>, visible: Boolean = true) {
     val activity = state.selectedId?.let { id -> activities.find { it.id == id } } ?: return
-    ToolDetailsSheet(activity = activity, onDismiss = { state.selectedId = null })
+    ToolDetailsSheet(activity = activity, visible = visible, onDismiss = { state.selectedId = null })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ToolDetailsSheet(
     activity: ToolActivity,
+    visible: Boolean = true,
     onDismiss: () -> Unit
 ) {
     val argsPager = key(activity.id) { androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 }) }
@@ -68,6 +70,8 @@ internal fun ToolDetailsSheet(
         activity.files.map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
     var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
+    val scrollState = rememberScrollState()
+    val sheetState = rememberSaveableStateHolder()
     val responseLanguage = remember(responseText) { toolResponseLanguage(responseText) }
     val responseIsJson = responseLanguage == "json"
     val downloadResponse = rememberResponseDownload(
@@ -84,13 +88,14 @@ internal fun ToolDetailsSheet(
     }
     val canDownload = responseText.isNotBlank()
 
+    if (visible) sheetState.SaveableStateProvider(activity.id) {
     ContentSheet(
         onDismissRequest = onDismiss
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(start = 20.dp, end = 20.dp, bottom = 28.dp)
         ) {
             Text(
@@ -156,7 +161,8 @@ internal fun ToolDetailsSheet(
             }
         }
     }
-    viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
+    }
+    if (visible) viewingFile?.let { file -> MediaViewer(ToolFiles(context), file) { viewingFile = null } }
 }
 
 

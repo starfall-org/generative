@@ -21,6 +21,8 @@ import org.starfall.generative.shared.model.language.*
 import org.starfall.generative.shared.model.provider.*
 import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import java.time.Duration
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
+import org.starfall.generative.integrations.modelapis.attachments.AttachmentMessages
 
 internal inline fun <R> com.openai.client.OpenAIClient.useClient(block: (com.openai.client.OpenAIClient) -> R): R =
     try { block(this) } finally { close() }
@@ -31,7 +33,10 @@ internal inline fun <R> com.anthropic.client.AnthropicClient.useClient(block: (c
 /** Each operation owns its client and immutable provider snapshot, including credentials.
  * Switching providers cannot redirect an in-flight request or reuse another provider's key.
  */
-internal class OfficialProviderSdk(private val attachments: AttachmentResolver) {
+internal class OfficialProviderSdk(
+    private val attachments: AttachmentResolver,
+    messages: AttachmentMessages = AttachmentMessages()
+) {
     // SDKs wrap an interrupted socket in their own IOException type. Preserve
     // coroutine cancellation instead of displaying it as a generation failure.
     internal suspend fun <T> sdkCall(block: () -> T): T = try {
@@ -41,11 +46,11 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
         throw e
     }
 
-    private val content = SdkAttachmentContent(attachments)
-    internal fun openAiChatContent(message: StoredMessage) = content.openAiChatContent(message)
-    internal fun openAiResponseContent(message: StoredMessage) = content.openAiResponseContent(message)
-    internal fun anthropicContent(message: StoredMessage) = content.anthropicContent(message)
-    internal suspend fun googleParts(client: Client, message: StoredMessage) = content.googleParts(client, message)
+    private val content = SdkAttachmentContent(attachments, messages)
+    internal fun openAiChatContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()) = content.openAiChatContent(message, prepared)
+    internal fun openAiResponseContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()) = content.openAiResponseContent(message, prepared)
+    internal fun anthropicContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()) = content.anthropicContent(message, prepared)
+    internal suspend fun googleParts(client: Client, message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()) = content.googleParts(client, message, prepared)
 
     internal fun baseUrl(provider: ModelProvider): String {
         var base = provider.baseUrl.trim().trimEnd('/')
@@ -77,8 +82,12 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
                                  requestOptions: com.openai.core.RequestOptions): com.openai.core.http.HttpResponse {
                 // Interrupting a blocking socket read does not reliably close the socket.
                 // The official async transport cancels its OkHttp call when this future is cancelled.
-                val endpoint = provider.config.customEndpoints[if (provider.type == ModelApiType.OPENAI_RESPONSES) "responses" else "chat"]
-                val routed = if (endpoint.isNullOrBlank()) request else request.toBuilder().baseUrl(endpoint).pathSegments(emptyList()).build()
+                val filesIndex = request.pathSegments.indexOf("files")
+                val generation = request.pathSegments.lastOrNull() in setOf("responses", "completions")
+                val endpoint = if (filesIndex >= 0) provider.config.customEndpoints["files"]
+                    else if (generation) provider.config.customEndpoints[if (provider.type == ModelApiType.OPENAI_RESPONSES) "responses" else "chat"] else null
+                val suffix = if (filesIndex >= 0) request.pathSegments.drop(filesIndex + 1) else emptyList()
+                val routed = if (endpoint.isNullOrBlank()) request else request.toBuilder().baseUrl(endpoint).pathSegments(suffix).build()
                 val future = transport.executeAsync(routed, requestOptions)
                 try {
                     return future.get()
@@ -115,6 +124,12 @@ internal class OfficialProviderSdk(private val attachments: AttachmentResolver) 
             addInterceptor(com.anthropic.core.http.Interceptor { transport ->
                 object : com.anthropic.core.http.HttpClient by transport {
                     fun route(request: com.anthropic.core.http.HttpRequest): com.anthropic.core.http.HttpRequest {
+                        val filesIndex = request.pathSegments.indexOf("files")
+                        if (filesIndex >= 0) {
+                            val endpoint = provider.config.customEndpoints["files"]?.takeIf { it.isNotBlank() } ?: return request
+                            return request.toBuilder().baseUrl(endpoint)
+                                .replaceAllPathSegments(*request.pathSegments.drop(filesIndex + 1).toTypedArray()).build()
+                        }
                         val catalog = request.pathSegments.lastOrNull() == "models"
                         val key = if (catalog) "catalog" else "messages"
                         val endpoint = provider.config.customEndpoints[key]?.takeIf { it.isNotBlank() }

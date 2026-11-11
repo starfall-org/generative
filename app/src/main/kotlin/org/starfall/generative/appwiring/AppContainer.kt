@@ -55,7 +55,8 @@ import org.starfall.generative.features.home.chat.logic.markdown.PersistentMarkd
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val database = AppDatabase.getInstance(appContext)
-    private val aiService = AiService(appContext)
+    private val aiService = AiService(appContext, remoteAttachmentStore =
+        org.starfall.generative.database.repositories.RemoteAttachmentRepository(database.remoteAttachmentDao()))
     val toolFiles = ToolFiles(appContext)
     private val toolHttp = ToolHttp(toolFiles)
     private val mcpOAuth = McpOAuthService(appContext, toolHttp, contentApiMcpUrl = BuildConfig.CONTENT_API_MCP_URL)

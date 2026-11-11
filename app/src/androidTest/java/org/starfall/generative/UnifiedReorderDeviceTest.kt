@@ -41,7 +41,7 @@ class UnifiedReorderDeviceTest {
     @Test
     fun mcpGridReorderPersistsTheTouchedServer() {
         val saved = CopyOnWriteArrayList<List<String>>()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ServerListScreen(
                     mcpServers = listOf(
@@ -75,7 +75,7 @@ class UnifiedReorderDeviceTest {
 
     private fun assertSpeechReorder(grid: Boolean) {
         val saved = CopyOnWriteArrayList<List<String>>()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(

@@ -42,6 +42,9 @@ import org.starfall.generative.shared.model.StoredMessage
 /** False while the retained chat page is offscreen. */
 internal val LocalChatForeground = compositionLocalOf { true }
 
+/** Keep the active chat's transient viewers while its code preview is on top. */
+internal val LocalChatKeepOverlayState = compositionLocalOf { false }
+
 /** Eligibility and one replaceable intent. LazyColumn owns all measurement, motion and arbitration. */
 @Stable
 internal class ChatMessageListState(initialMessages: List<StoredMessage> = emptyList()) {

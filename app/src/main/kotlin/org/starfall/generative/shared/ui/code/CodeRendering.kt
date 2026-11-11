@@ -15,6 +15,9 @@ import org.starfall.generative.shared.model.preferences.WordWrapMode
  */
 internal val LocalCodeRenderingPreferences = staticCompositionLocalOf { AppPreferences() }
 
+/** The navigation layer opens the preview without giving code rendering a navigation dependency. */
+internal val LocalOpenCodePreview = staticCompositionLocalOf<(String, String) -> Unit> { { _, _ -> } }
+
 /** Width of the text area, excluding code block padding. Null means no wrapping. */
 internal fun codeWrapWidth(mode: WordWrapMode, viewport: Float, column: Float): Float? = when (mode) {
     WordWrapMode.OFF -> null

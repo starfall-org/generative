@@ -42,7 +42,7 @@ class UnifiedReorderRobolectricTest {
         val order = mutableStateOf(listOf("First", "Second", "Third"))
         val models = order.value.associateWith { ModelConfiguration() }
         val saved = mutableListOf<List<String>>()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ProviderModelsPane(
                     models = order.value, configurations = models,
@@ -63,7 +63,7 @@ class UnifiedReorderRobolectricTest {
     @Test
     fun mcpServersReorderWithSharedDndLibrary() {
         val saved = mutableListOf<List<String>>()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ServerListScreen(
                     mcpServers = listOf(
@@ -89,7 +89,7 @@ class UnifiedReorderRobolectricTest {
     @Test
     fun speechServicesReorderWithSharedDndLibrary() {
         val saved = mutableListOf<List<String>>()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(

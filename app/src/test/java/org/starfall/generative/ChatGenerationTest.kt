@@ -40,6 +40,26 @@ class ChatGenerationTest {
         message("a1", ChatRole.MODEL, "")
     ))
 
+    @Test fun attachmentPreparationIsTransientAndNeverBecomesResponseText() = runBlocking {
+        val states = mutableListOf<org.starfall.generative.features.home.chat.model.ActiveChatStreamState>()
+        var saved: Conversation? = null
+        val runner = ChatGeneration(
+            scope = CoroutineScope(coroutineContext + Dispatchers.Unconfined),
+            save = { saved = it }, publish = {},
+            publishStream = { _, state -> state?.let(states::add) }
+        )
+        runner.startEvents(conversation(), "a1", flow {
+            emit(GenerationEvent.PreparingAttachments(true))
+            emit(GenerationEvent.PreparingAttachments(false))
+            emit(GenerationEvent.Text("Answer"))
+        })
+        runner.awaitCompletion()
+        assertTrue(states.any { it.preparingAttachments && it.content.length == 0L })
+        assertFalse(states.last().preparingAttachments)
+        assertEquals("Answer", saved!!.messages.last().content)
+        assertNull(saved!!.messages.last().reasoningContent)
+    }
+
     @Test fun temporaryGenerationNeverCallsPersistenceBoundary() = runBlocking {
         var writes = 0
         var visible: Conversation? = null

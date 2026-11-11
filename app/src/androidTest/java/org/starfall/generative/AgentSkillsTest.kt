@@ -32,7 +32,7 @@ class AgentSkillsTest {
 
     @Test
     fun chatOptionsShowsSkillsTabAndDefaultCreateSkill() {
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -53,7 +53,7 @@ class AgentSkillsTest {
     @Test
     fun newSkillEditorShowsCompleteSkillMdAndAllowsReplacingItInOnePaste() {
         var saved: List<AgentSkill> = emptyList()
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -106,7 +106,7 @@ Write clearly.
 
     @Test
     fun skillEditorOnlyShowsSaveInItsAppbar() {
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -125,7 +125,7 @@ Write clearly.
 
     @Test
     fun skillImportIsAfterAddAndShowsFileOrGithubChoices() {
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -148,7 +148,7 @@ Write clearly.
     fun skillItemMenuExportsWithIconAndLabel() {
         val skill = AgentSkill("awesome-skill", "awesome-skill", "# Instructions", "Test skill")
         var exported: AgentSkill? = null
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 SkillsTab(listOf(skill), onEditSkill = {}, onDeleteSkill = {},
                     onReorderSkills = {}, onExportSkill = { exported = it })
@@ -162,7 +162,7 @@ Write clearly.
     @Test
     fun slashOpensSkillsMenuAndSelectionInsertsOnlySkillMention() {
         val skill = AgentSkill("summarize", "Summarize", "Summarize the selected text.")
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 UserInputArea(
                     isGenerating = false,
@@ -200,7 +200,7 @@ Write clearly.
         val skill = AgentSkill("awesome-skill", "awesome-skill", "A large hidden instruction body")
         var sentText: String? = null
         var sentSkill: String? = null
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 UserInputArea(
                     isGenerating = false,
@@ -241,7 +241,7 @@ Write clearly.
     @Test
     fun skillsPopupManageButtonOpensSkillsSettingsWithoutChangingDraft() {
         var openedSettings = false
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 UserInputArea(
                     isGenerating = false,
@@ -273,7 +273,7 @@ Write clearly.
     @Test
     fun quickActionsShowsSkillsRowBelowVideo() {
         var opened = false
-        compose.setContent {
+        compose.setScreenContent {
             MaterialTheme {
                 QuickActionsSheetContent(
                     onPickImage = {},

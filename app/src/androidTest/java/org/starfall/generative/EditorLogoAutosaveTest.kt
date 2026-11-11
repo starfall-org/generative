@@ -33,7 +33,7 @@ class EditorLogoAutosaveTest {
         lateinit var saveLabel: String
         val saved = mutableListOf<Int>()
         fun savedIcon(icon: String?) { assertNull(icon); saved += page }
-        compose.setContent { MaterialTheme {
+        compose.setScreenContent { MaterialTheme {
             removeLabel = stringResource(R.string.common_remove)
             saveLabel = stringResource(R.string.common_save)
             key(page) {

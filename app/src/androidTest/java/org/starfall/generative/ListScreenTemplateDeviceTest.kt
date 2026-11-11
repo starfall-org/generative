@@ -30,7 +30,7 @@ class ListScreenTemplateDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun defaultActionsSitBetweenCustomActionAndTrailingSettings() {
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 var grid by remember { mutableStateOf(false) }
                 ListScreenTemplate(
@@ -62,7 +62,7 @@ class ListScreenTemplateDeviceTest {
     }
 
     @Test fun searchQueryFiltersContentAndCanBeCleared() {
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 var query by remember { mutableStateOf("") }
                 ListScreenTemplate(
@@ -92,7 +92,7 @@ class ListScreenTemplateDeviceTest {
         compose.onNodeWithTag("list-screen-view-toggle").assertIsDisplayed()
     }
     @Test fun mcpSearchFiltersRealServerCards() {
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 ServerListScreen(
                     mcpServers = listOf(McpInfo("one", "Alpha MCP"), McpInfo("two", "Beta MCP")),
@@ -110,7 +110,7 @@ class ListScreenTemplateDeviceTest {
     }
 
     @Test fun speechSearchFiltersRealServiceCards() {
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(SpeechService("one", "Alpha Voice"), SpeechService("two", "Beta Voice")),

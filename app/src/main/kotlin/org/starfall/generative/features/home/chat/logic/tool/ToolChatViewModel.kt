@@ -403,6 +403,10 @@ class ToolChatViewModel internal constructor(
             // switches on as soon as the current turn makes a tool call (see below).
             var sendThinkingContent = passbackConfig.sendsThinkingBack(messages.hasToolCalls())
             val importedAttachments = mutableMapOf<String, String>()
+            val attachmentReferences = messages.filter { it.role == ChatRole.USER }.flatMap { it.files }
+            if (attachmentReferences.isNotEmpty()) send(GenerationEvent.PreparingAttachments(true))
+            val preparedAttachments = aiService.prepareAttachments(selectedProvider, model, attachmentReferences)
+            if (attachmentReferences.isNotEmpty()) send(GenerationEvent.PreparingAttachments(false))
             // Rebuild which MCP tools are attached: connect keeps an MCP available for a few user messages, and using it extends that.
             val serverByWireName = tools.mapNotNull { tool -> tool.serverId?.let { tool.name to it } }.toMap()
             messages.forEach { message ->
@@ -436,7 +440,7 @@ class ToolChatViewModel internal constructor(
                 } else emptyList()
                 val replay = replayToolActivities(message.content, activities, http.requireFiles())
                 val attachments = if (message.files.isEmpty()) JsonArray(emptyList()) else
-                    aiService.toolAttachments(message, http.requireFiles(), importedAttachments)
+                    aiService.toolAttachments(message, http.requireFiles(), importedAttachments, preparedAttachments)
                 val tail = replay.trailingContent + toolAttachmentReferences(attachments)
                 val wireMessages = replay.messages.toMutableList()
                 // A stopped reply with no answer text and no tool calls would be an empty assistant message, which providers reject.
@@ -464,8 +468,11 @@ class ToolChatViewModel internal constructor(
             }
 
             suspend fun appendUserMessage(message: StoredMessage) {
+                if (message.files.isNotEmpty()) send(GenerationEvent.PreparingAttachments(true))
+                val queuedPrepared = aiService.prepareAttachments(selectedProvider, model, message.files)
+                if (message.files.isNotEmpty()) send(GenerationEvent.PreparingAttachments(false))
                 val attachments = if (message.files.isEmpty()) JsonArray(emptyList()) else
-                    aiService.toolAttachments(message, http.requireFiles(), importedAttachments)
+                    aiService.toolAttachments(message, http.requireFiles(), importedAttachments, queuedPrepared)
                 history += obj(
                     "role" to str("user"),
                     "content" to str(message.content + toolAttachmentReferences(attachments))
@@ -517,7 +524,8 @@ class ToolChatViewModel internal constructor(
                     onText = { send(GenerationEvent.Text(it)) },
                     onReasoning = { send(GenerationEvent.Reasoning(it)) },
                     onUsage = { turnUsage = it },
-                    sessionKey = sessionKey
+                    sessionKey = sessionKey,
+                    onPreparation = { send(GenerationEvent.PreparingAttachments(it)) }
                 )
                 val reasoningSignature = turn.text("reasoning_signature").takeIf { it.isNotBlank() }
                 if (!streaming) {

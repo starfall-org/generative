@@ -57,6 +57,8 @@ class McpToolLoopTest {
             var rounds=0;var calls=0
             server.dispatcher=object:Dispatcher(){
                 override fun dispatch(request:RecordedRequest):MockResponse {
+                    // This fixture exercises inline fallback on gateways without a Files API.
+                    if (request.path?.contains("/files") == true) return MockResponse().setResponseCode(405)
                     if(request.method=="DELETE") return MockResponse().setResponseCode(204)
                 if(request.method=="GET" && request.path=="/mcp") return MockResponse().setResponseCode(405)
                     if (request.path?.endsWith("/models") == true)

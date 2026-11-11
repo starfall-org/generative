@@ -28,8 +28,7 @@ import org.junit.Test
 import org.starfall.generative.shared.ui.screens.PreviewScreenTemplate
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
-import org.starfall.generative.shared.ui.screens.ScreenTransitionDirection
-import org.starfall.generative.shared.ui.screens.ScreenTransitionEffect
+import org.starfall.generative.shared.ui.screens.ScreenDestination
 
 /** Runs against Android Compose layout, IME and saveable-state infrastructure. */
 class ScreenTemplateDeviceTest {
@@ -85,10 +84,11 @@ class ScreenTemplateDeviceTest {
     }
 
     @Test fun transitionRestoresSaveableScreenStateWhenReturning() {
-        var page by mutableStateOf("A")
-        compose.setContent {
+        var page by mutableStateOf<String?>(null)
+        compose.setScreenContent {
             MaterialTheme {
-                ScreenTransitionEffect(page, ScreenTransitionDirection.FORWARD, contentKey = { it }) { current ->
+                ScreenDestination(page, onClosed = { page = null }) { destination ->
+                    val current = destination ?: "A"
                     var count by rememberSaveable { mutableIntStateOf(0) }
                     Column {
                         Text("$current count $count")
@@ -102,7 +102,7 @@ class ScreenTemplateDeviceTest {
         compose.runOnIdle { page = "B" }
         compose.waitForIdle()
         compose.onNodeWithText("B count 0").assertIsDisplayed()
-        compose.runOnIdle { page = "A" }
+        compose.runOnIdle { page = null }
         compose.waitForIdle()
         compose.onNodeWithText("A count 1").assertIsDisplayed()
     }

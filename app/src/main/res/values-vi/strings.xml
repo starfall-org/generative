@@ -1051,4 +1051,9 @@
     <string name="http_request_sample">Giá trị tham số mẫu (JSON)</string>
     <string name="http_request_preview_invalid">Kiểm tra template request và giá trị mẫu. Cung cấp đủ tham số bắt buộc, dùng đúng kiểu dữ liệu và giá trị cho phép, đồng thời xóa các tham chiếu đến tham số đã xóa.</string>
     <string name="http_request_parameter_invalid">Template đang tham chiếu đến tham số chưa được khai báo. Hãy chèn tham số hiện có hoặc sửa lại template.</string>
+    <string name="attachment_uploading">Đang chuẩn bị và tải tệp lên</string>
+    <string name="attachment_prepare_missing">Không còn đọc được tệp đính kèm: %1$s</string>
+    <string name="attachment_prepare_unsupported">Mô hình hoặc API đã chọn không hỗ trợ tệp đính kèm: %1$s</string>
+    <string name="attachment_prepare_too_large">Tệp đính kèm vượt quá giới hạn truyền của API đã chọn: %1$s</string>
+    <string name="attachment_prepare_processing_failed">Máy chủ không thể hoàn tất xử lý tệp đính kèm: %1$s</string>
 </resources>

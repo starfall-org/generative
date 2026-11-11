@@ -19,6 +19,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.navigation.RetainedNavHost
 import org.starfall.generative.navigation.movesMenuBackground
 import org.starfall.generative.shared.ui.screens.screenSlideOffset
+import org.starfall.generative.shared.ui.screens.screenScale
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 
@@ -83,25 +84,25 @@ class RetainedNavHostTest {
         assertFalse(movesMenuBackground("providers", "chat"))
     }
 
-    @Test fun forwardSlidesRightToLeftAndPopSlidesLeftToRight() {
-        // Full-width fractions: positive is right, negative is left.
-        assertEquals(1f, screenSlideOffset(active = false, incoming = true, popping = false), 0f)
-        assertEquals(0f, screenSlideOffset(active = true, incoming = true, popping = false), 0f)
-        assertEquals(-1f, screenSlideOffset(active = false, incoming = false, popping = false), 0f)
-        assertEquals(-1f, screenSlideOffset(active = false, incoming = true, popping = true), 0f)
-        assertEquals(0f, screenSlideOffset(active = true, incoming = true, popping = true), 0f)
-        assertEquals(1f, screenSlideOffset(active = false, incoming = false, popping = true), 0f)
+    @Test fun frontPageSlidesOverARecedingBackPage() {
+        assertEquals(1f, screenSlideOffset(active = false, front = true), 0f)
+        assertEquals(-0.12f, screenSlideOffset(active = false, front = false), 0f)
+        assertEquals(0f, screenSlideOffset(active = true, front = true), 0f)
+        assertEquals(0f, screenSlideOffset(active = true, front = false), 0f)
+        assertEquals(1f, screenScale(active = false, front = true), 0f)
+        assertEquals(0.94f, screenScale(active = false, front = false), 0f)
+        assertEquals(1f, screenScale(active = true, front = false), 0f)
     }
 
     @Test fun menuFamilyRetainsOneSharedBackgroundDuringNestedNavigation() {
         lateinit var nav: NavHostController
-        var backgroundMounts = 0
+        var activeBackgrounds = 0
         compose.setContent {
             nav = rememberNavController()
             RetainedNavHost(nav, startDestination = "chat", menuBackground = {
                 DisposableEffect(Unit) {
-                    backgroundMounts++
-                    onDispose { }
+                    activeBackgrounds++
+                    onDispose { activeBackgrounds-- }
                 }
                 Box(Modifier.fillMaxSize().testTag("shared-menu-background"))
             }) {
@@ -116,6 +117,6 @@ class RetainedNavHostTest {
         compose.onNodeWithTag("providers").assertIsDisplayed()
         compose.runOnIdle { nav.popBackStack() }
         compose.onNodeWithTag("features").assertIsDisplayed()
-        compose.runOnIdle { assertEquals(1, backgroundMounts) }
+        compose.runOnIdle { assertEquals(1, activeBackgrounds) }
     }
 }

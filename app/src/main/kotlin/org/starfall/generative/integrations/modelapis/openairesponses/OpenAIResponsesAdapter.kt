@@ -1,5 +1,6 @@
 package org.starfall.generative.integrations.modelapis.openairesponses
 
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
 import kotlinx.coroutines.flow.Flow
 import com.openai.models.Reasoning
 import com.openai.models.ReasoningEffort
@@ -37,7 +38,7 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamResponses(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent, request.enabledModelTools
+        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent, request.enabledModelTools, request.preparedAttachments
     )
 
     private fun streamResponses(
@@ -50,7 +51,8 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
         maxTokens: Int,
         reasoningEffort: String? = null,
         sendThinkingContent: Boolean = false,
-        enabledModelTools: List<String> = emptyList()
+        enabledModelTools: List<String> = emptyList(),
+        preparedAttachments: Map<String, PreparedAttachment> = emptyMap()
     ): Flow<GenerationEvent> = flow {
         sdk.openAi(provider).useClient { client ->
             val inputItems = buildList {
@@ -71,7 +73,7 @@ internal class OpenAIResponsesAdapter(private val sdk: OfficialProviderSdk) : Mo
                     val easy = EasyInputMessage.builder()
                         .role(if (message.role == ChatRole.MODEL) EasyInputMessage.Role.ASSISTANT else EasyInputMessage.Role.USER)
                     if (message.role == ChatRole.USER && message.files.isNotEmpty()) {
-                        easy.contentOfResponseInputMessageContentList(sdk.openAiResponseContent(message))
+                        easy.contentOfResponseInputMessageContentList(sdk.openAiResponseContent(message, preparedAttachments))
                     } else {
                         easy.content(message.content)
                     }

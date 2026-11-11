@@ -35,11 +35,16 @@ import org.starfall.generative.shared.model.provider.streamEnabledFor
 import org.starfall.generative.shared.helpers.networking.requireNetworkCredentials
 import org.starfall.generative.shared.state.preferences.ModelConfigurationMemory
 import java.util.Base64
+import org.starfall.generative.integrations.modelapis.attachments.*
 
 class AiService(
     context: Context,
-    var providerLoader: suspend (ModelProvider) -> ModelProvider = { it }
+    var providerLoader: suspend (ModelProvider) -> ModelProvider = { it },
+    remoteAttachmentStore: RemoteAttachmentStore = MemoryRemoteAttachmentStore()
 ) {
+    constructor(context: Context, providerLoader: suspend (ModelProvider) -> ModelProvider) :
+        this(context, providerLoader, MemoryRemoteAttachmentStore())
+
     internal val modelConfigurationMemory = ModelConfigurationMemory(context)
     private val appContext = context.applicationContext
 
@@ -47,7 +52,11 @@ class AiService(
         OAuthCallbackService.keepAlive(appContext, block)
 
     private val attachments = AttachmentResolver(context)
-    private val sdk = OfficialProviderSdk(attachments)
+    private val attachmentMessages = AttachmentMessages(appContext)
+    private val sdk = OfficialProviderSdk(attachments, attachmentMessages)
+    private val attachmentPreflight = AttachmentPreflight(attachments,
+        SdkAttachmentUploader(sdk, attachments, attachmentMessages), remoteAttachmentStore,
+        messages = attachmentMessages, immutableRoot = ToolFiles.uploadStorageDirectory(appContext))
     private val accountAdapters = AccountProviderAdapterRegistry(context, attachments)
 
     internal fun exportAccountCredentials(): Map<String, Map<String, JsonObject>> = accountAdapters.exportCredentials()
@@ -92,23 +101,59 @@ class AiService(
     internal suspend fun toolAttachments(
         message: StoredMessage,
         files: ToolFiles,
-        imported: MutableMap<String, String>
+        imported: MutableMap<String, String>,
+        prepared: Map<String, PreparedAttachment> = emptyMap()
     ): JsonArray = JsonArray(message.files.map { reference ->
         val meta = attachments.metadata(reference) ?: error("Attachment metadata is missing")
-        val bytes = attachments.readBytes(reference) ?: error("Attachment data is missing")
+        val remote = prepared[reference]?.remote
         val uri = imported[reference] ?: run {
             // Picker/share/clipboard imports already live in ToolFiles. No second disk write.
             val existing = files.nameOf(reference)?.takeIf { files.resolveInCurrentSession(it) != null }
-            val name = existing ?: files.saveUpload(bytes.inputStream(), meta.mimeType)
+            val name = existing ?: (attachments.open(reference) ?: error("Attachment data is missing")).use {
+                files.saveUpload(it, meta.mimeType)
+            }
             if (existing == null) files.recordImportedAttachment(reference, name)
             "tool-file:$name".also { imported[reference] = it }
         }
         buildJsonObject {
             put("uri", uri)
             put("mimeType", meta.mimeType)
-            put("data", Base64.getEncoder().encodeToString(bytes))
+            put("name", meta.name)
+            put("localReference", reference)
+            if (remote != null) { put("remoteId", remote.remoteId); put("remoteKey", remote.key) }
+            else put("data", Base64.getEncoder().encodeToString(
+                attachments.readBytes(reference) ?: error("Attachment data is missing")))
         }
     })
+
+    internal suspend fun prepareToolHistory(
+        provider: ModelProvider, model: String, history: List<JsonObject>
+    ): Pair<List<JsonObject>, Map<String, PreparedAttachment>> {
+        val references = history.filter { it["role"]?.jsonPrimitive?.content == "user" }.flatMap { message ->
+            (message["_attachments"] as? JsonArray).orEmpty().mapNotNull {
+                (it.jsonObject["localReference"] as? JsonPrimitive)?.content
+            }
+        }
+        val prepared = prepareAttachments(provider, model, references)
+        return history.map { message ->
+            if (message["role"]?.jsonPrimitive?.content != "user") return@map message
+            val items = message["_attachments"] as? JsonArray ?: return@map message
+            JsonObject(message + ("_attachments" to JsonArray(items.map items@{ item ->
+                val file = item.jsonObject
+                val reference = (file["localReference"] as? JsonPrimitive)?.content ?: return@items item
+                val ready = prepared.getValue(reference)
+                JsonObject(file.filterKeys { it !in setOf("data", "remoteId", "remoteKey") } + buildJsonObject {
+                    if (ready.remote != null) {
+                        put("remoteId", ready.remote.remoteId)
+                        put("remoteKey", ready.remote.key)
+                    } else put("data", Base64.getEncoder().encodeToString(
+                        attachments.readBytes(reference) ?: error("Attachment data is missing")))
+                })
+            })))
+        } to prepared
+    }
+
+    internal suspend fun invalidateAttachments(prepared: Map<String, PreparedAttachment>) = attachmentPreflight.invalidate(prepared)
 
     /** Trusted user selections only; model-supplied references use ToolFiles instead. */
     internal suspend fun importToolAttachments(references: List<String>, files: ToolFiles, maxBytes: Long): List<String> =
@@ -260,45 +305,13 @@ class AiService(
     suspend fun fetchOllamaModels(baseUrl: String): List<String> =
         adapters.fetchOllamaModels(baseUrl)
 
-    private fun filterAttachmentsForProvider(
+    internal suspend fun prepareAttachments(
         provider: ModelProvider,
-        modelConfig: ModelConfiguration,
-        messages: List<StoredMessage>
-    ): List<StoredMessage> = messages.map { message ->
-        if (message.files.isEmpty()) return@map message
-        val allowedFiles = message.files.filter { reference ->
-            val meta = attachments.metadata(reference) ?: return@filter false
-            when {
-                accountAdapters.get(provider.type) != null -> when {
-                    meta.isImage -> modelConfig.supportsVision
-                    else -> true
-                }
-                provider.type == ModelApiType.GOOGLE -> when {
-                    meta.isImage -> modelConfig.supportsVision
-                    meta.isVideo -> modelConfig.supportsVideoInput
-                    else -> true
-                }
-                provider.type == ModelApiType.OPENAI || provider.type == ModelApiType.OPENAI_RESPONSES -> when {
-                    meta.isImage -> modelConfig.supportsVision
-                    else -> true
-                }
-                provider.type == ModelApiType.ANTHROPIC -> when {
-                    meta.isImage -> modelConfig.supportsVision
-                    meta.isPdf || meta.isText -> true
-                    else -> false
-                }
-                provider.type == ModelApiType.OLLAMA -> meta.isImage && modelConfig.supportsVision
-                else -> false
-            }
-        }
-        if (allowedFiles == message.files) return@map message
-        val versions = message.versions.toMutableList()
-        if (versions.isNotEmpty()) {
-            val index = message.activeVersionIndex.coerceIn(0, versions.lastIndex)
-            versions[index] = versions[index].copy(files = allowedFiles)
-        }
-        message.copy(versions = versions)
-    }
+        modelName: String,
+        references: List<String>
+    ): Map<String, PreparedAttachment> = attachmentPreflight.prepare(
+        provider.requireNetworkCredentials(), provider.config.modelConfigs[modelName] ?: ModelConfiguration(), references
+    )
 
     fun streamEvents(
         provider: ModelProvider,
@@ -314,7 +327,7 @@ class AiService(
             val modelConfig = resolved.config.modelConfigs[modelName] ?: ModelConfiguration()
             val sendThinking = modelConfig.sendsThinkingBack(messages.hasToolCalls())
             val requestProvider = resolved.copy(config = resolved.config.copy(supportStream = resolved.streamEnabledFor(modelName)))
-            val requestMessages = filterAttachmentsForProvider(requestProvider, modelConfig, messages.withoutEmptyModelMessages())
+            val requestMessages = messages.withoutEmptyModelMessages()
             val temperature = modelConfig.temperature
             val topP = modelConfig.topP
             val topK = modelConfig.topK
@@ -325,6 +338,10 @@ class AiService(
                 modelLogId = DebugLog.beginRequest("Model",
                     "${requestProvider.type.displayName} · ${requestProvider.name} · $modelName " +
                         "(stream=${requestProvider.config.supportStream}, messages=${requestMessages.size})")
+            val references = requestMessages.filter { it.role == ChatRole.USER }.flatMap { it.files }
+            if (references.isNotEmpty()) emit(GenerationEvent.PreparingAttachments(true))
+            var prepared = prepareAttachments(requestProvider, modelName, references)
+            if (references.isNotEmpty()) emit(GenerationEvent.PreparingAttachments(false))
             val accountAdapter = accountAdapters.get(resolved.type)
             if (accountAdapter != null) {
                 emitAll(accountAdapter.streamEvents(
@@ -333,7 +350,7 @@ class AiService(
             } else {
                 val adapter = adapters.get(resolved.type)
                     ?: error("No request adapter is registered for ${resolved.type.displayName}.")
-                emitAll(adapter.stream(ModelApiRequest(
+                val request = ModelApiRequest(
                     provider = requestProvider,
                     modelName = modelName,
                     messages = requestMessages,
@@ -345,7 +362,25 @@ class AiService(
                     reasoningEffort = modelConfig.wireReasoningEffort,
                     sendThinkingContent = sendThinking,
                     enabledModelTools = modelConfig.enabledModelTools.filter { it in modelConfig.supportedModelTools }.distinct()
-                )))
+                )
+                var retried = false
+                while (true) {
+                    var outputStarted = false
+                    try {
+                        adapter.stream(request.copy(preparedAttachments = prepared)).collect { event ->
+                            outputStarted = true
+                            emit(event)
+                        }
+                        break
+                    } catch (error: Exception) {
+                        if (outputStarted || retried || !rejectedRemoteAttachment(error, prepared)) throw error
+                        retried = true
+                        attachmentPreflight.invalidate(rejectedRemoteAttachments(error, prepared))
+                        emit(GenerationEvent.PreparingAttachments(true))
+                        prepared = prepareAttachments(requestProvider, modelName, references)
+                        emit(GenerationEvent.PreparingAttachments(false))
+                    }
+                }
             }
             if (usesModelLog) DebugLog.finishRequest(modelLogId, "Model", "✓ ${provider.name} · $modelName", false)
         } catch (error: kotlinx.coroutines.CancellationException) {

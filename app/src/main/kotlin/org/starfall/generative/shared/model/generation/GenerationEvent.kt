@@ -5,6 +5,7 @@ import org.starfall.generative.shared.model.ToolActivity
 
 /** Events emitted across the model/tool orchestration boundary during a generation turn. */
 sealed interface GenerationEvent {
+    data class PreparingAttachments(val active: Boolean) : GenerationEvent
     data class Text(val text: String) : GenerationEvent
     data class Reasoning(val text: String, val signature: String? = null) : GenerationEvent
     data class Tool(val activity: ToolActivity) : GenerationEvent

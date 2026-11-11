@@ -12,16 +12,32 @@ internal fun toolAttachmentParts(message: JsonObject, type: ModelApiType): List<
         val file = attachment.jsonObject
         val mime = file.text("mimeType")
         val data = file.text("data")
+        val remote = file.text("remoteId").takeIf { it.isNotBlank() }
+        val name = file.text("name").ifBlank { "attachment" }
         when (type) {
-            ModelApiType.GOOGLE -> obj("inlineData" to obj("mimeType" to str(mime), "data" to str(data)))
+            ModelApiType.GOOGLE -> if (remote != null) obj("fileData" to obj("mimeType" to str(mime), "fileUri" to str(remote)))
+                else obj("inlineData" to obj("mimeType" to str(mime), "data" to str(data)))
             ModelApiType.ANTHROPIC -> {
+                if (mime.startsWith("text/") || mime in setOf("application/json", "application/xml", "application/javascript", "application/yaml", "application/x-yaml")) {
+                    return@map obj("type" to str("document"), "title" to str(name),
+                        "source" to obj("type" to str("text"), "media_type" to str("text/plain"),
+                            "data" to str(String(java.util.Base64.getDecoder().decode(data), Charsets.UTF_8))))
+                }
                 require(mime.startsWith("image/") || mime == "application/pdf") { "Unsupported Claude attachment" }
+                if (remote != null) return@map obj("type" to str(if (mime == "application/pdf") "document" else "image"),
+                    "source" to obj("type" to str("file"), "file_id" to str(remote)))
                 obj("type" to str(if (mime == "application/pdf") "document" else "image"),
                     "source" to obj("type" to str("base64"), "media_type" to str(mime), "data" to str(data)))
             }
             ModelApiType.OPENAI_RESPONSES -> {
-                require(mime.startsWith("image/")) { "Unsupported Responses attachment" }
-                obj("type" to str("input_image"), "image_url" to str("data:$mime;base64,$data"))
+                if (remote != null) obj("type" to str(if (mime.startsWith("image/")) "input_image" else "input_file"), "file_id" to str(remote))
+                else if (mime.startsWith("image/")) obj("type" to str("input_image"), "image_url" to str("data:$mime;base64,$data"))
+                else obj("type" to str("input_file"), "filename" to str(name), "file_data" to str("data:$mime;base64,$data"))
+            }
+            ModelApiType.OPENAI -> {
+                if (remote != null) obj("type" to str("file"), "file" to obj("file_id" to str(remote)))
+                else if (!mime.startsWith("image/")) obj("type" to str("file"), "file" to obj("filename" to str(name), "file_data" to str("data:$mime;base64,$data")))
+                else obj("type" to str("image_url"), "image_url" to obj("url" to str("data:$mime;base64,$data")))
             }
             else -> {
                 require(mime.startsWith("image/")) { "Unsupported chat attachment" }

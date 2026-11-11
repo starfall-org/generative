@@ -1,5 +1,6 @@
 package org.starfall.generative.integrations.modelapis.openai
 
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
 import kotlinx.coroutines.flow.Flow
 import com.openai.models.chat.completions.ChatCompletionCreateParams
 import com.openai.models.chat.completions.ChatCompletionStreamOptions
@@ -33,7 +34,7 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamOpenAi(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent
+        request.temperature, request.topP, request.maxTokens, request.reasoningEffort, request.sendThinkingContent, request.preparedAttachments
     )
 
     private fun streamOpenAi(
@@ -45,7 +46,8 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
         topP: Double?,
         maxTokens: Int,
         reasoningEffort: String? = null,
-        sendThinkingContent: Boolean = false
+        sendThinkingContent: Boolean = false,
+        preparedAttachments: Map<String, PreparedAttachment> = emptyMap()
     ): Flow<GenerationEvent> = flow {
         sdk.openAi(provider).useClient { client ->
             val params = ChatCompletionCreateParams.builder().model(modelName).maxCompletionTokens(maxTokens.toLong())
@@ -66,7 +68,7 @@ internal class OpenAIChatCompletionsAdapter(private val sdk: OfficialProviderSdk
                 } else if (message.files.isNotEmpty()) {
                     params.addMessage(
                         ChatCompletionUserMessageParam.builder()
-                            .contentOfArrayOfContentParts(sdk.openAiChatContent(message))
+                            .contentOfArrayOfContentParts(sdk.openAiChatContent(message, preparedAttachments))
                             .build()
                     )
                 } else {

@@ -225,5 +225,6 @@ class ActiveChatStreamState internal constructor(
     internal val reasoning: StreamTextSnapshot,
     internal val stopSignal: StreamFreezeSignal,
     val lastCommitMetrics: StreamCommitMetrics?,
-    val cumulativeMetrics: StreamMetricsSnapshot
+    val cumulativeMetrics: StreamMetricsSnapshot,
+    val preparingAttachments: Boolean = false
 )

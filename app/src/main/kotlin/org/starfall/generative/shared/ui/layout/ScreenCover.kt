@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.starfall.generative.shared.ui.theme.modalScrimColor
+import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 
 /**
  * A full-window cover with a tappable scrim. Content is deliberately not click-consuming:
@@ -28,6 +29,9 @@ fun ScreenCover(
     scrimColor: Color = modalScrimColor(Color.Black.copy(alpha = 0.60f)),
     content: @Composable BoxScope.() -> Unit
 ) {
+    // Dialog windows must not cover a newer screen in the shared back stack. The caller retains
+    // its viewer selection, so the cover reappears when that screen becomes active again.
+    if (!LocalScreenTransitionActive.current) return
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)

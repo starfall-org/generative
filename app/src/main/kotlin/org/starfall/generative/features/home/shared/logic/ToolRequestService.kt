@@ -1,6 +1,9 @@
 package org.starfall.generative.features.home.shared.logic
 
 import kotlinx.coroutines.*
+import org.starfall.generative.integrations.modelapis.attachments.rejectedRemoteAttachment
+import org.starfall.generative.integrations.modelapis.attachments.rejectedRemoteAttachments
+import org.starfall.generative.integrations.modelapis.attachments.withFileReferenceHeaders
 import kotlinx.coroutines.flow.*
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -64,6 +67,39 @@ internal class ToolRequestService(
         onText: suspend (String) -> Unit,
         onReasoning: suspend (String) -> Unit,
         onUsage: suspend (TokenUsage) -> Unit = {},
+        sessionKey: String? = null,
+        onPreparation: suspend (Boolean) -> Unit = {}
+    ): JsonObject {
+        val snapshot = aiService.resolveProvider(p)
+        var retried = false
+        while (true) {
+            if (history.any { it["_attachments"] != null }) onPreparation(true)
+            val (readyHistory, prepared) = aiService.prepareToolHistory(snapshot, model, history)
+            onPreparation(false)
+            var outputStarted = false
+            try {
+                return requestPrepared(snapshot, model, readyHistory, tools, prompt, sendThinking,
+                    { outputStarted = true; onText(it) }, { outputStarted = true; onReasoning(it) },
+                    { outputStarted = true; onUsage(it) }, sessionKey)
+            } catch (error: Exception) {
+                currentCoroutineContext().ensureActive()
+                if (outputStarted || retried || !rejectedRemoteAttachment(error, prepared)) throw error
+                retried = true
+                aiService.invalidateAttachments(rejectedRemoteAttachments(error, prepared))
+            }
+        }
+    }
+
+    private suspend fun requestPrepared(
+        p: ModelProvider,
+        model: String,
+        history: List<JsonObject>,
+        tools: List<ToolDefinition>,
+        prompt: String,
+        sendThinking: Boolean,
+        onText: suspend (String) -> Unit,
+        onReasoning: suspend (String) -> Unit,
+        onUsage: suspend (TokenUsage) -> Unit = {},
         sessionKey: String? = null
     ): JsonObject {
         if (p.type == ModelApiType.DEVIN) {
@@ -71,7 +107,10 @@ internal class ToolRequestService(
                 onText, onReasoning, onUsage, sessionKey)?.let { return it }
         }
         val defs = JsonArray(tools.map { obj("type" to str("function"),"function" to obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema)) })
-        val wireProvider = aiService.prepareAccountProvider(p, model)
+        val wireProvider = aiService.prepareAccountProvider(p, model).let { wire ->
+            if (history.any { message -> (message["_attachments"] as? JsonArray).orEmpty().any { it.jsonObject["remoteId"] != null } })
+                wire.withFileReferenceHeaders() else wire
+        }
         val base = providerBase(wireProvider)
         val config = p.config.modelConfigs[model] ?: ModelConfiguration()
         suspend fun modelResponse(url: String, body: JsonObject, provider: ModelProvider,
@@ -87,7 +126,16 @@ internal class ToolRequestService(
             // Account adapters may synchronously access encrypted Room credentials when
             // normalizing requests; never evaluate these callbacks on a UI-owned dispatcher.
             val (requestUrl, normalizedBody) = withContext(Dispatchers.IO) {
-                aiService.accountRequestUrl(p, provider, url) to
+                val routeKey = when (provider.type) {
+                    ModelApiType.OPENAI -> "chat"
+                    ModelApiType.OPENAI_RESPONSES -> "responses"
+                    ModelApiType.ANTHROPIC -> "messages"
+                    ModelApiType.GOOGLE -> "generate"
+                    else -> ""
+                }
+                val effectiveUrl = provider.config.customEndpoints[routeKey]?.takeIf(String::isNotBlank)
+                    ?.replace("{model}", model)?.replace("{method}", "generateContent") ?: url
+                aiService.accountRequestUrl(p, provider, effectiveUrl) to
                     aiService.normalizeAccountToolRequest(p, provider, requestBody, prompt)
             }
             val response = http.modelResponse(requestUrl, normalizedBody, requestProvider, upstreamStream,

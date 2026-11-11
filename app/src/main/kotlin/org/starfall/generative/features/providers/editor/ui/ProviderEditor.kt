@@ -80,7 +80,7 @@ import org.starfall.generative.shared.subfeatures.icons.ui.IconPickerRow
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
-import org.starfall.generative.shared.ui.screens.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.ScreenDestination
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.subfeatures.auth.ui.rememberOAuthStart
@@ -364,7 +364,7 @@ fun ProviderEditor(
         }
     }
     BackHandler(enabled = LocalScreenTransitionActive.current && editingModel == null, onBack = onDismiss)
-    RetainedScreenContent(editor = editingModel) { modelId ->
+    ScreenDestination(page = editingModel, onClosed = { editingModel = null }) { modelId ->
         if (modelId != null) key(modelId) {
             var iconCreatedModelId by remember { mutableStateOf<String?>(null) }
             ModelEditor(initialProvider.copy(type = type, config = requestConfig()), modelId, models.keys,

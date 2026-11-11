@@ -20,6 +20,7 @@ import org.starfall.generative.integrations.modelapis.ModelApiAdapter
 import org.starfall.generative.integrations.modelapis.ModelApiRequest
 import org.starfall.generative.shared.helpers.networking.providerTokenUsage
 import java.util.Base64
+import org.starfall.generative.integrations.modelapis.attachments.AttachmentMessages
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
@@ -32,6 +33,7 @@ internal class OllamaAdapter(
 ) : ModelApiAdapter {
     override val modelApiType = ModelApiType.OLLAMA
     private val modelCache = OllamaModelCache(context)
+    private val attachmentMessages = AttachmentMessages(context)
     private val discoveryLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun cachedModels(baseUrl: String): List<String>? = modelCache.read(baseUrl)?.models
@@ -85,10 +87,11 @@ internal class OllamaAdapter(
             request.messages.forEach { message -> add(buildJsonObject {
                 put("role", if (message.role == ChatRole.MODEL) "assistant" else "user")
                 put("content", message.content)
-                val images = message.files.mapNotNull { reference ->
-                    val meta = attachments.metadata(reference) ?: return@mapNotNull null
-                    if (!meta.isImage) return@mapNotNull null
-                    attachments.readBytes(reference)?.let { Base64.getEncoder().encodeToString(it) }
+                val images = message.files.map { reference ->
+                    val meta = attachments.metadata(reference) ?: error(attachmentMessages.missing(reference.substringAfterLast('/')))
+                    require(meta.isImage) { attachmentMessages.unsupported(meta.name) }
+                    val bytes = attachments.readBytes(reference) ?: error(attachmentMessages.missing(meta.name))
+                    Base64.getEncoder().encodeToString(bytes)
                 }
                 if (images.isNotEmpty()) put("images", JsonArray(images.map(::JsonPrimitive)))
             }) }

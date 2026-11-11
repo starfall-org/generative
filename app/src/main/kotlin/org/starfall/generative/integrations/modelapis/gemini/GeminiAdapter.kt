@@ -1,5 +1,6 @@
 package org.starfall.generative.integrations.modelapis.gemini
 
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
 import kotlinx.coroutines.flow.Flow
 import com.google.genai.Client
 import com.google.genai.types.Content
@@ -33,7 +34,7 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamGoogle(
         request.provider, request.modelName, request.messages, request.systemPrompt,
-        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent, request.enabledModelTools
+        request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent, request.enabledModelTools, request.preparedAttachments
     )
 
     private fun streamGoogle(
@@ -46,14 +47,15 @@ internal class GeminiAdapter(private val sdk: OfficialProviderSdk) : ModelApiAda
         maxTokens: Int,
         topK: Int? = null,
         sendThinkingContent: Boolean = false,
-        enabledModelTools: List<String> = emptyList()
+        enabledModelTools: List<String> = emptyList(),
+        preparedAttachments: Map<String, PreparedAttachment> = emptyMap()
     ): Flow<GenerationEvent> = flow {
         sdk.google(provider).use { client ->
             val contents = mutableListOf<Content>()
             for (message in messages) {
                 contents += Content.builder()
                     .role(if (message.role == ChatRole.MODEL) "model" else "user")
-                    .parts(sdk.googleParts(client, message))
+                    .parts(sdk.googleParts(client, message, preparedAttachments))
                     .build()
             }
             val config = GenerateContentConfig.builder().maxOutputTokens(maxTokens)

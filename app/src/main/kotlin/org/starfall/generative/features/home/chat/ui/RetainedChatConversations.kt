@@ -95,6 +95,7 @@ internal fun RetainedChatConversations(
     conversation: Conversation?,
     availableIds: Set<String>,
     foreground: Boolean,
+    keepOverlayState: Boolean = false,
     content: @Composable (Conversation?, Boolean) -> Unit
 ) {
     DisposableEffect(state) {
@@ -112,6 +113,7 @@ internal fun RetainedChatConversations(
                 Box(Modifier.fillMaxSize().parkChat(active)) {
                     CompositionLocalProvider(
                         LocalChatForeground provides (active && foreground),
+                        LocalChatKeepOverlayState provides (active && keepOverlayState),
                         LocalChatAttachmentSelection provides state.selection(id)
                     ) {
                         content(page, active)

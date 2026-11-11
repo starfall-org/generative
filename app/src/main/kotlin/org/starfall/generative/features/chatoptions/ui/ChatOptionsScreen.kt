@@ -57,7 +57,7 @@ import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.layout.SettingsCard
-import org.starfall.generative.shared.ui.screens.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.ScreenDestination
 import org.starfall.generative.shared.subfeatures.modelpicker.ui.DefaultModelSelector
 import org.starfall.generative.shared.subfeatures.modelpicker.ui.ModelPickerSheet
 import org.starfall.generative.shared.model.preferences.AppPreferences
@@ -239,8 +239,15 @@ fun ChatOptionsScreen(
         else -> null
     }
 
-    RetainedScreenContent(
-        editor = editorPage
+    ScreenDestination(
+        page = editorPage,
+        onClosed = {
+            when (editorPage) {
+                is ChatOptionsEditor.InstructionEditor -> leaveInstructionEditor()
+                is ChatOptionsEditor.SkillEditor -> leaveSkillEditor()
+                else -> previewingInstructionId = null
+            }
+        }
     ) { editorPage ->
         when (editorPage) {
             is ChatOptionsEditor.InstructionEditor -> {

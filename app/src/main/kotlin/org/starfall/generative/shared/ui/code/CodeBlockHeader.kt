@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.preview.CodePreviewActivity
 import org.starfall.generative.shared.helpers.code.canPreviewCode
 import org.starfall.generative.shared.model.preferences.WordWrapMode
 import org.starfall.generative.shared.ui.theme.LocalAmoledMode
@@ -57,6 +56,7 @@ internal fun CodeBlockHeader(
     val context = LocalContext.current
     val localizedResources = LocalResources.current
     val preferences = LocalCodeRenderingPreferences.current
+    val openCodePreview = LocalOpenCodePreview.current
     var copied by remember(language, originalCode) { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
     Column(Modifier.fillMaxWidth()) {
@@ -82,7 +82,7 @@ internal fun CodeBlockHeader(
                 }
             }
             if (preferences.codePreviewEnabled && canPreviewCode(language)) {
-                IconButton(onClick = { CodePreviewActivity.open(context, language, originalCode) }, modifier = Modifier.size(28.dp)) {
+                IconButton(onClick = { openCodePreview(language, originalCode) }, modifier = Modifier.size(28.dp)) {
                     SharedIcon(Icons.Outlined.Visibility, stringResource(R.string.preview_code),
                         tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }

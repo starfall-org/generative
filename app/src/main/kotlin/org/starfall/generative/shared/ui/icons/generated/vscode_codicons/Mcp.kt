@@ -1,7 +1,7 @@
 package org.starfall.generative.shared.ui.icons.generated.vscode_codicons
 
 /*
-﻿Attribution 4.0 International
+Attribution 4.0 International
 
 =======================================================================
 

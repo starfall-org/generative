@@ -37,7 +37,7 @@ import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
-import org.starfall.generative.shared.ui.screens.RetainedScreenContent
+import org.starfall.generative.shared.ui.screens.ScreenDestination
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
@@ -78,7 +78,7 @@ fun SpeechServicesScreen(
     val providersById = remember(providers) { providers.associateBy { it.id } }
     val effectiveSelectedId = speechServices.effectiveTtsProviderId(selectedSpeechServiceId)
 
-    RetainedScreenContent(editor = editor) { page ->
+    ScreenDestination(page = editor, onClosed = { editor = null }) { page ->
         if (page != null) {
             key(page.service.id) {
                 SpeechEditor(

@@ -1370,4 +1370,9 @@
     <string name="http_request_sample">Sample parameter values (JSON)</string>
     <string name="http_request_preview_invalid">Check the request templates and sample values. Provide required parameters, use the declared types and allowed values, and remove references to deleted parameters.</string>
     <string name="http_request_parameter_invalid">Template references a parameter that is not declared. Insert an existing parameter or update the template.</string>
+    <string name="attachment_uploading">Preparing and uploading files</string>
+    <string name="attachment_prepare_missing">Attachment is no longer readable: %1$s</string>
+    <string name="attachment_prepare_unsupported">The selected model or API does not support attachment: %1$s</string>
+    <string name="attachment_prepare_too_large">Attachment exceeds the selected API\'s transfer limit: %1$s</string>
+    <string name="attachment_prepare_processing_failed">The server could not finish processing attachment: %1$s</string>
 </resources>

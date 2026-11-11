@@ -203,6 +203,7 @@ internal class ChatGeneration(
                 chunks.collect { chunk ->
                     if (stopSession.isRequested()) return@collect
                     when (chunk) {
+                        is GenerationEvent.PreparingAttachments -> streamDisplay.setPreparingAttachments(chunk.active)
                         is GenerationEvent.Text -> {
                             synchronized(stopSession.lock) {
                                 if (!stopSession.requested) {

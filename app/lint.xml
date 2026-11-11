@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Tier-3 locales use English fallback by project policy; keep coverage visible without failing lint. -->
+    <issue id="MissingTranslation" severity="warning" />
+</lint>

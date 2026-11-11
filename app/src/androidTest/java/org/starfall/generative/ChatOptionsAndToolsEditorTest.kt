@@ -24,7 +24,7 @@ class ChatOptionsAndToolsEditorTest {
 
     @Test
     fun chatOptionsSeparatesOptionsAndInstructionsIntoTabs() {
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -60,7 +60,7 @@ class ChatOptionsAndToolsEditorTest {
     @Test
     fun instructionsTabOpensDedicatedInstructionEditorAndSavesInstruction() {
         var savedLibrary = InstructionLibrary()
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -97,7 +97,7 @@ class ChatOptionsAndToolsEditorTest {
 
     @Test
     fun toolsEditorContainsMediaToolModelSelectorsAndFileTool() {
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ToolsEditor(
                     providers = emptyList(),
@@ -126,7 +126,7 @@ class ChatOptionsAndToolsEditorTest {
     @Test
     fun ttsServiceSheetShowsFullCardsAndSelectsService() {
         var selectedId: String? = null
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -161,7 +161,7 @@ class ChatOptionsAndToolsEditorTest {
     fun webSearchSheetShowsMcpCardsAndPreservesNoneOption() {
         var selectedId: String? = "first"
         var callbacks = 0
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),
@@ -198,7 +198,7 @@ class ChatOptionsAndToolsEditorTest {
     @Test
     fun chatOptionsOptionsTabCanChooseTtsProvider() {
         var selectedId: String? = null
-        compose.setContent {
+        compose.setScreenContent {
             TestTheme {
                 ChatOptionsScreen(
                     providers = emptyList(),

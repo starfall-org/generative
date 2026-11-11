@@ -1,5 +1,7 @@
 package org.starfall.generative.integrations.modelapis.anthropic
 
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
+import org.starfall.generative.integrations.modelapis.attachments.withFileReferenceHeaders
 import kotlinx.coroutines.flow.Flow
 import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.ContentBlockParam
@@ -38,7 +40,7 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
     override fun stream(request: ModelApiRequest): Flow<GenerationEvent> = streamAnthropic(
         request.provider, request.modelName, request.messages, request.systemPrompt,
         request.temperature, request.topP, request.maxTokens, request.topK, request.sendThinkingContent,
-        request.enabledModelTools, request.callerSystemPrompt
+        request.enabledModelTools, request.callerSystemPrompt, request.preparedAttachments
     )
 
     private fun streamAnthropic(
@@ -52,9 +54,10 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
         topK: Int? = null,
         sendThinkingContent: Boolean = false,
         enabledModelTools: List<String> = emptyList(),
-        callerSystemPrompt: String? = null
+        callerSystemPrompt: String? = null,
+        preparedAttachments: Map<String, PreparedAttachment> = emptyMap()
     ): Flow<GenerationEvent> = flow {
-        sdk.anthropic(provider).useClient { client ->
+        sdk.anthropic(if (preparedAttachments.values.any { it.remote != null }) provider.withFileReferenceHeaders() else provider).useClient { client ->
             val params = MessageCreateParams.builder().model(modelName).maxTokens(maxTokens.toLong())
             // Claude Code accounts keep their own wire shape; only plain Anthropic Messages providers cache.
             val cache = provider.config.anthropicPromptCache.takeIf { provider.type == ModelApiType.ANTHROPIC && it.enabled }
@@ -116,7 +119,7 @@ internal class AnthropicMessagesAdapter(private val sdk: OfficialProviderSdk) : 
                         )
                     } else params.addAssistantMessage(message.content)
                 } else if (message.files.isNotEmpty() || index == reminderUser) {
-                    val content = sdk.anthropicContent(message).toMutableList()
+                    val content = sdk.anthropicContent(message, preparedAttachments).toMutableList()
                     if (index == reminderUser) content.add(0, com.anthropic.models.messages.ContentBlockParam.ofText(
                         claudeCodeSystemReminder(callerSystemPrompt.orEmpty())))
                     params.addMessage(

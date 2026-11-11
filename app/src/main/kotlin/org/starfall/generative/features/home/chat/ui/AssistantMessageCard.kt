@@ -42,8 +42,6 @@ import org.starfall.generative.shared.ui.code.LocalCodeRenderingPreferences
 import org.starfall.generative.features.home.chat.ui.markdown.MarkdownRenderer
 import org.starfall.generative.features.home.chat.ui.markdown.StreamingMarkdownRenderer
 import org.starfall.generative.features.home.shared.ui.LocalToolSheetState
-import org.starfall.generative.features.home.shared.ui.ToolSheetState
-import org.starfall.generative.features.home.shared.ui.ToolDetailsSheetHost
 
 @Composable
 fun AssistantMessageCard(
@@ -100,8 +98,7 @@ fun AssistantMessageCard(
         activeVersion.timestamp.toLongOrNull()?.let { startedAt -> (finishedAt - startedAt).coerceAtLeast(0L) }
     }
 
-    val toolSheetState = remember(message.id, foreground) { ToolSheetState() }
-    if (foreground) ToolDetailsSheetHost(toolSheetState, activeVersion.toolActivity)
+    val toolSheetState = rememberChatToolDetails(message.id, activeVersion.toolActivity)
 
     CompositionLocalProvider(LocalToolSheetState provides toolSheetState) {
     Column(
@@ -127,7 +124,10 @@ fun AssistantMessageCard(
         )
         if (isStreaming) {
             GenerationLoadingIndicator(
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                streamState = streamStateFlow,
+                conversationId = conversationId,
+                messageId = message.id
             )
         }
 

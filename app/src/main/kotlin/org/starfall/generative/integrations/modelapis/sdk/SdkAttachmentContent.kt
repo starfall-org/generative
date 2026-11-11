@@ -15,8 +15,13 @@ import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.subfeatures.media.logic.ResolvedAttachment
 import java.util.Base64
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
+import org.starfall.generative.integrations.modelapis.attachments.AttachmentMessages
 
-internal class SdkAttachmentContent(private val attachments: AttachmentResolver) {
+internal class SdkAttachmentContent(
+    private val attachments: AttachmentResolver,
+    private val messages: AttachmentMessages = AttachmentMessages()
+) {
     private data class InlineAttachment(val meta: ResolvedAttachment, val base64: String, val dataUrl: String)
 
     private fun inlineAttachment(reference: String): InlineAttachment? {
@@ -26,11 +31,17 @@ internal class SdkAttachmentContent(private val attachments: AttachmentResolver)
         return InlineAttachment(meta, encoded, "data:${meta.mimeType};base64,$encoded")
     }
 
-    fun openAiChatContent(message: StoredMessage): List<ChatCompletionContentPart> {
+    fun openAiChatContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()): List<ChatCompletionContentPart> {
         val parts = mutableListOf<ChatCompletionContentPart>()
         if (message.content.isNotBlank()) parts += ChatCompletionContentPart.ofText(ChatCompletionContentPartText.builder().text(message.content).build())
         message.files.forEach { reference ->
-            val data = inlineAttachment(reference) ?: return@forEach
+            val remote = prepared[reference]?.remote
+            if (remote != null) {
+                val fileObject = ChatCompletionContentPart.File.FileObject.builder().fileId(remote.remoteId).build()
+                parts += ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder().file(fileObject).build())
+                return@forEach
+            }
+            val data = inlineAttachment(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
             if (data.meta.mimeType.startsWith("image/")) {
                 val imageUrl = ChatCompletionContentPartImage.ImageUrl.builder().url(data.dataUrl).build()
                 parts += ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder().imageUrl(imageUrl).build())
@@ -43,13 +54,20 @@ internal class SdkAttachmentContent(private val attachments: AttachmentResolver)
         return parts
     }
 
-    fun openAiResponseContent(message: StoredMessage): List<ResponseInputContent> {
+    fun openAiResponseContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()): List<ResponseInputContent> {
         val parts = mutableListOf<ResponseInputContent>()
         if (message.content.isNotBlank()) parts += ResponseInputContent.ofInputText(ResponseInputText.builder().text(message.content).build())
         message.files.forEach { reference ->
-            val data = inlineAttachment(reference) ?: return@forEach
+            val remote = prepared[reference]?.remote
+            if (remote != null) {
+                if (prepared.getValue(reference).metadata.isImage) {
+                    parts += ResponseInputContent.ofInputImage(ResponseInputImage.builder().detail(ResponseInputImage.Detail.AUTO).fileId(remote.remoteId).build())
+                } else parts += ResponseInputContent.ofInputFile(ResponseInputFile.builder().fileId(remote.remoteId).build())
+                return@forEach
+            }
+            val data = inlineAttachment(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
             if (data.meta.mimeType.startsWith("image/")) {
-                parts += ResponseInputContent.ofInputImage(ResponseInputImage.builder().imageUrl(data.dataUrl).build())
+                parts += ResponseInputContent.ofInputImage(ResponseInputImage.builder().detail(ResponseInputImage.Detail.AUTO).imageUrl(data.dataUrl).build())
             } else {
                 parts += ResponseInputContent.ofInputFile(ResponseInputFile.builder().fileData(data.dataUrl).filename(data.meta.name).build())
             }
@@ -58,44 +76,55 @@ internal class SdkAttachmentContent(private val attachments: AttachmentResolver)
         return parts
     }
 
-    fun anthropicContent(message: StoredMessage): List<ContentBlockParam> {
+    fun anthropicContent(message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()): List<ContentBlockParam> {
         val blocks = mutableListOf<ContentBlockParam>()
         if (message.content.isNotBlank()) blocks += ContentBlockParam.ofText(message.content)
         message.files.forEach { reference ->
-            val meta = attachments.metadata(reference) ?: return@forEach
+            val meta = attachments.metadata(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
+            val remote = prepared[reference]?.remote
+            if (remote != null) {
+                if (meta.isImage) blocks += ContentBlockParam.ofImage(ImageBlockParam.builder().fileSource(remote.remoteId).build())
+                else blocks += ContentBlockParam.ofDocument(DocumentBlockParam.builder().fileSource(remote.remoteId).title(meta.name).build())
+                return@forEach
+            }
             when {
                 meta.mimeType in setOf("image/jpeg", "image/png", "image/gif", "image/webp") -> {
-                    val data = inlineAttachment(reference) ?: return@forEach
+                    val data = inlineAttachment(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
                     val source = Base64ImageSource.builder().data(data.base64).mediaType(Base64ImageSource.MediaType.of(meta.mimeType)).build()
                     blocks += ContentBlockParam.ofImage(ImageBlockParam.builder().source(source).build())
                 }
                 meta.mimeType == "application/pdf" -> {
-                    val data = inlineAttachment(reference) ?: return@forEach
+                    val data = inlineAttachment(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
                     blocks += ContentBlockParam.ofDocument(DocumentBlockParam.builder().source(Base64PdfSource.builder().data(data.base64).build()).title(meta.name).build())
                 }
-                meta.mimeType.startsWith("text/") || meta.mimeType in setOf("application/json", "application/xml", "application/javascript") -> {
-                    val bytes = attachments.readBytes(reference) ?: return@forEach
+                meta.isText -> {
+                    val bytes = attachments.readBytes(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
                     blocks += ContentBlockParam.ofDocument(DocumentBlockParam.builder().textSource(bytes.toString(Charsets.UTF_8)).title(meta.name).build())
                 }
-                else -> Unit
+                else -> error(messages.unsupported(meta.name))
             }
         }
         if (blocks.isEmpty()) blocks += ContentBlockParam.ofText("")
         return blocks
     }
 
-    suspend fun googleParts(client: Client, message: StoredMessage): List<Part> {
+    suspend fun googleParts(client: Client, message: StoredMessage, prepared: Map<String, PreparedAttachment> = emptyMap()): List<Part> {
         val parts = mutableListOf<Part>()
         if (message.content.isNotBlank()) parts += Part.fromText(message.content)
         for (reference in message.files) {
-            val meta = attachments.metadata(reference) ?: continue
-            if (meta.mimeType.startsWith("video/")) {
+            val meta = attachments.metadata(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
+            val ready = prepared[reference]
+            if (ready?.remote != null) {
+                parts += Part.fromUri(ready.remote.remoteId, meta.mimeType)
+                continue
+            }
+            if (ready == null && meta.mimeType.startsWith("video/")) {
                 val config = UploadFileConfig.builder().mimeType(meta.mimeType).displayName(meta.name).build()
                 var uploaded = if (meta.sizeBytes > 0) {
-                    val input = attachments.open(reference) ?: continue
+                    val input = attachments.open(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
                     input.use { sdkCall { client.files.upload(it, meta.sizeBytes, config) } }
                 } else {
-                    val bytes = attachments.readBytes(reference, 100L * 1024L * 1024L) ?: continue
+                    val bytes = attachments.readBytes(reference, 100L * 1024L * 1024L) ?: error(messages.missing(reference.substringAfterLast('/')))
                     sdkCall { client.files.upload(bytes, config) }
                 }
                 val fileName = uploaded.name().orElse(null)
@@ -112,7 +141,7 @@ internal class SdkAttachmentContent(private val attachments: AttachmentResolver)
                 val uri = uploaded.uri().orElseThrow { IllegalStateException("Google did not return a file URI for ${meta.name}") }
                 parts += Part.fromUri(uri, meta.mimeType)
             } else {
-                val bytes = attachments.readBytes(reference) ?: continue
+                val bytes = attachments.readBytes(reference) ?: error(messages.missing(reference.substringAfterLast('/')))
                 parts += Part.fromBytes(bytes, meta.mimeType)
             }
         }

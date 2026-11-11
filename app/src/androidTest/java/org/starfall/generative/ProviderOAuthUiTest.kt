@@ -27,7 +27,7 @@ class ProviderOAuthUiTest {
         var type by mutableStateOf(accountTypes.first())
         var grid by mutableStateOf(false)
         var signedIn by mutableStateOf(false)
-        compose.setContent { MaterialTheme {
+        compose.setScreenContent { MaterialTheme {
             ProviderUnifiedCard(ModelProvider("p", "Provider", type, baseUrl = "https://hidden.example/v1",
                 auth = Authorization(AuthMethod.OAUTH, value = if (signedIn) "marker" else null)), grid,
                 onEdit = {}, onMoveToGroup = {}, onDelete = {})
@@ -45,7 +45,7 @@ class ProviderOAuthUiTest {
 
     @Test fun accountProviderEditorsHideBaseUrlAndAllowMultipleAccounts() {
         var type by mutableStateOf(accountTypes.first())
-        compose.setContent { MaterialTheme { key(type) {
+        compose.setScreenContent { MaterialTheme { key(type) {
             ProviderEditor(ModelProvider("p", "Provider", type, baseUrl = type.defaultBaseUrl,
                 auth = type.defaultAuthorization()), isNew = false, onSaveModels = { _, _ -> },
                 onReorderModels = { _, _ -> }, onDismiss = {}, onSave = {})
@@ -65,7 +65,7 @@ class ProviderOAuthUiTest {
             ProviderOAuthAccount("second", "Backup", "second@example.test", "marker"))
         var selected: ProviderOAuthAccount? = null
         var open by mutableStateOf(true)
-        compose.setContent { MaterialTheme { if (open) {
+        compose.setScreenContent { MaterialTheme { if (open) {
             ProviderOAuthAccountsDialog(providerType = ModelApiType.OPENAI, accounts = accounts, selectedId = "second", canAuthorize = false, canDelete = false, onSelect = { selected = it; open = false },
                 onSaveLabel = { _, _ -> }, onAuthorize = { _, _ -> error("unused") },
                 onCancelAuthorization = {}, onDelete = { error("unused") }, onDismiss = { open = false })

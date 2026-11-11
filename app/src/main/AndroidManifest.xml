@@ -60,14 +60,7 @@
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
         </provider>
-        <activity android:name=".navigation.ExplorerActivity"
-            android:configChanges="orientation|screenSize"
-            android:exported="false" />
         <activity android:name=".shared.subfeatures.auth.ui.AppAuthResultActivity" android:exported="false" />
-        <activity
-            android:name=".shared.ui.preview.CodePreviewActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Generative" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTask"

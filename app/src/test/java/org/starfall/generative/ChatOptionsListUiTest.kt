@@ -32,7 +32,7 @@ class ChatOptionsListUiTest {
             SavedInstruction("second", "Second instruction", "Show examples.")
         )
         var updated: InstructionLibrary? = null
-        compose.setContent {
+        compose.setScreenContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
                 ChatOptionsScreen(
                     providers = emptyList(),

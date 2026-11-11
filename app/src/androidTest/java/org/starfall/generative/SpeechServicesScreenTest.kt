@@ -23,7 +23,7 @@ class SpeechServicesScreenTest {
     @Test
     fun tappingSpeechServiceOpensEditorWithoutSelectingIt() {
         var selectedId: String? = null
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(SpeechService("voice", "Voice")),
@@ -47,7 +47,7 @@ class SpeechServicesScreenTest {
     @Test
     fun speechEditorIsAFullScreenPageWithSaveAndBackNavigation() {
         var saved: SpeechService? = null
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(SpeechService("voice", "Voice", provider = "system")),
@@ -83,7 +83,7 @@ class SpeechServicesScreenTest {
     @Test
     fun speechServiceContextMenuCanSetTheTtsProvider() {
         var selectedId: String? = null
-        compose.setContent {
+        compose.setScreenContent {
             EnglishTestTheme {
                 SpeechServicesScreen(
                     speechServices = listOf(

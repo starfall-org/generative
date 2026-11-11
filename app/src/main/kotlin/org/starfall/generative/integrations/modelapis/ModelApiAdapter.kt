@@ -6,6 +6,8 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.StoredMessage
 
+import org.starfall.generative.integrations.modelapis.attachments.PreparedAttachment
+
 internal data class ModelApiRequest(
     val provider: ModelProvider,
     val modelName: String,
@@ -19,7 +21,8 @@ internal data class ModelApiRequest(
     val sendThinkingContent: Boolean = false,
     val enabledModelTools: List<String> = emptyList(),
     /** Original caller instructions when an account adapter relocates them from top-level system. */
-    val callerSystemPrompt: String? = null
+    val callerSystemPrompt: String? = null,
+    val preparedAttachments: Map<String, PreparedAttachment> = emptyMap()
 )
 
 internal interface ModelApiAdapter {

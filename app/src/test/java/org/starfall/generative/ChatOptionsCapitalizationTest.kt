@@ -40,7 +40,7 @@ class ChatOptionsCapitalizationTest {
         var lastInputType = 0
         var showHelperSheet by mutableStateOf(false)
 
-        compose.setContent {
+        compose.setScreenContent {
             InterceptPlatformTextInput(
                 interceptor = { request, _ ->
                     val editorInfo = EditorInfo()
@@ -108,7 +108,7 @@ class ChatOptionsCapitalizationTest {
     fun instructionsTab_placesAddInstructionIconButtonInTopAppBar() {
         var activeTab by mutableStateOf("helpers")
 
-        compose.setContent {
+        compose.setScreenContent {
             GenerativeTheme(darkTheme = false, amoledMode = false) {
                 ChatOptionsScreen(
                     providers = emptyList(),

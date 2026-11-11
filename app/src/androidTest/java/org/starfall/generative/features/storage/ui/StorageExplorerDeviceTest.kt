@@ -1,6 +1,7 @@
 package org.starfall.generative.features.storage.ui
 
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -24,13 +25,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.R
-import org.starfall.generative.navigation.ExplorerActivity
+import org.starfall.generative.shared.ui.theme.GenerativeTheme
 import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 
 /** End-to-end UI checks against real app-private files and the existing viewer. */
 @RunWith(AndroidJUnit4::class)
 class StorageExplorerDeviceTest {
-    @get:Rule val compose = createAndroidComposeRule<ExplorerActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val root: File get() = ToolFiles.appStorageDirectory(context)
     private val uniqueId = UUID.randomUUID().toString().take(12)
@@ -46,6 +47,9 @@ class StorageExplorerDeviceTest {
         folder.mkdirs()
         child.writeText("Nested explorer preview content")
         sameNameAtRoot.writeText("Root file must not be deleted")
+        compose.setContent {
+            GenerativeTheme { StorageExplorerScreen(onClose = {}, onOpenExternal = { _, _ -> }) }
+        }
     }
 
     @After fun tearDown() {

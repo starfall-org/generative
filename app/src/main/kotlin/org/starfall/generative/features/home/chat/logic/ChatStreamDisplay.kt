@@ -31,6 +31,7 @@ internal class ChatStreamDisplay(
     private var messageId = initialMessageId
     private var revision = 0L
     private var status = ChatStreamStatus.STREAMING
+    private var preparingAttachments = false
     private var lastCommitMetrics: StreamCommitMetrics? = null
     private var cumulativeMetrics = StreamMetricsSnapshot()
     private var lastBatchAtMillis: Long? = null
@@ -68,6 +69,14 @@ internal class ChatStreamDisplay(
     @Synchronized
     fun publishInitialState() {
         if (!frozenForStop) publishCurrentState()
+    }
+
+    @Synchronized
+    fun setPreparingAttachments(active: Boolean) {
+        if (frozenForStop || displayFinished || preparingAttachments == active) return
+        preparingAttachments = active
+        revision++
+        publishCurrentState()
     }
 
     /** Freeze the currently published snapshot. No pending batch is flushed and no new state is published. */
@@ -172,7 +181,8 @@ internal class ChatStreamDisplay(
         reasoning = if (explicitReasoningPreferred) displayedExplicitReasoning else displayedInlineReasoning,
         stopSignal = stopSignal,
         lastCommitMetrics = lastCommitMetrics,
-        cumulativeMetrics = cumulativeMetrics
+        cumulativeMetrics = cumulativeMetrics,
+        preparingAttachments = preparingAttachments
     )
 
     private fun publishCurrentState() = publish(conversationId, activeStreamState())
