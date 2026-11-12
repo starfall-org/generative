@@ -43,7 +43,7 @@ internal fun ChatWelcome(isTemporary: Boolean, foreground: Boolean, modifier: Mo
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Image(
-                    painter = painterResource(R.drawable.generative_logo_light),
+                    painter = painterResource(R.drawable.generative_logo),
                     contentDescription = null,
                     modifier = Modifier.size(108.dp).testTag("chat-welcome-logo")
                 )

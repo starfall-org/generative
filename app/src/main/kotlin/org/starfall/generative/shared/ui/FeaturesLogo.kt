@@ -45,7 +45,7 @@ fun FeaturesLogo(
             )
         } else {
             Image(
-                painter = painterResource(R.drawable.generative_logo_light),
+                painter = painterResource(R.drawable.generative_logo),
                 contentDescription = stringResource(R.string.app_name),
                 modifier = Modifier.fillMaxSize()
             )

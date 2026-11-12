@@ -6,7 +6,10 @@ import org.starfall.generative.features.httptools.ui.HttpToolEditor
 import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -23,6 +26,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavType
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -216,7 +220,6 @@ internal fun AppNavigation(
     }
 
     fun openInstructions(instructionId: String? = null) {
-        coroutineScope.launch { drawerState.close() }
         val route = buildString {
             append(AppDestination.CHAT_OPTIONS.route)
             append("?tab=instructions")
@@ -261,7 +264,6 @@ internal fun AppNavigation(
     LaunchedEffect(pendingTerminalMachineId, remoteMachineState.machines) {
         val machine = remoteMachineState.machines.firstOrNull { it.id == pendingTerminalMachineId }
         if (machine != null) {
-            drawerState.close()
             openTerminal(machine)
             onTerminalLaunchHandled()
         }
@@ -414,7 +416,6 @@ internal fun AppNavigation(
     }
     LaunchedEffect(importedProviderId) {
         importedProviderId?.let { id ->
-            drawerState.close()
             navController.navigate("providers/edit/$id") { launchSingleTop = true }
             configurationViewModel.providerImportOpened(id)
         }
@@ -424,9 +425,6 @@ internal fun AppNavigation(
             Toast.makeText(context, localizedResources.getString(R.string.provider_import_failed), Toast.LENGTH_LONG).show()
             configurationViewModel.clearProviderImportFailed()
         }
-    }
-    LaunchedEffect(chatOnTop) {
-        if (!chatOnTop) drawerState.close()
     }
     LaunchedEffect(pendingAppDeepLink?.id) {
         val request = pendingAppDeepLink ?: return@LaunchedEffect
@@ -460,7 +458,6 @@ internal fun AppNavigation(
     LaunchedEffect(pendingExternalShare?.id) {
         val request = pendingExternalShare ?: return@LaunchedEffect
         // Share to the current chat, without replacing the current draft or sending it.
-        drawerState.close()
         navigate(AppDestination.CHAT)
         // If there is no active chat (e.g. first launch), create a stable blank draft
         // before the asynchronous last-conversation restore can replace the selection.
@@ -535,96 +532,106 @@ internal fun AppNavigation(
         )
     ) {
         if (showMediaSheet) MediaStorageSheet(toolFiles) { showMediaSheet = false }
-        val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = chatOnTop,
-            scrimColor = drawerScrim,
-            drawerContent = {
-                ConversationSideDrawer(
-                    conversations = conversations,
-                    providers = providers,
-                    currentConversationId = currentConvId,
-                    isOpen = drawerState.isOpen,
-                    generatingConversationIds = generatingConversationIds,
-                    organization = appPrefs.chatRelations.sidebar,
-                    backgroundImage = appPrefs.userProfile.drawerBackground,
-                    backgroundTransparency = appPrefs.userProfile.drawerTransparency,
-                    onUpdateOrganization = settingsViewModel::updateSidebar,
-                    onDeleteConversations = { ids ->
-                        viewModel.deleteConversations(ids, chatAttachments.attachments.value)
-                        retainedChats.discard(ids)
-                    },
-                    onSelectConversation = { item ->
-                        navigate(AppDestination.CHAT)
-                        // Switching chats composes the whole history. Doing that while the drawer is still
-                        // sliding away makes the close animation drop frames, so the switch waits for the
-                        // drawer to settle (bounded, in case it is reopened or never reports closed).
-                        coroutineScope.launch {
-                            withTimeoutOrNull(DRAWER_CLOSE_WAIT_MS) {
-                                snapshotFlow { drawerState.isClosed }.first { it }
-                            }
-                            viewModel.selectConversation(item.id)
-                        }
-                    },
-                    onNewChat = {
-                        startNewChat()
-                    },
-                    onRenameConversation = { id, newTitle ->
-                        viewModel.renameConversation(id, newTitle)
-                    },
-                    onSuggestConversationTitle = viewModel::suggestConversationTitle,
-                    onDeleteConversation = {
-                        viewModel.deleteConversations(setOf(it), chatAttachments.attachments.value)
-                        retainedChats.discard(setOf(it))
-                    },
-                    onNavigateToSettings = {
-                        navigate(AppDestination.FEATURES)
-                    },
-                    featuresLogoImage = appPrefs.featuresLogoImage,
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onOpenMediaStorage = {
-                        coroutineScope.launch {
-                            drawerState.close()
-                            showMediaSheet = true
-                        }
-                    },
-                    onOpenRemoteMachines = {
-                        coroutineScope.launch { drawerState.close() }
-                        openConfiguration(AppDestination.REMOTE_MACHINES)
-                    },
-                    onPortForward = { machine ->
-                        drawerPortForwardMachine = machine
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onOpenTerminal = { machine ->
-                        coroutineScope.launch { drawerState.close() }
-                        openTerminal(machine)
-                    },
-                    onSaveMachineTools = remoteMachinesViewModel::saveMachineTools
-                )
-            }
-        ) {
-            val focusManager = LocalFocusManager.current
-            LaunchedEffect(chatOnTop) {
-                if (!chatOnTop) focusManager.clearFocus(force = true)
-            }
-            Box(Modifier.fillMaxSize()) {
-                RetainedNavHost(
-                    navController = navController,
-                    startDestination = AppDestination.CHAT.route,
-                    menuBackground = {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                            org.starfall.generative.shared.ui.background.ProfileBackground(
-                                appPrefs.userProfile.menuBackground,
-                                transparency = appPrefs.userProfile.menuTransparency
-                            )
-                        }
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(chatOnTop) {
+            if (!chatOnTop) focusManager.clearFocus(force = true)
+        }
+        Box(Modifier.fillMaxSize()) {
+            RetainedNavHost(
+                navController = navController,
+                startDestination = AppDestination.CHAT.route,
+                menuBackground = {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        org.starfall.generative.shared.ui.background.ProfileBackground(
+                            appPrefs.userProfile.menuBackground,
+                            transparency = appPrefs.userProfile.menuTransparency
+                        )
                     }
-                ) {
+                }
+            ) {
                     composable(AppDestination.CHAT.route) {
+                        val lifecycleOwner = LocalLifecycleOwner.current
+                        val backDispatcherOwner = checkNotNull(LocalOnBackPressedDispatcherOwner.current)
+                        val inactiveBackDispatcherOwner = remember(lifecycleOwner) {
+                            object : OnBackPressedDispatcherOwner {
+                                override val lifecycle = lifecycleOwner.lifecycle
+                                override val onBackPressedDispatcher = OnBackPressedDispatcher()
+                            }
+                        }
+                        CompositionLocalProvider(
+                            LocalOnBackPressedDispatcherOwner provides
+                                if (chatOnTop) backDispatcherOwner else inactiveBackDispatcherOwner
+                        ) {
+                            val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
+                            ModalNavigationDrawer(
+                                drawerState = drawerState,
+                                gesturesEnabled = chatOnTop,
+                                scrimColor = drawerScrim,
+                                drawerContent = {
+                                    ConversationSideDrawer(
+                                        conversations = conversations,
+                                        providers = providers,
+                                        currentConversationId = currentConvId,
+                                        isOpen = drawerState.isOpen,
+                                        generatingConversationIds = generatingConversationIds,
+                                        organization = appPrefs.chatRelations.sidebar,
+                                        backgroundImage = appPrefs.userProfile.drawerBackground,
+                                        backgroundTransparency = appPrefs.userProfile.drawerTransparency,
+                                        onUpdateOrganization = settingsViewModel::updateSidebar,
+                                        onDeleteConversations = { ids ->
+                                            viewModel.deleteConversations(ids, chatAttachments.attachments.value)
+                                            retainedChats.discard(ids)
+                                        },
+                                        onSelectConversation = { item ->
+                                            navigate(AppDestination.CHAT)
+                                            // Switching chats composes the whole history. Doing that while the drawer is still
+                                            // sliding away makes the close animation drop frames, so the switch waits for the
+                                            // drawer to settle (bounded, in case it is reopened or never reports closed).
+                                            coroutineScope.launch {
+                                                withTimeoutOrNull(DRAWER_CLOSE_WAIT_MS) {
+                                                    snapshotFlow { drawerState.isClosed }.first { it }
+                                                }
+                                                viewModel.selectConversation(item.id)
+                                            }
+                                        },
+                                        onNewChat = {
+                                            startNewChat()
+                                        },
+                                        onRenameConversation = { id, newTitle ->
+                                            viewModel.renameConversation(id, newTitle)
+                                        },
+                                        onSuggestConversationTitle = viewModel::suggestConversationTitle,
+                                        onDeleteConversation = {
+                                            viewModel.deleteConversations(setOf(it), chatAttachments.attachments.value)
+                                            retainedChats.discard(setOf(it))
+                                        },
+                                        onNavigateToSettings = {
+                                            navigate(AppDestination.FEATURES)
+                                        },
+                                        featuresLogoImage = appPrefs.featuresLogoImage,
+                                        onCloseDrawer = {
+                                            coroutineScope.launch { drawerState.close() }
+                                        },
+                                        onOpenMediaStorage = {
+                                            coroutineScope.launch {
+                                                drawerState.close()
+                                                showMediaSheet = true
+                                            }
+                                        },
+                                        onOpenRemoteMachines = {
+                                            openConfiguration(AppDestination.REMOTE_MACHINES)
+                                        },
+                                        onPortForward = { machine ->
+                                            drawerPortForwardMachine = machine
+                                            coroutineScope.launch { drawerState.close() }
+                                        },
+                                        onOpenTerminal = { machine ->
+                                            openTerminal(machine)
+                                        },
+                                        onSaveMachineTools = remoteMachinesViewModel::saveMachineTools
+                                    )
+                                }
+                            ) {
                         RetainedChatConversations(
                             state = retainedChats,
                             conversation = currentConvState.value,
@@ -742,6 +749,8 @@ internal fun AppNavigation(
                          onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
                          onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
                      )
+                        }
+                            }
                         }
                     }
                     composable(
@@ -1364,7 +1373,6 @@ internal fun AppNavigation(
                             }
                         }
                     }
-                }
             }
         }
     }
@@ -1401,7 +1409,7 @@ internal fun AppNavigation(
             )
         }
     }
-    BackHandler(enabled = drawerState.isOpen && drawerPortForwardMachine == null) {
+    BackHandler(enabled = chatOnTop && drawerState.isOpen && drawerPortForwardMachine == null) {
         coroutineScope.launch { drawerState.close() }
     }
 }

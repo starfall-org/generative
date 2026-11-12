@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# The canonical orange galaxy logo is maintained in docs/generative_logo.png.
-logo="docs/generative_logo.png"
+# Generate all branding assets from the single app logo resource.
+logo="app/src/main/res/drawable-nodpi/generative_logo.png"
 declare -A sizes=( ["mdpi"]="48x48" ["hdpi"]="72x72" ["xhdpi"]="96x96" ["xxhdpi"]="144x144" ["xxxhdpi"]="192x192" )
 declare -A notification_sizes=( ["mdpi"]=24 ["hdpi"]=36 ["xhdpi"]=48 ["xxhdpi"]=72 ["xxxhdpi"]=96 )
 
@@ -32,3 +32,7 @@ for density in "${!sizes[@]}"; do
         -gravity center -background none -extent "${notification_size}x${notification_size}" \
         "$notification_dir/ic_generative_logo.png"
 done
+
+# Keep documentation artwork and the small website icon in sync.
+cp "$logo" docs/generative_logo.png
+convert "$logo" -resize 256x256 -strip docs/icon.png

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.webp" width="128" alt="Generative logo">
+  <img src="docs/icon.png" width="128" alt="Generative logo">
 </p>
 
 <h1 align="center">Generative</h1>

@@ -506,7 +506,7 @@ fun ConversationSideDrawer(
                     if (showMenuButton) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedButton(
-                                onClick = { onNavigateToSettings(); onCloseDrawer() },
+                                onClick = onNavigateToSettings,
                                 contentPadding = PaddingValues(horizontal = 12.dp),
                                 shape = RoundedCornerShape(28.dp),
                                 modifier = Modifier

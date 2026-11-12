@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Keep the orange galaxy artwork inside Android's 66% adaptive icon safe area.
-logo="docs/generative_logo.png"
+logo="app/src/main/res/drawable-nodpi/generative_logo.png"
 declare -A sizes=( ["mdpi"]="108x108" ["hdpi"]="162x162" ["xhdpi"]="216x216" ["xxhdpi"]="324x324" ["xxxhdpi"]="432x432" )
 
 for density in "${!sizes[@]}"; do

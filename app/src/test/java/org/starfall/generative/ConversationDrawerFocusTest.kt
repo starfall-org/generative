@@ -39,6 +39,36 @@ class ConversationDrawerFocusTest {
     val compose = createComposeRule()
 
     @Test
+    fun menuNavigationDoesNotCloseDrawer() {
+        var navigated = false
+        var closed = false
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ConversationSideDrawer(
+                    conversations = emptyList(),
+                    currentConversationId = null,
+                    isOpen = true,
+                    organization = SidebarOrganization(),
+                    onUpdateOrganization = {},
+                    onDeleteConversations = {},
+                    onSelectConversation = {},
+                    onNewChat = {},
+                    onRenameConversation = { _, _ -> },
+                    onDeleteConversation = {},
+                    onNavigateToSettings = { navigated = true },
+                    onCloseDrawer = { closed = true }
+                )
+            }
+        }
+
+        compose.onNodeWithTag("conversation_drawer_menu_button").performClick()
+        compose.runOnIdle {
+            org.junit.Assert.assertTrue(navigated)
+            org.junit.Assert.assertFalse(closed)
+        }
+    }
+
+    @Test
     fun losingSearchFocusKeepsQueryAndConversationFilterUntilExplicitClear() {
         val conversations = listOf("Alpha chat", "Beta chat").mapIndexed { index, name ->
             ConversationListItem(
