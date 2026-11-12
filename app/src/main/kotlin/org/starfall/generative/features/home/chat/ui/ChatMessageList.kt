@@ -195,11 +195,6 @@ internal fun ChatMessageList(
     footer: (@Composable () -> Unit)? = null,
     messageContent: @Composable (StoredMessage) -> Unit
 ) {
-    if (historyLoading) {
-        // History must exist before its real viewport is mounted. Assets never gate this.
-        ChatOpeningVeil(active = true, modifier = modifier) { }
-        return
-    }
     val foreground = LocalChatForeground.current
     val turns = remember(messages) { chatMessageTurns(messages) }
     val currentTurns by rememberUpdatedState(turns)
@@ -318,6 +313,7 @@ internal fun ChatMessageList(
         // A State, not a value: streaming rows read it inside coroutines, so a scroll starting or
         // stopping never recomposes them. They use it to apply streamed text at a bounded rate.
         val listScrolling = remember(listState) { derivedStateOf { listState.isScrollInProgress } }
+        ChatOpeningVeil(active = historyLoading, modifier = Modifier.fillMaxSize()) {
         CompositionLocalProvider(
             LocalBringIntoViewSpec provides insetRelocation,
             LocalChatListScrolling provides listScrolling
@@ -387,6 +383,7 @@ internal fun ChatMessageList(
                 // before any unused minimum-height room and the list's trailing content padding.
                 item(key = ChatListBoundary.End) { Spacer(Modifier.height(0.dp)) }
             }
+        }
         }
     }
 }

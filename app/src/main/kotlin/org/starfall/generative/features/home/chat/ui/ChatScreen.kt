@@ -144,7 +144,7 @@ fun ChatScreen(
     // Keep sheet navigation only for the current foreground chat; parked pages retain
     // their scroll/composer state but receive a fresh, closed sheet state on return.
     val bottomSheets = remember(conversationKey, foreground) { BottomSheetsLinkState() }
-    val viewport = remember(conversationKey, loadingConversationId, messages.isEmpty()) {
+    val viewport = remember(conversationKey, messages.isEmpty()) {
         ChatMessageListState(initialMessages = messages)
     }
     val listState = viewport.listState
@@ -425,43 +425,39 @@ fun ChatScreen(
         org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         val appBarHeight = insets.calculateTopPadding()
         val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
-        if (messages.isEmpty() && saveConversationError == null) {
-            ChatOpeningVeil(
-                active = historyLoading,
-                modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
+        if (historyLoading && messages.isEmpty()) {
+            // There is no history to blur yet; show a genuine loading state instead.
+            Box(
+                Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance),
+                contentAlignment = Alignment.Center
             ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    Text(
-                        text = if (conversation?.isTemporary == true)
-                            stringResource(R.string.chat_temporary_title) else stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp).testTag("chat-history-loading"),
+                        strokeWidth = 2.dp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                     Text(
-                        text = if (conversation?.isTemporary == true)
-                            stringResource(R.string.chat_temporary_description) else
-                            stringResource(R.string.connect_providers_description),
+                        stringResource(R.string.chat_history_loading),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
+        } else if (messages.isEmpty() && saveConversationError == null) {
+            ChatWelcome(
+                isTemporary = conversation?.isTemporary == true,
+                foreground = foreground,
+                modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
+            )
             if (isGenerating && !streamingHere) {
                 Text(
                     stringResource(R.string.chat_error_other_conversation),
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 8.dp, start = 12.dp, end = 12.dp),
+                        .padding(top = appBarHeight + 16.dp, start = 12.dp, end = 12.dp),
                     style = MaterialTheme.typography.bodySmall
                 )
-            }
             }
         } else {
             PlatformTextSelectionRegion {

@@ -355,17 +355,19 @@ class ChatMessageListTest {
         }
     }
 
-    @Test fun historyReadMountsViewportOnlyAfterDataArrives() {
+    @Test fun historyReadVeilsTheExistingViewportWithoutUnmountingIt() {
         val state = ChatMessageListState(initialMessages = history())
         var loading by mutableStateOf(true)
         compose.mainClock.autoAdvance = false
         compose.setContent { MaterialTheme {
             ChatMessageList(state, history(), false, false, loading, null, 80.dp, 100.dp) { Text(it.id) }
         } }
-        compose.onNodeWithTag("chat-message-list").assertDoesNotExist()
+        compose.onNodeWithTag("chat-message-list").assertExists()
+        compose.onNodeWithTag(OPENING_VEIL_TAG).assertExists()
         compose.runOnIdle { loading = false }
         compose.mainClock.autoAdvance = true
         compose.onNodeWithText("a100").assertIsDisplayed()
+        compose.onNodeWithTag(OPENING_VEIL_TAG).assertDoesNotExist()
         assertEquals(0L, state.requestCount)
     }
 }

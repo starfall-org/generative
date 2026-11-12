@@ -19,6 +19,8 @@
     <string name="thinking">Suy luận</string>
     <string name="thinking_streaming">Đang suy luận...</string>
     <string name="generating">Đang tạo...</string>
+    <string name="chat_welcome_tagline">AI của bạn. Theo cách của bạn.</string>
+    <string name="chat_history_loading">Đang tải lịch sử trò chuyện…</string>
     <string name="chat_input_placeholder">Nhập tin nhắn...</string>
     <string name="chat_submit_failed">Không thể gửi. Hãy kiểm tra mô hình đã chọn rồi thử lại.</string>
     <string name="thought_process">Quá trình suy luận</string>

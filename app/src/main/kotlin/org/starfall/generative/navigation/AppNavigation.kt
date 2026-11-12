@@ -636,8 +636,8 @@ internal fun AppNavigation(
                         backgroundImage = appPrefs.userProfile.chatBackground,
                         backgroundTransparency = appPrefs.userProfile.chatTransparency,
                         conversation = chatPage,
-                        // Keep the outgoing viewport intact while the next history loads.
-                        loadingConversationId = loadingConversationId.takeIf { active && chatPage == null },
+                        // A pending disk read veils the outgoing chat without clearing its viewport.
+                        loadingConversationId = loadingConversationId.takeIf { active },
                         isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
                         activeStream = viewModel.activeStreamForCurrentConversation.takeIf { active },
                         isGenerating = isGenerating && active,

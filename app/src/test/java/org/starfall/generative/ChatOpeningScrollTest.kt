@@ -1,6 +1,8 @@
 package org.starfall.generative
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -18,6 +20,7 @@ import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
 import org.starfall.generative.features.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.ui.ChatWelcome
 import org.starfall.generative.features.home.chat.ui.OPENING_VEIL_TAG
 
 @RunWith(RobolectricTestRunner::class)
@@ -150,12 +153,41 @@ class ChatOpeningScrollTest {
             kotlin.math.abs(before.top - after.top) <= 1f)
     }
 
-    @Test fun pendingHistoryReadIsVeiledEvenBeforeConversationOrMessagesExist() {
+    @Test fun emptyChatShowsTheAppLogoAndTaglineWithoutAHistoryVeil() {
+        show(mutableStateOf(null))
+        compose.onNodeWithTag("chat-welcome-logo").assertExists()
+        compose.onNodeWithText("Generative").assertExists()
+        compose.onNodeWithText("Your AI. Your way.").assertExists()
+        compose.onNodeWithTag("chat-history-loading").assertDoesNotExist()
+        assertTrue("A blank chat is not a disk read", veilNodes().isEmpty())
+    }
+
+    @Test fun welcomeFadesInAgainWhenReturningToTheChat() {
+        val foreground = mutableStateOf(true)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            MaterialTheme {
+                ChatWelcome(isTemporary = false, foreground = foreground.value, modifier = Modifier.fillMaxSize())
+            }
+        }
+        compose.mainClock.advanceTimeBy(550)
+        compose.onNodeWithTag("chat-welcome-logo").assertIsDisplayed()
+        compose.mainClock.autoAdvance = true
+        compose.runOnIdle { foreground.value = false }
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat-welcome").assertDoesNotExist()
+        compose.runOnIdle { foreground.value = true }
+        compose.waitForIdle()
+        compose.onNodeWithTag("chat-welcome-logo").assertIsDisplayed()
+    }
+
+    @Test fun pendingHistoryReadWithoutVisibleMessagesShowsLoadingInsteadOfAnEmptyVeil() {
         val current = mutableStateOf<Conversation?>(null)
         val loadingId = mutableStateOf<String?>("disk-history")
         show(current, loadingId)
-        assertTrue("A pending disk read must show the veil with no messages yet", veilNodes().isNotEmpty())
-        // A veil over the chat list must not swallow input-area interaction.
+        compose.onNodeWithTag("chat-history-loading").assertExists()
+        assertTrue("There is no history content to veil yet", veilNodes().isEmpty())
+        // History loading must not swallow input-area interaction.
         compose.onNode(hasSetTextAction()).assertIsEnabled()
         compose.onNode(hasSetTextAction()).performTouchInput { click() }
         compose.onNode(hasSetTextAction()).performTextInput("input remains usable")
@@ -168,6 +200,20 @@ class ChatOpeningScrollTest {
         }
         compose.mainClock.autoAdvance = true
         assertEndVisible("disk-history")
+    }
+
+    @Test fun pendingReadVeilsAnExistingChatWithoutUnmountingItsViewport() {
+        val current = mutableStateOf<Conversation?>(conversation("previous"))
+        val loadingId = mutableStateOf<String?>("next-history")
+        show(current, loadingId)
+        compose.onNodeWithTag("chat-message-list").assertExists()
+        assertTrue("A real pending history read must veil existing messages", veilNodes().isNotEmpty())
+        compose.runOnIdle {
+            current.value = conversation("next")
+            loadingId.value = null
+        }
+        compose.mainClock.autoAdvance = true
+        assertEndVisible("next")
     }
 
     @Test fun historyVeilHasNoDeadlineWhileSelectionIsStillLoading() {
