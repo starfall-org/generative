@@ -425,39 +425,25 @@ fun ChatScreen(
         org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
         val appBarHeight = insets.calculateTopPadding()
         val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
-        if (historyLoading && messages.isEmpty()) {
-            // There is no history to blur yet; show a genuine loading state instead.
-            Box(
-                Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance),
-                contentAlignment = Alignment.Center
+        if (messages.isEmpty() && saveConversationError == null) {
+            ChatOpeningVeil(
+                active = historyLoading,
+                modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp).testTag("chat-history-loading"),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.height(16.dp))
+                ChatWelcome(
+                    isTemporary = conversation?.isTemporary == true,
+                    foreground = foreground,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (isGenerating && !streamingHere) {
                     Text(
-                        stringResource(R.string.chat_history_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        stringResource(R.string.chat_error_other_conversation),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp, start = 12.dp, end = 12.dp),
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
-            }
-        } else if (messages.isEmpty() && saveConversationError == null) {
-            ChatWelcome(
-                isTemporary = conversation?.isTemporary == true,
-                foreground = foreground,
-                modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
-            )
-            if (isGenerating && !streamingHere) {
-                Text(
-                    stringResource(R.string.chat_error_other_conversation),
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = appBarHeight + 16.dp, start = 12.dp, end = 12.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
             }
         } else {
             PlatformTextSelectionRegion {

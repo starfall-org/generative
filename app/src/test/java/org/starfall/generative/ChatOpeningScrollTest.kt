@@ -158,7 +158,6 @@ class ChatOpeningScrollTest {
         compose.onNodeWithTag("chat-welcome-logo").assertExists()
         compose.onNodeWithText("Generative").assertExists()
         compose.onNodeWithText("Your AI. Your way.").assertExists()
-        compose.onNodeWithTag("chat-history-loading").assertDoesNotExist()
         assertTrue("A blank chat is not a disk read", veilNodes().isEmpty())
     }
 
@@ -181,13 +180,15 @@ class ChatOpeningScrollTest {
         compose.onNodeWithTag("chat-welcome-logo").assertIsDisplayed()
     }
 
-    @Test fun pendingHistoryReadWithoutVisibleMessagesShowsLoadingInsteadOfAnEmptyVeil() {
+    @Test fun pendingHistoryReadWithoutVisibleMessagesUsesTheSameVeil() {
         val current = mutableStateOf<Conversation?>(null)
         val loadingId = mutableStateOf<String?>("disk-history")
         show(current, loadingId)
-        compose.onNodeWithTag("chat-history-loading").assertExists()
-        assertTrue("There is no history content to veil yet", veilNodes().isEmpty())
-        // History loading must not swallow input-area interaction.
+        assertTrue("The pending disk read must use the history veil even with no messages", veilNodes().isNotEmpty())
+        // Welcome fades in behind the veil; allow its entry animation to mount the artwork.
+        compose.mainClock.advanceTimeBy(550)
+        compose.onNodeWithTag("chat-welcome-logo").assertExists()
+        // The veil covers chat content, not the input area.
         compose.onNode(hasSetTextAction()).assertIsEnabled()
         compose.onNode(hasSetTextAction()).performTouchInput { click() }
         compose.onNode(hasSetTextAction()).performTextInput("input remains usable")
