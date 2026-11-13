@@ -414,6 +414,11 @@ internal fun AppNavigation(
             Toast.makeText(context, R.string.save_change_failed, Toast.LENGTH_LONG).show()
         }
     }
+    LaunchedEffect(Unit) {
+        org.starfall.generative.shared.state.LocalChatReadErrors.errors.collect {
+            Toast.makeText(context, R.string.open_chat_failed, Toast.LENGTH_LONG).show()
+        }
+    }
     LaunchedEffect(importedProviderId) {
         importedProviderId?.let { id ->
             navController.navigate("providers/edit/$id") { launchSingleTop = true }

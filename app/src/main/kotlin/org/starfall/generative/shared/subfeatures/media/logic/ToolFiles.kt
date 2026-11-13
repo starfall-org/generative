@@ -393,14 +393,20 @@ class ToolFiles(
     }
     /** Streaming JSON scanner; media payloads are spooled, while text content is preserved in full. */
     suspend fun sanitize(reader: Reader): String {
-        val target = currentTemporaryFiles()
-        if (target != null) return target.sanitize(reader)
-        return sanitizeInternal(reader)
+        val output = StringBuilder()
+        sanitize(reader, output)
+        return output.toString()
     }
 
-    private suspend fun sanitizeInternal(reader: Reader): String = withContext(Dispatchers.IO) {
+    /** Writes sanitized JSON incrementally when the caller does not need a complete string. */
+    suspend fun sanitize(reader: Reader, output: Appendable) {
+        val target = currentTemporaryFiles()
+        if (target != null) return target.sanitize(reader, output)
+        sanitizeInternal(reader, output)
+    }
+
+    private suspend fun sanitizeInternal(reader: Reader, output: Appendable) = withContext(Dispatchers.IO) {
         val input = PushbackReader(BufferedReader(reader), 2)
-        val output = StringBuilder()
         var lastKey = ""
         while (true) {
             coroutineContext.ensureActive()
@@ -491,6 +497,5 @@ class ToolFiles(
                 } finally { spool?.close(); raw?.delete() }
             }
         }
-        output.toString()
     }
 }

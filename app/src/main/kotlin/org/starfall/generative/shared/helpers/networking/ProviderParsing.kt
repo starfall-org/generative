@@ -20,17 +20,17 @@ internal fun toolArguments(value: JsonElement?): JsonObject = when (value) {
 }
 internal fun validateToolTurn(turn: JsonObject): JsonObject {
     val seen = mutableSetOf<String>()
-    val calls = turn.requireArray("tool_calls").map { value ->
+    turn.requireArray("tool_calls").forEach { value ->
         val call = value.requireObject()
         val function = call.requireObject("function")
         require(function.text("name").isNotBlank()) { "Tool call is missing a function name" }
         val id = call.text("id")
         require(id.isNotBlank() && seen.add(id)) { "Tool call ID is missing or duplicated" }
-        JsonObject(call + ("function" to JsonObject(function + ("arguments" to toolArguments(function["arguments"])))))
+        toolArguments(function["arguments"])
     }
-    return JsonObject(turn + ("tool_calls" to JsonArray(calls)))
+    return turn
 }
-internal fun providerTurn(type: ModelApiType, response: JsonObject): JsonObject {
+internal fun providerTurn(type: ModelApiType, response: JsonObject, store: ToolJsonStore? = null): JsonObject {
     check(response["error"] == null || response["error"] == JsonNull) {
         "${type.displayName} returned an error: " + safeError(response["error"])
     }
@@ -68,7 +68,7 @@ internal fun providerTurn(type: ModelApiType, response: JsonObject): JsonObject 
             val output = response.requireArray("output")
             val text = StringBuilder()
             val reasoning = StringBuilder()
-            val calls = mutableListOf<JsonElement>()
+            val calls = store.elementList()
             output.forEach { item ->
                 val value = item.requireObject()
                 when (value.text("type")) {
@@ -103,31 +103,35 @@ internal fun providerTurn(type: ModelApiType, response: JsonObject): JsonObject 
             require(values == null || values == JsonNull || values is JsonArray) {
                 "Provider returned invalid tool_calls"
             }
+            val calls = store.elementList()
+            (values as? JsonArray).orEmpty().forEach { item ->
+                val c = item.requireObject()
+                val f = c.requireObject("function")
+                calls.add(call(
+                    c.text("id").ifBlank {
+                        if (type == ModelApiType.OLLAMA) UUID.randomUUID().toString()
+                        else error("Tool call is missing an ID")
+                    },
+                    f.text("name"),
+                    f["arguments"]
+                ))
+            }
             turn(
                 message.text("content"),
-                (values as? JsonArray).orEmpty().map { item ->
-                    val c = item.requireObject()
-                    val f = c.requireObject("function")
-                    call(
-                        c.text("id").ifBlank {
-                            if (type == ModelApiType.OLLAMA) UUID.randomUUID().toString()
-                            else error("Tool call is missing an ID")
-                        },
-                        f.text("name"),
-                        f["arguments"]
-                    )
-                },
+                calls,
                 message.text("reasoning_content").takeIf { it.isNotBlank() }
             )
         }
 
         ModelApiType.ANTHROPIC -> {
-            val blocks = response.requireArray("content").map { it.requireObject() }
+            val blocks = response.requireArray("content").asSequence().map { it.requireObject() }
             val thinkingBlocks = blocks.filter { it.text("type") == "thinking" }
+            val calls = store.elementList()
+            blocks.filter { it.text("type") == "tool_use" }
+                .forEach { calls.add(call(it.text("id"), it.text("name"), it["input"])) }
             turn(
                 blocks.filter { it.text("type") == "text" }.joinToString("") { it.text("text") },
-                blocks.filter { it.text("type") == "tool_use" }
-                    .map { call(it.text("id"), it.text("name"), it["input"]) },
+                calls,
                 thinkingBlocks.joinToString("") { it.text("thinking") }.takeIf { it.isNotBlank() },
                 thinkingBlocks.joinToString("") { it.text("signature") }.takeIf { it.isNotBlank() }
             )
@@ -137,14 +141,16 @@ internal fun providerTurn(type: ModelApiType, response: JsonObject): JsonObject 
             val candidate = response.requireArray("candidates").firstOrNull()
                 ?: error("Google response has no candidates")
             val parts = candidate.requireObject().requireObject("content")
-                .requireArray("parts").map { it.requireObject() }
+                .requireArray("parts").asSequence().map { it.requireObject() }
+            val calls = store.elementList()
+            parts.filter { it.containsKey("functionCall") }.forEach {
+                val f = it.requireObject("functionCall")
+                calls.add(call(UUID.randomUUID().toString(), f.text("name"), f["args"] ?: obj(), it))
+            }
             turn(
                 parts.filter { (it["thought"] as? JsonPrimitive)?.booleanOrNull != true }
                     .joinToString("") { it.text("text") },
-                parts.filter { it.containsKey("functionCall") }.map {
-                    val f = it.requireObject("functionCall")
-                    call(UUID.randomUUID().toString(), f.text("name"), f["args"] ?: obj(), it)
-                },
+                calls,
                 parts.filter { (it["thought"] as? JsonPrimitive)?.booleanOrNull == true }
                     .joinToString("") { it.text("text") }
                     .takeIf { it.isNotBlank() }

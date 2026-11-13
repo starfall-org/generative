@@ -137,5 +137,12 @@ object LocalWriteErrors {
     val handler = CoroutineExceptionHandler { _, _ -> report() }
 }
 
+/** A failed history read is not a failed save; keep its error reporting distinct. */
+object LocalChatReadErrors {
+    private val events = Channel<Unit>(Channel.CONFLATED)
+    val errors = events.receiveAsFlow()
+    fun report() { events.trySend(Unit) }
+}
+
 internal fun <T> List<T>.upsert(item: T, id: (T) -> String): List<T> =
     if (any { id(it) == id(item) }) map { if (id(it) == id(item)) item else it } else this + item

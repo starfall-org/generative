@@ -7,6 +7,8 @@ import org.starfall.generative.features.home.chat.model.ContextWindowStatus
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.ToolPayload
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.generation.ContextUsageSnapshot
 import org.starfall.generative.shared.model.generation.TokenUsage
@@ -33,7 +35,17 @@ private fun advanceContextFingerprint(previous: String, message: StoredMessage):
     // Exclude timestamps, usage itself, inactive versions and generation/UI state.
     return digestParts(previous, message.id, message.role.name, version.content,
         version.reasoningContent.orEmpty(), version.reasoningSignature.orEmpty(),
-        Json.encodeToString(version.files), Json.encodeToString(version.toolActivity))
+        Json.encodeToString(version.files), toolActivityFingerprint(version.toolActivity))
+}
+
+/**
+ * Tool payloads may exist only in storage, so they are represented by their sizes instead of being
+ * read. An empty list keeps its former "[]" form, so histories without tools remain comparable.
+ */
+private fun toolActivityFingerprint(activities: List<ToolActivity>): String {
+    val shape = Json.encodeToString(activities.map { it.copy(arguments = ToolPayload.EMPTY, response = ToolPayload.EMPTY) })
+    if (activities.isEmpty()) return shape
+    return shape + activities.joinToString(",", "#") { "${it.arguments.size}/${it.response.size}" }
 }
 
 internal fun recordContextUsage(

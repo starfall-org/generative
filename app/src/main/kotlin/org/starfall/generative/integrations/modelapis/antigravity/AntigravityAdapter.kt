@@ -24,6 +24,7 @@ import org.starfall.generative.shared.helpers.networking.ToolHttp
 import org.starfall.generative.shared.helpers.networking.obj
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.mapOnAccess
 
 internal class AntigravityAdapter(context: Context, attachments: AttachmentResolver) : OAuthAccountAdapter(
     context, attachments, ModelApiType.ANTIGRAVITY,
@@ -290,15 +291,15 @@ internal class AntigravityAdapter(context: Context, attachments: AttachmentResol
         require(model.isNotBlank()) { "Antigravity request needs a model" }
         val request = body.toMutableMap().apply { remove("model") }
         val contents = request["contents"] as? JsonArray
-        if (contents != null) request["contents"] = JsonArray(contents.map { content ->
+        if (contents != null) request["contents"] = contents.mapOnAccess { content ->
             val message = content.jsonObject
-            val parts = (message["parts"] as? JsonArray).orEmpty().map { part ->
+            val parts = (message["parts"] as? JsonArray ?: JsonArray(emptyList())).mapOnAccess { part ->
                 val value = part.jsonObject
                 if (value["functionCall"] != null && value["thoughtSignature"] == null)
                     JsonObject(value + ("thoughtSignature" to str("skip_thought_signature_validator"))) else value
             }
-            JsonObject(message + ("parts" to JsonArray(parts)))
-        })
+            JsonObject(message + ("parts" to parts))
+        }
         val config = (request["generationConfig"] as? JsonObject) ?: obj()
         val modelConfig = sourceProvider.config.modelConfigs[model]
         if (model.contains("claude") && modelConfig?.supportsThinking != false &&

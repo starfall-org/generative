@@ -11,6 +11,7 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.toToolPayload
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.MessageVersion
 import kotlinx.serialization.json.Json
@@ -110,7 +111,7 @@ class BuiltInSkillToolsTest {
             message("Review this code", selected = "review-code"),
             StoredMessage("m", ChatRole.MODEL, listOf(MessageVersion("Done", toolActivity = listOf(
                 ToolActivity("t", "activate_skill", "activate_skill", "success",
-                    arguments = """{"name":"review-code"}""")
+                    arguments = """{"name":"review-code"}""".toToolPayload())
             ))))
         )
         assertTrue(skillsForCurrentTurn(listOf(skill), history + message("What's for dinner?"), false).isEmpty())

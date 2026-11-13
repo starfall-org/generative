@@ -33,13 +33,15 @@ internal suspend fun replayToolActivities(
         out += obj(
             "role" to str("assistant"),
             "content" to str(content.substring(cursor, offset)),
+            // Complete payloads are restored one call at a time (off the caller's thread when stored).
             "tool_calls" to JsonArray(group.map { activity ->
+                val arguments = activity.arguments.text()
                 obj(
                     "id" to str(activity.id),
                     "type" to str("function"),
                     "function" to obj(
                         "name" to str(activity.replayWireName()),
-                        "arguments" to (runCatching { Json.parseToJsonElement(activity.arguments) as? JsonObject }.getOrNull()
+                        "arguments" to (runCatching { Json.parseToJsonElement(arguments) as? JsonObject }.getOrNull()
                             ?: JsonObject(emptyMap()))
                     )
                 )
@@ -63,9 +65,12 @@ private fun ToolActivity.replayWireName(): String =
     wireName.ifBlank { name.replace(Regex("[^A-Za-z0-9_-]+"), "_").trim('_').take(64).ifBlank { "tool" } }
 
 private suspend fun replayResult(activity: ToolActivity, files: ToolFiles): JsonObject {
-    val parsed = runCatching { Json.parseToJsonElement(activity.response) as? JsonObject }.getOrNull()
+    val interrupted = activity.status == "running" || activity.status == "cancelled"
+    // An interrupted call never replays its payload, so it is not read at all.
+    val parsed = if (interrupted) null
+        else activity.response.text().let { raw -> runCatching { Json.parseToJsonElement(raw) as? JsonObject }.getOrNull() }
     val body = when {
-        activity.status == "running" || activity.status == "cancelled" -> obj(
+        interrupted -> obj(
             "isError" to JsonPrimitive(true),
             "status" to str("interrupted"),
             "error" to str("Tool call was stopped before it finished.")

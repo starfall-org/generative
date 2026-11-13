@@ -29,6 +29,7 @@ import org.starfall.generative.shared.model.media.MediaRequestProfile
 import org.starfall.generative.shared.model.media.MediaRequestStep
 import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.toToolPayload
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w400dp-h850dp-xhdpi", application = LibraryTestApplication::class)
@@ -86,7 +87,7 @@ class GeneratedMediaPlaceholderTest {
     }
 
     @Test fun pendingImageTileResizesWithRequestedRatioAndUsesSquareFallback() {
-        var activity by mutableStateOf(ToolActivity("preview", "generate_image", arguments = """{"size":"1024x1536"}"""))
+        var activity by mutableStateOf(ToolActivity("preview", "generate_image", arguments = """{"size":"1024x1536"}""".toToolPayload()))
         compose.setContent { MaterialTheme { GeneratedMediaPlaceholder(activity) } }
 
         fun assertRatio(expected: Float) {
@@ -95,9 +96,9 @@ class GeneratedMediaPlaceholderTest {
             assertEquals(expected, bounds.width / bounds.height, 0.025f)
         }
         assertRatio(2f / 3f)
-        compose.runOnIdle { activity = activity.copy(arguments = """{"size":"1536x1024"}""") }
+        compose.runOnIdle { activity = activity.copy(arguments = """{"size":"1536x1024"}""".toToolPayload()) }
         assertRatio(3f / 2f)
-        compose.runOnIdle { activity = activity.copy(arguments = "{}") }
+        compose.runOnIdle { activity = activity.copy(arguments = "{}".toToolPayload()) }
         assertRatio(1f)
         // The effective tool/profile options captured at invocation take precedence over raw args.
         compose.runOnIdle { activity = activity.copy(previewAspectRatio = 9f / 16f) }
@@ -106,7 +107,7 @@ class GeneratedMediaPlaceholderTest {
 
     @Test fun failedTileRetainsDimensionsAndAccessibleStatusWithoutAnIcon() {
         val activity = ToolActivity("preview", "generate_image", status = "error",
-            arguments = """{"size":"1024x1536"} """)
+            arguments = """{"size":"1024x1536"} """.toToolPayload())
         compose.setContent { MaterialTheme { GeneratedMediaPlaceholder(activity) } }
         val bounds = compose.onNodeWithTag("media-generation-placeholder_preview")
             .assertIsDisplayed().fetchSemanticsNode().boundsInRoot

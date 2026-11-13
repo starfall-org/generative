@@ -10,6 +10,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -28,6 +30,10 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.ToolPayload
+import org.starfall.generative.shared.model.ToolPayloadSource
+import org.starfall.generative.shared.model.ToolPayloadCache
+import org.starfall.generative.shared.model.toToolPayload
 
 /** Actions timeline, tool-only toolbar, pending media and real generated-media preview. */
 @RunWith(RobolectricTestRunner::class)
@@ -99,7 +105,7 @@ class ChatActionsMediaRegressionTest {
     @Test fun toolCallBlockOpensArgumentsAndResponseInTheSharedDetailsSheet() {
         val activity = ToolActivity(
             id = "tool-arguments", name = "search_documents", status = "success",
-            arguments = "{\"query\":\"design\"}", response = "Found three documents"
+            arguments = "{\"query\":\"design\"}".toToolPayload(), response = "Found three documents".toToolPayload()
         )
         compose.setContent { MaterialTheme { ToolActivityCards(listOf(activity)) } }
         compose.onNodeWithText("search documents").performClick()
@@ -107,6 +113,38 @@ class ChatActionsMediaRegressionTest {
             compose.onAllNodesWithText(context.getString(R.string.tool_details_args)).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText(context.getString(R.string.tool_details_response)).assertExists()
+    }
+
+    @Test fun detailsSheetOpensBeforeDelayedToolResultIsLoaded() {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val response = ToolPayload.stored(14, object : ToolPayloadSource {
+            override val key: Any = "delayed-sheet-response"
+            override suspend fun load(): String {
+                started.countDown()
+                check(release.await(8, TimeUnit.SECONDS)) { "Tool store remained unavailable" }
+                return "Delayed result"
+            }
+        })
+        try {
+            ToolPayloadCache.clear()
+            compose.setContent { MaterialTheme { ToolActivityCards(listOf(ToolActivity(
+                id = "slow-tool", name = "slow_search", status = "success", response = response
+            ))) } }
+            compose.onNodeWithText("slow search").performClick()
+            compose.waitUntil(5_000) {
+                compose.onAllNodesWithText(context.getString(R.string.tool_details_loading))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            assertTrue("Loading must occur asynchronously", started.await(5, TimeUnit.SECONDS))
+            release.countDown()
+            compose.waitUntil(8_000) {
+                compose.onAllNodesWithText("Delayed result").fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally {
+            release.countDown()
+            ToolPayloadCache.clear()
+        }
     }
 
     @Test fun runningImageToolReservesPreviewAndSuccessfulResultReplacesPlaceholder() {

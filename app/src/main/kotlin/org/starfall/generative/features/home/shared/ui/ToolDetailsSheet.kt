@@ -28,6 +28,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,16 +64,32 @@ internal fun ToolDetailsSheet(
     val argsPager = key(activity.id) { androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 }) }
     val context = LocalContext.current
     val revision by ToolFiles.revision.collectAsState()
-    val responseText = remember(activity.response, activity.summary) {
-        unescapeToolResponse(activity.response.ifBlank { activity.summary })
+    // Payloads may live only in storage: read them off the UI thread so the sheet opens at once.
+    val load by produceState<ToolSheetLoad>(
+        ToolSheetLoad.Loading, activity.id, activity.arguments, activity.response, activity.summary, visible
+    ) {
+        if (!visible) return@produceState // A hidden retained sheet reads nothing.
+        value = try {
+            val arguments = activity.arguments.text()
+            val response = activity.response.text()
+            ToolSheetLoad.Ready(withContext(Dispatchers.Default) {
+                buildToolSheetContent(arguments, response, activity.summary)
+            })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ToolSheetLoad.Failed
+        }
     }
+    val content = (load as? ToolSheetLoad.Ready)?.content
+    val responseText = content?.responseText.orEmpty()
     val fileNames = remember(activity.files) {
         activity.files.map { it.removePrefix("tool-file:") }.filter { it.isNotBlank() }.distinct()
     }
     var viewingFile by remember(activity.id) { mutableStateOf<File?>(null) }
     val scrollState = rememberScrollState()
     val sheetState = rememberSaveableStateHolder()
-    val responseLanguage = remember(responseText) { toolResponseLanguage(responseText) }
+    val responseLanguage = content?.responseLanguage ?: "text"
     val responseIsJson = responseLanguage == "json"
     val downloadResponse = rememberResponseDownload(
         fileName = "${
@@ -86,7 +103,7 @@ internal fun ToolDetailsSheet(
         // Build the export only after the user taps download; tool responses are never stored as text files.
         ResponseSource(responseText)
     }
-    val canDownload = responseText.isNotBlank()
+    val canDownload = content != null && responseText.isNotBlank()
 
     if (visible) sheetState.SaveableStateProvider(activity.id) {
     ContentSheet(
@@ -121,8 +138,9 @@ internal fun ToolDetailsSheet(
                 spacing = 10.dp
             ) { page ->
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    if (page == 0) PrettyArguments(activity.arguments)
-                    else RawValueBlock(activity.arguments.ifBlank { "{}" })
+                    if (content == null) ToolPayloadStatus(load)
+                    else if (page == 0) PrettyArguments(content.arguments, content.parsedArguments)
+                    else RawValueBlock(content.arguments.ifBlank { "{}" })
                 }
             }
 
@@ -136,8 +154,12 @@ internal fun ToolDetailsSheet(
             // Lazy chunked rendering: no character cap, only visible chunks are composed and highlighted.
             LazyCodeBlock(
                 language = responseLanguage,
-                text = responseText.ifBlank {
-                    if (activity.status == "running") stringResource(R.string.tool_details_waiting_response) else stringResource(R.string.tool_details_no_response)
+                text = when {
+                    load is ToolSheetLoad.Loading -> stringResource(R.string.tool_details_loading)
+                    load is ToolSheetLoad.Failed -> stringResource(R.string.tool_details_load_failed)
+                    responseText.isNotBlank() -> responseText
+                    activity.status == "running" -> stringResource(R.string.tool_details_waiting_response)
+                    else -> stringResource(R.string.tool_details_no_response)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 maxHeight = 440.dp,
@@ -265,9 +287,38 @@ private fun ToolFileRow(name: String, file: File?, onOpen: () -> Unit) {
     }
 }
 
+private sealed interface ToolSheetLoad {
+    data object Loading : ToolSheetLoad
+    data object Failed : ToolSheetLoad
+    class Ready(val content: ToolSheetContent) : ToolSheetLoad
+}
+
+/** Everything the sheet shows, derived once and off the UI thread. */
+private class ToolSheetContent(
+    val arguments: String,
+    val parsedArguments: JsonObject?,
+    val responseText: String,
+    val responseLanguage: String
+)
+
+private fun buildToolSheetContent(arguments: String, response: String, summary: String): ToolSheetContent {
+    val text = unescapeToolResponse(response.ifBlank { summary })
+    return ToolSheetContent(arguments, parseJsonObject(arguments), text, toolResponseLanguage(text))
+}
+
 @Composable
-private fun PrettyArguments(raw: String) {
-    val parsed = remember(raw) { parseJsonObject(raw) }
+private fun ToolPayloadStatus(load: ToolSheetLoad) {
+    Text(
+        text = stringResource(
+            if (load is ToolSheetLoad.Failed) R.string.tool_details_load_failed else R.string.tool_details_loading
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+private fun PrettyArguments(raw: String, parsed: JsonObject?) {
     if (parsed == null || parsed.isEmpty()) {
         RawValueBlock(raw.ifBlank { "{}" })
         return

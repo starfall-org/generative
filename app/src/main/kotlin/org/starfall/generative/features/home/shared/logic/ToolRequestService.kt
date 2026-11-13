@@ -32,6 +32,8 @@ import org.starfall.generative.shared.helpers.networking.requireObject
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
 import org.starfall.generative.shared.helpers.networking.toolArguments
+import org.starfall.generative.shared.helpers.networking.ToolJsonStore
+import org.starfall.generative.shared.helpers.networking.elementList
 
 /** Builds protocol-specific model requests and normalizes their responses for tool calling. */
 internal class ToolRequestService(
@@ -68,7 +70,8 @@ internal class ToolRequestService(
         onReasoning: suspend (String) -> Unit,
         onUsage: suspend (TokenUsage) -> Unit = {},
         sessionKey: String? = null,
-        onPreparation: suspend (Boolean) -> Unit = {}
+        onPreparation: suspend (Boolean) -> Unit = {},
+        store: ToolJsonStore? = null
     ): JsonObject {
         val snapshot = aiService.resolveProvider(p)
         var retried = false
@@ -80,7 +83,7 @@ internal class ToolRequestService(
             try {
                 return requestPrepared(snapshot, model, readyHistory, tools, prompt, sendThinking,
                     { outputStarted = true; onText(it) }, { outputStarted = true; onReasoning(it) },
-                    { outputStarted = true; onUsage(it) }, sessionKey)
+                    { outputStarted = true; onUsage(it) }, sessionKey, store)
             } catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
                 if (outputStarted || retried || !rejectedRemoteAttachment(error, prepared)) throw error
@@ -100,11 +103,12 @@ internal class ToolRequestService(
         onText: suspend (String) -> Unit,
         onReasoning: suspend (String) -> Unit,
         onUsage: suspend (TokenUsage) -> Unit = {},
-        sessionKey: String? = null
+        sessionKey: String? = null,
+        store: ToolJsonStore? = null
     ): JsonObject {
         if (p.type == ModelApiType.DEVIN) {
             aiService.accountToolTurn(p, model, history, tools, prompt, sendThinking,
-                onText, onReasoning, onUsage, sessionKey)?.let { return it }
+                onText, onReasoning, onUsage, sessionKey, store)?.let { return it }
         }
         val defs = JsonArray(tools.map { obj("type" to str("function"),"function" to obj("name" to str(it.name),"description" to str(it.description),"parameters" to it.schema)) })
         val wireProvider = aiService.prepareAccountProvider(p, model).let { wire ->
@@ -140,7 +144,7 @@ internal class ToolRequestService(
             }
             val response = http.modelResponse(requestUrl, normalizedBody, requestProvider, upstreamStream,
                 { chunk -> if (stream) text(chunk) }, { chunk -> if (stream) reasoning(chunk) },
-                { aiService.unwrapAccountResponse(p, it) })
+                { aiService.unwrapAccountResponse(p, it) }, store)
             val restored = aiService.restoreAccountToolResponse(p, provider, requestBody, response)
             providerTokenUsage(provider.type, restored)?.takeIf { it.isValid }?.let { onUsage(it) }
             return restored
@@ -150,26 +154,28 @@ internal class ToolRequestService(
             ModelApiType.OPENAI_RESPONSES -> {
                 val sendReasoning = sendThinking
                 val isDeepSeek = wireProvider.baseUrl.contains("deepseek.com", ignoreCase = true) || model.startsWith("deepseek-", ignoreCase = true)
-                val input = history.flatMap { message ->
+                val input = store.elementList()
+                history.forEach { message ->
                     when {
                         message["responsesOutput"] is JsonArray -> {
-                            val items = message.requireArray("responsesOutput").toList()
-                            if (sendReasoning) items else items.filterNot { it.requireObject().text("type") == "reasoning" }
+                            message.requireArray("responsesOutput").forEach { item ->
+                                if (sendReasoning || item.requireObject().text("type") != "reasoning") input.add(item)
+                            }
                         }
-                        message.text("role") == "tool" -> listOf(obj(
+                        message.text("role") == "tool" -> input.add(obj(
                             "type" to str("function_call_output"), "call_id" to str(message.text("tool_call_id")),
                             "output" to str(message.text("content"))
                         ))
-                        message.text("role") == "assistant" -> buildList {
+                        message.text("role") == "assistant" -> {
                             message.text("reasoning_content").takeIf { sendReasoning && it.isNotBlank() }?.let { reasoning ->
-                                add(obj(
+                                input.add(obj(
                                     "type" to str("reasoning"),
                                     "content" to JsonArray(listOf(obj("type" to str("reasoning_text"), "text" to str(reasoning))))
                                 ))
                             }
-                            add(obj("role" to str("assistant"), "content" to str(message.text("content"))))
+                            input.add(obj("role" to str("assistant"), "content" to str(message.text("content"))))
                         }
-                        else -> listOf(JsonObject(message.filterKeys {
+                        else -> input.add(JsonObject(message.filterKeys {
                             it != "reasoning_content" && it != "reasoning_signature" && it != "_attachments"
                         } + ("content" to toolMessageContent(message, ModelApiType.OPENAI_RESPONSES))))
                     }
@@ -196,12 +202,13 @@ internal class ToolRequestService(
                     onText,
                     onReasoning
                 )
-                providerTurn(wireProvider.type, response)
+                providerTurn(wireProvider.type, response, store)
             }
             ModelApiType.OPENAI, ModelApiType.OLLAMA -> {
                 val ollama = wireProvider.type == ModelApiType.OLLAMA
                 val sendReasoning = sendThinking && !ollama
-                val wireHistory = history.map { message ->
+                val wireHistory: MutableList<JsonObject> = store?.let { ToolMessageHistory(it) } ?: mutableListOf()
+                history.forEach { message ->
                     var clean = JsonObject(message.filterKeys { key ->
                         key != "_attachments" && key != "responsesOutput" && key != "reasoning_signature" && (sendReasoning || key != "reasoning_content")
                     } + ("content" to toolMessageContent(message, wireProvider.type)))
@@ -213,10 +220,11 @@ internal class ToolRequestService(
                         }
                         clean = JsonObject(clean + ("images" to JsonArray(images)))
                     }
-                    when (message.text("role")) {
+                    val wireMessage = when (message.text("role")) {
                         "tool" -> if (ollama) JsonObject(clean + ("tool_name" to str(message.text("name")))) else clean
                         "assistant" -> {
-                            val calls = (message["tool_calls"] as? JsonArray).orEmpty().map { c ->
+                            val calls = store.elementList()
+                            (message["tool_calls"] as? JsonArray).orEmpty().forEach { c ->
                                 val call = c.requireObject()
                                 val f = call.requireObject("function")
                                 val rawArgs = f["arguments"]
@@ -225,12 +233,12 @@ internal class ToolRequestService(
                                 } else {
                                     str(if (rawArgs is JsonPrimitive) rawArgs.content else rawArgs?.toString() ?: "{}")
                                 }
-                                if (ollama) obj("function" to JsonObject(f + ("arguments" to args)))
+                                calls.add(if (ollama) obj("function" to JsonObject(f + ("arguments" to args)))
                                 else obj(
                                     "id" to str(call.text("id")),
                                     "type" to str("function"),
                                     "function" to JsonObject(f + ("arguments" to args))
-                                )
+                                ))
                             }
                             // An assistant message without tool calls must not carry an empty `tool_calls` array.
                             if (calls.isEmpty()) JsonObject(clean - "tool_calls")
@@ -238,10 +246,11 @@ internal class ToolRequestService(
                         }
                         else -> clean
                     }
-                }.filterNot { message ->
                     // Providers reject an assistant message with neither text nor tool calls.
-                    message.text("role") == "assistant" && message["tool_calls"] == null &&
-                        (message["content"] as? JsonPrimitive)?.content?.isBlank() == true
+                    if (!(wireMessage.text("role") == "assistant" && wireMessage["tool_calls"] == null &&
+                        (wireMessage["content"] as? JsonPrimitive)?.content?.isBlank() == true)) {
+                        wireHistory.add(wireMessage)
+                    }
                 }
                 val request = buildJsonObject {
                     put("model", model); put("messages", JsonArray(wireHistory)); put("stream", false)
@@ -264,13 +273,24 @@ internal class ToolRequestService(
                     if (ollama) base.removeSuffix("/api") + "/api/chat" else "$base/chat/completions",
                     request, wireProvider, p.streamEnabledFor(model), onText, onReasoning
                 )
-                providerTurn(wireProvider.type, response)
+                providerTurn(wireProvider.type, response, store)
             }
             ModelApiType.ANTHROPIC -> {
                 val native = mutableListOf<JsonObject>()
-                history.filter { it.text("role") != "system" }.forEach { message ->
+                var currentRole: String? = null
+                var blocks = store.elementList()
+                fun flush() {
+                    currentRole?.let { role -> native.add(obj("role" to str(role), "content" to JsonArray(blocks))) }
+                }
+                history.forEach { message ->
                     val role = message.text("role")
-                    val blocks = mutableListOf<JsonElement>()
+                    if (role == "system") return@forEach
+                    val targetRole = if (role == "assistant") "assistant" else "user"
+                    if (targetRole != currentRole) {
+                        flush()
+                        currentRole = targetRole
+                        blocks = store.elementList()
+                    }
                     if (role == "tool") {
                         blocks += obj(
                             "type" to str("tool_result"),
@@ -303,14 +323,8 @@ internal class ToolRequestService(
                             )
                         }
                     }
-                    val targetRole = if (role == "assistant") "assistant" else "user"
-                    if (native.lastOrNull()?.text("role") == targetRole) {
-                        val last = native.removeAt(native.lastIndex)
-                        native += obj("role" to str(targetRole), "content" to JsonArray(last.requireArray("content") + blocks))
-                    } else {
-                        native += obj("role" to str(targetRole), "content" to JsonArray(blocks))
-                    }
                 }
+                flush()
                 val response = modelResponse(base.removeSuffix("/v1") + "/v1/messages", buildJsonObject {
                     put("model", model); put("max_tokens", p.config.maxTokens); put("system", prompt); put("messages", JsonArray(native))
                     config.claudeThinkingParameters(model, p.config.maxTokens).forEach { (key, value) -> put(key, value) }
@@ -323,11 +337,14 @@ internal class ToolRequestService(
                         config.topK?.let { put("top_k", it) }
                     }
                 }, wireProvider, p.streamEnabledFor(model), onText, onReasoning)
-                providerTurn(wireProvider.type, response)
+                providerTurn(wireProvider.type, response, store)
             }
             ModelApiType.GOOGLE -> {
-                val native=history.map { message ->
-                    val role=message.text("role"); val parts=mutableListOf<JsonElement>()
+                val native: MutableList<JsonObject> = store?.let { cache ->
+                    ToolMessageHistory(cache) { it.text("role") == "user" }
+                } ?: mutableListOf()
+                history.forEach { message ->
+                    val role=message.text("role"); val parts=store.elementList()
                     if(role=="tool") parts += obj("functionResponse" to obj("name" to str(message.text("name")),"response" to obj("result" to str(message.text("content")))))
                     else {
                         parts += toolAttachmentParts(message, ModelApiType.GOOGLE)
@@ -335,7 +352,7 @@ internal class ToolRequestService(
                         (message["tool_calls"] as? JsonArray).orEmpty().forEach { c -> val f=c.requireObject().requireObject("function")
                             parts += (c.jsonObject["googlePart"] ?: obj("functionCall" to obj("name" to str(f.text("name")),"args" to (f["arguments"] as? JsonObject ?: Json.parseToJsonElement(f.text("arguments")))))) }
                     }
-                    obj("role" to str(if(role=="assistant") "model" else "user"),"parts" to JsonArray(parts))
+                    native.add(obj("role" to str(if(role=="assistant") "model" else "user"),"parts" to JsonArray(parts)))
                 }
                 val root=if(Regex("/v1(?:beta|alpha)?$").containsMatchIn(base)) base else "$base/v1beta"
                 val response=modelResponse("$root/models/$model:generateContent",buildJsonObject {
@@ -343,7 +360,7 @@ internal class ToolRequestService(
                     if(tools.isNotEmpty()) put("tools",JsonArray(listOf(obj("functionDeclarations" to JsonArray(tools.map { tool -> buildJsonObject { put("name", str(tool.name)); put("description", str(tool.description)); geminiFunctionParameters(tool.schema)?.let { put("parameters", it) } } })))))
                     put("generationConfig",buildJsonObject { put("maxOutputTokens",p.config.maxTokens); config.temperature?.let { put("temperature",it) }; config.topP?.let { put("topP",it) }; config.topK?.let { put("topK",it) }; config.googleThinkingConfig()?.let { put("thinkingConfig", it) } })
                 },wireProvider,p.streamEnabledFor(model),onText,onReasoning)
-                providerTurn(wireProvider.type, response)
+                providerTurn(wireProvider.type, response, store)
             }
             else -> error("Unsupported provider protocol: ${wireProvider.type.displayName}")
         }

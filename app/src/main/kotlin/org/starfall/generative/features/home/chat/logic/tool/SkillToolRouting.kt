@@ -4,15 +4,13 @@ import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.StoredMessage
-import kotlinx.serialization.json.JsonPrimitive
-import org.starfall.generative.shared.helpers.networking.toolArguments
 import org.starfall.generative.shared.helpers.networking.text
 
 /**
  * Gate Agent Skills per user turn. A global skill catalog is not evidence that the user
  * wants any skill: attaching it unconditionally encourages spurious tool calls.
  */
-internal fun skillsForCurrentTurn(
+internal suspend fun skillsForCurrentTurn(
     available: List<AgentSkill>,
     messages: List<StoredMessage>,
     createSkillRequested: Boolean
@@ -56,9 +54,7 @@ internal fun skillsForCurrentTurn(
         if (message.role != ChatRole.MODEL) null else
             message.activeVersion.toolActivity.lastOrNull {
                 it.wireName == ACTIVATE_SKILL_TOOL_NAME && it.status == "success"
-            }?.arguments?.let { raw ->
-                runCatching { toolArguments(JsonPrimitive(raw)).text("name") }.getOrNull()
-            }
+            }?.nameArgument()
     }
     val continuedName = lastActivation ?: prior
     return candidates.filter { it.name == continuedName }

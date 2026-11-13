@@ -531,8 +531,8 @@ private fun logToolActivity(activity: org.starfall.generative.shared.model.ToolA
         buildString {
             append(activity.name).append(" [").append(activity.status).append(']')
             if (activity.summary.isNotBlank()) append(' ').append(activity.summary)
-            append(" (argumentCharacters=").append(activity.arguments.length)
-                .append(", responseCharacters=").append(activity.response.length).append(')')
+            append(" (argumentCharacters=").append(activity.arguments.size)
+                .append(", responseCharacters=").append(activity.response.size).append(')')
         }
     }
     DebugLog.log(DebugLogCategory.SYSTEM, "Tool", level, message)

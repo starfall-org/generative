@@ -16,6 +16,7 @@ import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
 import org.starfall.generative.integrations.media.SystemMediaTools
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.toToolPayload
 import org.starfall.generative.shared.model.generation.GenerationEvent
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.media.MediaRequestChain
@@ -69,7 +70,7 @@ internal class ToolMediaGenerationService(
         require(kind == ModelType.IMAGE_GENERATION || kind == ModelType.VIDEO_GENERATION)
         val name = if (kind == ModelType.IMAGE_GENERATION) "generate_image" else "generate_video"
         var activity = ToolActivity(UUID.randomUUID().toString(), name,
-            arguments = obj("prompt" to str(prompt)).toString(),
+            arguments = obj("prompt" to str(prompt)).toString().toToolPayload(),
             previewAspectRatio = if (kind == ModelType.IMAGE_GENERATION) imagePreviewAspectRatio(imageOptions) else null)
         emit(GenerationEvent.Tool(activity))
         try {
@@ -95,7 +96,7 @@ internal class ToolMediaGenerationService(
                     put("prompt", prompt)
                     if (kind == ModelType.VIDEO_GENERATION) put(if (referenceIsVideo) "input_video" else "input_image", inputs.single())
                     else put("input_images", JsonArray(inputs.map(::str)))
-                }.toString())
+                }.toString().toToolPayload())
                 emit(GenerationEvent.Tool(activity))
             }
             val result = SystemMediaTools(http).generate(name, provider, model, prompt, imageOptions,
@@ -107,7 +108,7 @@ internal class ToolMediaGenerationService(
                 requestChain = requestChain)
             val summary = prepareToolResult(result, http.requireFiles())
             emit(GenerationEvent.Tool(activity.copy(status = "success", summary = summary.preview,
-                files = summary.files, response = summary.content.toString())))
+                files = summary.files, response = summary.content.toString().toToolPayload())))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -119,7 +120,7 @@ internal class ToolMediaGenerationService(
             emit(GenerationEvent.Tool(activity.copy(
                 status = "error",
                 summary = e.message.orEmpty().take(500),
-                response = error.toString()
+                response = error.toString().toToolPayload()
             )))
             throw e
         }

@@ -134,7 +134,7 @@ class ContextApiUsageTest {
         runner.startEvents(initial, "a", flow {
             emit(GenerationEvent.Text("Before tool"))
             emit(GenerationEvent.Usage(TokenUsage(600, 10)))
-            emit(GenerationEvent.Tool(ToolActivity("t", "search", status = "success", response = "Result")))
+            emit(GenerationEvent.Tool(ToolActivity("t", "search", status = "success", response = "Result".toToolPayload())))
             emit(GenerationEvent.Text("After tool"))
             emit(GenerationEvent.Usage(TokenUsage(800, 30)))
         }, usageContextKey = contextUsageKey(initial, prompt, config))

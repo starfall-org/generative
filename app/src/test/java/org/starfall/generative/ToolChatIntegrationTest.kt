@@ -38,6 +38,123 @@ import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 class ToolChatIntegrationTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
+    @Test(timeout = 60000) fun manyToolCallsAreExecutedInOrderWithAndWithoutStreaming() = runBlocking {
+        for (streaming in listOf(false, true)) {
+            val server = MockWebServer()
+            server.start()
+            val root = Files.createTempDirectory("many-tool-calls-").toFile()
+            var modelRequests = 0
+            var resultIds = emptyList<String>()
+            val ids = (0 until 25).map { "call-$it" }
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                    modelRequests++
+                    if (modelRequests > 1) {
+                        val results = body.getValue("messages").jsonArray.map { it.jsonObject }
+                            .filter { it.text("role") == "tool" }
+                        resultIds = results.map { it.text("tool_call_id") }
+                        return if (streaming) MockResponse().setBody(
+                            "data: {\"choices\":[{\"delta\":{\"content\":\"Done\"}}]}\n\ndata: [DONE]\n\n")
+                        else MockResponse().setBody("""{"choices":[{"message":{"content":"Done"}}]}""")
+                    }
+                    val calls = ids.map { id -> obj("id" to str(id), "type" to str("function"),
+                        "function" to obj("name" to str("search_tools"), "arguments" to str("{\"query\":\"test\"}"))) }
+                    return if (streaming) {
+                        val frames = calls.mapIndexed { index, call ->
+                            val delta = JsonObject(call + ("index" to JsonPrimitive(index)))
+                            "data: ${obj("choices" to JsonArray(listOf(obj("delta" to obj("tool_calls" to JsonArray(listOf(delta)))))))}\n\n"
+                        }.joinToString("")
+                        MockResponse().setBody(frames + "data: [DONE]\n\n")
+                    } else {
+                        MockResponse().setBody(obj("choices" to JsonArray(listOf(obj("message" to obj(
+                            "role" to str("assistant"), "tool_calls" to JsonArray(calls)))))).toString())
+                    }
+                }
+            }
+            try {
+                val provider = ModelProvider("p", "Chat", ModelApiType.OPENAI,
+                    baseUrl = server.url("/v1").toString(),
+                    config = ProviderConfiguration(supportStream = streaming))
+                val http = ToolHttp(ToolFiles(root))
+                val events = ToolChatViewModel(http, McpService(http), AiService(context)).generate(
+                    provider, "chat", listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Search")))),
+                    "", emptyList(), listOf(provider), { ToolSettings(searchToolsEnabled = true) }
+                ).toList()
+                assertEquals(2, modelRequests)
+                assertEquals(ids, resultIds)
+                assertEquals(25, events.filterIsInstance<GenerationEvent.Tool>().count { it.activity.status == "running" })
+                assertEquals("Done", events.filterIsInstance<GenerationEvent.Text>().joinToString("") { it.text })
+            } finally {
+                server.shutdown()
+                root.deleteRecursively()
+            }
+        }
+    }
+
+    @Test(timeout = 60000) fun manyCallsAreReturnedInProviderSpecificHistory() = runBlocking {
+        for (type in listOf(ModelApiType.OPENAI_RESPONSES, ModelApiType.ANTHROPIC, ModelApiType.GOOGLE, ModelApiType.OLLAMA)) {
+            val server = MockWebServer()
+            server.start()
+            val root = Files.createTempDirectory("many-provider-calls-").toFile()
+            val requests = mutableListOf<JsonObject>()
+            val ids = (0 until 20).map { "call-$it" }
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                    val first = synchronized(requests) { requests.add(body); requests.size == 1 }
+                    val response = when (type) {
+                        ModelApiType.OPENAI_RESPONSES -> obj("status" to str("completed"), "output" to JsonArray(
+                            if (first) ids.map { id -> obj("type" to str("function_call"), "call_id" to str(id),
+                                "name" to str("search_tools"), "arguments" to str("{\"query\":\"test\"}")) }
+                            else listOf(obj("type" to str("message"), "content" to JsonArray(listOf(
+                                obj("type" to str("output_text"), "text" to str("Done"))))))))
+                        ModelApiType.ANTHROPIC -> obj("content" to JsonArray(
+                            if (first) ids.map { id -> obj("type" to str("tool_use"), "id" to str(id),
+                                "name" to str("search_tools"), "input" to obj("query" to str("test"))) }
+                            else listOf(obj("type" to str("text"), "text" to str("Done")))))
+                        ModelApiType.GOOGLE -> obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(
+                            if (first) ids.map { obj("functionCall" to obj("name" to str("search_tools"),
+                                "args" to obj("query" to str("test")))) }
+                            else listOf(obj("text" to str("Done")))))))))
+                        else -> obj("message" to obj("content" to str(if (first) "" else "Done"), "tool_calls" to JsonArray(
+                            if (first) ids.map { id -> obj("id" to str(id), "function" to obj("name" to str("search_tools"),
+                                "arguments" to obj("query" to str("test")))) } else emptyList())))
+                    }
+                    return MockResponse().setBody(response.toString())
+                }
+            }
+            try {
+                val base = if (type == ModelApiType.GOOGLE) "/v1beta" else if (type == ModelApiType.OLLAMA) "/api" else "/v1"
+                val provider = ModelProvider("p", "Chat", type, baseUrl = server.url(base).toString(),
+                    config = ProviderConfiguration(supportStream = false))
+                val http = ToolHttp(ToolFiles(root))
+                val events = ToolChatViewModel(http, McpService(http), AiService(context)).generate(
+                    provider, "chat", listOf(StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Search")))),
+                    "", emptyList(), listOf(provider), { ToolSettings(searchToolsEnabled = true) }
+                ).toList()
+                assertEquals(type.toString(), 2, requests.size)
+                val second = requests[1]
+                val resultIds = when (type) {
+                    ModelApiType.OPENAI_RESPONSES -> second.getValue("input").jsonArray.map { it.jsonObject }
+                        .filter { it.text("type") == "function_call_output" }.map { it.text("call_id") }
+                    ModelApiType.ANTHROPIC -> second.getValue("messages").jsonArray.flatMap { it.jsonObject.getValue("content").jsonArray }
+                        .map { it.jsonObject }.filter { it.text("type") == "tool_result" }.map { it.text("tool_use_id") }
+                    ModelApiType.GOOGLE -> second.getValue("contents").jsonArray.flatMap { it.jsonObject.getValue("parts").jsonArray }
+                        .count { it.jsonObject.containsKey("functionResponse") }.let { count -> List(count) { "result" } }
+                    else -> second.getValue("messages").jsonArray.map { it.jsonObject }
+                        .filter { it.text("role") == "tool" }.map { it.text("tool_call_id") }
+                }
+                if (type == ModelApiType.GOOGLE) assertEquals(type.toString(), 20, resultIds.size)
+                else assertEquals(type.toString(), ids, resultIds)
+                assertEquals("Done", events.filterIsInstance<GenerationEvent.Text>().joinToString("") { it.text })
+            } finally {
+                server.shutdown()
+                root.deleteRecursively()
+            }
+        }
+    }
+
     @Test fun pinnedWebSearchServiceUsesFixedWirePrefixAndOriginalMcpToolName() = runBlocking {
         for (pinned in listOf(false, true)) {
             val server = MockWebServer()
@@ -131,7 +248,7 @@ class ToolChatIntegrationTest {
                     StoredMessage("previous-reply", ChatRole.MODEL, listOf(MessageVersion(
                         content = "I reviewed it", toolActivity = listOf(ToolActivity(
                             "old-call", "activate_skill", "activate_skill", "success",
-                            arguments = """{"name":"review-code"}"""))))),
+                            arguments = """{"name":"review-code"}""".toToolPayload()))))),
                     StoredMessage("u", ChatRole.USER, listOf(MessageVersion("Review this code")))
                 ),
                 "System instructions", emptyList(), listOf(provider),
@@ -352,7 +469,7 @@ class ToolChatIntegrationTest {
             assertTrue(activity.files.any { it.endsWith(".mp4") })
             assertArrayEquals(video, store.resolve(activity.files.first { it.endsWith(".mp4") })!!.readBytes())
             assertTrue(store.list().any { it.extension == "mp4" })
-            assertFalse(activity.response.contains(url))
+            assertFalse(activity.response.text().contains(url))
         } finally { server.shutdown(); root.deleteRecursively() }
     }
 
@@ -471,7 +588,7 @@ data: [DONE]
             )
             val tool = events.filterIsInstance<GenerationEvent.Tool>().last().activity
             assertEquals("error", tool.status)
-            assertTrue(tool.response.contains("\"isError\":true"))
+            assertTrue(tool.response.text().contains("\"isError\":true"))
         } finally {
             server.shutdown()
             root.deleteRecursively()

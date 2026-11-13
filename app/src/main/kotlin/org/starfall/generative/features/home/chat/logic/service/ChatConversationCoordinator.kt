@@ -311,7 +311,7 @@ internal class ChatConversationCoordinator(
         }
         // Publish before launching IO, even if the current chat is null or has no messages.
         _loadingConversationId.value = conversationId
-        scope.launch(LocalWriteErrors.handler) {
+        scope.launch {
             try {
                 val conversation = conversationRepo.loadById(conversationId) ?: return@launch
                 // A slow history read must not replace a newer selection or cross a restore boundary.
@@ -320,6 +320,16 @@ internal class ChatConversationCoordinator(
                         conversationId in deletingConversations.value
                     ) return@withRestoreGuard
                     applySelectedConversation(conversation)
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                org.starfall.generative.shared.subfeatures.logging.logic.DebugLog.error(
+                    org.starfall.generative.shared.model.logging.DebugLogCategory.SYSTEM,
+                    "Conversation load", "Failed to read conversation $conversationId", error
+                )
+                if (request == conversationSelectionToken) {
+                    org.starfall.generative.shared.state.LocalChatReadErrors.report()
                 }
             } finally {
                 if (request == conversationSelectionToken) _loadingConversationId.value = null

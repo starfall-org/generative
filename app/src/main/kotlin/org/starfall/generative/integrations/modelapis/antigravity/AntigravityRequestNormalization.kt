@@ -6,6 +6,7 @@ import kotlinx.serialization.json.*
 import org.starfall.generative.shared.helpers.networking.obj
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.mapOnAccess
 
 /** Model-specific normalization applied to the inner Antigravity request envelope. */
 internal fun normalizeAntigravityRequest(request: JsonObject, model: String, credentialId: String): JsonObject {
@@ -53,19 +54,19 @@ internal fun restoreAntigravityToolArguments(originalRequest: JsonObject, respon
     }
     if (schemas.isEmpty()) return response
     val candidates = response["candidates"] as? JsonArray ?: return response
-    return JsonObject(response + ("candidates" to JsonArray(candidates.map { candidateElement ->
-        val candidate = candidateElement as? JsonObject ?: return@map candidateElement
-        val content = candidate["content"] as? JsonObject ?: return@map candidate
-        val parts = content["parts"] as? JsonArray ?: return@map candidate
-        val updatedParts = JsonArray(parts.map { partElement ->
-            val part = partElement as? JsonObject ?: return@map partElement
-            val call = part["functionCall"] as? JsonObject ?: return@map part
-            val schema = schemas[call.text("name")] ?: return@map part
-            val args = call["args"] as? JsonObject ?: return@map part
+    return JsonObject(response + ("candidates" to candidates.mapOnAccess candidate@{ candidateElement ->
+        val candidate = candidateElement as? JsonObject ?: return@candidate candidateElement
+        val content = candidate["content"] as? JsonObject ?: return@candidate candidate
+        val parts = content["parts"] as? JsonArray ?: return@candidate candidate
+        val updatedParts = parts.mapOnAccess part@{ partElement ->
+            val part = partElement as? JsonObject ?: return@part partElement
+            val call = part["functionCall"] as? JsonObject ?: return@part part
+            val schema = schemas[call.text("name")] ?: return@part part
+            val args = call["args"] as? JsonObject ?: return@part part
             JsonObject(part + ("functionCall" to JsonObject(call + ("args" to cleanArguments(args, schema)))))
-        })
+        }
         JsonObject(candidate + ("content" to JsonObject(content + ("parts" to updatedParts))))
-    })))
+    }))
 }
 
 private fun withValidatedToolSchemas(request: JsonObject): JsonObject {

@@ -46,6 +46,7 @@ import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolActivity
+import org.starfall.generative.shared.model.toToolPayload
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.api.ModelApiType
@@ -78,6 +79,8 @@ import org.starfall.generative.features.home.chat.logic.sendFileDefinition
 import org.starfall.generative.features.home.shared.logic.ToolExecutionService
 import org.starfall.generative.features.home.shared.logic.ToolMediaGenerationService
 import org.starfall.generative.features.home.shared.logic.ToolRequestService
+import org.starfall.generative.features.home.shared.logic.ToolMessageHistory
+import org.starfall.generative.integrations.modelapis.ToolJsonFileStore
 
 private fun sentFileNames(result: JsonObject): List<String> {
     val listed = (result["files"] as? JsonArray).orEmpty().mapNotNull { value ->
@@ -216,8 +219,7 @@ class ToolChatViewModel internal constructor(
         messages.filter { it.role == ChatRole.MODEL }.forEach { message ->
             message.activeVersion.toolActivity.filter { it.wireName == ACTIVATE_SKILL_TOOL_NAME &&
                 it.status == "success" }.forEach { activity ->
-                runCatching { toolArguments(JsonPrimitive(activity.arguments)).text("name") }
-                    .getOrNull()?.takeIf { name -> skills.any { it.name == name } }
+                activity.nameArgument()?.takeIf { name -> skills.any { it.name == name } }
                     ?.let(activatedSkills::add)
             }
         }
@@ -228,6 +230,7 @@ class ToolChatViewModel internal constructor(
         val tools = mutableListOf<ToolDefinition>()
         val mcpEntries = mutableListOf<McpAttachments.Entry>()
         val searchable = mutableListOf<SearchableTool>()
+        var toolJsonStore: ToolJsonFileStore? = null
         // Keep one catalog for a generation. The service still validates the selected machine at
         // execution time, so deleting a machine cannot redirect a call to another machine.
         val configuredMachines = toolExecution.configuredMachines()
@@ -394,7 +397,9 @@ class ToolChatViewModel internal constructor(
             if (mcpAttachments.active) tools += mcpAttachments.definitions()
 
             http.requireFiles()
-            val history = mutableListOf<JsonObject>()
+            val store = aiService.toolJsonStore()
+            toolJsonStore = store
+            val history = ToolMessageHistory(store)
             if (selectedProvider.type != ModelApiType.GOOGLE && effectivePrompt.isNotBlank()) {
                 history += obj("role" to str("system"), "content" to str(effectivePrompt))
             }
@@ -413,7 +418,9 @@ class ToolChatViewModel internal constructor(
                 if (message.role == ChatRole.USER) mcpAttachments.startUserTurn()
                 else if (mcpAttachments.active) message.activeVersion.toolActivity.forEach { activity ->
                     if (activity.wireName == CONNECT_MCPS_TOOL_NAME && activity.status == "success") {
-                        runCatching { toolArguments(JsonPrimitive(activity.arguments)) }.getOrNull()?.let(mcpAttachments::replayLoad)
+                        activity.arguments.textOrNull()
+                            ?.let { raw -> runCatching { toolArguments(JsonPrimitive(raw)) }.getOrNull() }
+                            ?.let(mcpAttachments::replayLoad)
                     } else serverByWireName[activity.wireName]?.let(mcpAttachments::markUsed)
                 }
                 val activities = if (message.role == ChatRole.MODEL) {
@@ -430,10 +437,8 @@ class ToolChatViewModel internal constructor(
                             // tools for an unrelated new user request.
                             ((it.wireName == ACTIVATE_SKILL_TOOL_NAME ||
                                 it.wireName == READ_SKILL_RESOURCE_TOOL_NAME) &&
-                                skills.none { skill ->
-                                    skill.name == runCatching {
-                                        toolArguments(JsonPrimitive(it.arguments)).text("name")
-                                    }.getOrNull()
+                                it.nameArgument().let { argumentName ->
+                                    skills.none { skill -> skill.name == argumentName }
                                 }) ||
                             (it.wireName == CREATE_SKILL_TOOL_NAME && !createSkillRequested)
                     }
@@ -525,7 +530,8 @@ class ToolChatViewModel internal constructor(
                     onReasoning = { send(GenerationEvent.Reasoning(it)) },
                     onUsage = { turnUsage = it },
                     sessionKey = sessionKey,
-                    onPreparation = { send(GenerationEvent.PreparingAttachments(it)) }
+                    onPreparation = { send(GenerationEvent.PreparingAttachments(it)) },
+                    store = store
                 )
                 val reasoningSignature = turn.text("reasoning_signature").takeIf { it.isNotBlank() }
                 if (!streaming) {
@@ -542,7 +548,6 @@ class ToolChatViewModel internal constructor(
 
                 val calls = turn["tool_calls"] as? JsonArray ?: JsonArray(emptyList())
                 if (calls.isEmpty()) return@channelFlow
-                check(calls.size <= 16) { "Too many tool calls in a single response" }
                 // A turn that calls tools must keep its reasoning chain on the following requests
                 // (Auto and On); Off never sends it.
                 if (passbackConfig.sendsThinkingBack(hasToolCalls = true)) sendThinkingContent = true
@@ -574,7 +579,7 @@ class ToolChatViewModel internal constructor(
                             } ?: name
                         },
                         wireName = name,
-                        arguments = rawArguments,
+                        arguments = rawArguments.toToolPayload(),
                         previewAspectRatio = if (mediaTool && name == "generate_image") {
                             imageToolPreviewRatio(rawArguments, settings(), providers)
                         } else null
@@ -771,7 +776,7 @@ class ToolChatViewModel internal constructor(
                                     inlineMedia = (tool.customHttpToolId != null && summary.files.isNotEmpty()) || (mediaTool && name == "generate_music") || contentApiMedia?.files?.isNotEmpty() == true ||
                                         tool.serverId == null && name == SEND_FILE_TOOL_NAME,
                                     responsePreviewLimit = if (contentApi || mediaTool) 0 else 6_000,
-                                    response = completeResponse
+                                    response = completeResponse.toToolPayload()
                                 )
                             )
                         )
@@ -789,7 +794,7 @@ class ToolChatViewModel internal constructor(
                                 activity.copy(
                                     status = "error",
                                     summary = e.message.orEmpty(),
-                                    response = result.toString()
+                                    response = result.toString().toToolPayload()
                                 )
                             )
                         )
@@ -825,7 +830,7 @@ class ToolChatViewModel internal constructor(
             }
             error(labels.roundLimit(round))
         } finally {
-            sessions.values.forEach { it.close() }
+            try { sessions.values.forEach { it.close() } } finally { toolJsonStore?.close() }
         }
     }.flowOn(Dispatchers.IO)
 

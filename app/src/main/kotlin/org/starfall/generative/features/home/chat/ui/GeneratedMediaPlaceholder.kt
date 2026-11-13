@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -32,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.helpers.media.imagePreviewAspectRatio
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.shared.ui.layout.windowHeightIn
@@ -62,10 +66,28 @@ internal fun GeneratedMediaPlaceholder(activity: ToolActivity, modifier: Modifie
         animatedPhase
     }
     val shape = RoundedCornerShape(16.dp)
+    val previewRatio = activity.previewAspectRatio?.takeIf { it.isFinite() && it > 0f }
+    val needsArguments = !video && previewRatio == null
+    // Arguments already in RAM are read directly; stored ones load off the UI thread.
+    val resident = if (needsArguments) activity.arguments.peek() else null
+    val loadedRatio by produceState<Float?>(null, activity.arguments, needsArguments, resident) {
+        value = if (!needsArguments || resident != null) null else try {
+            val raw = activity.arguments.text()
+            withContext(Dispatchers.Default) {
+                runCatching { imagePreviewAspectRatio(Json.parseToJsonElement(raw) as JsonObject) }.getOrNull()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
     val aspectRatio = if (video) 1f else (
-        activity.previewAspectRatio?.takeIf { it.isFinite() && it > 0f }
-            ?: runCatching { imagePreviewAspectRatio(Json.parseToJsonElement(activity.arguments) as JsonObject) }
-                .getOrNull() ?: 1f
+        previewRatio
+            ?: resident?.let { raw ->
+                runCatching { imagePreviewAspectRatio(Json.parseToJsonElement(raw) as JsonObject) }.getOrNull()
+            }
+            ?: loadedRatio ?: 1f
     )
 
     BoxWithConstraints(

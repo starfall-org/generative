@@ -143,7 +143,7 @@ internal object ConversationMigration9To10 {
                 db.query("SELECT activityId, name, wireName, status, summary, arguments, response, contentOffset, reasoningOffset, inlineMedia, responsePreviewLimit FROM tool_activities WHERE conversationId = ? AND messageId = ? AND versionIndex = ? AND activityIndex = ?", args(conversationId, message.id, versionIndex, activityIndex)).use { target ->
                     check(target.moveToFirst() && target.getString(0) == activity.id && target.getString(1) == activity.name &&
                         target.getString(2) == activity.wireName && target.getString(3) == activity.status && target.getString(4) == activity.summary &&
-                        target.getString(5) == activity.arguments && target.getString(6) == activity.response && target.getInt(7) == activity.contentOffset &&
+                        target.getString(5) == activity.arguments.textBlocking() && target.getString(6) == activity.response.textBlocking() && target.getInt(7) == activity.contentOffset &&
                         target.intOrNull(8) == activity.reasoningOffset && target.getInt(9) == (if (activity.inlineMedia) 1 else 0) &&
                         target.getInt(10) == activity.responsePreviewLimit) { "Conversation v9 to v10 migration changed tool activity $activityIndex for ${message.id}." }
                 }
@@ -188,7 +188,7 @@ internal object ConversationMigration9To10 {
             version.toolActivity.forEachIndexed { activityIndex, activity ->
                 db.execSQL(
                     "INSERT INTO tool_activities (conversationId, messageId, versionIndex, activityIndex, activityId, name, wireName, status, summary, arguments, response, contentOffset, reasoningOffset, inlineMedia, responsePreviewLimit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    args(conversationId, message.id, versionIndex, activityIndex, activity.id, activity.name, activity.wireName, activity.status, activity.summary, activity.arguments, activity.response, activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit)
+                    args(conversationId, message.id, versionIndex, activityIndex, activity.id, activity.name, activity.wireName, activity.status, activity.summary, activity.arguments.textBlocking(), activity.response.textBlocking(), activity.contentOffset, activity.reasoningOffset, activity.inlineMedia, activity.responsePreviewLimit)
                 )
                 activity.files.forEachIndexed { fileIndex, reference ->
                     db.execSQL(

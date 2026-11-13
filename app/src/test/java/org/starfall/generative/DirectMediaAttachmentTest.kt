@@ -58,7 +58,7 @@ class DirectMediaAttachmentTest {
             val activity = events.filterIsInstance<GenerationEvent.Tool>().last().activity
             assertEquals("success", activity.status)
             assertTrue(activity.files.any { it.endsWith(".png") })
-            val arguments = Json.parseToJsonElement(activity.arguments).jsonObject
+            val arguments = Json.parseToJsonElement(activity.arguments.text()).jsonObject
             assertEquals(2, arguments["input_images"]!!.jsonArray.size)
             assertFalse(events.toString().contains(attachment.absolutePath))
         } finally { server.shutdown(); root.deleteRecursively(); attachment.delete() }
@@ -84,7 +84,7 @@ class DirectMediaAttachmentTest {
             val activity = events.filterIsInstance<GenerationEvent.Tool>().last().activity
             assertEquals("success", activity.status)
             assertTrue(activity.files.any { it.endsWith(".mp4") })
-            assertTrue(Json.parseToJsonElement(activity.arguments).jsonObject.text("input_image").startsWith("tool-file:"))
+            assertTrue(Json.parseToJsonElement(activity.arguments.text()).jsonObject.text("input_image").startsWith("tool-file:"))
         } finally { server.shutdown(); root.deleteRecursively(); attachment.delete() }
     }
 

@@ -5,6 +5,7 @@ import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolPayload
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.SummaryRole
 import org.starfall.generative.shared.model.generation.hasToolCalls
@@ -23,10 +24,20 @@ internal fun estimateTextTokens(text: String): Long {
     }
     return wide + (otherBytes + 3) / 4
 }
+
+/**
+ * Never reads storage: a payload that is not in RAM is estimated from its stored size at the
+ * 4-characters-per-token rate [estimateTextTokens] applies to ASCII, which covers typical JSON.
+ */
+internal fun estimatePayloadTokens(payload: ToolPayload): Long {
+    val text = if (payload.size <= EXACT_PAYLOAD_ESTIMATE_CHARS) payload.peek() else null
+    return text?.let(::estimateTextTokens) ?: ((payload.size + 3L) / 4)
+}
+private const val EXACT_PAYLOAD_ESTIMATE_CHARS = 16_384
 internal fun estimateMessageTokens(message: StoredMessage, includeReasoning: Boolean): Long =
     4 + estimateTextTokens(message.content) +
         (if (includeReasoning) estimateTextTokens(message.reasoningContent.orEmpty()) else 0) +
-        message.activeVersion.toolActivity.sumOf { estimateTextTokens(it.arguments) + estimateTextTokens(it.response) } +
+        message.activeVersion.toolActivity.sumOf { estimatePayloadTokens(it.arguments) + estimatePayloadTokens(it.response) } +
         message.files.size * 1024L
 internal fun contextWindowStatus(conversation: Conversation, prompt: String, config: ModelConfiguration,
     prefixMessages: List<StoredMessage> = emptyList(),

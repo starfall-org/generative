@@ -11,6 +11,8 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.database.repositories.ConversationRepository
 import org.starfall.generative.database.room.AppDatabase
+import org.starfall.generative.features.appdata.logic.buildJsonExport
+import org.starfall.generative.features.appdata.logic.parseFullAppDataExport
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -113,6 +115,123 @@ class ConversationIncrementalPersistenceTest {
             assertEquals(0L, count(db, "tool_activity_files"))
             db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
         } finally { db.close() }
+    }
+
+    @Test fun metadataEditDoesNotRewriteUnchangedLargeToolResult() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val repository = ConversationRepository(db)
+            val huge = "tool response.".repeat(180_000)
+            val source = Conversation("large-tool", "Original", 1, 2, messages = listOf(
+                StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(
+                    content = "Answer", toolActivity = listOf(
+                        ToolActivity("tool", "search", status = "success", response = huge.toToolPayload())
+                    )
+                )))
+            ))
+            repository.saveConversation(source)
+            db.openHelper.writableDatabase.execSQL("""
+                CREATE TRIGGER prevent_rewriting_tool BEFORE UPDATE ON tool_activities
+                BEGIN SELECT RAISE(ABORT, 'unchanged tool activity must not be rewritten'); END
+            """.trimIndent())
+            val changed = source.copy(title = "Renamed", updatedAt = 3)
+            repository.saveConversation(changed)
+            assertEquals(changed, repository.loadById(changed.id))
+            db.openHelper.writableDatabase.execSQL("DROP TRIGGER prevent_rewriting_tool")
+            // Cold writes use key-only reads and remain valid even without an RAM snapshot.
+            ConversationRepository(db).saveConversation(changed.copy(updatedAt = 4))
+        } finally { db.close() }
+    }
+
+    @Test fun oversizedToolResponseAndUnicodeSurviveCursorWindowChunkedReads() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val original = Conversation("oversized", "Oversized", 1, 2, messages = listOf(
+                StoredMessage("model", ChatRole.MODEL, listOf(MessageVersion(
+                    content = "Result", toolActivity = listOf(
+                        ToolActivity("tool", "Search", status = "success",
+                            arguments = "😀".repeat(18_000).toToolPayload(),
+                            response = ("😀".repeat(17_000) + "x".repeat(2_200_000)).toToolPayload())
+                    )
+                )))
+            ))
+            val repo = ConversationRepository(db)
+            repo.saveConversation(original)
+            assertEquals(original, ConversationRepository(db).loadById(original.id))
+        } finally { db.close() }
+    }
+
+    @Test fun oversizedSummaryAndAssistantTextAreReadWithoutCursorWindowOverflow() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val source = Conversation("long-answer", "Long", 1, 2,
+                messages = listOf(StoredMessage("answer", ChatRole.MODEL, listOf(
+                    MessageVersion(content = "😀".repeat(17_000) + "c".repeat(2_200_000),
+                        reasoningContent = "r".repeat(2_200_000))))),
+                summary = ConversationSummary("summary", "s".repeat(2_200_000), "answer"))
+            ConversationRepository(db).saveConversation(source)
+            assertEquals(source, ConversationRepository(db).loadById(source.id))
+        } finally { db.close() }
+    }
+
+    @Test fun persistedToolPayloadsSurviveEvictionAndJsonBackupRoundTrip() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val arguments = "{\"query\":\"hello\"}"
+            val response = "large result ".repeat(3_000)
+            val conversation = Conversation("backup-payload", "Tool backup", 1, 2, messages = listOf(
+                StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(
+                    content = "Done", toolActivity = listOf(ToolActivity(
+                        "call", "search", status = "success",
+                        arguments = arguments.toToolPayload(), response = response.toToolPayload()
+                    ))
+                )))
+            ))
+            ConversationRepository(db).saveConversation(conversation)
+            ToolPayloadCache.clear()
+            val restored = ConversationRepository(db).loadById(conversation.id)!!
+            val activity = restored.messages.single().versions.single().toolActivity.single()
+            assertFalse(activity.arguments.isResident)
+            assertFalse(activity.response.isResident)
+            ToolPayloadCache.clear()
+            assertNull(activity.arguments.peek())
+            assertNull(activity.response.peek())
+            assertEquals(arguments, activity.arguments.text())
+            assertEquals(response, activity.response.text())
+            ToolPayloadCache.clear()
+            val backup = buildJsonExport(emptyList(), emptyList(), emptyList(), listOf(restored))
+            val imported = parseFullAppDataExport(backup).conversations!!.single()
+            val importedActivity = imported.messages.single().versions.single().toolActivity.single()
+            assertEquals(arguments, importedActivity.arguments.text())
+            assertEquals(response, importedActivity.response.text())
+        } finally { ToolPayloadCache.clear(); db.close() }
+    }
+
+    @Test fun replacingAStoredCallDoesNotReadAnotherCallAtTheSameActivityIndex() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java).build()
+        try {
+            val repository = ConversationRepository(db)
+            fun conversation(callId: String, content: String) = Conversation("replace-call", "Calls", 1, 2,
+                messages = listOf(StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(
+                    content = "done", toolActivity = listOf(ToolActivity(callId, "search",
+                        status = "success", response = content.toToolPayload())))))))
+            repository.saveConversation(conversation("old", "old response"))
+            ToolPayloadCache.clear()
+            val obsolete = ConversationRepository(db).loadById("replace-call")!!
+                .messages.single().versions.single().toolActivity.single().response
+            repository.saveConversation(conversation("new", "new response"))
+            ToolPayloadCache.clear()
+            assertTrue("A deleted call must not read a replacement row",
+                runCatching { obsolete.text() }.isFailure)
+            val current = ConversationRepository(db).loadById("replace-call")!!
+                .messages.single().versions.single().toolActivity.single().response
+            assertEquals("new response", current.text())
+        } finally { ToolPayloadCache.clear(); db.close() }
     }
 
     private fun rowIds(db: AppDatabase): Map<String, Long> {

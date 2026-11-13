@@ -33,6 +33,7 @@ import org.starfall.generative.shared.model.logging.DebugLogCategory
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.streamEnabledFor
 import org.starfall.generative.shared.helpers.networking.requireNetworkCredentials
+import org.starfall.generative.shared.helpers.networking.ToolJsonStore
 import org.starfall.generative.shared.state.preferences.ModelConfigurationMemory
 import java.util.Base64
 import org.starfall.generative.integrations.modelapis.attachments.*
@@ -47,6 +48,8 @@ class AiService(
 
     internal val modelConfigurationMemory = ModelConfigurationMemory(context)
     private val appContext = context.applicationContext
+
+    internal fun toolJsonStore(): ToolJsonFileStore = ToolJsonFileStore.inCache(appContext.cacheDir)
 
     internal suspend fun <T> withOAuthSession(block: suspend () -> T): T =
         OAuthCallbackService.keepAlive(appContext, block)
@@ -135,10 +138,11 @@ class AiService(
             }
         }
         val prepared = prepareAttachments(provider, model, references)
-        return history.map { message ->
-            if (message["role"]?.jsonPrimitive?.content != "user") return@map message
-            val items = message["_attachments"] as? JsonArray ?: return@map message
-            JsonObject(message + ("_attachments" to JsonArray(items.map items@{ item ->
+        val updated = mutableMapOf<Int, JsonObject>()
+        history.forEachIndexed { index, message ->
+            if (message["role"]?.jsonPrimitive?.content != "user") return@forEachIndexed
+            val items = message["_attachments"] as? JsonArray ?: return@forEachIndexed
+            updated[index] = JsonObject(message + ("_attachments" to JsonArray(items.map items@{ item ->
                 val file = item.jsonObject
                 val reference = (file["localReference"] as? JsonPrimitive)?.content ?: return@items item
                 val ready = prepared.getValue(reference)
@@ -150,7 +154,12 @@ class AiService(
                         attachments.readBytes(reference) ?: error("Attachment data is missing")))
                 })
             })))
-        } to prepared
+        }
+        val ready = object : AbstractList<JsonObject>() {
+            override val size: Int get() = history.size
+            override fun get(index: Int): JsonObject = updated[index] ?: history[index]
+        }
+        return ready to prepared
     }
 
     internal suspend fun invalidateAttachments(prepared: Map<String, PreparedAttachment>) = attachmentPreflight.invalidate(prepared)
@@ -192,16 +201,16 @@ class AiService(
             ?: resolved
     }
 
-    suspend fun accountToolTurn(
+    internal suspend fun accountToolTurn(
         provider: ModelProvider, modelName: String, history: List<JsonObject>,
         tools: List<ToolDefinition>, systemPrompt: String, sendThinking: Boolean,
         onText: suspend (String) -> Unit, onReasoning: suspend (String) -> Unit,
-        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?
+        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?, store: ToolJsonStore?
     ): JsonObject? {
         val resolved = resolveProvider(provider)
         return accountAdapters.get(resolved.type)?.requestToolTurn(
             resolved, modelName, history, tools, systemPrompt, sendThinking,
-            onText, onReasoning, onUsage, sessionKey)
+            onText, onReasoning, onUsage, sessionKey, store)
     }
 
     fun normalizeAccountToolRequest(

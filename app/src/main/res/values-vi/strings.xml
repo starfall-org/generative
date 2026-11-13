@@ -251,6 +251,8 @@
     <string name="tool_details_response">Phản hồi</string>
     <string name="tool_details_waiting_response">Đang chờ phản hồi của công cụ…</string>
     <string name="tool_details_no_response">Không có phản hồi</string>
+    <string name="tool_details_loading">Đang tải…</string>
+    <string name="tool_details_load_failed">Không thể tải dữ liệu của lệnh gọi công cụ này.</string>
     <string name="reasoning_effort_title">Mức độ suy luận</string>
     <string name="reasoning_effort_description">Mức độ suy luận cho cuộc trò chuyện này. Chỉ ghi đè thiết lập của mô hình ngôn ngữ cho chat này.</string>
     <string name="common_apply">Áp dụng</string>
@@ -305,6 +307,7 @@
     <string name="export_prepare_failed">Xuất thất bại: không thể chuẩn bị bản sao lưu đầy đủ. Hãy kiểm tra thông tin đăng nhập của nhà cung cấp mô hình và MCP rồi thử lại.</string>
     <string name="import_success">Đã nhập %1$d mục</string>
     <string name="import_failed">Nhập thất bại: %1$s</string>
+    <string name="open_chat_failed">Không thể mở phiên chat này. Lịch sử đã lưu chưa bị xóa.</string>
     <string name="save_change_failed">Không thể lưu thay đổi. Hãy thử lại.</string>
     <string name="loading_provider_editor">Đang tải nhà cung cấp mô hình và thông tin đăng nhập đã lưu…</string>
     <string name="camera_unavailable_title">Không dùng được camera</string>

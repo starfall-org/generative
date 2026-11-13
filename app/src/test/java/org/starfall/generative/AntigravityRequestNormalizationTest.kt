@@ -8,6 +8,28 @@ import org.starfall.generative.integrations.modelapis.antigravity.restoreAntigra
 import org.starfall.generative.shared.helpers.networking.*
 
 class AntigravityRequestNormalizationTest {
+    @Test fun responseCleanupReadsIndividualPartsOnDemand() {
+        var reads = 0
+        val parts = JsonArray(object : AbstractList<JsonElement>() {
+            override val size: Int = 100
+            override fun get(index: Int): JsonElement {
+                reads++
+                return obj("functionCall" to obj("name" to str("optional"),
+                    "args" to obj("_" to JsonPrimitive(true))))
+            }
+        })
+        val original = obj("model" to str("claude"), "tools" to JsonArray(listOf(
+            obj("functionDeclarations" to JsonArray(listOf(obj("name" to str("optional"),
+                "parameters" to obj("type" to str("object")))))))))
+        val response = obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to parts)))))
+        val restored = restoreAntigravityToolArguments(original, response)
+        assertEquals(0, reads)
+        val last = restored.getValue("candidates").jsonArray[0].jsonObject.getValue("content").jsonObject
+            .getValue("parts").jsonArray[99].jsonObject.getValue("functionCall").jsonObject.getValue("args").jsonObject
+        assertTrue(last.isEmpty())
+        assertEquals(1, reads)
+    }
+
     @Test fun claudeKeepsTokenLimitValidatesDeclarationsAndScopesStableSessions() {
         val request = obj(
             "contents" to JsonArray(listOf(

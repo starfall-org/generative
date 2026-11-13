@@ -9,6 +9,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.StoredMessage
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.generation.TokenUsage
+import org.starfall.generative.shared.helpers.networking.ToolJsonStore
 
 /**
  * Boundary for account-backed providers that do not use a normal API key.
@@ -72,7 +73,7 @@ internal interface AccountProviderAdapter {
         provider: ModelProvider, modelName: String, history: List<JsonObject>,
         tools: List<ToolDefinition>, systemPrompt: String, sendThinking: Boolean,
         onText: suspend (String) -> Unit, onReasoning: suspend (String) -> Unit,
-        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?
+        onUsage: suspend (TokenUsage) -> Unit, sessionKey: String?, store: ToolJsonStore?
     ): JsonObject? = null
 
     fun clearCredentials(providerId: String)

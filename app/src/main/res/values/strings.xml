@@ -288,6 +288,8 @@
     <string name="tool_details_response">Response</string>
     <string name="tool_details_waiting_response">Waiting for tool response…</string>
     <string name="tool_details_no_response">No response</string>
+    <string name="tool_details_loading">Loading…</string>
+    <string name="tool_details_load_failed">Could not load the data for this tool call.</string>
     <string name="reasoning_effort_title">Reasoning Effort</string>
     <string name="reasoning_effort_description">Reasoning effort for this conversation. Overrides the language model setting for this chat only.</string>
     <string name="common_apply">Apply</string>
@@ -352,6 +354,7 @@
     <string name="export_prepare_failed">Export failed: could not prepare a complete backup. Check model provider and MCP credentials and try again.</string>
     <string name="import_success">%1$d item(s) imported</string>
     <string name="import_failed">Import failed: %1$s</string>
+    <string name="open_chat_failed">Could not open this chat. The stored history has not been deleted.</string>
     <string name="save_change_failed">Could not save the change. Please try again.</string>
     <string name="loading_provider_editor">Loading model provider and saved credentials…</string>
     <string name="camera_unavailable_title">Camera unavailable</string>

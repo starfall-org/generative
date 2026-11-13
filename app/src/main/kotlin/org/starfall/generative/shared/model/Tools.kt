@@ -204,8 +204,9 @@ data class ToolActivity(
     val status: String = "running",
     val summary: String = "",
     val files: List<String> = emptyList(),
-    val arguments: String = "",
-    val response: String = "",
+    /** Reclaimable once saved; read with [ToolPayload.text] instead of holding the string. */
+    val arguments: ToolPayload = ToolPayload.EMPTY,
+    val response: ToolPayload = ToolPayload.EMPTY,
     val contentOffset: Int = 0,
     val reasoningOffset: Int? = null,
     val inlineMedia: Boolean = false,

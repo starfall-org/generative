@@ -3,6 +3,7 @@ package org.starfall.generative.integrations.modelapis.devin
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
@@ -18,8 +19,14 @@ internal object DevinWire {
     private const val MAX_FRAME = 16 * 1024 * 1024
     private const val MAX_EXPANDED = 64 * 1024 * 1024
 
-    internal class ProtoWriter {
-        private val bytes = ByteArrayOutputStream()
+    internal class CountingOutputStream : OutputStream() {
+        var count = 0L
+            private set
+        override fun write(value: Int) { count++ }
+        override fun write(value: ByteArray, offset: Int, length: Int) { count += length }
+    }
+
+    internal class ProtoWriter(private val bytes: OutputStream = ByteArrayOutputStream()) {
         private fun varint(value: Long) {
             var v = value
             while ((v and -128L) != 0L) {
@@ -37,8 +44,14 @@ internal object DevinWire {
             varint((field * 8 + 1).toLong())
             bytes.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(value).array())
         }
-        fun nested(field: Int, builder: ProtoWriter.() -> Unit) = data(field, ProtoWriter().apply(builder).build())
-        fun build() = bytes.toByteArray()
+        fun nested(field: Int, builder: ProtoWriter.() -> Unit) {
+            val counter = CountingOutputStream()
+            ProtoWriter(counter).apply(builder)
+            varint((field * 8 + 2).toLong())
+            varint(counter.count)
+            ProtoWriter(bytes).apply(builder)
+        }
+        fun build() = (bytes as ByteArrayOutputStream).toByteArray()
     }
 
     internal data class Field(val number: Int, val wireType: Int, val data: ByteArray, val numberValue: Long = 0) {
@@ -113,7 +126,17 @@ internal object DevinWire {
         token: String, modelUID: String, systemPrompt: String, turns: List<Turn>,
         tools: List<ToolDefinition>, temperature: Double?, maxTokens: Int,
         sessionId: String, turnIndex: Int
-    ): ByteArray = ProtoWriter().apply {
+    ): ByteArray = ByteArrayOutputStream().also { output ->
+        writeChat(output, token, modelUID, systemPrompt, turns, tools, temperature, maxTokens, sessionId, turnIndex)
+    }.toByteArray()
+
+    internal fun writeChat(
+        output: OutputStream,
+        token: String, modelUID: String, systemPrompt: String, turns: List<Turn>,
+        tools: List<ToolDefinition>, temperature: Double?, maxTokens: Int,
+        sessionId: String, turnIndex: Int
+    ) {
+        ProtoWriter(output).apply {
         nested(1) {
             string(1, "chisel"); string(2, CLIENT_VERSION); string(3, token)
             string(4, "en"); string(5, "linux"); string(7, CLIENT_VERSION)
@@ -149,7 +172,8 @@ internal object DevinWire {
         string(16, sessionId)
         number(20, 1)
         string(21, modelUID)
-    }.build()
+        }
+    }
 
     internal fun decodeDelta(payload: ByteArray): Delta {
         var text = ""; var thinking = ""; var stop = 0L; var usage: Usage? = null

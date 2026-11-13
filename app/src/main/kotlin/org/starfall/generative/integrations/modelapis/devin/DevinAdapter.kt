@@ -18,7 +18,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType
+import okhttp3.RequestBody
+import okio.BufferedSink
 import org.starfall.generative.integrations.modelapis.account.*
 import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
 import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
@@ -42,6 +44,9 @@ import org.starfall.generative.shared.helpers.networking.ToolHttp
 import org.starfall.generative.shared.helpers.networking.obj
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.ToolJsonStore
+import org.starfall.generative.shared.helpers.networking.ToolArgumentChunks
+import org.starfall.generative.shared.helpers.networking.elementList
 
 /** Devin CLI account against native Cognition Connect-RPC, not a fictitious OpenAI endpoint. */
 internal class DevinAdapter(
@@ -173,17 +178,27 @@ internal class DevinAdapter(
         history: List<JsonObject>, tools: List<ToolDefinition>, systemPrompt: String,
         sendThinking: Boolean, onText: suspend (String) -> Unit,
         onReasoning: suspend (String) -> Unit, onUsage: suspend (TokenUsage) -> Unit,
-        sessionKey: String?): JsonObject {
+        sessionKey: String?, store: ToolJsonStore?): JsonObject {
         val token = credential(provider).accessToken
         val config = provider.config.modelConfigs[modelName] ?: ModelConfiguration()
-        val turns = history.filter { it.text("role") in setOf("user", "assistant", "tool") }.map { message ->
+        val turnIndexes = history.indices.filter { history[it].text("role") in setOf("user", "assistant", "tool") }
+        val turnIds = turnIndexes.map { UUID.randomUUID().toString() }
+        val turns = object : AbstractList<DevinWire.Turn>() {
+            override val size: Int get() = turnIndexes.size
+            override fun get(index: Int): DevinWire.Turn {
+            val message = history[turnIndexes[index]]
             val source = when (message.text("role")) { "assistant" -> 2; "tool" -> 4; else -> 1 }
-            val calls = (message["tool_calls"] as? JsonArray).orEmpty().map { raw ->
+            val values = (message["tool_calls"] as? JsonArray).orEmpty()
+            val calls = object : AbstractList<DevinWire.Call>() {
+                override val size: Int get() = values.size
+                override fun get(index: Int): DevinWire.Call {
+                val raw = values[index]
                 val call = raw.jsonObject
                 val fn = call["function"] as? JsonObject ?: error("Invalid Devin tool call")
-                DevinWire.Call(call.text("id"), fn.text("name"), fn["arguments"]?.let {
+                return DevinWire.Call(call.text("id"), fn.text("name"), fn["arguments"]?.let {
                     if (it is JsonPrimitive) it.content else it.toString()
                 } ?: "{}")
+                }
             }
             val images = (message["_attachments"] as? JsonArray).orEmpty().map { raw ->
                 val value = raw.jsonObject
@@ -191,26 +206,27 @@ internal class DevinAdapter(
                 require(mime.startsWith("image/")) { "Devin supports only image attachments" }
                 mime to value.text("data")
             }
-            DevinWire.Turn(source, message.text("content"),
+            return DevinWire.Turn(source, message.text("content"), id = turnIds[index],
                 toolCalls = calls, toolCallId = message.text("tool_call_id"),
                 thinking = if (sendThinking) message.text("reasoning_content") else "",
                 images = images,
                 signature = message.text("reasoning_signature").takeIf { it.isNotBlank() }
                     ?.let { runCatching { Base64.getDecoder().decode(it) }.getOrNull() } ?: byteArrayOf()
             )
+            }
         }
         val streaming = provider.streamEnabledFor(modelName)
         return generate(provider, modelName, token, turns, tools, systemPrompt, config,
             provider.config.maxTokens, sessionKey ?: history.firstOrNull { it.text("role") == "user" }?.text("id"),
             onText = { if (streaming) onText(it) },
-            onReasoning = { if (streaming) onReasoning(it) }, onUsage = onUsage)
+            onReasoning = { if (streaming) onReasoning(it) }, onUsage = onUsage, callStore = store)
     }
 
     private suspend fun generate(provider: ModelProvider, model: String, token: String,
         turns: List<DevinWire.Turn>, tools: List<ToolDefinition>, systemPrompt: String,
         config: ModelConfiguration, maxOutput: Int, conversationKey: String?,
         onText: suspend (String) -> Unit, onReasoning: suspend (String) -> Unit,
-        onUsage: suspend (TokenUsage) -> Unit): JsonObject {
+        onUsage: suspend (TokenUsage) -> Unit, callStore: ToolJsonStore? = null): JsonObject {
         val sessionID = UUID.nameUUIDFromBytes(
             "devin:${provider.id}:${conversationKey ?: turns.firstOrNull()?.id ?: UUID.randomUUID()}".toByteArray()).toString()
         val ordinal = sessionsLock.withLock {
@@ -221,9 +237,23 @@ internal class DevinAdapter(
         val levels = ((available?.metadata?.get("thinking") as? JsonObject)?.get("levels") as? JsonArray)
             .orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         val uid = devinModelUID(model, config.wireReasoningEffort, levels)
-        val proto = DevinWire.buildChat(token, uid, systemPrompt, turns, tools,
-            config.temperature, maxOutput, sessionID, ordinal)
-        val payload = DevinWire.envelope(proto)
+        val payload = object : RequestBody() {
+            private fun encode(output: java.io.OutputStream) = DevinWire.writeChat(output, token, uid, systemPrompt,
+                turns, tools, config.temperature, maxOutput, sessionID, ordinal)
+            private val size by lazy {
+                val counter = DevinWire.CountingOutputStream()
+                encode(counter)
+                require(counter.count <= 0xffff_ffffL) { "Devin request exceeds Connect frame size" }
+                counter.count
+            }
+            override fun contentType(): MediaType = "application/connect+proto".toMediaType()
+            override fun contentLength(): Long = 5 + size
+            override fun writeTo(sink: BufferedSink) {
+                sink.writeByte(0)
+                sink.writeInt(size.toInt())
+                encode(sink.outputStream())
+            }
+        }
         val sentryTrace = buildString {
             val random = ByteArray(24).also(SecureRandom()::nextBytes)
             random.forEachIndexed { i, b ->
@@ -240,13 +270,16 @@ internal class DevinAdapter(
                 "Accept" to "*/*",
                 "User-Agent" to "",
                 "Sentry-Trace" to sentryTrace
-            )).post(payload.toRequestBody("application/connect+proto".toMediaType())).build()
+            )).post(payload).build()
         return withContext(Dispatchers.IO) {
             http.withResponse(request) { response ->
                 http.requireSuccess(response)
                 val text = StringBuilder()
                 val thinking = StringBuilder()
-                val activeCalls = linkedMapOf<String, Array<String>>()
+                val callIds = linkedMapOf<String, Int>()
+                val callNames = mutableMapOf<Int, String>()
+                val arguments = ToolArgumentChunks(callStore)
+                val invalidArguments = ToolArgumentChunks(callStore)
                 var lastCallID: String? = null
                 var usage: DevinWire.Usage? = null
                 var sig = byteArrayOf()
@@ -282,15 +315,18 @@ internal class DevinAdapter(
                     delta.calls.forEach { chunk ->
                         val id = chunk.id.ifBlank { lastCallID ?: error("Devin tool delta lacks a call ID") }
                         lastCallID = id
-                        val parts = activeCalls.getOrPut(id) { arrayOf("", "", "") }
-                        if (parts[0].isEmpty()) parts[0] = chunk.name else if (chunk.name.isNotEmpty() && parts[0] != chunk.name) {
-                            parts[0] += chunk.name
+                        val index = callIds.getOrPut(id) { callIds.size }
+                        val name = callNames[index].orEmpty()
+                        if (name.isEmpty()) callNames[index] = chunk.name
+                        else if (chunk.name.isNotEmpty() && name != chunk.name) {
+                            callNames[index] = name + chunk.name
                         }
-                        parts[1] += chunk.arguments
-                        parts[2] += chunk.invalidArguments
-                        require(activeCalls.size <= 128 && parts[1].length + parts[2].length <= 65_536) {
-                            "Devin tool call exceeds limits"
+                        require(arguments.length(index).toLong() + invalidArguments.length(index) +
+                            chunk.arguments.length + chunk.invalidArguments.length <= 65_536) {
+                            "Devin tool arguments exceed size limit"
                         }
+                        arguments.append(index, chunk.arguments)
+                        invalidArguments.append(index, chunk.invalidArguments)
                     }
                 }
                 check(ended) { "Devin Connect stream terminated before its final trailer" }
@@ -298,17 +334,18 @@ internal class DevinAdapter(
                     val input = u.input + u.cached
                     if (input >= 0 && u.output >= 0) onUsage(TokenUsage(input, u.output))
                 }
-                val calls = JsonArray(activeCalls.map { (id, parts) ->
-                    val name = parts[0]
+                val calls = callStore.elementList()
+                callIds.forEach { (id, index) ->
+                    val name = callNames[index].orEmpty()
                     require(name.isNotBlank()) { "Devin returned a nameless tool call" }
-                    val args = parts[1].ifBlank { parts[2] }.ifBlank { "{}" }
+                    val args = arguments.read(index).orEmpty().ifBlank { invalidArguments.read(index).orEmpty() }.ifBlank { "{}" }
                     val parsed = runCatching { json.parseToJsonElement(args) as? JsonObject }.getOrNull()
                         ?: error("Devin tool $name returned malformed JSON arguments")
-                    obj("id" to str(id), "type" to str("function"),
-                        "function" to obj("name" to str(name), "arguments" to parsed))
-                })
+                    calls.add(obj("id" to str(id), "type" to str("function"),
+                        "function" to obj("name" to str(name), "arguments" to parsed)))
+                }
                 buildJsonObject {
-                    put("role", "assistant"); put("content", text.toString()); put("tool_calls", calls)
+                    put("role", "assistant"); put("content", text.toString()); put("tool_calls", JsonArray(calls))
                     if (thinking.isNotEmpty()) put("reasoning_content", thinking.toString())
                     if (sig.isNotEmpty()) put("reasoning_signature", Base64.getEncoder().encodeToString(sig))
                     if (sigType.isNotBlank()) put("signature_type", sigType)

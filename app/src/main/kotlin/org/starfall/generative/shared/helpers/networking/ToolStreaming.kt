@@ -18,9 +18,11 @@ internal suspend fun ToolHttp.modelResponse(
     stream: Boolean,
     onText: suspend (String) -> Unit,
     onReasoning: suspend (String) -> Unit = {},
-    unwrapResponse: (JsonObject) -> JsonObject = { it }
+    unwrapResponse: (JsonObject) -> JsonObject = { it },
+    store: ToolJsonStore? = null
 ): JsonObject {
-    if (!stream) return unwrapResponse(post(url, body, provider))
+    if (!stream) return unwrapResponse(if (store == null) post(url, body, provider) else
+        storedModelResponse(url, body, provider, store))
     val google = provider.type == ModelApiType.GOOGLE
     val ollama = provider.type == ModelApiType.OLLAMA
     val anthropic = provider.type == ModelApiType.ANTHROPIC
@@ -36,16 +38,18 @@ internal suspend fun ToolHttp.modelResponse(
     }
 
     return withContext(Dispatchers.IO) {
-        withResponse(request(target, provider).post(payload.toString().toRequestBody("application/json".toMediaType())).build()) { response ->
+        val requestBody = if (store == null) payload.toString().toRequestBody("application/json".toMediaType())
+            else StreamingJsonBody(payload)
+        withResponse(request(target, provider).post(requestBody).build()) { response ->
             requireSuccess(response)
             var received = false
             var completed = false
             val text = StringBuilder()
             val reasoning = StringBuilder()
-            val calls = linkedMapOf<Int, JsonObject>()
+            val calls = store.indexedElements()
             val reasoningSignature = StringBuilder()
-            val arguments = mutableMapOf<Int, StringBuilder>()
-            val googleParts = mutableListOf<JsonElement>()
+            val arguments = ToolArgumentChunks(store)
+            val googleParts = store.elementList()
             val usageFields = mutableMapOf<String, JsonElement>()
             var validUsageFields: Map<String, JsonElement>? = null
             var finalResponse: JsonObject? = null
@@ -101,7 +105,13 @@ internal suspend fun ToolHttp.modelResponse(
                             emitReasoning(value.text("delta"))
                         "response.completed" -> {
                             completed = true
-                            finalResponse = value.requireObject("response")
+                            val responseValue = value.requireObject("response")
+                            val output = responseValue["output"] as? JsonArray
+                            finalResponse = if (store != null && output != null) {
+                                val items = store.elementList()
+                                output.forEach(items::add)
+                                JsonObject(responseValue + ("output" to JsonArray(items)))
+                            } else responseValue
                         }
                         "response.incomplete" -> {
                             if ((value.requireObject("response")["incomplete_details"] as? JsonObject)
@@ -143,9 +153,9 @@ internal suspend fun ToolHttp.modelResponse(
                                 else -> emitText(delta.text("text"))
                             }
                             if (delta.text("type") == "input_json_delta") {
-                                val args = arguments.getOrPut(index) { StringBuilder() }
-                                args.append(delta.text("partial_json"))
-                                check(args.length <= 65536) { "Tool arguments too large" }
+                                val chunk = delta.text("partial_json")
+                                check(arguments.length(index).toLong() + chunk.length <= 65536) { "Tool arguments too large" }
+                                arguments.append(index, chunk)
                             }
                         }
                     }
@@ -174,28 +184,32 @@ internal suspend fun ToolHttp.modelResponse(
                             (delta["tool_calls"] as? JsonArray).orEmpty().forEachIndexed { pos, item ->
                                 val call = item.jsonObject
                                 val index = (call["index"] as? JsonPrimitive)?.intOrNull ?: pos
-                                val old = calls[index] ?: obj()
+                                val previous = calls[index] as? JsonObject
+                                val old = previous ?: obj()
                                 val oldF = old["function"] as? JsonObject ?: obj()
                                 val f = call["function"] as? JsonObject ?: obj()
                                 val arg = f["arguments"]
                                 if (arg != null) {
-                                    val buf = arguments.getOrPut(index) { StringBuilder() }
-                                    buf.append(if (arg is JsonPrimitive) arg.content else arg.toString())
-                                    check(buf.length <= 65536) { "Tool arguments too large" }
+                                    val chunk = if (arg is JsonPrimitive) arg.content else arg.toString()
+                                    check(arguments.length(index).toLong() + chunk.length <= 65536) { "Tool arguments too large" }
+                                    arguments.append(index, chunk)
                                 }
-                                calls[index] = obj(
-                                    "id" to str(call.text("id").ifBlank { old.text("id") }),
-                                    "type" to str("function"),
-                                    "function" to obj("name" to str(oldF.text("name") + f.text("name")))
-                                )
+                                val id = call.text("id").ifBlank { old.text("id") }
+                                val name = oldF.text("name") + f.text("name")
+                                if (previous == null || id != old.text("id") || name != oldF.text("name")) {
+                                    calls[index] = obj("id" to str(id), "type" to str("function"),
+                                        "function" to obj("name" to str(name)))
+                                }
                             }
                         }
                     }
                 }
-                check(calls.size <= 16 && googleParts.size <= 16) { "Too many tool calls" }
             }
 
             val reader = response.body.charStream().buffered()
+            if (store != null) {
+                if (readStoredEvents(reader, store, ollama, ::consume)) completed = true
+            } else {
             val event = StringBuilder()
             while (true) {
                 currentCoroutineContext().ensureActive()
@@ -224,6 +238,7 @@ internal suspend fun ToolHttp.modelResponse(
                 }
                 if (eof) break
             }
+            }
             // Some Gemini-compatible account endpoints return one complete candidate without
             // a finishReason or SSE sentinel. They are not covered by the strict EOF contract.
             if (!google) requireStreamCompleted(completed)
@@ -231,30 +246,40 @@ internal suspend fun ToolHttp.modelResponse(
 
             val result = when {
                 responses -> finalResponse ?: error("OpenAI Responses stream ended without a final response")
-                google -> obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(
-                    (if (reasoning.isNotEmpty()) listOf(obj("text" to str(reasoning.toString()), "thought" to JsonPrimitive(true))) else emptyList()) +
-                        listOf(obj("text" to str(text.toString()))) + googleParts
-                ))))))
-                anthropic -> obj("content" to JsonArray(
-                    (if (reasoning.isNotEmpty()) listOf(obj(
+                google -> {
+                    val parts = store.elementList()
+                    if (reasoning.isNotEmpty()) parts.add(obj("text" to str(reasoning.toString()), "thought" to JsonPrimitive(true)))
+                    parts.add(obj("text" to str(text.toString())))
+                    googleParts.forEach(parts::add)
+                    obj("candidates" to JsonArray(listOf(obj("content" to obj("parts" to JsonArray(parts))))))
+                }
+                anthropic -> {
+                    val blocks = store.elementList()
+                    if (reasoning.isNotEmpty()) blocks.add(obj(
                         "type" to str("thinking"),
                         "thinking" to str(reasoning.toString()),
                         "signature" to str(reasoningSignature.toString())
-                    )) else emptyList()) +
-                        listOf(obj("type" to str("text"), "text" to str(text.toString()))) +
-                        calls.map { (i, c) ->
-                            JsonObject(c + ("input" to (arguments[i]?.takeIf { it.isNotEmpty() }?.let { Json.parseToJsonElement(it.toString()) }
-                                ?: c["input"] ?: obj())))
-                        }
-                ))
+                    ))
+                    blocks.add(obj("type" to str("text"), "text" to str(text.toString())))
+                    calls.forEach { (i, value) ->
+                        val c = value.jsonObject
+                        val args = arguments.read(i)
+                        blocks.add(JsonObject(c + ("input" to (args?.takeIf { it.isNotEmpty() }?.let(Json::parseToJsonElement)
+                            ?: c["input"] ?: obj()))))
+                    }
+                    obj("content" to JsonArray(blocks))
+                }
                 else -> {
+                    val toolCalls = store.elementList()
+                    calls.forEach { (i, value) ->
+                        val c = value.jsonObject
+                        toolCalls.add(JsonObject(c + ("function" to JsonObject(c.requireObject("function") +
+                            ("arguments" to str(arguments.read(i) ?: "{}"))))))
+                    }
                     val baseMessage = obj(
                         "role" to str("assistant"),
                         "content" to str(text.toString()),
-                        "tool_calls" to JsonArray(calls.map { (i, c) ->
-                            JsonObject(c + ("function" to JsonObject(c.requireObject("function") +
-                                ("arguments" to str(arguments[i]?.toString() ?: "{}")))))
-                        })
+                        "tool_calls" to JsonArray(toolCalls)
                     )
                     val message = if (reasoning.isNotEmpty()) {
                         JsonObject(baseMessage + ("reasoning_content" to str(reasoning.toString())))
@@ -265,5 +290,92 @@ internal suspend fun ToolHttp.modelResponse(
             }
             JsonObject(result + (validUsageFields ?: usageFields))
         }
+    }
+}
+
+/** Returns true only for the SSE completion sentinel. */
+private suspend fun readStoredEvents(
+    reader: java.io.Reader,
+    store: ToolJsonStore,
+    ollama: Boolean,
+    consume: suspend (JsonObject) -> Unit
+): Boolean = store.textBuffer().use { line ->
+    store.textBuffer().use { event ->
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            line.clear()
+            var eof = false
+            while (true) {
+                val c = reader.read()
+                if (c < 0) { eof = true; break }
+                if (c == '\n'.code) break
+                if (c != '\r'.code) line.append(c.toChar())
+                if (line.length % 32768L == 0L) currentCoroutineContext().ensureActive()
+            }
+            if (ollama && line.length > 0) {
+                line.reader().use { consume(readStoredJson(it, store)) }
+            } else if (!ollama) {
+                if (line.length >= 5) line.reader().use { input ->
+                    val prefix = CharArray(5)
+                    var read = 0
+                    while (read < prefix.size) {
+                        val count = input.read(prefix, read, prefix.size - read)
+                        if (count < 0) break
+                        read += count
+                    }
+                    if (read == 5 && String(prefix) == "data:") {
+                        var leading = true
+                        while (true) {
+                            val c = input.read()
+                            if (c < 0) break
+                            if (leading && c.toChar().isWhitespace()) continue
+                            leading = false
+                            event.append(c.toChar())
+                            if (event.length % 32768L == 0L) currentCoroutineContext().ensureActive()
+                        }
+                        event.append('\n')
+                    }
+                }
+                if ((line.length == 0L || eof) && event.length > 0) {
+                    val done = event.length <= 32 && event.reader().use { it.readText().trim() == "[DONE]" }
+                    if (done) return@use true
+                    event.reader().use { consume(readStoredJson(it, store)) }
+                    event.clear()
+                }
+            }
+            if (eof) return@use false
+        }
+        @Suppress("UNREACHABLE_CODE") false
+    }
+}
+
+private suspend fun ToolHttp.storedModelResponse(
+    url: String, body: JsonObject, provider: ModelProvider, store: ToolJsonStore
+): JsonObject = withContext(Dispatchers.IO) {
+    val request = request(url, provider).post(StreamingJsonBody(body)).build()
+    withResponse(request) { response ->
+        requireSuccess(response)
+        val files = files
+        val parsed = if (files == null) {
+            response.body.charStream().use { readStoredJson(it, store) }
+        } else {
+            store.textBuffer().use { sanitized ->
+                val output = object : Appendable {
+                    override fun append(csq: CharSequence?): Appendable = append(csq, 0, csq?.length ?: 4)
+                    override fun append(csq: CharSequence?, start: Int, end: Int): Appendable {
+                        val text = csq ?: "null"
+                        for (index in start until end) sanitized.append(text[index])
+                        return this
+                    }
+                    override fun append(c: Char): Appendable { sanitized.append(c); return this }
+                }
+                response.body.charStream().use { files.sanitize(it, output) }
+                sanitized.reader().use { readStoredJson(it, store) }
+            }
+        }
+        check(parsed["error"] == null || parsed["error"] == JsonNull) {
+            "Provider error: " + safeError(parsed["error"], requestSecrets(request))
+        }
+        parsed
     }
 }

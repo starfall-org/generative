@@ -4,6 +4,7 @@ import java.security.MessageDigest
 import kotlinx.serialization.json.*
 import org.starfall.generative.shared.helpers.networking.str
 import org.starfall.generative.shared.helpers.networking.text
+import org.starfall.generative.shared.helpers.networking.mapOnAccess
 
 private val mcpName = Regex("^mcp__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+$")
 private val serverToolPrefixes = listOf(
@@ -59,12 +60,17 @@ private fun remapTools(body: JsonObject): Pair<JsonObject, Map<String, String>> 
         })
     }
     val messages = body["messages"] as? JsonArray
+    // Resolve every historical name in order before constructing lazy views: the reverse
+    // map must not depend on when the HTTP serializer happens to visit an entry.
+    messages?.forEach { element ->
+        (element as? JsonObject)?.get("content")?.let { registerContentNames(it, ::rewriteName) }
+    }
     val rewrittenMessages = messages?.let { value ->
-        JsonArray(value.map { element ->
-            val message = element as? JsonObject ?: return@map element
-            val content = message["content"] ?: return@map message
+        value.mapOnAccess message@{ element ->
+            val message = element as? JsonObject ?: return@message element
+            val content = message["content"] ?: return@message message
             JsonObject(message + ("content" to rewriteContent(content, ::rewriteName)))
-        })
+        }
     }
     val toolChoice = body["tool_choice"] as? JsonObject
     val rewrittenChoice = toolChoice?.takeIf { it.text("type") == "tool" }?.let { choice ->
@@ -81,8 +87,27 @@ private fun remapTools(body: JsonObject): Pair<JsonObject, Map<String, String>> 
     return result to reverse
 }
 
+private fun registerContentNames(content: JsonElement, rename: (String) -> String) {
+    when (content) {
+        is JsonArray -> content.forEach { registerContentNames(it, rename) }
+        is JsonObject -> {
+            when (content.text("type")) {
+                "tool_use" -> rename(content.text("name"))
+                "tool_reference" -> rename(content.text("tool_name"))
+                "tool_addition", "tool_removal" -> rewriteToolChange(content, rename)
+            }
+            when (content.text("type")) {
+                "tool_result" -> content["content"]?.let { registerContentNames(it, rename) }
+                "tool_search_tool_result" -> (content["content"] as? JsonObject)?.get("tool_references")
+                    ?.let { registerContentNames(it, rename) }
+            }
+        }
+        else -> Unit
+    }
+}
+
 private fun rewriteContent(content: JsonElement, rename: (String) -> String): JsonElement = when (content) {
-    is JsonArray -> JsonArray(content.map { rewriteContent(it, rename) })
+    is JsonArray -> content.mapOnAccess { rewriteContent(it, rename) }
     is JsonObject -> {
         var result = when (content.text("type")) {
             "tool_use" -> JsonObject(content + ("name" to str(rename(content.text("name")))))
@@ -119,8 +144,8 @@ private fun rewriteToolChange(block: JsonObject, rename: (String) -> String): Js
     }
 }
 
-private fun restoreBlocks(content: JsonArray, reverse: Map<String, String>): JsonArray = JsonArray(content.map { element ->
-    val block = element as? JsonObject ?: return@map element
+private fun restoreBlocks(content: JsonArray, reverse: Map<String, String>): JsonArray = content.mapOnAccess block@{ element ->
+    val block = element as? JsonObject ?: return@block element
     fun restored(name: String) = reverse[name] ?: name
     var result = when (block.text("type")) {
         "tool_use" -> JsonObject(block + ("name" to str(restored(block.text("name")))))
@@ -138,7 +163,7 @@ private fun restoreBlocks(content: JsonArray, reverse: Map<String, String>): Jso
         }
     }
     result
-})
+}
 
 private fun isServerTool(type: String): Boolean {
     val normalized = type.trim().lowercase()

@@ -64,23 +64,112 @@ interface ConversationDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY sequence ASC")
     suspend fun getMessages(conversationId: String): List<MessageEntity>
 
+    @Query("SELECT id FROM messages WHERE conversationId = :conversationId ORDER BY sequence ASC")
+    suspend fun getMessageIds(conversationId: String): List<String>
+
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY sequence DESC")
     suspend fun getMessagesNewestFirst(conversationId: String): List<MessageEntity>
 
     @Query("SELECT * FROM message_versions WHERE conversationId = :conversationId AND messageId = :messageId ORDER BY versionIndex ASC")
     suspend fun getMessageVersions(conversationId: String, messageId: String): List<MessageVersionEntity>
 
+    // Projections used for history loading avoid overfilling Android's CursorWindow.
+    @Query("""SELECT conversationId, messageId, versionIndex,
+        substr(content, 1, 16384) AS content, timestamp,
+        substr(reasoningContent, 1, 16384) AS reasoningContent,
+        substr(reasoningSignature, 1, 16384) AS reasoningSignature,
+        processingFinishedAt, providerId, modelId, modelDisplayName,
+        generationInterrupted, substr(generationError, 1, 16384) AS generationError,
+        usageInputTokens, usageOutputTokens, usageContextKey, usageMessagesFingerprint,
+        reasoningContentOffset, filesContentOffset, mediaContentOffsetsJson, blockOrderJson
+        FROM message_versions
+        WHERE conversationId = :conversationId AND messageId = :messageId
+        ORDER BY versionIndex ASC""")
+    suspend fun getMessageVersionsForLoad(conversationId: String, messageId: String): List<MessageVersionEntity>
+
+    @Query("""SELECT substr(content, :start, :size) FROM message_versions WHERE
+        conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex""")
+    suspend fun getVersionContentChunk(conversationId: String, messageId: String,
+        versionIndex: Int, start: Int, size: Int): String?
+
+    @Query("""SELECT substr(reasoningContent, :start, :size) FROM message_versions WHERE
+        conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex""")
+    suspend fun getVersionReasoningChunk(conversationId: String, messageId: String,
+        versionIndex: Int, start: Int, size: Int): String?
+
+    @Query("""SELECT substr(reasoningSignature, :start, :size) FROM message_versions WHERE
+        conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex""")
+    suspend fun getVersionSignatureChunk(conversationId: String, messageId: String,
+        versionIndex: Int, start: Int, size: Int): String?
+
+    @Query("""SELECT substr(generationError, :start, :size) FROM message_versions WHERE
+        conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex""")
+    suspend fun getVersionErrorChunk(conversationId: String, messageId: String,
+        versionIndex: Int, start: Int, size: Int): String?
+
+    @Query("SELECT versionIndex FROM message_versions WHERE conversationId = :conversationId AND messageId = :messageId ORDER BY versionIndex ASC")
+    suspend fun getMessageVersionIndexes(conversationId: String, messageId: String): List<Int>
+
     @Query("SELECT * FROM message_version_files WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex ORDER BY fileIndex ASC")
     suspend fun getMessageVersionFiles(conversationId: String, messageId: String, versionIndex: Int): List<MessageVersionFileEntity>
 
-    @Query("SELECT * FROM tool_activities WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex ORDER BY activityIndex ASC")
+    // Keep potentially multi-megabyte tool payloads out of a single Android CursorWindow row.
+    // Only a short prefix is read (a complete value when it is small); larger payloads are read
+    // later, in bounded chunks, by a ToolPayloadSource when something actually needs the text.
+    @Query("""SELECT conversationId, messageId, versionIndex, activityIndex, activityId, name,
+        wireName, status, summary, substr(arguments, 1, 1024) AS arguments,
+        substr(response, 1, 1024) AS response, contentOffset, reasoningOffset,
+        inlineMedia, responsePreviewLimit, actionGroup
+        FROM tool_activities
+        WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex
+        ORDER BY activityIndex ASC""")
     suspend fun getToolActivities(conversationId: String, messageId: String, versionIndex: Int): List<ToolActivityEntity>
+
+    /** Code-point lengths of each call's payloads, so a large value need not be read to learn its size. */
+    @Query("""SELECT activityIndex, length(arguments) AS argumentsSize, length(response) AS responseSize
+        FROM tool_activities
+        WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex
+        ORDER BY activityIndex ASC""")
+    suspend fun getToolPayloadSizes(conversationId: String, messageId: String, versionIndex: Int): List<ToolPayloadSizes>
+
+    /** Rewrites everything but the payload columns, for a call whose payloads are already in this row. */
+    @Query("""UPDATE tool_activities SET activityId = :activityId, name = :name, wireName = :wireName,
+        status = :status, summary = :summary, contentOffset = :contentOffset, reasoningOffset = :reasoningOffset,
+        inlineMedia = :inlineMedia, responsePreviewLimit = :responsePreviewLimit, actionGroup = :actionGroup
+        WHERE conversationId = :conversationId AND messageId = :messageId
+        AND versionIndex = :versionIndex AND activityIndex = :activityIndex""")
+    suspend fun updateToolActivityMetadata(conversationId: String, messageId: String, versionIndex: Int,
+        activityIndex: Int, activityId: String, name: String, wireName: String, status: String, summary: String,
+        contentOffset: Int, reasoningOffset: Int?, inlineMedia: Boolean, responsePreviewLimit: Int, actionGroup: Int?): Int
+
+    @Query("SELECT activityIndex FROM tool_activities WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex ORDER BY activityIndex ASC")
+    suspend fun getToolActivityIndexes(conversationId: String, messageId: String, versionIndex: Int): List<Int>
+
+    @Query("""SELECT substr(arguments, :start, :size) FROM tool_activities WHERE
+        conversationId = :conversationId AND messageId = :messageId
+        AND versionIndex = :versionIndex AND activityIndex = :activityIndex AND activityId = :activityId""")
+    suspend fun getToolArgumentsChunk(conversationId: String, messageId: String,
+        versionIndex: Int, activityIndex: Int, activityId: String, start: Int, size: Int): String?
+
+    @Query("""SELECT substr(response, :start, :size) FROM tool_activities WHERE
+        conversationId = :conversationId AND messageId = :messageId
+        AND versionIndex = :versionIndex AND activityIndex = :activityIndex AND activityId = :activityId""")
+    suspend fun getToolResponseChunk(conversationId: String, messageId: String,
+        versionIndex: Int, activityIndex: Int, activityId: String, start: Int, size: Int): String?
 
     @Query("SELECT * FROM tool_activity_files WHERE conversationId = :conversationId AND messageId = :messageId AND versionIndex = :versionIndex AND activityIndex = :activityIndex ORDER BY fileIndex ASC")
     suspend fun getToolActivityFiles(conversationId: String, messageId: String, versionIndex: Int, activityIndex: Int): List<ToolActivityFileEntity>
 
     @Query("SELECT * FROM conversation_summaries WHERE conversationId = :conversationId")
     suspend fun getSummary(conversationId: String): ConversationSummaryEntity?
+
+    @Query("""SELECT conversationId, id, substr(content, 1, 16384) AS content,
+        throughMessageId, role, createdAt FROM conversation_summaries
+        WHERE conversationId = :conversationId""")
+    suspend fun getSummaryForLoad(conversationId: String): ConversationSummaryEntity?
+
+    @Query("SELECT substr(content, :start, :size) FROM conversation_summaries WHERE conversationId = :conversationId")
+    suspend fun getSummaryContentChunk(conversationId: String, start: Int, size: Int): String?
 
     @Query("SELECT * FROM conversation_migration_quarantine WHERE conversationId = :conversationId")
     suspend fun getMigrationIssues(conversationId: String): List<ConversationMigrationQuarantineEntity>
@@ -493,3 +582,6 @@ interface SpeechServiceDao {
     @Query("DELETE FROM speech_auth WHERE id = :id")
     suspend fun deleteAuth(id: String)
 }
+
+/** Projection of [ToolActivityEntity] payload lengths; see [ConversationDao.getToolPayloadSizes]. */
+data class ToolPayloadSizes(val activityIndex: Int, val argumentsSize: Int, val responseSize: Int)

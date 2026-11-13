@@ -23,6 +23,7 @@ import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashRecord
 import org.starfall.generative.shared.subfeatures.auth.logic.OAuthReturnIntentProvider
 import java.io.File
 import org.starfall.generative.features.home.chat.ui.ChatRenderCaches
+import org.starfall.generative.shared.model.ToolPayloadCache
 
 class GenerativeApplication : Application(), ApplicationPreferencesOwner, RemoteMachineServiceOwner, OAuthRecordStorageOwner,
     OAuthReturnIntentProvider, coil3.SingletonImageLoader.Factory {
@@ -56,9 +57,19 @@ class GenerativeApplication : Application(), ApplicationPreferencesOwner, Remote
         )
         // The chat render caches are a convenience only: give the RAM back as soon as Android asks.
         registerComponentCallbacks(object : ComponentCallbacks2 {
-            override fun onTrimMemory(level: Int) = ChatRenderCaches.onTrimMemory(level)
+            @Suppress("DEPRECATION")
+            override fun onTrimMemory(level: Int) {
+                ChatRenderCaches.onTrimMemory(level)
+                if (level != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN &&
+                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE) {
+                    ToolPayloadCache.clear()
+                }
+            }
             @Suppress("OVERRIDE_DEPRECATION")
-            override fun onLowMemory() = ChatRenderCaches.clearAll()
+            override fun onLowMemory() {
+                ChatRenderCaches.clearAll()
+                ToolPayloadCache.clear()
+            }
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
         })
         applicationScope.launch { container.defaultDataInitializer.initialize() }
