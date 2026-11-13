@@ -11,8 +11,8 @@ import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.findChildOfType
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.CancellationToken
-import org.intellij.markdown.parser.EmptyStreamingMarkdownFile
-import org.intellij.markdown.parser.StreamingMarkdownFile
+import org.intellij.markdown.parser.MarkdownParser
+import org.starfall.generative.features.home.chat.logic.markdown.stableMarkdownPrefixLength
 import org.starfall.generative.features.home.chat.model.StreamTextSnapshot
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -85,20 +85,30 @@ internal class MarkdownParserCancellationToken : CancellationToken {
 }
 
 /**
- * App-side wrapper around JetBrains Markdown's append-only parser. Stable AST rows are copied only when
- * first finalized; the parser's unstable tail is deliberately capped by the caller to bound reparsing.
+ * Parse only the unsettled source tail with the canonical GFM parser, retaining finished blocks.
+ * JetBrains StreamingMarkdownFile can silently drop list items at arbitrary fragment boundaries,
+ * so it must not be the source of truth for streamed Markdown nodes.
  */
 internal class IncrementalMarkdownParser(
     private val cancellationToken: CancellationToken
 ) {
-    val file: StreamingMarkdownFile = EmptyStreamingMarkdownFile(GFMFlavourDescriptor(), cancellationToken)
-    val referenceLinkHandler = ReferenceLinkHandlerImpl()
-
+    private val parser = MarkdownParser(GFMFlavourDescriptor(), cancellationToken = cancellationToken)
+    private var parsedLength = 0
+    private var stableLength = 0
     private var stableNodes: PersistentList<ASTNode> = persistentListOf()
-    private var stableNodeCount = 0
     private var unstableNodes: List<ASTNode> = emptyList()
     private var overflowStart: Int? = null
     private var revision = 0L
+
+    /** Stable root identity for the library's Markdown state; children reflect the current snapshot. */
+    val file: ASTNode = object : ASTNode {
+        override val type get() = MarkdownElementTypes.MARKDOWN_FILE
+        override val startOffset get() = 0
+        override val endOffset get() = parsedLength
+        override val parent: ASTNode? get() = null
+        override val children: List<ASTNode> get() = stableNodes + unstableNodes
+    }
+    val referenceLinkHandler = ReferenceLinkHandlerImpl()
 
     fun append(
         text: String,
@@ -114,72 +124,70 @@ internal class IncrementalMarkdownParser(
 
         while (consumed < text.length && overflowStart == null) {
             cancellationToken.checkCancelled()
-            val currentTailStart = unstableNodes.firstOrNull()?.startOffset ?: file.endOffset
-            val currentTailLength = (file.endOffset - currentTailStart).coerceAtLeast(0)
-            val remainingTailBudget = maxUnstableTailChars - currentTailLength
+            val remainingTailBudget = maxUnstableTailChars - (parsedLength - stableLength)
             if (remainingTailBudget <= 0) {
-                overflowStart = currentTailStart
-                IncrementalMarkdownMetrics.recordFallback()
+                enterOverflow()
                 break
             }
 
             val appendLimit = minOf(maxParserAppendChars, remainingTailBudget, text.length - consumed)
             val end = safeAppendEnd(text, consumed, appendLimit)
             if (end <= consumed) {
-                // Do not split a surrogate pair merely to fill the last unit of the parser budget.
-                overflowStart = currentTailStart
-                IncrementalMarkdownMetrics.recordFallback()
+                // Do not split a surrogate pair merely to fill the parser budget.
+                enterOverflow()
                 break
             }
-            val chunk = text.substring(consumed, end)
-            val estimatedParserChars = currentTailLength + chunk.length
-            file.append(chunk)
-            consumed = end
 
-            val newStable = ArrayList<ASTNode>()
-            val allStable = file.stableChildren
-            while (stableNodeCount < allStable.size) {
-                newStable += allStable[stableNodeCount]
-                stableNodeCount++
-            }
-            if (newStable.isNotEmpty()) {
+            val chunkLength = end - consumed
+            val tail = source.slice(stableLength, parsedLength + chunkLength)
+            val estimatedParserChars = tail.length
+            val tree = parser.buildMarkdownTreeFromString(tail)
+            cancellationToken.checkCancelled()
+
+            // Freeze only entire top-level nodes at a boundary where later tokens cannot change
+            // their meaning. Keep a list together across blank lines so its items are not split.
+            val prefix = stableMarkdownPrefixLength(tail)
+            val closedParagraph = tail.endsWith("\n\n") &&
+                tree.children.lastOrNull { it.type.name != "EOL" }?.type == MarkdownElementTypes.PARAGRAPH
+            val proposedCut = if (closedParagraph) tail.length else prefix
+            val cut = proposedCut.takeIf { boundary ->
+                boundary > 0 && tree.children.none { it.startOffset < boundary && it.endOffset > boundary }
+            } ?: 0
+            val finished = tree.children.takeWhile { it.endOffset <= cut }
+            if (finished.isNotEmpty()) {
+                val newStable = finished.map { OffsetMarkdownAstNode(it, stableLength) }
                 stableNodes = stableNodes.addingAll(newStable)
                 newStable.forEach { collectLinkUpdates(it, source, linkUpdates) }
             }
-            unstableNodes = file.unstableTail.toList()
+            unstableNodes = tree.children.drop(finished.size).map { OffsetMarkdownAstNode(it, stableLength) }
+            stableLength += cut
+            parsedLength += chunkLength
+            consumed = end
             unstableNodes.forEach { collectLinkUpdates(it, source, linkUpdates) }
 
-            val tailStart = unstableNodes.firstOrNull()?.startOffset ?: file.endOffset
-            val tailLength = (file.endOffset - tailStart).coerceAtLeast(0)
-            IncrementalMarkdownMetrics.recordAppend(chunk.length, estimatedParserChars, tailLength)
-            if (tailLength >= maxUnstableTailChars) {
-                overflowStart = tailStart
-                IncrementalMarkdownMetrics.recordFallback()
-            }
+            val remainingLength = parsedLength - stableLength
+            IncrementalMarkdownMetrics.recordAppend(chunkLength, estimatedParserChars, remainingLength)
+            if (remainingLength >= maxUnstableTailChars) enterOverflow()
         }
 
         revision++
         return IncrementalMarkdownAppendResult(
-            snapshot = IncrementalMarkdownSnapshot(
-                stableNodes = stableNodes,
-                unstableNodes = unstableNodes,
-                parsedLength = file.endOffset,
-                overflowStart = overflowStart,
-                revision = revision
-            ),
+            snapshot = currentSnapshot(),
             consumedChars = consumed,
             linkUpdates = linkUpdates.entries.map { it.key to it.value }
         )
     }
 
-    /** Stops parsing the unstable tail and exposes its source range for complete plain-text rendering. */
+    private fun enterOverflow() {
+        overflowStart = stableLength
+        IncrementalMarkdownMetrics.recordFallback()
+    }
+
+    /** Stops parsing the unsettled tail and exposes its complete source as plain text. */
     fun preserveUnstableTailAsPlainText(): IncrementalMarkdownSnapshot {
         if (overflowStart == null) {
-            // Stable nodes end before this point. Replacing every unstable AST node with the full source
-            // slice from this offset avoids both duplicated tail text and partial Select all ranges.
-            overflowStart = unstableNodes.firstOrNull()?.startOffset ?: file.endOffset
+            enterOverflow()
             revision++
-            IncrementalMarkdownMetrics.recordFallback()
         }
         return currentSnapshot()
     }
@@ -187,7 +195,7 @@ internal class IncrementalMarkdownParser(
     fun currentSnapshot(): IncrementalMarkdownSnapshot = IncrementalMarkdownSnapshot(
         stableNodes = stableNodes,
         unstableNodes = unstableNodes,
-        parsedLength = file.endOffset,
+        parsedLength = parsedLength,
         overflowStart = overflowStart,
         revision = revision
     )
@@ -215,8 +223,10 @@ internal class IncrementalMarkdownParser(
         fun visit(node: ASTNode) {
             var linkOnly = false
             val label = when (node.type) {
-                MarkdownElementTypes.LINK_DEFINITION -> node.findChildOfType(MarkdownElementTypes.LINK_LABEL)?.let(::unescaped)
-                MarkdownElementTypes.INLINE_LINK -> node.findChildOfType(MarkdownElementTypes.LINK_TEXT)?.let(::unescaped)
+                MarkdownElementTypes.LINK_DEFINITION -> node.findChildOfType(MarkdownElementTypes.LINK_LABEL)
+                    ?.let { unescaped(it).removeSurrounding("[", "]") }
+                MarkdownElementTypes.INLINE_LINK -> node.findChildOfType(MarkdownElementTypes.LINK_TEXT)
+                    ?.let { unescaped(it).removeSurrounding("[", "]") }
                 MarkdownElementTypes.AUTOLINK -> {
                     linkOnly = true
                     unescaped(node.children.firstOrNull { it.type.name == MarkdownElementTypes.AUTOLINK.name } ?: node)
@@ -247,5 +257,20 @@ internal class ShiftedMarkdownAstNode(
     override val parent: ASTNode? get() = parentNode
     override val children: List<ASTNode> by lazy(LazyThreadSafetyMode.NONE) {
         source.children.map { ShiftedMarkdownAstNode(it, offset, this) }
+    }
+}
+
+/** Translate a tail-local parsed subtree into the offsets of the append-only message source. */
+private class OffsetMarkdownAstNode(
+    private val node: ASTNode,
+    private val offset: Int,
+    private val parentNode: ASTNode? = null
+) : ASTNode {
+    override val type get() = node.type
+    override val startOffset get() = node.startOffset + offset
+    override val endOffset get() = node.endOffset + offset
+    override val parent: ASTNode? get() = parentNode
+    override val children: List<ASTNode> by lazy(LazyThreadSafetyMode.NONE) {
+        node.children.map { OffsetMarkdownAstNode(it, offset, this) }
     }
 }

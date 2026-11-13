@@ -223,6 +223,52 @@ class StreamingMarkdownPreparationTest {
         compose.onNodeWithText("First heading", useUnmergedTree = true).assertExists()
     }
 
+    @Test fun blankSeparatedOrderedListStaysVisibleWhileStreamingAndAfterFreeze() {
+        val prefix = "Before\n\n1. One  \n   one text\n\n2. Two  \n   two text\n\n"
+        val suffix = "3. Three  \n   three text\n\nAfter"
+        var source by mutableStateOf(StreamTextSnapshot.of())
+        var finished by mutableStateOf(false)
+        val freeze = StreamFreezeSignal()
+        compose.setContent { MaterialTheme {
+            StreamingMarkdownRenderer(
+                content = "",
+                isStreaming = true,
+                streamSnapshot = source,
+                streamGenerationId = 11L,
+                streamMessageId = "ordered-list-reply",
+                streamFreezeSignal = freeze,
+                streamGrowthActive = !finished
+            )
+        } }
+        compose.runOnIdle { source = source.append(prefix, 1L) }
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("One", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithText("Two", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.runOnIdle { source = source.append(suffix, 2L) }
+        compose.waitUntil(10_000) {
+            listOf("One", "Two", "Three", "After").all { label ->
+                compose.onAllNodesWithText(label, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        compose.runOnIdle { finished = true; freeze.freeze() }
+        listOf("One", "Two", "Three", "After").forEach { label ->
+            compose.onNodeWithText(label, substring = true, useUnmergedTree = true).assertExists()
+        }
+    }
+
+    @Test fun completeOrderedListIsPresentOnColdReopen() {
+        val content = "Before\n\n1. One  \n   one text\n\n2. Two  \n   two text\n\n3. Three  \n   three text\n\nAfter"
+        compose.setContent { MaterialTheme {
+            MarkdownRenderer(content, cacheIdentity = MarkdownRenderCacheIdentity("chat", "ordered-reopen"))
+        } }
+        compose.waitUntil(10_000) {
+            listOf("One", "Two", "Three", "After").all { label ->
+                compose.onAllNodesWithText(label, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+    }
+
     @Test fun coldStreamingRowCoalescesUnseenPublicationsInsteadOfReplayingEveryChunk() {
         var source = StreamTextSnapshot.of("")
         repeat(200) { index -> source = source.append("Block ${index + 1}\n\n", index + 1L) }

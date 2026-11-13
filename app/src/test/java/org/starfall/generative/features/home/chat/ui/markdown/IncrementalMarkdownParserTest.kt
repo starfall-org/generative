@@ -166,6 +166,58 @@ class IncrementalMarkdownParserTest {
         }
     }
 
+    @Test
+    fun orderedListWithBlankSeparatedItemsSurvivesEverySevenCharacterFragment() = runBlocking {
+        val text = "Before\n\n1. One  \n   one text\n\n2. Two  \n   two text\n\n3. Three  \n   three text\n\nAfter"
+        val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
+        var source = StreamTextSnapshot.of()
+        text.chunked(7).forEachIndexed { index, fragment ->
+            source = source.append(fragment, (index + 1).toLong())
+            parser.append(fragment, source, maxUnstableTailChars = 512, maxParserAppendChars = 7)
+            val partial = parseLibraryMarkdown(source.materialize()) as State.Success
+            assertEquals("AST must never lose content after fragment $index", astShape(partial.node), astShape(parser.file))
+        }
+        val list = parser.file.children.single { it.type.name == "ORDERED_LIST" }
+        assertEquals(3, list.children.count { it.type.name == "LIST_ITEM" })
+        assertEquals(3, parser.currentSnapshot().stableNodes
+            .flatMap { node -> if (node.type.name == "ORDERED_LIST") node.children else emptyList() }
+            .count { it.type.name == "LIST_ITEM" })
+    }
+
+    @Test
+    fun multiLineVietnameseOrderedListPreservesAllItemsAcrossRandomStreamBoundaries() = runBlocking {
+        val text = """Hiện tại, dòng **Gemini 4 có 3 biến thể chính**:
+
+1. **Gemini 4 Hydrogen**${"  "}
+   Tối ưu tốc độ, chi phí và các tác vụ hằng ngày như coding, agent workflow, xử lý tài liệu.
+
+2. **Gemini 4 Argon**${"  "}
+   Model frontier cho suy luận phức tạp, coding nâng cao, phân tích tài chính/pháp lý và các tác vụ dài hơn.
+
+3. **Gemini 4 Carbon**${"  "}
+   Biến thể cao cấp nhất, tập trung vào suy luận dài hạn, kỹ thuật phức tạp và an ninh mạng.
+
+Vì vậy, nếu chỉ tính **các model cốt lõi được Google công bố**, câu trả lời là **3 biến thể: Hydrogen, Argon và Carbon**. Các mức `low`, `medium`, `high`, `xhigh` của Hydrogen là **mức độ suy luận**, không phải biến thể model riêng. Google cũng có thể triển khai chúng dưới các sản phẩm chuyên biệt, chẳng hạn phiên bản dành cho robotics, nhưng không nhất thiết là một model cốt lõi thứ tư."""
+        val random = Random(0x51A7)
+        repeat(25) { run ->
+            val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
+            var source = StreamTextSnapshot.of()
+            var cursor = 0
+            var sequence = 0L
+            while (cursor < text.length) {
+                val end = (cursor + random.nextInt(1, 25)).coerceAtMost(text.length)
+                val fragment = text.substring(cursor, end)
+                source = source.append(fragment, ++sequence)
+                parser.append(fragment, source, maxUnstableTailChars = 4_096, maxParserAppendChars = 32)
+                cursor = end
+            }
+            val list = parser.file.children.single { it.type.name == "ORDERED_LIST" }
+            assertEquals("Run $run lost a list item", 3, list.children.count { it.type.name == "LIST_ITEM" })
+            val expected = parseLibraryMarkdown(text) as State.Success
+            assertEquals("Run $run changed Markdown structure", astShape(expected.node), astShape(parser.file))
+        }
+    }
+
     private suspend fun assertMatchesFullParse(text: String, boundaries: List<Int>) {
         val parser = IncrementalMarkdownParser(MarkdownParserCancellationToken())
         var source = StreamTextSnapshot.of()
