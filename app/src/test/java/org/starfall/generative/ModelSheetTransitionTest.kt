@@ -26,6 +26,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
+import org.starfall.generative.features.home.ModelSheetPage
+import org.robolectric.shadows.ShadowDialog
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.shared.model.language.ModelConfiguration
@@ -81,6 +83,34 @@ class ModelSheetTransitionTest {
                 onStartSummary = onStartSummary
             )
         }
+    }
+
+    @Test
+    fun deviceBackReturnsFromModelOptionsBeforeDismissingSheet() {
+        val sheets = BottomSheetsLinkState().apply { openModelOptions() }
+        compose.setContent { Host(sheets) }
+        compose.waitForIdle()
+        val dialog = ShadowDialog.getLatestDialog()
+        compose.runOnIdle { dialog.onBackPressed() }
+        compose.waitForIdle()
+        assertEquals(ModelSheetPage.SELECTED_MODEL, sheets.modelSheetPage)
+        compose.runOnIdle { dialog.onBackPressed() }
+        compose.waitForIdle()
+        assertEquals(null, sheets.modelSheetPage)
+    }
+
+    @Test
+    fun deviceBackReturnsFromQuickActionsChildBeforeDismissingSheet() {
+        val sheets = BottomSheetsLinkState().apply { openAddMenu(); openFeatureTools() }
+        compose.setContent { Host(sheets) }
+        compose.waitForIdle()
+        val dialog = ShadowDialog.getLatestDialog()
+        compose.runOnIdle { dialog.onBackPressed() }
+        compose.waitForIdle()
+        assertEquals(org.starfall.generative.features.home.QuickActionsPage.ROOT, sheets.quickActionsPage)
+        compose.runOnIdle { dialog.onBackPressed() }
+        compose.waitForIdle()
+        assertEquals(null, sheets.quickActionsPage)
     }
 
     @Test

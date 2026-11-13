@@ -6,10 +6,7 @@ import org.starfall.generative.features.httptools.ui.HttpToolEditor
 import org.starfall.generative.features.httptools.logic.CustomHttpToolsViewModel
 import android.net.Uri
 import android.widget.Toast
-import androidx.activity.OnBackPressedDispatcher
-import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,7 +23,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavType
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -555,21 +551,13 @@ internal fun AppNavigation(
                 }
             ) {
                     composable(AppDestination.CHAT.route) {
-                        val lifecycleOwner = LocalLifecycleOwner.current
-                        val backDispatcherOwner = checkNotNull(LocalOnBackPressedDispatcherOwner.current)
-                        val inactiveBackDispatcherOwner = remember(lifecycleOwner) {
-                            object : OnBackPressedDispatcherOwner {
-                                override val lifecycle = lifecycleOwner.lifecycle
-                                override val onBackPressedDispatcher = OnBackPressedDispatcher()
-                            }
-                        }
-                        CompositionLocalProvider(
-                            LocalOnBackPressedDispatcherOwner provides
-                                if (chatOnTop) backDispatcherOwner else inactiveBackDispatcherOwner
-                        ) {
-                            val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
-                            ModalNavigationDrawer(
-                                drawerState = drawerState,
+                        // Retain the drawer's state across navigation without overriding the
+                        // Activity/Dialog Back dispatcher inherited by chat BottomSheets.
+                        val inactiveDrawer = rememberDrawerState(DrawerValue.Closed)
+                        val visibleDrawer = if (chatOnTop) drawerState else inactiveDrawer
+                        val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
+                        ModalNavigationDrawer(
+                                drawerState = visibleDrawer,
                                 gesturesEnabled = chatOnTop,
                                 scrimColor = drawerScrim,
                                 drawerContent = {
@@ -577,7 +565,7 @@ internal fun AppNavigation(
                                         conversations = conversations,
                                         providers = providers,
                                         currentConversationId = currentConvId,
-                                        isOpen = drawerState.isOpen,
+                                        isOpen = visibleDrawer.isOpen,
                                         generatingConversationIds = generatingConversationIds,
                                         organization = appPrefs.chatRelations.sidebar,
                                         backgroundImage = appPrefs.userProfile.drawerBackground,
@@ -756,7 +744,6 @@ internal fun AppNavigation(
                      )
                         }
                             }
-                        }
                     }
                     composable(
                         "terminal/{machineId}",
