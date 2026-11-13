@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.currentCompositionLocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
@@ -40,6 +41,9 @@ import org.starfall.generative.shared.ui.screens.screenScale
 import org.starfall.generative.shared.ui.screens.LocalScreenNavigator
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionSettled
+
+/** True while a retained destination is still visible during a screen transition. */
+internal val LocalRetainedScreenVisible = compositionLocalOf { true }
 
 /**
  * Keeps the full back stack composed (including nonvisible entries), which is
@@ -174,7 +178,8 @@ internal fun RetainedNavHost(
                         CompositionLocalProvider(registered?.context ?: currentCompositionLocalContext) {
                             CompositionLocalProvider(
                                 LocalScreenTransitionActive provides (entry.id == current?.id),
-                                LocalScreenTransitionSettled provides (entry.id == current?.id && !transitioning)
+                                LocalScreenTransitionSettled provides (entry.id == current?.id && !transitioning),
+                                LocalRetainedScreenVisible provides visible
                             ) {
                                 entry.LocalOwnersProvider(holder) { content() }
                             }

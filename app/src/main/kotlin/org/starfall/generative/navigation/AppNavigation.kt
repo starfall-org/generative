@@ -551,10 +551,11 @@ internal fun AppNavigation(
                 }
             ) {
                     composable(AppDestination.CHAT.route) {
-                        // Retain the drawer's state across navigation without overriding the
-                        // Activity/Dialog Back dispatcher inherited by chat BottomSheets.
+                        // Keep the drawer visible until the Chat exit animation finishes.
+                        // Once Chat is parked, use a closed drawer so it cannot intercept Back.
+                        // Do not override the dialog Back dispatcher used by Chat BottomSheets.
                         val inactiveDrawer = rememberDrawerState(DrawerValue.Closed)
-                        val visibleDrawer = if (chatOnTop) drawerState else inactiveDrawer
+                        val visibleDrawer = if (LocalRetainedScreenVisible.current) drawerState else inactiveDrawer
                         val drawerScrim = modalScrimColor(DrawerDefaults.scrimColor)
                         ModalNavigationDrawer(
                                 drawerState = visibleDrawer,
