@@ -98,8 +98,8 @@ private fun ProviderFolderMiniGrid(groupId: String, providers: List<ModelProvide
 }
 
 private const val FolderPageOpacity = 0.6f
-internal const val FolderOpenDurationMillis = 600 // 20% longer than the previous 500ms.
-internal const val FolderCloseDurationMillis = 450
+internal const val FolderOpenDurationMillis = 300
+internal const val FolderCloseDurationMillis = 300
 private const val FolderCollapsedWidthFraction = 0.30f
 
 /**
@@ -174,7 +174,6 @@ internal fun ProviderFolderOverlay(
     onDropMember: () -> Boolean,
     showExitHint: Boolean,
     visible: Boolean,
-    animateEnter: Boolean = true,
     onExitFinished: () -> Unit,
     onDismiss: () -> Unit,
     onAddProvider: () -> Unit,
@@ -189,13 +188,13 @@ internal fun ProviderFolderOverlay(
     val gridState = rememberLazyGridState()
     // Keep the detail expansion and full-screen backdrop fade on the same reversible timeline.
     // The scaled starting rect stays centred on the tapped card, even after root scrolling.
-    val progress = remember { Animatable(if (animateEnter) 0f else 1f) }
+    val progress = remember { Animatable(0f) }
     LaunchedEffect(visible, animateExitImmediately) {
         if (visible) {
-            if (animateEnter) progress.animateTo(
+            progress.animateTo(
                 1f,
                 animationSpec = tween(durationMillis = FolderOpenDurationMillis, easing = FastOutSlowInEasing)
-            ) else progress.snapTo(1f)
+            )
         } else {
             // When dragging a member out, uncover the root grid immediately for drop targeting.
             if (animateExitImmediately) progress.snapTo(0f)

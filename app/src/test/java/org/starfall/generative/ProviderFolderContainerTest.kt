@@ -3,13 +3,17 @@ package org.starfall.generative
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,6 +26,7 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.features.providers.list.ui.ProvidersScreen
+import org.starfall.generative.navigation.RetainedNavHost
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h1000dp-xhdpi")
@@ -39,7 +44,8 @@ class ProviderFolderContainerTest {
     private fun showFolder(
         source: List<ModelProvider> = providers,
         writes: MutableList<ProviderPlacement> = mutableListOf(),
-        groups: List<ProviderGroup> = listOf(group)
+        groups: List<ProviderGroup> = listOf(group),
+        retainScreenOnEditor: Boolean = false
     ) {
         compose.setContent {
             MaterialTheme {
@@ -53,7 +59,7 @@ class ProviderFolderContainerTest {
                         providerGroups = groups,
                         isGridView = gridView,
                         onToggleGridView = { gridView = it },
-                        onOpenProviderEditor = { _, _ -> editorOpened = true },
+                        onOpenProviderEditor = { _, _ -> editorOpened = !retainScreenOnEditor },
                         onDeleteProvider = {},
                         onReorderProviders = {},
                         onBack = {},
@@ -91,7 +97,10 @@ class ProviderFolderContainerTest {
         compose.onNodeWithTag("provider_folder_header_icon_g", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("provider_folder_header_name_g", useUnmergedTree = true).assertTextEquals("Folder")
         compose.onNodeWithTag("provider_folder_toolbar_g", useUnmergedTree = true).assertExists()
-        val menuLeft = compose.onNodeWithContentDescription("More options", useUnmergedTree = true)
+        val menuLeft = compose.onNode(
+            hasContentDescription("More options") and hasAnyAncestor(hasTestTag("provider_folder_toolbar_g")),
+            useUnmergedTree = true
+        )
             .fetchSemanticsNode().boundsInRoot.left
         val addLeft = compose.onNodeWithTag("add_folder_provider", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot.left
@@ -122,14 +131,85 @@ class ProviderFolderContainerTest {
     }
 
     @Test
+    fun reopeningFolderAfterRetainedEditorStillAnimates() {
+        showFolder(retainScreenOnEditor = true)
+        compose.onNodeWithTag("provider_group_g").performClick()
+        compose.onNodeWithTag("add_folder_provider", useUnmergedTree = true).performClick()
+        val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        compose.onRoot().performTouchInput {
+            click(Offset(rootBounds.width / 2f, rootBounds.height - 48f))
+        }
+        compose.waitForIdle()
+
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("provider_group_g").performClick()
+        compose.mainClock.advanceTimeBy(50)
+        val openingWidth = compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot.width
+        compose.mainClock.advanceTimeBy(300)
+        val openWidth = compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot.width
+        assertTrue("A newly opened folder must expand from its tile", openingWidth < openWidth)
+    }
+
+    @Test
+    fun editorNavigationRetainsTheOpenFolderAndProvidersComposition() {
+        lateinit var nav: NavHostController
+        var mounts = 0
+        var disposals = 0
+        compose.setContent {
+            nav = rememberNavController()
+            MaterialTheme {
+                RetainedNavHost(nav, startDestination = "providers") {
+                    composable("providers") {
+                        DisposableEffect(Unit) {
+                            mounts++
+                            onDispose { disposals++ }
+                        }
+                        ProvidersScreen(
+                            providers = providers,
+                            providerGroups = listOf(group),
+                            isGridView = true,
+                            onOpenProviderEditor = { _, isNew ->
+                                nav.navigate(if (isNew) "providers/new" else "providers/edit/member-a")
+                            },
+                            onDeleteProvider = {},
+                            onReorderProviders = {},
+                            onBack = {}
+                        )
+                    }
+                    composable("providers/new") { Text("New editor", Modifier.testTag("provider_editor")) }
+                    composable("providers/edit/{providerId}") { Text("Edit editor", Modifier.testTag("provider_editor")) }
+                }
+            }
+        }
+        compose.onNodeWithTag("provider_group_g").performClick()
+        listOf("add_folder_provider", "provider_folder_provider_member-a").forEach { entryTag ->
+            compose.onNodeWithTag(entryTag, useUnmergedTree = true).performClick()
+            compose.onNodeWithTag("provider_editor").assertIsDisplayed()
+            compose.runOnIdle {
+                assertEquals(1, mounts)
+                assertEquals(0, disposals)
+                nav.popBackStack()
+            }
+            compose.onNodeWithTag("provider_folder_screen_g", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithTag("provider_folder_provider_member-a", useUnmergedTree = true).assertExists()
+            compose.runOnIdle {
+                assertEquals(1, mounts)
+                assertEquals(0, disposals)
+            }
+        }
+    }
+
+    @Test
     fun folderToolbarSwitchesBetweenGridAndListWithoutClosingTheFolder() {
         showFolder()
         compose.onNodeWithTag("provider_group_g").performClick()
-        compose.onNodeWithContentDescription("Switch to list view").performClick()
+        compose.onNodeWithContentDescription("Switch to List View").performClick()
         compose.onNodeWithTag("provider_folder_screen_g").assertExists()
-        compose.onNodeWithContentDescription("Switch to grid view").assertExists()
-        compose.onNodeWithContentDescription("Switch to grid view").performClick()
-        compose.onNodeWithContentDescription("Switch to list view").assertExists()
+        compose.onNodeWithContentDescription("Switch to Grid View").assertExists()
+        compose.onNodeWithContentDescription("Switch to Grid View").performClick()
+        compose.onNodeWithContentDescription("Switch to List View").assertExists()
     }
 
     @Test
@@ -162,14 +242,10 @@ class ProviderFolderContainerTest {
         showFolder(groups = listOf(group, sibling))
         val siblingCenter = compose.onNodeWithTag("provider_group_sibling")
             .fetchSemanticsNode().boundsInRoot.center
-
         compose.onNodeWithTag("provider_group_g").performClick()
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
-        val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        compose.onRoot().performTouchInput {
-            click(Offset(rootBounds.width / 2f, rootBounds.height - 48f))
-        }
+        compose.onNodeWithTag("provider_folder_header_gesture_g").performTouchInput { swipeRight() }
         compose.mainClock.advanceTimeByFrame()
         compose.onRoot().performTouchInput { click(siblingCenter) }
         compose.mainClock.advanceTimeByFrame()

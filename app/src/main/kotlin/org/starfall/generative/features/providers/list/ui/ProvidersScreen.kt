@@ -83,9 +83,8 @@ fun ProvidersScreen(
     var pendingGridLayout by remember { mutableStateOf<ProviderDragLayout?>(null) }
     var collapsedSections by remember { mutableStateOf(collapsedSectionsState) }
     var pendingCollapsedSections by remember { mutableStateOf<Set<String>?>(null) }
-    // Preserve the opened folder when navigation temporarily disposes this screen for provider editing.
+    // The retained screen keeps the opened folder while a provider is being edited.
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
-    var skipNextFolderEnterAnimation by rememberSaveable { mutableStateOf(false) }
     // Folder selection controls input; rendered pages live independently through their exit animation.
     val renderedFolderGroups = remember { mutableStateMapOf<String, ProviderGroup>() }
     val folderOriginBounds = remember { mutableStateMapOf<String, Rect>() }
@@ -139,14 +138,12 @@ fun ProvidersScreen(
     // Render exits first; the active folder is always the uppermost interactive page.
     val folderOverlayGroups = renderedFolderGroups.values.filter { it.id != openGroupId } +
         listOfNotNull(openGroup)
+    fun closeFolder() {
+        openGroupId = null
+    }
     BackHandler(enabled = LocalScreenTransitionActive.current && openGroup != null) {
-        if (openGroupId != null) openGroupId = null
+        if (openGroupId != null) closeFolder()
     }
-    // The skip flag is one-shot: the overlay reads it when first composed, then it is cleared so later opens animate.
-    LaunchedEffect(openGroup?.id) {
-        if (openGroup != null) skipNextFolderEnterAnimation = false
-    }
-
     fun createProvider(groupId: String? = null) {
         onOpenProviderEditor(
             ModelProvider(
@@ -291,7 +288,7 @@ fun ProvidersScreen(
         val next = ejectProviderFromFolder(layout, providerId, folderId)
         if (next != layout) applyLayout(next)
         // The stable Launcher host keeps tracking the pointer as the folder page leaves.
-        openGroupId = null
+        closeFolder()
         // The hover is only a preview. An actual drop target must confirm the release.
     }
 
@@ -404,7 +401,7 @@ fun ProvidersScreen(
             searchPlaceholder = stringResource(R.string.search_providers),
             searchExpanded = searching,
             onSearchExpandedChange = { expanded ->
-                if (expanded) openGroupId = null else searchFilterOpen = false
+                if (expanded) closeFolder() else searchFilterOpen = false
                 searching = expanded
             },
             searchPopupOpen = searchFilterOpen,
@@ -644,26 +641,18 @@ fun ProvidersScreen(
                     onDropMember = { liveOrderChanged },
                     showExitHint = dndState.session?.item?.data?.let { !it.isGroup } == true && openGroupId == group.id,
                     visible = openGroupId == group.id && openGroup != null,
-                    animateEnter = !skipNextFolderEnterAnimation,
                     onExitFinished = {
                         if (openGroupId != group.id) {
                             renderedFolderGroups.remove(group.id)
                             folderOriginBounds.remove(group.id)
                         }
                     },
-                    onDismiss = { openGroupId = null },
-                    onAddProvider = {
-                        // Returning from the editor keeps this folder open, so don't replay the open animation.
-                        skipNextFolderEnterAnimation = true
-                        createProvider(group.id)
-                    },
+                    onDismiss = ::closeFolder,
+                    onAddProvider = { createProvider(group.id) },
                     onToggleGridView = { onToggleGridView?.invoke(!isGridView) },
                     onEditGroup = { dialogs.groupToRename = group },
-                    onDeleteGroup = { dialogs.deletingGroup = group; openGroupId = null },
-                    onEditProvider = {
-                        skipNextFolderEnterAnimation = true
-                        onOpenProviderEditor(it, false)
-                    },
+                    onDeleteGroup = { dialogs.deletingGroup = group; closeFolder() },
+                    onEditProvider = { onOpenProviderEditor(it, false) },
                     onMoveProvider = { dialogs.movingProvider = it },
                     onDeleteProvider = { dialogs.deletingProviderId = it },
                     onSetProviderHidden = onSetProviderHidden

@@ -14,6 +14,7 @@ import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.toToolPayload
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.MessageVersion
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -73,7 +74,7 @@ class BuiltInSkillToolsTest {
         assertTrue(searchAgentSkills("", skills).isEmpty())
     }
 
-    @Test fun unrelatedChatDoesNotAttachAnySkillEvenWhenSkillsAreInstalled() {
+    @Test fun unrelatedChatDoesNotAttachAnySkillEvenWhenSkillsAreInstalled() = runBlocking {
         val skills = listOf(
             AgentSkill("review-code", "review-code", "Read source code", "Review code changes"),
             AgentSkill("make-table", "make-table", "Create a table", "Create tabular reports"),
@@ -87,7 +88,7 @@ class BuiltInSkillToolsTest {
         assertTrue(skillsForCurrentTurn(skills, listOf(message("Create a skill")), false).isEmpty())
     }
 
-    @Test fun onlyIntentionallySelectedOrExplicitlyInvokedSkillIsEligible() {
+    @Test fun onlyIntentionallySelectedOrExplicitlyInvokedSkillIsEligible() = runBlocking {
         val skills = listOf(
             AgentSkill("review-code", "review-code", "Review code", "Review code changes"),
             AgentSkill("make-table", "make-table", "Make tables", "Make reports")
@@ -105,7 +106,7 @@ class BuiltInSkillToolsTest {
         assertTrue(skillsForCurrentTurn(skills, listOf(message("review-code and make-table")), false).isEmpty())
     }
 
-    @Test fun priorSkillDoesNotLeakToUnrelatedTurnButExplicitContinuationCanUseIt() {
+    @Test fun priorSkillDoesNotLeakToUnrelatedTurnButExplicitContinuationCanUseIt() = runBlocking {
         val skill = AgentSkill("review-code", "review-code", "Instructions", "Review code")
         val history = listOf(
             message("Review this code", selected = "review-code"),

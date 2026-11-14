@@ -3,12 +3,9 @@ package org.starfall.generative.navigation
 import android.annotation.SuppressLint
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +35,7 @@ import org.starfall.generative.shared.ui.screens.retainWhen
 import org.starfall.generative.shared.ui.screens.screenSlide
 import org.starfall.generative.shared.ui.screens.screenSlideOffset
 import org.starfall.generative.shared.ui.screens.screenScale
+import org.starfall.generative.shared.ui.screens.screenTransitionSpec
 import org.starfall.generative.shared.ui.screens.LocalScreenNavigator
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionSettled
@@ -52,7 +50,6 @@ internal val LocalRetainedScreenVisible = compositionLocalOf { true }
  * currentBackStack without losing the retained-screen behavior.
  */
 @SuppressLint("RestrictedApi") // Navigation offers no public full-back-stack stream.
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RetainedNavHost(
     navController: NavHostController,
@@ -89,27 +86,37 @@ internal fun RetainedNavHost(
     // Exiting pop entries remain in visibleEntries until this host finishes the animation.
     val retainedEntries = (entries + visibleEntries).distinctBy { it.id }
         .filter { it.destination is ComposeNavigator.Destination }
+    // Keep popped destinations at their original depth until Navigation releases them.
+    // The current stack alone cannot provide the depth of an exiting pop destination.
+    val rememberedDepths = remember { mutableMapOf<String, Float>() }
+    val activeDepths = entries.filter { it.destination is ComposeNavigator.Destination }
+        .mapIndexed { index, entry -> entry.id to index.toFloat() }.toMap()
+    val depths = retainedEntries.mapIndexed { index, entry ->
+        entry.id to (activeDepths[entry.id] ?: rememberedDepths[entry.id] ?: index.toFloat())
+    }.toMap()
+    SideEffect {
+        rememberedDepths.keys.retainAll(depths.keys)
+        rememberedDepths.putAll(depths)
+    }
+
     val transition = updateTransition(targetState = current?.id, label = "screen-slide")
+    // One absolute camera position drives translation, scale, and Menu's backdrop.
+    // This also preserves the current transforms when a transition is interrupted.
+    val camera = transition.animateFloat(
+        transitionSpec = { screenTransitionSpec },
+        label = "screen-camera"
+    ) { id -> id?.let(depths::get) ?: 0f }
     val transitioning = transition.currentState != transition.targetState || transition.isRunning
     val fromRoute = retainedEntries.firstOrNull { it.id == transition.currentState }?.destination?.route
     val toRoute = retainedEntries.firstOrNull { it.id == transition.targetState }?.destination?.route
     val moveMenuBackground = movesMenuBackground(fromRoute, toRoute)
-    // A full-screen move needs more time than the fast spec intended for small components.
-    val frontMotion = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    val backMotion = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-    val previousIds = remember { mutableListOf<String>() }
-    val returning = remember(current?.id) { current?.id in previousIds }
-    SideEffect {
-        previousIds.clear()
-        previousIds.addAll(entries.map { it.id })
-    }
+    val fromDepth = transition.currentState?.let(depths::get) ?: 0f
+    val toDepth = transition.targetState?.let(depths::get) ?: 0f
+    val frontId = if (fromDepth > toDepth) transition.currentState else transition.targetState
     // The shared Menu backdrop travels with Menu only on the direct Chat <-> Menu edge.
     // All other destinations slide over the same stationary backdrop.
-    val chatEntryId = retainedEntries.firstOrNull { it.destination.route == "chat" }?.id
-    val backgroundOffset = transition.animateFloat(
-        transitionSpec = { if (moveMenuBackground) frontMotion else snap() },
-        label = "menu-background-slide"
-    ) { id -> if (id == chatEntryId) 1f else 0f }
+    val chatDepth = retainedEntries.firstOrNull { it.destination.route == "chat" }
+        ?.let { depths[it.id] } ?: 0f
     // The navigation library owns popped-entry lifetimes until its transition is complete.
     LaunchedEffect(transitioning, visibleEntries) {
         if (!transitioning) visibleEntries.filter { it.destination is ComposeNavigator.Destination }
@@ -127,7 +134,9 @@ internal fun RetainedNavHost(
             if (menuBackground != null) {
                 Box(Modifier.fillMaxSize()
                     .retainWhen(current?.destination?.route != "chat" || transitioning)
-                    .screenSlide(offset = { if (moveMenuBackground) backgroundOffset.value else 0f })) {
+                    .screenSlide(offset = {
+                        if (moveMenuBackground) (1f + chatDepth - camera.value).coerceIn(0f, 1f) else 0f
+                    })) {
                     menuBackground()
                 }
             }
@@ -140,37 +149,20 @@ internal fun RetainedNavHost(
                     { render(entry) }
                 }
                 key(entry.id) {
-                    val front = entry.id == if (returning) transition.currentState else transition.targetState
-                    val offset = transition.animateFloat(
-                        transitionSpec = {
-                            if (transition.currentState != transition.targetState) {
-                                if (front) frontMotion else backMotion
-                            } else snap()
-                        },
-                        label = "screen-${entry.id}"
-                    ) { id ->
-                        screenSlideOffset(
-                            active = id == entry.id,
-                            front = front
-                        )
-                    }
-                    val scale = transition.animateFloat(
-                        transitionSpec = {
-                            if (transition.currentState != transition.targetState) backMotion else snap()
-                        },
-                        label = "screen-scale-${entry.id}"
-                    ) { id -> screenScale(active = id == entry.id, front = front) }
+                    val front = entry.id == frontId
+                    val depth = depths.getValue(entry.id)
                     val visible = entry.id == current?.id ||
                         (transitioning && entry.id == transition.currentState)
                     Box(Modifier.fillMaxSize().retainWhen(visible).screenSlide(
-                        offset = { offset.value }, scale = { scale.value }
+                        offset = { screenSlideOffset(depth, camera.value) },
+                        scale = { screenScale(depth, camera.value) }
                     ).clipToBounds()
                         .then(if (visible) Modifier else Modifier.clearAndSetSemantics { })) {
                         // Menu screens are transparent. Give the front page its own backdrop
                         // during overlap so the page beneath cannot show through it.
                         if (transitioning && front && entry.destination.route != "chat" && menuBackground != null) {
                             Box(Modifier.fillMaxSize().graphicsLayer {
-                                if (!moveMenuBackground) translationX = -size.width * offset.value
+                                if (!moveMenuBackground) translationX = -size.width * screenSlideOffset(depth, camera.value)
                             }) {
                                 menuBackground()
                             }
