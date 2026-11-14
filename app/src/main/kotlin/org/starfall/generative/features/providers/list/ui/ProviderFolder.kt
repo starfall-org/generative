@@ -205,8 +205,7 @@ internal fun ProviderFolderOverlay(
             onExitFinished()
         }
     }
-    val fraction = progress.value.coerceIn(0f, 1f)
-    val contentAlpha = ((fraction - 0.72f) / 0.22f).coerceIn(0f, 1f)
+    val dragEnabled by remember { derivedStateOf { progress.value.coerceIn(0f, 1f) >= 0.999f } }
     val start = originBounds?.translate(-hostOrigin)
     // A stationary translucent background fades in/out instead of growing from the tapped card.
     val endColor = MaterialTheme.colorScheme.background.copy(alpha = FolderPageOpacity)
@@ -254,9 +253,6 @@ internal fun ProviderFolderOverlay(
     ) {
         val fullWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
         val fullHeightPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
-        val currentBounds = folderExpansionRect(start, fullWidthPx, fullHeightPx, fraction)
-        val cornerRadius = 22.dp * (1f - fraction)
-        val shape = RoundedCornerShape(cornerRadius)
         // Only an open folder blocks the root list; closing keeps drawing without taking touches.
         if (visible) Box(
             Modifier.fillMaxSize().clickable(
@@ -269,7 +265,7 @@ internal fun ProviderFolderOverlay(
         // Its opacity follows the same progress in both directions, including interrupted exits.
         Box(
             Modifier.fillMaxSize()
-                .graphicsLayer { alpha = fraction }
+                .graphicsLayer { alpha = progress.value.coerceIn(0f, 1f) }
                 .background(endColor)
         )
         // Only the folder details expand/contract from the tapped tile.
@@ -277,16 +273,21 @@ internal fun ProviderFolderOverlay(
             interactive = visible,
             modifier = Modifier.fillMaxSize()
                 .graphicsLayer {
+                    val fraction = progress.value.coerceIn(0f, 1f)
+                    val currentBounds = folderExpansionRect(start, fullWidthPx, fullHeightPx, fraction)
                     transformOrigin = TransformOrigin(0f, 0f)
                     translationX = currentBounds.left
                     translationY = currentBounds.top
                     this.scaleX = currentBounds.width / fullWidthPx
                     this.scaleY = currentBounds.height / fullHeightPx
                     alpha = if (start == null) fraction else (fraction * 6f).coerceIn(0f, 1f)
-                    this.shape = shape
+                    shape = RoundedCornerShape(22.dp * (1f - fraction))
                     clip = true
                 }
-                .graphicsLayer { alpha = contentAlpha }
+                .graphicsLayer {
+                    val fraction = progress.value.coerceIn(0f, 1f)
+                    alpha = ((fraction - 0.72f) / 0.22f).coerceIn(0f, 1f)
+                }
                 .testTag("provider_folder_screen_${group.id}")
         ) {
             Box(
@@ -375,8 +376,8 @@ internal fun ProviderFolderOverlay(
                                     targetKey = "folder-slot:${provider.id}",
                                     sourcePriority = 30,
                                     targetPriority = 30,
-                                    sourceEnabled = visible && fraction >= 0.999f,
-                                    targetEnabled = visible && fraction >= 0.999f,
+                                    sourceEnabled = visible && dragEnabled,
+                                    targetEnabled = visible && dragEnabled,
                                     policy = Launcher.DropPolicy(
                                         reorderHitTest = Launcher.Collision.Pointer
                                     ),
