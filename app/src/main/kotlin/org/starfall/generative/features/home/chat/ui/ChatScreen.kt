@@ -84,6 +84,7 @@ fun ChatScreen(
     onOpenTemporaryChat: () -> Unit = onNewChat,
     onOpenSettings: () -> Unit,
     featuresLogoImage: String? = null,
+    workspaceLabel: String? = null,
     backgroundImage: String? = null,
     backgroundTransparency: Float = 0.5f,
     onRegenerate: (String) -> Unit,
@@ -280,7 +281,8 @@ fun ChatScreen(
             topBar = {
                 ChatAppBar(
                     modelName = selectedModelDisplayName,
-                    providerName = selectedProvider?.name.orEmpty(),
+                    providerName = if (workspaceLabel == null) selectedProvider?.name.orEmpty()
+                        else listOfNotNull(workspaceLabel, selectedProvider?.name?.takeIf { it.isNotBlank() }).joinToString(" · "),
                     onOpenDrawer = {
                         minimapState.isOpen = false
                         onOpenDrawer()
@@ -289,7 +291,7 @@ fun ChatScreen(
                     onOpenTemporaryChat = onOpenTemporaryChat,
                     onOpenSettings = onOpenSettings,
                     featuresLogoImage = featuresLogoImage,
-                    isTemporaryChat = conversationMessages.isEmpty() && conversation?.isTemporary != true,
+                    isTemporaryChat = workspaceLabel == null && conversationMessages.isEmpty() && conversation?.isTemporary != true,
                     onOpenModelPicker = {
                         minimapState.isOpen = false
                         bottomSheets.openModelPicker()

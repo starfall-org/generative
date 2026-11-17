@@ -184,4 +184,44 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_machine_options_machine-a").performClick()
         compose.onNodeWithTag("drawer_machine_switch_machine-a").assertIsOn()
     }
+
+    @Test fun remoteChatSwitchIsIndependentAndBelowSsh() {
+        val profile = org.starfall.generative.database.repositories.ServerConnectionProfile("server", "Chat server", "https://example.com", "pin", "client", "server", true)
+        var enabled by mutableStateOf(false)
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                    serverProfiles = listOf(profile), remoteEnabled = enabled, onRemoteEnabled = { enabled = it }, maxExpandedHeight = 400.dp)
+            }
+        }
+        compose.onNodeWithText("Remote Services").performClick()
+        val ssh = compose.onNodeWithTag("drawer_remote_selected_machine").fetchSemanticsNode().boundsInRoot
+        val remote = compose.onNodeWithTag("drawer_server_row").fetchSemanticsNode().boundsInRoot
+        assertTrue(remote.top >= ssh.bottom)
+        compose.onNodeWithTag("drawer_server_switch").assertIsOff().performClick()
+        compose.onNodeWithTag("drawer_server_switch").assertIsOn().performClick()
+        compose.onNodeWithTag("drawer_server_switch").assertIsOff()
+    }
+
+
+    @Test fun offlineServerOffersReconnectWithoutChangingSshOrRemoteSwitch() {
+        val profile = org.starfall.generative.database.repositories.ServerConnectionProfile(
+            "server", "Chat server", "https://example.com", "pin", "client", "server", true)
+        var error by mutableStateOf(true)
+        var reconnects = 0
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                    serverProfiles = listOf(profile), remoteEnabled = true, remoteError = error,
+                    onReconnectServer = { reconnects++; error = false }, maxExpandedHeight = 400.dp)
+            }
+        }
+        compose.onNodeWithText("Remote Services").performClick()
+        compose.onNodeWithTag("drawer_server_switch").assertIsOn()
+        compose.onNodeWithTag("drawer_server_reconnect").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(1, reconnects) }
+        compose.onNodeWithTag("drawer_server_switch").assertIsOn()
+        compose.onNodeWithTag("drawer_server_reconnect").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_machine_options_server").assertDoesNotExist()
+    }
 }

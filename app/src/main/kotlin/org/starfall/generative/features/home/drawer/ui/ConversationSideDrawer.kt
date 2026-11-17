@@ -2,6 +2,8 @@
 
 package org.starfall.generative.features.home.drawer.ui
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
 import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import androidx.activity.compose.BackHandler
@@ -87,6 +89,13 @@ fun ConversationSideDrawer(
     onCloseDrawer: () -> Unit,
     onOpenMediaStorage: () -> Unit = {},
     onOpenRemoteMachines: () -> Unit = {},
+    serverProfiles: List<org.starfall.generative.database.repositories.ServerConnectionProfile> = emptyList(),
+    remoteEnabled: Boolean = false,
+    remoteError: Boolean = false,
+    onReconnectServer: () -> Unit = {},
+    onSelectServer: (String) -> Unit = {},
+    onRemoteEnabled: (Boolean) -> Unit = {},
+    onOpenServerConnections: () -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onPortForward: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit = {},
@@ -95,8 +104,8 @@ fun ConversationSideDrawer(
     onSuggestConversationTitle: (suspend (String) -> Result<String>)? = null
 ) {
     val providersById = remember(providers) { providers.associateBy { it.id } }
-    var search by remember { mutableStateOf("") }
-    var searchExpanded by remember { mutableStateOf(false) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
     var selecting by remember { mutableStateOf(false) }
     // Long-press opens a chat's context menu; selection mode is entered explicitly via Select.
@@ -241,6 +250,10 @@ fun ConversationSideDrawer(
                         onPortForward(machine)
                     },
                     onSaveMachineTools = onSaveMachineTools,
+                    serverProfiles = serverProfiles, remoteEnabled = remoteEnabled, remoteError = remoteError,
+                    onReconnectServer = onReconnectServer,
+                    onSelectServer = onSelectServer, onRemoteEnabled = onRemoteEnabled,
+                    onOpenServerConnections = onOpenServerConnections,
                     modifier = Modifier.testTag("conversation_drawer_quick_shortcuts"),
                     maxExpandedHeight = halfDrawerHeight
                 )

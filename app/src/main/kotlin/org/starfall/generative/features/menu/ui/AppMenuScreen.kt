@@ -80,6 +80,7 @@ fun AppMenuScreen(
     onNavigateToCustomHttpTools: () -> Unit = {},
     onNavigateToSpeech: () -> Unit = {},
     onNavigateToRemoteMachines: () -> Unit = {},
+    onNavigateToServerConnections: () -> Unit = {},
     onNavigateToStorage: () -> Unit = {},
     onNavigateToAppSettings: () -> Unit = {},
     onNavigateToIcons: () -> Unit = {},
@@ -193,6 +194,9 @@ fun AppMenuScreen(
                 items = listOf(ComponentGroupSlot("remote") { modifier, shape ->
                     FeatureButton(stringResource(R.string.remote_ssh), FluentUi.Regular.Desktop,
                         onNavigateToRemoteMachines, modifier, shape, "remote")
+                }, ComponentGroupSlot("server-connection") { modifier, shape ->
+                    FeatureButton(stringResource(R.string.server_connection), FluentUi.Regular.Desktop,
+                        onNavigateToServerConnections, modifier, shape, "server-connection")
                 })
             )
         }

@@ -110,7 +110,8 @@ class AppMenuScreenGroupUiTest {
                     onNavigateToSpeech = { clicked += "Speech" },
                     onNavigateToToolsEditor = { clicked += "Tools" },
                     onNavigateToMcp = { clicked += "MCP" },
-                    onNavigateToRemoteMachines = { clicked += "Remote" }
+                    onNavigateToRemoteMachines = { clicked += "Remote" },
+                    onNavigateToServerConnections = { clicked += "Server" }
                 )
             }
         }
@@ -136,7 +137,6 @@ class AppMenuScreenGroupUiTest {
         val tools = compose.onNodeWithTag("app-menu-feature-tools").fetchSemanticsNode().boundsInRoot
         val mcp = compose.onNodeWithTag("app-menu-mcp").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(tools.left + 4f, tools.top + 4f))
-        tapAt(Offset(mcp.left + 4f, mcp.bottom - 4f))
         tapAt(Offset(tools.left + 40f, tools.top + 40f))
         tapAt(Offset(mcp.left + 40f, mcp.bottom - 40f))
 
@@ -144,9 +144,14 @@ class AppMenuScreenGroupUiTest {
         compose.waitForIdle()
         val remote = compose.onNodeWithTag("app-menu-remote").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(remote.left + 4f, remote.top + 4f))
-        tapAt(Offset(remote.right - 4f, remote.bottom - 4f))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Server Connection"))
+        compose.waitForIdle()
+        val server = compose.onNodeWithTag("app-menu-server-connection").fetchSemanticsNode().boundsInRoot
+        assertTrue(server.top > remote.top)
+        tapAt(Offset(server.right - 4f, server.bottom - 4f))
         tapAt(Offset(remote.left + 40f, remote.top + 40f))
-        assertEquals(listOf("Chat Configuration", "Providers", "Speech", "Tools", "MCP", "Remote"), clicked)
+        tapAt(Offset(server.left + 40f, server.top + 40f))
+        assertEquals(listOf("Chat Configuration", "Providers", "Speech", "Tools", "MCP", "Remote", "Server"), clicked)
     }
 
     @Test

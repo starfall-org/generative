@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
                     // Keep Surface's behaviour of forcing its content to fill the window.
                     InputFocusHost(Modifier.fillMaxSize(), propagateMinConstraints = true) {
                         AppNavigation(viewModel, configurationViewModel, settingsViewModel, remoteMachinesViewModel,
-                            container.toolFiles, container.appDataTransfer,
+                            container.serverConnectionService, container.remoteWorkspace, container.toolFiles, container.appDataTransfer,
                             customHttpToolsViewModel = customHttpToolsViewModel,
                             pendingTerminalMachineId = pendingTerminalMachineId,
                             onTerminalLaunchHandled = { pendingTerminalMachineId = null },

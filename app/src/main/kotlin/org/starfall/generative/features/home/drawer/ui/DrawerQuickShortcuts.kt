@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +61,13 @@ private enum class DrawerShortcutSection { REMOTE, INSTRUCTIONS }
 internal fun DrawerQuickShortcuts(
     onOpenMediaStorage: () -> Unit,
     onOpenRemoteMachines: () -> Unit,
+    serverProfiles: List<org.starfall.generative.database.repositories.ServerConnectionProfile> = emptyList(),
+    remoteEnabled: Boolean = false,
+    remoteError: Boolean = false,
+    onReconnectServer: () -> Unit = {},
+    onSelectServer: (String) -> Unit = {},
+    onRemoteEnabled: (Boolean) -> Unit = {},
+    onOpenServerConnections: () -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onPortForward: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit,
@@ -71,6 +79,8 @@ internal fun DrawerQuickShortcuts(
     val selectedMachine = selectedRemoteMachine(controls.settings, machines)
     var expandedSection by rememberSaveable { mutableStateOf<DrawerShortcutSection?>(null) }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    var serverPickerOpen by rememberSaveable { mutableStateOf(false) }
+    val selectedServer = serverProfiles.firstOrNull { it.selected }
     var machineMenu by remember { mutableStateOf(false) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     val subtitle = selectedMachine?.let { it.name.ifBlank { it.displayHost } }
@@ -180,6 +190,29 @@ internal fun DrawerQuickShortcuts(
                                 }
                             }
                         }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
+                        .testTag("drawer_server_row"), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .clickable { serverPickerOpen = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                            .testTag("drawer_server_picker_trigger"), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(21.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.server_remote_label), style = MaterialTheme.typography.labelSmall)
+                                Text(selectedServer?.name ?: stringResource(R.string.server_remote_select), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (remoteEnabled && remoteError) Text(stringResource(R.string.server_connection_offline),
+                                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                            }
+                            SharedIcon(FluentUi.Regular.ChevronRight, null, modifier = Modifier.size(16.dp))
+                        }
+                        if (remoteEnabled && remoteError && selectedServer != null) {
+                            IconButton(onClick = onReconnectServer, modifier = Modifier.testTag("drawer_server_reconnect")) {
+                                SharedIcon(FluentUi.Regular.ArrowClockwise, stringResource(R.string.server_connection_reconnect))
+                            }
+                        }
+                        Switch(checked = remoteEnabled, enabled = selectedServer != null || remoteEnabled,
+                            onCheckedChange = onRemoteEnabled, modifier = Modifier.testTag("drawer_server_switch"))
                     }
                 }
             },
@@ -298,6 +331,18 @@ internal fun DrawerQuickShortcuts(
             listMaxHeight = 420.dp,
             emptyMessage = stringResource(R.string.remote_servers_none_configured)
         )
+    }
+
+    if (serverPickerOpen) {
+        ItemListSheet(title = stringResource(R.string.server_remote_select), onDismissRequest = { serverPickerOpen = false },
+            items = serverProfiles.map { profile -> ItemListSheetItem(key = profile.id, value = profile,
+                onClick = { onSelectServer(profile.id); serverPickerOpen = false }, selected = profile.selected,
+                icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
+                content = { Column { Text(profile.name); Text(profile.endpoint, style = MaterialTheme.typography.bodySmall) } }) },
+            listMaxHeight = 420.dp, emptyMessage = stringResource(R.string.server_connection_empty),
+            footer = { TextButton(onClick = { serverPickerOpen = false; onOpenServerConnections() }) {
+                Text(stringResource(R.string.server_connection))
+            } })
     }
 
     toolsMachine?.let { machine ->

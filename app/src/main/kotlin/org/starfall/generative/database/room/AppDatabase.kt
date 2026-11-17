@@ -1,5 +1,7 @@
 package org.starfall.generative.database.room
 
+import org.starfall.generative.database.room.dao.ServerConnectionDao
+import org.starfall.generative.database.room.entities.ServerConnectionEntity
 import org.starfall.generative.database.room.dao.CustomHttpToolDao
 import org.starfall.generative.database.room.entities.CustomHttpToolEntity
 
@@ -90,12 +92,14 @@ import org.starfall.generative.database.room.entities.ConfigurationMigrationQuar
         ConfigurationMigrationQuarantineEntity::class,
         OAuthTokenRecordEntity::class,
         CustomHttpToolEntity::class,
-        RemoteAttachmentEntity::class
+        RemoteAttachmentEntity::class,
+        ServerConnectionEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun serverConnectionDao(): ServerConnectionDao
     abstract fun remoteAttachmentDao(): RemoteAttachmentDao
     abstract fun conversationDao(): ConversationDao
     abstract fun chatProfileDao(): ChatProfileDao
@@ -237,6 +241,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS server_connections (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, endpoint TEXT NOT NULL, pin TEXT NOT NULL, clientId TEXT NOT NULL, serverId TEXT NOT NULL, encryptedSecret TEXT NOT NULL, selected INTEGER NOT NULL)")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -246,7 +256,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "generative_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19).build()
                 INSTANCE = instance
                 instance
             }

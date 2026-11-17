@@ -67,6 +67,14 @@ class AppContainer(context: Context) {
     private val providers = ModelRepository(database, aiService, icons)
     private val mcp = McpRepository(database, mcpService, icons, mcpOAuth, BuildConfig.CONTENT_API_MCP_URL)
     private val httpTools = CustomHttpToolRepository(database)
+    val serverConnections = org.starfall.generative.database.repositories.ServerConnectionRepository(database)
+    private val remoteChatCache = org.starfall.generative.database.repositories.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
+    val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, remoteChatCache)
+    private val remoteWorkspacePreferences = org.starfall.generative.database.preferences.RemoteWorkspacePreferences(appContext)
+    val remoteWorkspace = org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace(
+        serverConnections, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
+        remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache)
     private val speech = SpeechRepository(database)
     val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
