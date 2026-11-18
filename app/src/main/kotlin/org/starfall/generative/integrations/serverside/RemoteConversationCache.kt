@@ -1,4 +1,4 @@
-package org.starfall.generative.database.repositories
+package org.starfall.generative.integrations.serverside
 
 import android.util.AtomicFile
 import java.io.File

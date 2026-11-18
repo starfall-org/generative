@@ -89,6 +89,7 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Codemagic maps CM_* signing variables to KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD.
             // On Appcircle KEYSTORE_PATH is absent, so the "Android Sign" workflow step signs the unsigned APK.
             if (System.getenv("KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("release")
@@ -158,6 +159,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.browser:browser:1.8.0")
     implementation("com.google.android.gms:play-services-auth:22.0.0")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

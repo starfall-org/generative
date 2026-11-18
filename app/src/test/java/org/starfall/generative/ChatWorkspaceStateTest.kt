@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
 import org.junit.Rule
@@ -52,6 +53,30 @@ class ChatWorkspaceStateTest {
         compose.onNodeWithTag("draft").assertTextEquals("server B")
     }
 
+
+    @Test fun remoteChatDraftSurvivesSavedStateRecreationAndChatSwitch() {
+        val first = Conversation(id = "first", title = "", createdAt = 1, updatedAt = 1)
+        val second = first.copy(id = "second")
+        var current by mutableStateOf(first)
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent {
+            val holder = rememberSaveableStateHolder()
+            ChatWorkspaceState(holder, true, "remote:server:owner") {
+                RetainedChatConversations(remember { RetainedChatPages() }, current,
+                    setOf(first.id, second.id), true, restoreChatState = true) { page, _ ->
+                    var draft by rememberSaveable { mutableStateOf("") }
+                    BasicTextField(draft, { draft = it }, Modifier.testTag("draft-${page?.id}"))
+                }
+            }
+        }
+        compose.onNodeWithTag("draft-first").performTextInput("first draft")
+        compose.runOnIdle { current = second }
+        compose.onNodeWithTag("draft-second").performTextInput("second draft")
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithTag("draft-second").assertTextEquals("second draft")
+        compose.runOnIdle { current = first }
+        compose.onNodeWithTag("draft-first").assertTextEquals("first draft")
+    }
 
     @Test fun replacingThePairedIdentityDoesNotRestoreThePreviousIdentityDraft() {
         var identity by mutableStateOf("client-old")

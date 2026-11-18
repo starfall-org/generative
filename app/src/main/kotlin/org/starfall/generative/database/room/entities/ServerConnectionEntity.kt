@@ -1,5 +1,6 @@
 package org.starfall.generative.database.room.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -14,4 +15,7 @@ data class ServerConnectionEntity(
     val serverId: String,
     val encryptedSecret: String,
     val selected: Boolean,
+    @ColumnInfo(defaultValue = "'http'") val transport: String = "http",
+    @ColumnInfo(defaultValue = "''") val sshMachineId: String = "",
+    @ColumnInfo(defaultValue = "0") val allowLocalProviders: Boolean = false,
 )

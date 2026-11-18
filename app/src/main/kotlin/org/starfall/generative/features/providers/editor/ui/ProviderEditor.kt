@@ -1,6 +1,5 @@
 package org.starfall.generative.features.providers.editor.ui
 
-import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import org.starfall.generative.shared.ui.LoadingIndicator
 
 import androidx.activity.compose.BackHandler
@@ -10,9 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,10 +32,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.starfall.generative.R
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.features.providers.shared.ui.ModelConnectionDialog
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
-import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
+import org.starfall.generative.shared.ui.providers.OAuthAccountCard
 import org.starfall.generative.features.providers.shared.ui.AnthropicPromptCacheSettings
 import org.starfall.generative.features.providers.shared.ui.AntigravityVersionFields
 import org.starfall.generative.features.providers.shared.ui.AntigravityProjectIdField
@@ -48,6 +44,7 @@ import org.starfall.generative.features.providers.shared.ui.ProviderApiKeysDialo
 import org.starfall.generative.features.providers.shared.ui.ProviderHeaderRow
 import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
+import org.starfall.generative.shared.ui.providers.ProviderEditorLayout
 import org.starfall.generative.features.providers.shared.ui.ProviderAuthField
 import org.starfall.generative.features.providers.shared.ui.ProviderBaseUrlField
 import org.starfall.generative.features.providers.shared.ui.ProviderHeadersDialog
@@ -83,6 +80,7 @@ import org.starfall.generative.shared.ui.inputs.OutlinedTextField
 import org.starfall.generative.shared.ui.screens.ScreenDestination
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
+import org.starfall.generative.shared.subfeatures.auth.ui.DeviceCodeChallengeText
 import org.starfall.generative.shared.subfeatures.auth.ui.rememberOAuthStart
 import org.starfall.generative.shared.subfeatures.auth.logic.oauthErrorDetails
 
@@ -410,10 +408,10 @@ fun ProviderEditor(
                     }
                 )
             }
-            EditorScreenTemplate(
+            ProviderEditorLayout(
                 title = { Text(name.trim().ifEmpty { type.defaultName }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 onBack = onDismiss,
-                modifier = Modifier.fillMaxSize(),
+                pager = pager,
                 actions = {
                     if (pager.currentPage == 0) {
                         if (!isNew && onDelete != null) {
@@ -442,143 +440,9 @@ fun ProviderEditor(
                             }
                         }
                     }
-                }
-            ) { padding ->
-                Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                    AppSwipeTabs(
-                        tabs = listOf(stringResource(R.string.common_configuration), stringResource(R.string.provider_models)),
-                        pagerState = pager,
-                        modifier = Modifier.weight(1f).fillMaxWidth()
-                    ) { page ->
-                        if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            IconPickerRow(providerIcon, {
-                                providerIcon = it
-                                onSaveIcon(draft())
-                                providerPersisted = true
-                            }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
-                            OutlinedTextField(
-                                value = name,
-                                onValueChange = { name = it },
-                                label = { Text(stringResource(R.string.common_name)) },
-                                placeholder = { Text(type.defaultName) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            ProviderApiTypeSelector(type) { next ->
-                                if (next != type) {
-                                    val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl)
-                                        .withEditorApiType(next)
-                                    name = updated.name
-                                    baseUrl = updated.baseUrl
-                                    type = updated.type
-                                    val auth = next.defaultAuthorization()
-                                    if (authMethod == AuthMethod.BEARER_TOKEN) {
-                                        apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
-                                    }
-                                    authMethod = auth.method
-                                    authName = auth.key.orEmpty()
-                                    oauthAuthorized = false
-                                    oauthIdentity = null
-                                    oauthMarker = ""
-                                    oauthAccountId = null
-                                    oauthAccounts = emptyList()
-                                    antigravityProjectIds = emptyMap()
-                                    geminiCliProjectIds = emptyMap()
-                                    oauthAuthError = null
-                                }
-                            }
-                            if (!type.isAccountProvider) ProviderBaseUrlField(type, baseUrl, urlValid) { baseUrl = it }
-                            if (!type.isAccountProvider && baseUrl.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_provider_warning),
-                                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                            if (type == ModelApiType.OPENAI_CODEX) CodexClientVersionField(
-                                codexClientVersion, codexClientVersionValid) { codexClientVersion = it }
-                            if (type == ModelApiType.ANTIGRAVITY) AntigravityVersionFields(
-                                antigravityVersion, antigravityVersionValid, { antigravityVersion = it },
-                                antigravityChangelist, antigravityChangelistValid, { antigravityChangelist = it })
-                            if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) OutlinedTextField(authName, { authName = it },
-                                label = { Text(stringResource(if (authMethod == AuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
-                                isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
-                            if (!type.isAccountProvider || authMethod != AuthMethod.OAUTH) ProviderAuthField(authMethod, apiKey, !type.isAccountProvider,
-                                onMethodChange = { authMethod = it; authName = if (it == AuthMethod.QUERY_PARAM) "key" else "Authorization"; oauthAuthError = null },
-                                onValueChange = { apiKey = it }, onFocusLost = { if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = bearerHeaderValue(authName.trim().ifBlank { "Authorization" }, apiKey) })
-                            if (authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) {
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .toggleable(value = apiKeys.enabled, role = Role.Checkbox, onValueChange = {
-                                            apiKeys.enabled = it
-                                            if (it) apiKeys.ensureCurrent(::keyIdentity)
-                                            persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
-                                        }),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(checked = apiKeys.enabled, onCheckedChange = null)
-                                    Text(stringResource(R.string.provider_multiple_api_keys), Modifier.padding(start = 8.dp))
-                                }
-                                if (apiKeys.enabled) OutlinedButton(onClick = {
-                                    apiKeys.ensureCurrent(::keyIdentity); showApiKeys = true
-                                }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.provider_manage_api_keys)) }
-                            }
-                            if (authMethod == AuthMethod.OAUTH) OAuthAccountCard(providerType = type, signedIn = oauthAuthorized, identity = oauthIdentity,
-                                signingIn = oauthAuthorizing && !oauthClearing, signingOut = oauthClearing, canSignIn = onAuthorizeProvider != null,
-                                canSignOut = onClearOAuthCredentials != null, canCancelSignIn = onCancelProviderAuthorization != null, error = oauthAuthError,
-                                onSignIn = rememberOAuthStart { scope.launch {
-                                    try { authorizeOAuth() } catch (_: CancellationException) { }
-                                } }, onCancelSignIn = {
-                                    activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) }
-                                }, onSignOut = { scope.launch { removeOAuthAccount(oauthAccountId ?: initialProvider.id) } })
-                            if (type == ModelApiType.ANTIGRAVITY && authMethod == AuthMethod.OAUTH && oauthAuthorized) {
-                                val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
-                                AntigravityProjectIdField(antigravityProjectIds[projectAccountId].orEmpty()) { value ->
-                                    antigravityProjectIds = if (value.isBlank()) antigravityProjectIds - projectAccountId
-                                    else antigravityProjectIds + (projectAccountId to value)
-                                }
-                            }
-                            if (type == ModelApiType.GEMINI_CLI && authMethod == AuthMethod.OAUTH) {
-                                val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
-                                GeminiCliProjectIdField(geminiCliProjectIds[projectAccountId].orEmpty()) { value ->
-                                    geminiCliProjectIds = if (value.isBlank()) geminiCliProjectIds - projectAccountId
-                                    else geminiCliProjectIds + (projectAccountId to value.trim())
-                                }
-                            }
-                            if (authMethod == AuthMethod.OAUTH) {
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .toggleable(value = apiKeys.enabled, role = Role.Checkbox,
-                                            enabled = !oauthAuthorizing, onValueChange = {
-                                                apiKeys.enabled = it
-                                                persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
-                                            }),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(checked = apiKeys.enabled, onCheckedChange = null, enabled = !oauthAuthorizing)
-                                    Text(stringResource(R.string.provider_multiple_accounts), Modifier.padding(start = 8.dp))
-                                }
-                                if (apiKeys.enabled) OutlinedButton(onClick = { showOAuthAccounts = true },
-                                    enabled = !oauthAuthorizing, modifier = Modifier.fillMaxWidth()) {
-                                    Text(stringResource(R.string.provider_manage_accounts))
-                                }
-                            }
-                            HorizontalDivider()
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(stringResource(R.string.stream), Modifier.weight(1f).padding(end = 12.dp))
-                                Switch(supportStream, onCheckedChange = { supportStream = it })
-                            }
-                            HorizontalDivider()
-                            if (type == ModelApiType.ANTHROPIC) {
-                                AnthropicPromptCacheSettings(anthropicPromptCache) { anthropicPromptCache = it }
-                                HorizontalDivider()
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.headers)) }
-                                if (endpointFields(type).isNotEmpty()) OutlinedButton(onClick = { showEndpoints = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.provider_custom)) }
-                            }
-                            if (!endpointsValid && !showEndpoints) Text(stringResource(R.string.provider_endpoints_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                            if (!headersValid && !showHeaders) Text(stringResource(R.string.provider_headers_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        } else ProviderModelsPane(order, models, modelList, onOrderChange = { order = it },
+                },
+                models = {
+                    ProviderModelsPane(order, models, modelList, onOrderChange = { order = it },
                             onDrop = { before, ordered ->
                                 if (providerPersisted) {
                                     if (onReorderModelsTracked != null) {
@@ -589,8 +453,136 @@ fun ProviderEditor(
                                 }
                             }, onEdit = { editingModel = it },
                             onDelete = { updateModels(models - it) }, onOpenCatalog = { showCatalog = true })
+                }
+            ) {
+                IconPickerRow(providerIcon, {
+                    providerIcon = it
+                    onSaveIcon(draft())
+                    providerPersisted = true
+                }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.common_name)) },
+                    placeholder = { Text(type.defaultName) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ProviderApiTypeSelector(type) { next ->
+                    if (next != type) {
+                        val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl)
+                            .withEditorApiType(next)
+                        name = updated.name
+                        baseUrl = updated.baseUrl
+                        type = updated.type
+                        val auth = next.defaultAuthorization()
+                        if (authMethod == AuthMethod.BEARER_TOKEN) {
+                            apiKey = apiKey.replace(Regex("^\\s*Bearer\\s+", RegexOption.IGNORE_CASE), "")
+                        }
+                        authMethod = auth.method
+                        authName = auth.key.orEmpty()
+                        oauthAuthorized = false
+                        oauthIdentity = null
+                        oauthMarker = ""
+                        oauthAccountId = null
+                        oauthAccounts = emptyList()
+                        antigravityProjectIds = emptyMap()
+                        geminiCliProjectIds = emptyMap()
+                        oauthAuthError = null
                     }
                 }
+                if (!type.isAccountProvider) ProviderBaseUrlField(type, baseUrl, urlValid) { baseUrl = it }
+                if (!type.isAccountProvider && baseUrl.trim().startsWith("http://", true)) Text(stringResource(R.string.http_unencrypted_provider_warning),
+                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (type == ModelApiType.OPENAI_CODEX) CodexClientVersionField(
+                    codexClientVersion, codexClientVersionValid) { codexClientVersion = it }
+                if (type == ModelApiType.ANTIGRAVITY) AntigravityVersionFields(
+                    antigravityVersion, antigravityVersionValid, { antigravityVersion = it },
+                    antigravityChangelist, antigravityChangelistValid, { antigravityChangelist = it })
+                if (authMethod in listOf(AuthMethod.BEARER_TOKEN, AuthMethod.QUERY_PARAM)) OutlinedTextField(authName, { authName = it },
+                    label = { Text(stringResource(if (authMethod == AuthMethod.BEARER_TOKEN) R.string.header_key else R.string.query_parameter_name)) },
+                    isError = !authValid, singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (!type.isAccountProvider || authMethod != AuthMethod.OAUTH) ProviderAuthField(authMethod, apiKey, !type.isAccountProvider,
+                    onMethodChange = { authMethod = it; authName = if (it == AuthMethod.QUERY_PARAM) "key" else "Authorization"; oauthAuthError = null },
+                    onValueChange = { apiKey = it }, onFocusLost = { if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = bearerHeaderValue(authName.trim().ifBlank { "Authorization" }, apiKey) })
+                if (authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .toggleable(value = apiKeys.enabled, role = Role.Checkbox, onValueChange = {
+                                apiKeys.enabled = it
+                                if (it) apiKeys.ensureCurrent(::keyIdentity)
+                                persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
+                            }),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = apiKeys.enabled, onCheckedChange = null)
+                        Text(stringResource(R.string.provider_multiple_api_keys), Modifier.padding(start = 8.dp))
+                    }
+                    if (apiKeys.enabled) OutlinedButton(onClick = {
+                        apiKeys.ensureCurrent(::keyIdentity); showApiKeys = true
+                    }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.provider_manage_api_keys)) }
+                }
+                if (authMethod == AuthMethod.OAUTH) OAuthAccountCard(signedIn = oauthAuthorized, identity = oauthIdentity,
+                    signingIn = oauthAuthorizing && !oauthClearing, signingOut = oauthClearing, canSignIn = onAuthorizeProvider != null,
+                    canSignOut = onClearOAuthCredentials != null, canCancelSignIn = onCancelProviderAuthorization != null, error = oauthAuthError,
+                    onSignIn = rememberOAuthStart { scope.launch {
+                        try { authorizeOAuth() } catch (_: CancellationException) { }
+                    } }, onCancelSignIn = {
+                        activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) }
+                    }, onSignOut = { scope.launch { removeOAuthAccount(oauthAccountId ?: initialProvider.id) } },
+                    pendingContent = { DeviceCodeChallengeText(type) })
+                if (type == ModelApiType.ANTIGRAVITY && authMethod == AuthMethod.OAUTH && oauthAuthorized) {
+                    val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
+                    AntigravityProjectIdField(antigravityProjectIds[projectAccountId].orEmpty()) { value ->
+                        antigravityProjectIds = if (value.isBlank()) antigravityProjectIds - projectAccountId
+                        else antigravityProjectIds + (projectAccountId to value)
+                    }
+                }
+                if (type == ModelApiType.GEMINI_CLI && authMethod == AuthMethod.OAUTH) {
+                    val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
+                    GeminiCliProjectIdField(geminiCliProjectIds[projectAccountId].orEmpty()) { value ->
+                        geminiCliProjectIds = if (value.isBlank()) geminiCliProjectIds - projectAccountId
+                        else geminiCliProjectIds + (projectAccountId to value.trim())
+                    }
+                }
+                if (authMethod == AuthMethod.OAUTH) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .toggleable(value = apiKeys.enabled, role = Role.Checkbox,
+                                enabled = !oauthAuthorizing, onValueChange = {
+                                    apiKeys.enabled = it
+                                    persistAuxiliary(ProviderAuxiliaryChange.SetMultipleApiKeys(it, apiKeys.entries))
+                                }),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = apiKeys.enabled, onCheckedChange = null, enabled = !oauthAuthorizing)
+                        Text(stringResource(R.string.provider_multiple_accounts), Modifier.padding(start = 8.dp))
+                    }
+                    if (apiKeys.enabled) OutlinedButton(onClick = { showOAuthAccounts = true },
+                        enabled = !oauthAuthorizing, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.provider_manage_accounts))
+                    }
+                }
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.stream), Modifier.weight(1f).padding(end = 12.dp))
+                    Switch(supportStream, onCheckedChange = { supportStream = it })
+                }
+                HorizontalDivider()
+                if (type == ModelApiType.ANTHROPIC) {
+                    AnthropicPromptCacheSettings(anthropicPromptCache) { anthropicPromptCache = it }
+                    HorizontalDivider()
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showHeaders = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.headers)) }
+                    if (endpointFields(type).isNotEmpty()) OutlinedButton(onClick = { showEndpoints = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.provider_custom)) }
+                }
+                if (!endpointsValid && !showEndpoints) Text(stringResource(R.string.provider_endpoints_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (!headersValid && !showHeaders) Text(stringResource(R.string.provider_headers_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             if (showOAuthAccounts) ProviderOAuthAccountsDialog(
                 providerType = type, accounts = oauthAccounts, selectedId = (oauthAccountId ?: initialProvider.id).takeIf { oauthAuthorized },

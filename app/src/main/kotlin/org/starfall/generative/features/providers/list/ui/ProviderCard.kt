@@ -13,24 +13,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.ItemCard
-import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
+import org.starfall.generative.shared.ui.providers.ProviderDisplayCard
+import org.starfall.generative.shared.ui.providers.ProviderListCardHeight
+import org.starfall.generative.shared.ui.providers.ProviderGridCardHeight
 
-private val ProviderListCardHeight = 88.dp
-private val ProviderGridCardHeight = 152.dp
 
 /** One root tile: a provider card or a folder card. Shared by the grid cell and the drag ghost. */
 @Composable
@@ -144,47 +141,13 @@ fun ProviderUnifiedCard(
     onDelete: () -> Unit,
     onToggleHidden: () -> Unit = {}
 ) {
-    ItemCard(
-        isGrid = isGrid,
-        onClick = onEdit,
-        modifier = modifier
-            .heightIn(min = if (isGrid) ProviderGridCardHeight else ProviderListCardHeight),
-            icon = {
-                EntityIcon(provider.icon, Modifier.size(42.dp), text = providerInitials(provider.name),
-                    matchName = provider.name, grayscale = provider.isHidden)
-            },
-            actions = {
-                ProviderContextMenu(provider.isHidden, onEdit, onMoveToGroup, onDelete, onToggleHidden)
-            },
-            content = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                        Text(
-                            text = provider.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (provider.isHidden) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                            Text(
-                                text = provider.type.displayName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (provider.isHidden) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                    if (!provider.type.isAccountProvider) Text(
-                        text = provider.baseUrl,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = if (provider.isHidden) 0.7f else 1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        )
+    ProviderDisplayCard(
+        name = provider.name, detail = provider.type.displayName,
+        endpoint = provider.baseUrl.takeUnless { provider.type.isAccountProvider },
+        icon = provider.icon, isHidden = provider.isHidden, isGrid = isGrid,
+        modifier = modifier, onClick = onEdit,
+        actions = { ProviderContextMenu(provider.isHidden, onEdit, onMoveToGroup, onDelete, onToggleHidden) }
+    )
 }
 
 @Composable

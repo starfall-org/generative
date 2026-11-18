@@ -1,6 +1,5 @@
 package org.starfall.generative.features.home.chat.logic.input
 
-import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -28,9 +27,6 @@ internal fun filterMediaProvidersForKind(
     providers: List<ModelProvider>,
     mediaKind: ModelType?
 ): List<ModelProvider> = providers.mapNotNull { provider ->
-    if (provider.type !in listOf(ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES, ModelApiType.GOOGLE)) {
-        return@mapNotNull null
-    }
     val models = provider.config.modelConfigs.filter { (id, config) ->
         config.modelType == mediaKind && provider.config.modelIds?.contains(id) != false
     }

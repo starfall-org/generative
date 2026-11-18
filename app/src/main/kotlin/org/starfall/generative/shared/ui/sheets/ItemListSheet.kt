@@ -39,7 +39,7 @@ import org.starfall.generative.shared.ui.lists.ItemCard
 class ItemListSheetItem<T>(
     val key: Any,
     val value: T,
-    val onClick: () -> Unit,
+    val onClick: (() -> Unit)?,
     val icon: @Composable () -> Unit,
     val content: @Composable () -> Unit,
     val actions: @Composable () -> Unit = {},

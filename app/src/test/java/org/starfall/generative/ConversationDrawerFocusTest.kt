@@ -16,8 +16,10 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -37,6 +39,42 @@ import org.starfall.generative.shared.ui.theme.GenerativeTheme
 class ConversationDrawerFocusTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun shortcutsScrollWithConversationHistory() {
+        val conversations = (0 until 30).map { index ->
+            ConversationListItem(
+                id = "chat-$index", title = "Chat $index", createdAt = 1L, updatedAt = index.toLong(),
+                tokenCount = null, providerId = "", modelId = "", profileId = null,
+                reasoningEffort = null, hasMessages = true, hasSummary = false
+            )
+        }
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ConversationSideDrawer(
+                    conversations = conversations,
+                    currentConversationId = null,
+                    isOpen = true,
+                    organization = SidebarOrganization(),
+                    onUpdateOrganization = {},
+                    onDeleteConversations = {},
+                    onSelectConversation = {},
+                    onNewChat = {},
+                    onRenameConversation = { _, _ -> },
+                    onDeleteConversation = {},
+                    onNavigateToSettings = {},
+                    onCloseDrawer = {}
+                )
+            }
+        }
+
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_drawer_list").performScrollToIndex(20)
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsNotDisplayed()
+        compose.onNodeWithTag("conversation_drawer_new_chat").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_drawer_list").performScrollToIndex(0)
+        compose.onNodeWithTag("conversation_drawer_quick_shortcuts").assertIsDisplayed()
+    }
 
     @Test
     fun menuNavigationDoesNotCloseDrawer() {

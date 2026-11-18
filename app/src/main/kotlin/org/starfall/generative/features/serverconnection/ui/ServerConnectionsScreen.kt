@@ -11,9 +11,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.barcode.common.Barcode
+import org.starfall.generative.integrations.serverside.ServerSideInvitation
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -27,12 +33,19 @@ import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.inputs.SelectionDropdown
+import org.starfall.generative.shared.model.RemoteMachine
+import org.starfall.generative.shared.model.RemoteMachineType
 
 @Composable
-fun ServerConnectionsScreen(service: ServerConnections, onBack: () -> Unit) {
+fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) -> Unit,
+    onMcp: (String) -> Unit, onBack: () -> Unit) {
     val profiles by service.profiles.collectAsState(initial = emptyList())
+    val machineState = service.sshMachines?.collectAsState()
+    val sshMachines = machineState?.value?.machines.orEmpty().filter { it.type == RemoteMachineType.SSH }
     var editing by remember { mutableStateOf(false) }
     var edited by remember { mutableStateOf<ServerConnectionProfile?>(null) }
+    var repairing by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<ServerConnectionProfile?>(null) }
     var revoking by remember { mutableStateOf<ServerConnectionProfile?>(null) }
     var result by remember { mutableStateOf<Int?>(null) }
@@ -50,14 +63,20 @@ fun ServerConnectionsScreen(service: ServerConnections, onBack: () -> Unit) {
         }
     }
     if (editing) {
-        ServerConnectionEditor(edited, busy, onBack = { editing = false }, onSave = { name, invitation ->
-            launchOperation {
-                if (edited == null) service.pair(name, invitation)
-                else if (invitation.isNotBlank()) service.rePair(requireNotNull(edited), name, invitation)
-                else service.rename(requireNotNull(edited), name)
-                editing = false
-            }
-        }, error = result == R.string.server_connection_failed)
+        ServerConnectionEditor(edited, sshMachines, busy, repairing, onBack = { editing = false },
+            onSave = { name, transport, invitation, machineId, endpoint, username, password, authUrl, allowLocalProviders ->
+                launchOperation(if (transport == "opencode") R.string.server_connection_opencode_failed else R.string.server_connection_failed) {
+                    val current = edited
+                    if (transport == "opencode" && (current == null || repairing || current.transport != "opencode" || password.isNotBlank() || authUrl.isNotBlank())) {
+                        service.saveOpenCode(current, name, endpoint, username, password, authUrl)
+                    } else if (current == null) service.pair(name, invitation, transport, machineId, allowLocalProviders)
+                    else if (transport == "http" && invitation.isNotBlank() ||
+                        transport == "ssh" && (repairing || current.transport != "ssh" || current.sshMachineId != machineId)) {
+                        service.rePair(current, name, invitation, transport, machineId, allowLocalProviders)
+                    } else service.rename(current, name, allowLocalProviders)
+                    editing = false
+                }
+            }, error = result?.takeIf { it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed })
         return
     }
     var search by rememberSaveable { mutableStateOf("") }
@@ -65,7 +84,7 @@ fun ServerConnectionsScreen(service: ServerConnections, onBack: () -> Unit) {
     val matching = profiles.filter { it.name.contains(search, true) || it.endpoint.contains(search, true) }
     ListScreenTemplate(title = stringResource(R.string.server_connection), onBack = onBack,
         searchQuery = search, onSearchQueryChange = { search = it }, isGrid = grid, onGridChange = { grid = it },
-        primaryActions = { IconButton(onClick = { edited = null; result = null; editing = true }) {
+        primaryActions = { IconButton(onClick = { edited = null; repairing = false; result = null; editing = true }) {
             SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
         } }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -76,18 +95,20 @@ fun ServerConnectionsScreen(service: ServerConnections, onBack: () -> Unit) {
                 LazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1),
                     verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(matching, key = { it.id }) { profile ->
-                        ItemCard(isGrid = gridMode, onClick = { edited = profile; result = null; editing = true },
+                        ItemCard(isGrid = gridMode, onClick = { edited = profile; repairing = false; result = null; editing = true },
                             icon = { SharedIcon(Icons.Outlined.Computer, null) }, content = {
-                                Column { Text(profile.name); Text(profile.endpoint, style = MaterialTheme.typography.bodySmall)
+                                Column { Text(profile.name); Text("${profile.transport.uppercase()} · ${profile.endpoint}", style = MaterialTheme.typography.bodySmall)
                                     if (profile.selected) Text(stringResource(R.string.server_connection_selected), style = MaterialTheme.typography.labelSmall) }
                             }, actions = {
                                 var menu by remember { mutableStateOf(false) }
                                 IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options)) }
                                 org.starfall.generative.shared.ui.menus.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.model_providers)) }, onClick = { menu = false; onProviders(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Computer, null) })
+                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.mcp)) }, onClick = { menu = false; onMcp(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Mcp, null) })
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_test)) }, onClick = { menu = false; launchOperation { service.test(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; edited = profile; result = null; editing = true }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_select)) }, onClick = { menu = false; launchOperation { service.select(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Check, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
+                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; edited = profile; repairing = true; result = null; editing = true }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
+                                    if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_select)) }, onClick = { menu = false; launchOperation { service.select(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Check, null) })
+                                    if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) }, onClick = { menu = false; deleting = profile }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
                                 }
                             })
@@ -110,28 +131,128 @@ fun ServerConnectionsScreen(service: ServerConnections, onBack: () -> Unit) {
 }
 
 @Composable
-private fun ServerConnectionEditor(profile: ServerConnectionProfile?, busy: Boolean, onBack: () -> Unit,
-    onSave: (String, String) -> Unit, error: Boolean) {
+internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines: List<RemoteMachine>,
+    busy: Boolean, repairing: Boolean, onBack: () -> Unit,
+    onSave: (String, String, String, String, String, String, String, String, Boolean) -> Unit, error: Int?) {
     var name by remember(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
+    var program by remember(profile?.id) { mutableStateOf(if (profile?.transport == "opencode") "opencode" else "serverside") }
+    var transport by remember(profile?.id) { mutableStateOf(profile?.transport?.takeIf { it == "ssh" } ?: "http") }
+    var allowLocalProviders by remember(profile?.id) { mutableStateOf(profile?.allowLocalProviders ?: false) }
+    val selectedTransport = if (program == "opencode") "opencode" else transport
     // Invitations contain one-time secrets and must not enter saved instance state.
-    var invitation by remember { mutableStateOf("") }
+    var invitation by remember(profile?.id) { mutableStateOf("") }
+    var scanError by remember(profile?.id) { mutableStateOf(false) }
+    var endpoint by remember(profile?.id) { mutableStateOf(profile?.takeIf { it.transport == "opencode" }?.endpoint.orEmpty()) }
+    var username by remember(profile?.id) { mutableStateOf(profile?.takeIf { it.transport == "opencode" }?.clientId ?: "opencode") }
+    var password by remember(profile?.id) { mutableStateOf("") }
+    var authUrl by remember(profile?.id) { mutableStateOf("") }
+    var authMethod by remember(profile?.id) { mutableStateOf("basic") }
+    val context = LocalContext.current
+    var sshMachineId by remember(profile?.id) { mutableStateOf(profile?.sshMachineId.orEmpty()) }
+    val needsPairing = profile == null || selectedTransport != profile.transport ||
+        (selectedTransport == "http" && invitation.isNotBlank()) ||
+        (selectedTransport == "ssh" && (repairing || sshMachineId != profile.sshMachineId)) ||
+        (selectedTransport == "opencode" && (repairing || password.isNotBlank() || authUrl.isNotBlank() || username != profile.clientId || endpoint != profile.endpoint))
+    val valid = name.isNotBlank() && (!needsPairing || when (selectedTransport) {
+        "http" -> invitation.isNotBlank()
+        "ssh" -> machines.any { it.id == sshMachineId }
+        "opencode" -> if (authMethod == "link") authUrl.isNotBlank() else endpoint.isNotBlank() && password.isNotEmpty()
+        else -> false
+    })
     EditorScreenTemplate(title = stringResource(R.string.server_connection), onBack = onBack, actions = {
-        IconButton(enabled = !busy && name.isNotBlank() && (profile != null || invitation.isNotBlank()),
-            onClick = { onSave(name, invitation) }) { SharedIcon(Icons.Outlined.Check, stringResource(R.string.common_save)) }
+        IconButton(enabled = !busy && valid, onClick = { onSave(name, selectedTransport, invitation, sshMachineId, endpoint, username, password, authUrl, allowLocalProviders) }) {
+            SharedIcon(Icons.Outlined.Check, stringResource(R.string.common_save))
+        }
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (error) Text(stringResource(R.string.server_connection_failed), color = MaterialTheme.colorScheme.error)
+            if (error != null) Text(stringResource(error), color = MaterialTheme.colorScheme.error)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.server_connection_name)) }, singleLine = true)
-            if (profile != null) {
-                Text(profile.endpoint)
-                Text(profile.pin, style = MaterialTheme.typography.bodySmall)
+            SelectionDropdown(label = stringResource(R.string.server_connection_program),
+                options = listOf("serverside" to "ServerSide", "opencode" to "OpenCode"),
+                selected = program, onSelect = { program = it },
+                modifier = Modifier.fillMaxWidth(), enabled = !busy && profile == null)
+            if (program == "serverside") {
+                SelectionDropdown(label = stringResource(R.string.server_connection_transport),
+                    options = listOf("http" to "HTTP", "ssh" to "SSH"), selected = transport,
+                    onSelect = { transport = it }, modifier = Modifier.fillMaxWidth(), enabled = !busy)
+                SelectionDropdown(label = stringResource(R.string.server_connection_provider_source),
+                    options = listOf(false to stringResource(R.string.server_connection_providers_server),
+                        true to stringResource(R.string.server_connection_providers_both)),
+                    selected = allowLocalProviders, onSelect = { allowLocalProviders = it },
+                    modifier = Modifier.fillMaxWidth(), enabled = !busy)
             }
-            Text(stringResource(if (profile == null) R.string.server_connection_pair_hint else R.string.server_connection_repair_hint))
-            OutlinedTextField(invitation, { invitation = it }, Modifier.fillMaxWidth(),
-                label = { Text(stringResource(if (profile == null) R.string.server_connection_invitation else R.string.server_connection_repair)) },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
-                visualTransformation = PasswordVisualTransformation(), singleLine = true)
+            if (profile != null) Text(profile.endpoint, style = MaterialTheme.typography.bodySmall)
+            if (selectedTransport == "http") {
+                Text(stringResource(if (profile == null || profile.transport != "http")
+                    R.string.server_connection_pair_hint else R.string.server_connection_repair_hint))
+                OutlinedTextField(invitation, { invitation = it; scanError = false }, Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.server_connection_invitation)) },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                    visualTransformation = PasswordVisualTransformation(), singleLine = true,
+                    trailingIcon = {
+                        IconButton(enabled = !busy, onClick = {
+                            // The invitation fragment contains a one-time secret: validate it in RAM only.
+                            try {
+                                val options = GmsBarcodeScannerOptions.Builder()
+                                    .setBarcodeFormats(Barcode.FORMAT_QR_CODE).enableAutoZoom().build()
+                                GmsBarcodeScanning.getClient(context, options).startScan()
+                                    .addOnSuccessListener { code ->
+                                        val url = code.rawValue.orEmpty()
+                                        if (runCatching { ServerSideInvitation.parse(url) }.isSuccess) {
+                                            invitation = url; scanError = false
+                                        } else scanError = true
+                                    }
+                                    .addOnFailureListener { scanError = true }
+                            } catch (_: Exception) { scanError = true }
+                        }) { SharedIcon(Icons.Outlined.CameraAlt, stringResource(R.string.server_connection_scan_qr)) }
+                    })
+                if (scanError) Text(stringResource(R.string.server_connection_scan_failed),
+                    color = MaterialTheme.colorScheme.error)
+            } else if (selectedTransport == "opencode") {
+                Text(stringResource(R.string.server_connection_opencode_hint))
+                SelectionDropdown(label = stringResource(R.string.server_connection_auth_method),
+                    options = listOf("basic" to stringResource(R.string.server_connection_auth_password),
+                        "link" to stringResource(R.string.server_connection_auth_link)),
+                    selected = authMethod, onSelect = { authMethod = it; password = ""; authUrl = "" },
+                    modifier = Modifier.fillMaxWidth(), enabled = !busy)
+                if (authMethod == "basic") {
+                    OutlinedTextField(endpoint, { endpoint = it }, Modifier.fillMaxWidth(),
+                        enabled = !busy && profile?.transport != "opencode",
+                        label = { Text(stringResource(R.string.server_connection_opencode_url)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                        visualTransformation = VisualTransformation.None)
+                    OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.server_connection_opencode_username)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                        visualTransformation = VisualTransformation.None)
+                    OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.server_connection_opencode_password)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                        visualTransformation = PasswordVisualTransformation())
+                } else {
+                    OutlinedTextField(authUrl, { authUrl = it }, Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.server_connection_opencode_auth_url)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
+                        visualTransformation = PasswordVisualTransformation())
+                }
+                Text(stringResource(R.string.server_connection_opencode_chat_pending), style = MaterialTheme.typography.bodySmall)
+            } else {
+                SelectionDropdown(label = stringResource(R.string.server_connection_ssh_machine),
+                    options = machines.map { it.id to it.name }, selected = sshMachineId,
+                    onSelect = { sshMachineId = it }, modifier = Modifier.fillMaxWidth(), enabled = !busy)
+                if (machines.isEmpty()) Text(stringResource(R.string.server_connection_no_ssh_machine))
+                Text(stringResource(R.string.server_connection_ssh_hint))
+                if (profile?.transport == "ssh") {
+                    Text(stringResource(if (repairing) R.string.server_connection_ssh_repair_hint
+                        else R.string.server_connection_ssh_rename_hint), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }

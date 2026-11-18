@@ -5,6 +5,8 @@ import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.Session
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.io.Closeable
+import java.util.concurrent.atomic.AtomicBoolean
 import java.io.OutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -47,6 +49,41 @@ internal class RemoteMachineConnectionManager(
         timeoutSeconds: Int,
         terminalId: String?
     ): RemoteCommandResult = runSshCommand(machine, command, timeoutSeconds, terminalId)
+
+    /** An exec pipe shares the existing machine connection, including its authentication,
+     * host-key policy, proxies, keepalives and reference-counted lifecycle. No extra SSH login
+     * is created if the machine is already connected. This never starts port forwards or a PTY.
+     */
+    suspend fun openExecStream(machine: RemoteMachine, command: String): RemoteExecStream {
+        require(command.isNotBlank())
+        val shared = acquireShared(machine.id, create = machine)
+            ?: error("Could not open an SSH connection.")
+        var channel: ChannelExec? = null
+        return try {
+            withContext(Dispatchers.IO) {
+                val exec = shared.session.openChannel("exec") as ChannelExec
+                channel = exec
+                exec.setCommand(command)
+                exec.setPty(false)
+                exec.setErrStream(ByteArrayOutputStream())
+                val input = exec.getInputStream()
+                val output = exec.getOutputStream()
+                exec.connect(machine.connectTimeoutSeconds * 1_000)
+                currentCoroutineContext().ensureActive()
+                RemoteExecStream(input, output) {
+                    exec.disconnect()
+                    shared.release()
+                }
+            }
+        } catch (error: Throwable) {
+            channel?.disconnect()
+            shared.release()
+            if (!shared.session.isConnected) {
+                withContext(NonCancellable + Dispatchers.IO) { dropConnection(shared) }
+            }
+            throw error
+        }
+    }
 
     suspend fun openTerminal(machine: RemoteMachine, passwordOverride: String? = null,
         askSecret: RemoteSecretPrompt? = null): RemoteTerminal {
@@ -507,4 +544,16 @@ internal class RemoteMachineConnectionManager(
         }
     }
 
+}
+
+/** Leased binary exec channel. Closing it releases only its channel, not the SSH session. */
+class RemoteExecStream internal constructor(
+    val input: InputStream,
+    val output: OutputStream,
+    private val onClosed: () -> Unit
+) : Closeable {
+    private val closed = AtomicBoolean(false)
+    override fun close() {
+        if (closed.compareAndSet(false, true)) onClosed()
+    }
 }

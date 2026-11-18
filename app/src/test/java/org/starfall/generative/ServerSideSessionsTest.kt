@@ -16,12 +16,29 @@ class ServerSideSessionsTest {
         override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
             requests += request
             val payload = when (request.op) {
+                "provider.import", "mcp.import" -> """{"imported":true}"""
                 "session.save" -> """{"session_id":"chat","revision":8,"conversation":{"id":"chat","future":{"keep":true}}}"""
                 else -> """{"session_id":"chat"}"""
             }
             return RpcReply(request.id, true, Json.parseToJsonElement(payload))
         }
     }
+    @Test fun importSendsFullSelectedConfigurationAndCredentials() = runBlocking {
+        val wire = Wire()
+        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val provider = Json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(
+            """{"id":"provider","name":"Provider","type":"openai","baseUrl":"https://example.invalid/v1","auth":{"method":"bearer_token","value":"dummy-key"},"config":{"modelIds":["a","b"],"maxTokens":8192}}"""
+        )
+        val mcp = Json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(
+            """{"id":"mcp","name":"Tools","url":"https://example.invalid/mcp","auth":{"method":"CUSTOM_HEADER","key":"X-Token","value":"dummy-mcp-key"}}"""
+        )
+        sessions.importProvider(provider)
+        sessions.importMcp(mcp)
+        assertEquals(listOf("provider.import", "mcp.import"), wire.requests.map { it.op })
+        assertEquals(provider, ServerSideCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(wire.requests[0].data.toString()))
+        assertEquals(mcp, ServerSideCodec.json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(wire.requests[1].data.toString()))
+    }
+
     @Test fun configureAndCasPreserveUnknownFields() = runBlocking {
         val wire = Wire(); val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
         sessions.configure("chat", "provider", "model", "key")
@@ -108,6 +125,23 @@ class ServerSideSessionsTest {
         // Legacy server replies containing full snapshots remain supported.
         reply = """{"session_id":"chat","revision":8,"conversation":{"id":"chat","title":"Legacy"}}"""
         assertEquals("Legacy", api.open("chat", cached).conversation.getValue("title").jsonPrimitive.content)
+    }
+
+    @Test fun readsServerGenerationLimitsAndRejectsImpossibleBounds() = runBlocking {
+        var runLimit = 64 * 1024
+        val wire = object : ServerSideWire {
+            override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
+            override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
+            override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true, Json.parseToJsonElement(
+                """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"conversation_max_bytes":3145728,"attachments":false,"negotiation":{"generation":{"max_run_content_bytes":$runLimit,"max_history_messages":256}}}}"""))
+        }
+        val api = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        assertEquals(64 * 1024, api.verifyCapabilities().maxRunContentBytes)
+        assertEquals(3 * 1024 * 1024, api.verifyCapabilities().maxConversationBytes)
+        assertFalse(api.verifyCapabilities().attachments)
+        runLimit = -1
+        try { api.verifyCapabilities(); fail("Accepted an invalid size") }
+        catch (_: ServerSideProtocolException) { }
     }
 
     @Test fun rejectsCapabilitiesWithoutConfigurationOrEvents() = runBlocking {

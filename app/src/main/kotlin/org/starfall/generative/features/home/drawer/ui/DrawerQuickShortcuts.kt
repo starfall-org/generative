@@ -63,10 +63,11 @@ internal fun DrawerQuickShortcuts(
     onOpenRemoteMachines: () -> Unit,
     serverProfiles: List<org.starfall.generative.database.repositories.ServerConnectionProfile> = emptyList(),
     remoteEnabled: Boolean = false,
+    remoteConnectionId: String? = null,
+    runtimeSelecting: Boolean = false,
     remoteError: Boolean = false,
     onReconnectServer: () -> Unit = {},
-    onSelectServer: (String) -> Unit = {},
-    onRemoteEnabled: (Boolean) -> Unit = {},
+    onSelectRuntime: (String?) -> Unit = {},
     onOpenServerConnections: () -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onPortForward: (RemoteMachine) -> Unit = {},
@@ -80,7 +81,8 @@ internal fun DrawerQuickShortcuts(
     var expandedSection by rememberSaveable { mutableStateOf<DrawerShortcutSection?>(null) }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     var serverPickerOpen by rememberSaveable { mutableStateOf(false) }
-    val selectedServer = serverProfiles.firstOrNull { it.selected }
+    val availableServers = serverProfiles.filter { it.transport != "opencode" }
+    val selectedServer = availableServers.firstOrNull { remoteEnabled && it.id == remoteConnectionId }
     var machineMenu by remember { mutableStateOf(false) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
     val subtitle = selectedMachine?.let { it.name.ifBlank { it.displayHost } }
@@ -194,25 +196,27 @@ internal fun DrawerQuickShortcuts(
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
                         .testTag("drawer_server_row"), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                            .clickable { serverPickerOpen = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                            .clickable(enabled = !runtimeSelecting) { serverPickerOpen = true }.padding(horizontal = 12.dp, vertical = 10.dp)
                             .testTag("drawer_server_picker_trigger"), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(21.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.server_remote_label), style = MaterialTheme.typography.labelSmall)
-                                Text(selectedServer?.name ?: stringResource(R.string.server_remote_select), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(stringResource(R.string.drawer_runtime), style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    if (!remoteEnabled) stringResource(R.string.drawer_runtime_local)
+                                    else selectedServer?.name ?: stringResource(R.string.server_remote_select),
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                                )
                                 if (remoteEnabled && remoteError) Text(stringResource(R.string.server_connection_offline),
                                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                             }
                             SharedIcon(FluentUi.Regular.ChevronRight, null, modifier = Modifier.size(16.dp))
                         }
                         if (remoteEnabled && remoteError && selectedServer != null) {
-                            IconButton(onClick = onReconnectServer, modifier = Modifier.testTag("drawer_server_reconnect")) {
+                            IconButton(onClick = onReconnectServer, enabled = !runtimeSelecting, modifier = Modifier.testTag("drawer_server_reconnect")) {
                                 SharedIcon(FluentUi.Regular.ArrowClockwise, stringResource(R.string.server_connection_reconnect))
                             }
                         }
-                        Switch(checked = remoteEnabled, enabled = selectedServer != null || remoteEnabled,
-                            onCheckedChange = onRemoteEnabled, modifier = Modifier.testTag("drawer_server_switch"))
                     }
                 }
             },
@@ -334,15 +338,36 @@ internal fun DrawerQuickShortcuts(
     }
 
     if (serverPickerOpen) {
-        ItemListSheet(title = stringResource(R.string.server_remote_select), onDismissRequest = { serverPickerOpen = false },
-            items = serverProfiles.map { profile -> ItemListSheetItem(key = profile.id, value = profile,
-                onClick = { onSelectServer(profile.id); serverPickerOpen = false }, selected = profile.selected,
-                icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
-                content = { Column { Text(profile.name); Text(profile.endpoint, style = MaterialTheme.typography.bodySmall) } }) },
-            listMaxHeight = 420.dp, emptyMessage = stringResource(R.string.server_connection_empty),
+        ItemListSheet(
+            title = stringResource(R.string.drawer_runtime),
+            onDismissRequest = { serverPickerOpen = false },
+            items = listOf(
+                ItemListSheetItem<String?>(
+                    key = "local", value = null, selected = !remoteEnabled,
+                    onClick = { serverPickerOpen = false; onSelectRuntime(null) },
+                    modifier = Modifier.testTag("drawer_runtime_picker_local"),
+                    icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
+                    content = { Text(stringResource(R.string.drawer_runtime_local)) }
+                )
+            ) + availableServers.map { profile ->
+                ItemListSheetItem<String?>(
+                    key = "server:${profile.id}", value = profile.id, selected = selectedServer?.id == profile.id,
+                    onClick = { serverPickerOpen = false; onSelectRuntime(profile.id) },
+                    modifier = Modifier.testTag("drawer_runtime_picker_server_${profile.id}"),
+                    icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
+                    content = {
+                        Column {
+                            Text(profile.name)
+                            Text(profile.endpoint, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                )
+            },
+            listMaxHeight = 420.dp,
             footer = { TextButton(onClick = { serverPickerOpen = false; onOpenServerConnections() }) {
                 Text(stringResource(R.string.server_connection))
-            } })
+            } }
+        )
     }
 
     toolsMachine?.let { machine ->

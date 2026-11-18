@@ -14,8 +14,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.starfall.generative.features.providers.shared.ui.GeminiCliProjectIdField
-import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
+import org.starfall.generative.shared.ui.providers.OAuthAccountCard
 import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.subfeatures.auth.ui.DeviceCodeChallengeText
 
 /** Verify provider sign-in affordances on device without opening an external browser. */
 @RunWith(AndroidJUnit4::class)
@@ -36,10 +37,11 @@ class GeminiCliDevinOAuthUiDeviceTest {
         var pressed by mutableStateOf(false)
         compose.setContent { MaterialTheme {
             OAuthAccountCard(
-                providerType = type, signedIn = false, identity = null, signingIn = pressed,
+                signedIn = false, identity = null, signingIn = pressed,
                 signingOut = false, canSignIn = true, canSignOut = false,
                 canCancelSignIn = true, error = null,
-                onSignIn = { pressed = true }, onCancelSignIn = { pressed = false }, onSignOut = {}
+                onSignIn = { pressed = true }, onCancelSignIn = { pressed = false }, onSignOut = {},
+                pendingContent = { DeviceCodeChallengeText(type) }
             )
         } }
         repeat(2) { round ->

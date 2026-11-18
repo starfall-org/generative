@@ -227,4 +227,30 @@ class ActiveChatStreamState internal constructor(
     val lastCommitMetrics: StreamCommitMetrics?,
     val cumulativeMetrics: StreamMetricsSnapshot,
     val preparingAttachments: Boolean = false
-)
+) {
+    companion object {
+        /** Creates a display snapshot for a host that supplies streamed text itself. */
+        fun snapshot(
+            conversationId: String,
+            messageId: String,
+            generationId: Long,
+            revision: Long,
+            content: String,
+            reasoning: String = "",
+            status: ChatStreamStatus = ChatStreamStatus.STREAMING,
+            preparingAttachments: Boolean = false,
+        ): ActiveChatStreamState = ActiveChatStreamState(
+            conversationId = conversationId,
+            messageId = messageId,
+            generationId = generationId,
+            revision = revision,
+            status = status,
+            content = StreamTextSnapshot.of(content),
+            reasoning = StreamTextSnapshot.of(reasoning),
+            stopSignal = StreamFreezeSignal(),
+            lastCommitMetrics = null,
+            cumulativeMetrics = StreamMetricsSnapshot(),
+            preparingAttachments = preparingAttachments,
+        )
+    }
+}

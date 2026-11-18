@@ -185,26 +185,57 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_machine_switch_machine-a").assertIsOn()
     }
 
-    @Test fun remoteChatSwitchIsIndependentAndBelowSsh() {
-        val profile = org.starfall.generative.database.repositories.ServerConnectionProfile("server", "Chat server", "https://example.com", "pin", "client", "server", true)
-        var enabled by mutableStateOf(false)
+    @Test fun runtimePickerStartsWithLocalAndActivatesSelectedChatServer() {
+        val profile = org.starfall.generative.database.repositories.ServerConnectionProfile(
+            "server", "Chat server", "https://example.com", "pin", "client", "server", true)
+        val other = profile.copy(id = "other", name = "Other server", selected = false)
+        val openCode = profile.copy(id = "opencode", name = "OpenCode server", transport = "opencode", selected = false)
+        var runtimeId by mutableStateOf<String?>(null)
+        val selections = mutableListOf<String?>()
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
-                    serverProfiles = listOf(profile), remoteEnabled = enabled, onRemoteEnabled = { enabled = it }, maxExpandedHeight = 400.dp)
+                    serverProfiles = listOf(profile, other, openCode),
+                    remoteEnabled = runtimeId != null, remoteConnectionId = runtimeId,
+                    onSelectRuntime = { selections += it; runtimeId = it }, maxExpandedHeight = 400.dp)
             }
         }
         compose.onNodeWithText("Remote Services").performClick()
         val ssh = compose.onNodeWithTag("drawer_remote_selected_machine").fetchSemanticsNode().boundsInRoot
         val remote = compose.onNodeWithTag("drawer_server_row").fetchSemanticsNode().boundsInRoot
         assertTrue(remote.top >= ssh.bottom)
-        compose.onNodeWithTag("drawer_server_switch").assertIsOff().performClick()
-        compose.onNodeWithTag("drawer_server_switch").assertIsOn().performClick()
-        compose.onNodeWithTag("drawer_server_switch").assertIsOff()
+        compose.onNodeWithText("Runtime").assertIsDisplayed()
+        compose.onNodeWithText("Local").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_server_switch").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
+        val local = compose.onNodeWithTag("drawer_runtime_picker_local").fetchSemanticsNode().boundsInRoot
+        val first = compose.onNodeWithTag("drawer_runtime_picker_server_server").fetchSemanticsNode().boundsInRoot
+        assertTrue(local.bottom <= first.top)
+        compose.onNodeWithText("OpenCode server").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_runtime_picker_server_server").performClick()
+        compose.onNodeWithText("Chat server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_runtime_picker_server_other").performClick()
+        compose.onNodeWithText("Other server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_runtime_picker_local").performClick()
+        compose.onNodeWithText("Local").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf("server", "other", null), selections) }
     }
 
+    @Test fun runtimePickerOffersLocalEvenWithoutServers() {
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                    maxExpandedHeight = 400.dp)
+            }
+        }
+        compose.onNodeWithText("Remote Services").performClick()
+        compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_runtime_picker_local").assertIsDisplayed()
+    }
 
-    @Test fun offlineServerOffersReconnectWithoutChangingSshOrRemoteSwitch() {
+    @Test fun offlineRuntimeOffersReconnectWithoutChangingSshOrSelection() {
         val profile = org.starfall.generative.database.repositories.ServerConnectionProfile(
             "server", "Chat server", "https://example.com", "pin", "client", "server", true)
         var error by mutableStateOf(true)
@@ -212,15 +243,15 @@ class DrawerRemoteMachineContextMenuTest {
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
-                    serverProfiles = listOf(profile), remoteEnabled = true, remoteError = error,
+                    serverProfiles = listOf(profile), remoteEnabled = true, remoteConnectionId = profile.id, remoteError = error,
                     onReconnectServer = { reconnects++; error = false }, maxExpandedHeight = 400.dp)
             }
         }
         compose.onNodeWithText("Remote Services").performClick()
-        compose.onNodeWithTag("drawer_server_switch").assertIsOn()
+        compose.onNodeWithText("Chat server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_reconnect").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(1, reconnects) }
-        compose.onNodeWithTag("drawer_server_switch").assertIsOn()
+        compose.onNodeWithText("Chat server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_reconnect").assertDoesNotExist()
         compose.onNodeWithTag("drawer_machine_options_server").assertDoesNotExist()
     }

@@ -12,8 +12,8 @@ import org.starfall.generative.shared.ui.icons.Icons
 
 @Composable
 fun ItemContextMenu(
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
     deleteColor: Color,
     firstActionText: String? = null,
     firstActionIcon: Int? = null,
@@ -46,14 +46,14 @@ fun ItemContextMenu(
                             )
                         )
                     }
-                    if (showEdit) add(
+                    if (showEdit && onEdit != null) add(
                         ContextMenuAction(
                             label = stringResource(R.string.common_edit),
                             onClick = onEdit,
                             icon = Icons.Outlined.Edit
                         )
                     )
-                    if (showDelete) add(
+                    if (showDelete && onDelete != null) add(
                         ContextMenuAction(
                             label = stringResource(R.string.common_delete),
                             onClick = onDelete,

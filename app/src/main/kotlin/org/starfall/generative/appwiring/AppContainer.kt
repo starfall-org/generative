@@ -67,23 +67,29 @@ class AppContainer(context: Context) {
     private val providers = ModelRepository(database, aiService, icons)
     private val mcp = McpRepository(database, mcpService, icons, mcpOAuth, BuildConfig.CONTENT_API_MCP_URL)
     private val httpTools = CustomHttpToolRepository(database)
-    val serverConnections = org.starfall.generative.database.repositories.ServerConnectionRepository(database)
-    private val remoteChatCache = org.starfall.generative.database.repositories.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
-    val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, remoteChatCache)
-    private val remoteWorkspacePreferences = org.starfall.generative.database.preferences.RemoteWorkspacePreferences(appContext)
-    val remoteWorkspace = org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace(
-        serverConnections, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-        remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
-        remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache)
-    private val speech = SpeechRepository(database)
-    val preferences = AppPreferencesRepository(appContext)
-    private val toolSettings = ToolSettingsStore(appContext)
-    val notificationPermissionStore = NotificationPermissionStore(appContext)
     val remoteMachineService = RemoteMachineService(appContext, clearTerminalInputMode = { id ->
         RemoteTerminalPreferenceStore.getInstance(appContext).updateAndWait {
             it.remove(stringPreferencesKey(remoteTerminalInputModePreferenceKey(id)))
         }
     })
+    val serverConnections = org.starfall.generative.database.repositories.ServerConnectionRepository(database)
+    private val remoteChatCache = org.starfall.generative.integrations.serverside.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
+    private val serverClientFactory = ServerConnectionClientFactory(serverConnections, remoteMachineService)
+    val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, serverClientFactory::create, remoteChatCache, remoteMachineService, providers, mcp)
+    private val remoteWorkspacePreferences = org.starfall.generative.database.preferences.RemoteWorkspacePreferences(appContext)
+    val remoteWorkspace = org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace(
+        { id -> org.starfall.generative.integrations.serverside.ServerSideSessions(serverClientFactory.create(id)) },
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
+        remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache,
+        { id -> serverConnections.profile(id)?.let {
+            org.starfall.generative.integrations.serverside.RemoteCacheScope(it.id, it.clientId, it.serverId, it.pin)
+        } }, resolveLocalProvider = providers::resolveProvider)
+    private val speech = SpeechRepository(database)
+    val preferences = AppPreferencesRepository(appContext)
+    private val toolSettings = ToolSettingsStore(appContext)
+    val notificationPermissionStore = NotificationPermissionStore(appContext)
+
     val appDataTransfer = AppDataTransferService(
         appContext, providers, mcp, speech, profiles, conversations, preferences, toolSettings,
         icons, toolFiles, remoteMachineService, httpTools

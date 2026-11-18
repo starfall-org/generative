@@ -68,7 +68,6 @@ import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.DEFAULT_AGENT_SKILL_ID
 import org.starfall.generative.shared.model.AgentSkill
 import org.starfall.generative.shared.model.defaultAgentSkills
-import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.DEFAULT_REASONING_EFFORTS
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -136,6 +135,7 @@ internal fun UserInputArea(
     onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null,
     selectedModelName: String,
     providers: List<ModelProvider>,
+    mediaProviders: List<ModelProvider>? = null,
     providerGroups: List<ProviderGroup> = emptyList(),
     modelPickerCollapsedGroups: Set<String> = emptySet(),
     modelPickerCollapsedProviders: Set<String> = emptySet(),
@@ -151,7 +151,7 @@ internal fun UserInputArea(
     onSetModelTools: (providerId: String, modelId: String, tools: List<String>) -> Unit = { _, _, _ -> },
     onEditModel: (providerId: String, modelId: String) -> Unit = { _, _ -> },
     onEditProvider: (providerId: String) -> Unit = {},
-    onFetchOllamaModels: (suspend (String) -> List<String>)? = null,
+    dynamicModels: Map<String, List<String>> = emptyMap(),
     attachments: List<String> = emptyList(),
     onAttachmentsChange: (List<String>) -> Unit = {},
     // Append to the owner's latest state; asynchronous clipboard imports must not overwrite other attachments.
@@ -282,8 +282,8 @@ internal fun UserInputArea(
     }
     var mediaProviderId by rememberSaveable { mutableStateOf("") }
     var mediaModelId by rememberSaveable { mutableStateOf("") }
-    val mediaProviders = filterMediaProvidersForKind(providers, mediaKind)
-    val mediaProvider = mediaProviders.find { it.id == mediaProviderId }
+    val eligibleMediaProviders = filterMediaProvidersForKind(mediaProviders ?: providers, mediaKind)
+    val mediaProvider = eligibleMediaProviders.find { it.id == mediaProviderId }
     val mediaModel = mediaProvider?.config?.modelConfigs?.get(mediaModelId)
     val mediaLabel = stringResource(if (mediaKind == ModelType.VIDEO_GENERATION) R.string.common_video else R.string.common_image)
     val exitMediaModeLabel = stringResource(R.string.chat_exit_generation_mode, mediaLabel)
@@ -291,10 +291,10 @@ internal fun UserInputArea(
     val generateMediaLabel = stringResource(R.string.chat_generate_media, mediaLabel)
     val selectModelLabel = stringResource(R.string.select_model)
     val sendMessageLabel = stringResource(R.string.chat_send_message)
-    LaunchedEffect(mediaKind, mediaProviders) {
+    LaunchedEffect(mediaKind, eligibleMediaProviders) {
         if (mediaKind != null && mediaModel == null) {
-            mediaProviderId = mediaProviders.firstOrNull()?.id.orEmpty()
-            mediaModelId = mediaProviders.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty()
+            mediaProviderId = eligibleMediaProviders.firstOrNull()?.id.orEmpty()
+            mediaModelId = eligibleMediaProviders.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty()
         }
     }
     // Regenerate/resend follow the composer: media mode uses the selected media model, chat mode sends as chat.
@@ -320,33 +320,6 @@ internal fun UserInputArea(
         skillsMenuOpen = textState.startsWith("/") &&
             (selectedSkill == null || !textState.hasSelectedSkillInvocation(selectedSkill.id))
     }
-    val dynamicModelsMap = remember { mutableStateMapOf<String, List<String>>() }
-    val dynamicModelEndpoints = remember { mutableMapOf<String, String>() }
-    val ollamaCache = remember(context) { org.starfall.generative.integrations.modelapis.ollama.OllamaModelCache(context) }
-    val dynamicProviders = providers.filter { it.type == ModelApiType.OLLAMA && it.config.modelIds == null }
-        .map { it.id to it.baseUrl }.sortedBy { it.first }
-    val fetchOllamaModels by rememberUpdatedState(onFetchOllamaModels)
-    LaunchedEffect(dynamicProviders, foreground) {
-        if (!foreground) return@LaunchedEffect
-        dynamicModelsMap.keys.retainAll(dynamicProviders.map { it.first }.toSet())
-        dynamicModelEndpoints.keys.retainAll(dynamicProviders.map { it.first }.toSet())
-        // Publish disk snapshots before any network discovery; one slow/offline host
-        // must not block the other providers or discard models on a screen remount.
-        dynamicProviders.forEach { (id, url) ->
-            if (dynamicModelEndpoints[id] == url && dynamicModelsMap.containsKey(id)) return@forEach
-            dynamicModelEndpoints[id] = url
-            dynamicModelsMap.remove(id)
-            ollamaCache.read(url)?.let { dynamicModelsMap[id] = it.models }
-        }
-        kotlinx.coroutines.coroutineScope {
-            dynamicProviders.forEach { (id, url) ->
-                launch {
-                    fetchOllamaModels?.let { fetch -> dynamicModelsMap[id] = fetch(url) }
-                }
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
         kotlinx.coroutines.yield()
         focusManager.clearFocus(force = true)
@@ -771,8 +744,8 @@ internal fun UserInputArea(
         modelPickerCollapsedProviders = modelPickerCollapsedProviders,
         onModelPickerCollapsedGroupsChange = onModelPickerCollapsedGroupsChange,
         onModelPickerCollapsedProvidersChange = onModelPickerCollapsedProvidersChange,
-        dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModelsMap.toMap(),
-        mediaProviders = mediaProviders,
+        dynamicModelsMap = if (mediaKind != null) emptyMap() else dynamicModels,
+        mediaProviders = eligibleMediaProviders,
         mediaProviderId = mediaProviderId,
         mediaModelId = mediaModelId,
         onMediaModelChange = { provider, model -> mediaProviderId = provider; mediaModelId = model },

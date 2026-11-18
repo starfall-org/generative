@@ -1,21 +1,15 @@
 package org.starfall.generative.features.mcp.list.ui
 
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.text.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import org.starfall.generative.extensions.launcher.Launcher
@@ -26,13 +20,16 @@ import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import java.util.UUID
-import org.starfall.generative.features.mcp.shared.ui.McpUnifiedCard
+import org.starfall.generative.shared.ui.mcp.McpUnifiedCard
+import org.starfall.generative.shared.ui.mcp.McpEmptyState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
+import org.starfall.generative.shared.ui.lists.EntityGrid
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -62,6 +59,18 @@ fun ServerListScreen(
     }
     val context = LocalContext.current
     val localizedResources = LocalResources.current
+    val card: @Composable (McpInfo, Boolean, Modifier, Boolean) -> Unit = { server, gridMode, modifier, preview ->
+        val enabled = mcpServerEnabled(toolSettings, server.id)
+        val canToggle = !isWebSearchProvider(toolSettings, server.id)
+        McpUnifiedCard(name = server.name, detail = server.url ?: stringResource(R.string.mcp_no_endpoint),
+            icon = server.icon, isGrid = gridMode, modifier = modifier,
+            toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id],
+            loading = server.id in toolsLoading, onToolErrorClick = { selectedToolError = server.name to it },
+            onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id },
+            firstActionText = if (canToggle) stringResource(if (enabled) R.string.mcp_enabled else R.string.mcp_enable) else null,
+            firstActionIcon = if (canToggle) (if (enabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked) else null,
+            onFirstAction = if (canToggle) ({ onSetMcpEnabled(server.id, !enabled) }) else null, actionsEnabled = !preview)
+    }
     ListScreenTemplate(
         title = stringResource(R.string.mcp),
         onBack = onBack,
@@ -78,15 +87,9 @@ fun ServerListScreen(
         }
     ) { padding ->
             Box(Modifier.fillMaxSize()) {
-                if (mcpServers.isEmpty()) Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SharedIcon(Icons.Outlined.Mcp, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
-                        Spacer(Modifier.height(12.dp))
-                        Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
-                    }
-                } else if (matchingServers.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.content_list_no_results))
+                if (matchingServers.isEmpty()) {
+                    Box(Modifier.fillMaxSize().padding(padding)) {
+                        McpEmptyState(hasSearchQuery = mcpServers.isNotEmpty())
                     }
                 } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
                     val gridState = rememberLazyGridState()
@@ -94,22 +97,13 @@ fun ServerListScreen(
                     var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
                     Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
                         orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
-                            McpUnifiedCard(server = server, isGrid = gridMode,
-                                modifier = Modifier.testTag("dragged_mcp"),
-                                toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size,
-                                toolError = toolErrors[server.id], loading = server.id in toolsLoading,
-                                isEnabled = mcpServerEnabled(toolSettings, server.id),
-                                onToggleEnabled = {}, managedSettings = toolSettings,
-                                onToolErrorClick = {}, onEdit = {}, onDelete = {})
+                            card(server, gridMode, Modifier.testTag("dragged_mcp"), true)
                         }
                     }) {
-                    LazyVerticalGrid(state = gridState, columns = GridCells.Fixed(if (gridMode) 2 else 1),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
-                         contentPadding = padding,
-                        modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState)) {
-                        itemsIndexed(matchingServers, key = { _, item -> item.id }) { _, server ->
-                            McpUnifiedCard(server = server, isGrid = gridMode,
-                                    modifier = Modifier.animateItem()
+                    EntityGrid(state = gridState, isGrid = gridMode, spacing = 12.dp, contentPadding = padding,
+                        modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState).testTag("mcp_list")) {
+                        items(matchingServers, key = { it.id }) { server ->
+                            card(server, gridMode, Modifier.animateItem()
                                         .dragSource(dndState, server.id, server.id,
                                             onDragStart = { dragSnapshot = orderedServers },
                                             onDragEnd = { outcome ->
@@ -128,13 +122,7 @@ fun ServerListScreen(
                                         .dropTarget(dndState, "self:${server.id}",
                                             priority = 5,
                                             accepts = { it.key == server.id },
-                                            onDrop = { dragSnapshot != orderedServers }),
-                                    toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id], loading = server.id in toolsLoading,
-                                    isEnabled = mcpServerEnabled(toolSettings, server.id),
-                                    onToggleEnabled = { onSetMcpEnabled(server.id, !mcpServerEnabled(toolSettings, server.id)) },
-                                    managedSettings = toolSettings,
-                                    onToolErrorClick = { selectedToolError = server.name to it },
-                                    onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id })
+                                            onDrop = { dragSnapshot != orderedServers }), false)
                         }
                     }
                     }

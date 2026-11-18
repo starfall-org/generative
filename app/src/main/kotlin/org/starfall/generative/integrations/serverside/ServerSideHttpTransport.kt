@@ -8,6 +8,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.CertificatePinner
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -19,13 +20,20 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+private fun validatedEndpoint(endpoint: String): HttpUrl = endpoint.toHttpUrl().also {
+    require(it.scheme == "https" && it.username.isEmpty() && it.password.isEmpty() && it.encodedPath == "/" && it.query == null && it.fragment == null)
+}
+
+/** Validate persisted trust settings without creating a transport or HTTP client. */
+fun validateServerSideHttpConnection(endpoint: String, pin: String) {
+    CertificatePinner.Builder().add(validatedEndpoint(endpoint).host, pin).build()
+}
+
 /** Pinned HTTPS; suspending calls are cancellable and never replay ambiguous writes. */
 class ServerSideHttpTransport private constructor(endpoint: String, pin: String, private val invitation: ServerSideInvitation?) : ServerSideWire {
     constructor(invitation: ServerSideInvitation) : this(invitation.endpoint.toString(), invitation.pin, invitation)
     constructor(endpoint: String, pin: String) : this(endpoint, pin, null)
-    private val base = endpoint.toHttpUrl().also {
-        require(it.scheme == "https" && it.username.isEmpty() && it.password.isEmpty() && it.encodedPath == "/" && it.query == null && it.fragment == null)
-    }
+    private val base = validatedEndpoint(endpoint)
     internal val certificatePinner = CertificatePinner.Builder().add(base.host, pin).build()
     private val client = OkHttpClient.Builder()
         .certificatePinner(certificatePinner)

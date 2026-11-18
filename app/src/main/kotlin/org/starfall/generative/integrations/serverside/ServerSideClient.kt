@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 
 /** An authenticated wire exposes 401 only when the transport rejected the token before dispatch. */
 interface ServerSideWire {
+    fun close() = Unit
     fun authenticate(identity: PairedIdentity): AccessToken
     fun rpc(token: AccessToken, request: RpcRequest): RpcReply
     fun events(token: AccessToken, sessionId: String, after: Long): List<SessionEvent>
@@ -57,6 +58,8 @@ class ServerSideClient(private val wire: ServerSideWire, private val identity: P
 
     /** Network errors are propagated, never replayed: the operation may have executed. */
     suspend fun rpc(request: RpcRequest): RpcReply = authenticated { wire.rpcAsync(it, request) }
+
+    fun close() = wire.close()
 
     /** Destructive, non-replayable identity revocation; only a confirmed reply is success. */
     suspend fun revoke() {

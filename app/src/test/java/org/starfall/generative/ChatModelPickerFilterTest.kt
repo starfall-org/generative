@@ -4,6 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.features.providers.shared.ui.*
+import org.starfall.generative.features.home.chat.logic.input.filterMediaProvidersForKind
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -40,4 +41,11 @@ class ChatModelPickerFilterTest {
             "mixed", "image", modelFilter = chatModelPickerFilter)
         assertEquals(listOf("chat"), rows.filterIsInstance<ModelPickerItem.Model>().map { it.modelId })
     }
+    @Test fun mediaPickerUsesProvidedCapabilitiesForEveryBackendType() {
+        val supplied = ModelApiType.entries.map { type -> mediaOnly.copy(id = type.name, type = type) }
+        val result = filterMediaProvidersForKind(supplied, ModelType.IMAGE_GENERATION)
+        assertEquals(supplied.map { it.id }, result.map { it.id })
+        assertTrue(filterMediaProvidersForKind(supplied, ModelType.VIDEO_GENERATION).isEmpty())
+    }
+
 }

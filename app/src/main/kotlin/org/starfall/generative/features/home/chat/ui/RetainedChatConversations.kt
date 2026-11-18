@@ -9,6 +9,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import org.starfall.generative.shared.model.Conversation
@@ -96,6 +97,7 @@ internal fun RetainedChatConversations(
     availableIds: Set<String>,
     foreground: Boolean,
     keepOverlayState: Boolean = false,
+    restoreChatState: Boolean = false,
     content: @Composable (Conversation?, Boolean) -> Unit
 ) {
     DisposableEffect(state) {
@@ -103,6 +105,8 @@ internal fun RetainedChatConversations(
         onDispose { ChatRenderCaches.unregister(state) }
     }
     SideEffect { state.record(conversation, availableIds) }
+    // The remote workspace retains each chat's draft through eviction and Android process recreation.
+    val pageState = if (restoreChatState) rememberSaveableStateHolder() else null
     val activeKey = conversation?.id ?: EMPTY_CHAT_ID
     Box(Modifier.fillMaxSize()) {
         (state.ids.filter { it != activeKey } + activeKey).forEach { id ->
@@ -110,15 +114,19 @@ internal fun RetainedChatConversations(
             val page = if (active) conversation else state.snapshot(id)
             if (!active && page == null) return@forEach
             key(id) {
-                Box(Modifier.fillMaxSize().parkChat(active)) {
-                    CompositionLocalProvider(
-                        LocalChatForeground provides (active && foreground),
-                        LocalChatKeepOverlayState provides (active && keepOverlayState),
-                        LocalChatAttachmentSelection provides state.selection(id)
-                    ) {
-                        content(page, active)
+                val chatContent: @Composable () -> Unit = {
+                    Box(Modifier.fillMaxSize().parkChat(active)) {
+                        CompositionLocalProvider(
+                            LocalChatForeground provides (active && foreground),
+                            LocalChatKeepOverlayState provides (active && keepOverlayState),
+                            LocalChatAttachmentSelection provides state.selection(id)
+                        ) {
+                            content(page, active)
+                        }
                     }
                 }
+                if (pageState != null) pageState.SaveableStateProvider(id, chatContent)
+                else chatContent()
             }
         }
     }

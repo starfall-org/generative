@@ -7,7 +7,14 @@ import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
+import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.model.auth.AuthMethod
+import org.starfall.generative.shared.model.auth.Authorization
+import org.starfall.generative.shared.model.provider.ModelProvider
+import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
+import org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure
+import org.starfall.generative.features.home.chat.logic.remote.remoteConnectionFailure
 import org.starfall.generative.integrations.serverside.*
 
 class RemoteWorkspaceTest {
@@ -19,6 +26,9 @@ class RemoteWorkspaceTest {
         var foreignSnapshot = false
         var withMessage = false
         var saved = ""
+        var storedProvider = "p"
+        var storedModel = "m"
+        var conflictOnSave = false
         var evictPriorRunEvents = false
         val polledCursors = java.util.concurrent.CopyOnWriteArrayList<Pair<String, Long>>()
         private val runsPerSession = java.util.concurrent.ConcurrentHashMap<String, Int>()
@@ -44,14 +54,16 @@ class RemoteWorkspaceTest {
         }
         override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
             operations += request.op
+            if (request.op == "session.save" && conflictOnSave)
+                return RpcReply(request.id, false, error = RpcError("revision_conflict", "changed"))
             val body = when (request.op) {
-                "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true}}"""
+                "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"runtime_sources":["stored","mobile_ephemeral"]}}"""
                 "provider.catalog" -> """{"version":1,"revision":1,"providers":[{"id":"p","name":"Provider","type":"openai","custom_model_id":false,"key_selection_required":false,"keys":[],"models":[{"id":"m","name":"Model","availability":"available","text_generation":true}]}]}"""
                 "session.list" -> """{"version":1,"items":[{"id":"$owner-chat","title":"$owner","created_at":1,"updated_at":2,"revision":1}],"next_cursor":""}"""
                 "session.open", "session.get" -> {
                     val cursor = (runsPerSession[request.sessionId] ?: 0) * 2L
                     val messages = if (withMessage) """[{"id":"msg","role":"user","versions":[{"content":"old","future_version":"kept"}]}]""" else "[]"
-                    """{"session_id":"${request.sessionId}","revision":1,"event_seq":$cursor,"conversation":{"id":"${request.sessionId}","title":"$owner","created_at":1,"updated_at":2,"messages":$messages,"future_root":"kept"}}"""
+                    """{"session_id":"${request.sessionId}","revision":1,"event_seq":$cursor,"conversation":{"id":"${request.sessionId}","title":"$owner","created_at":1,"updated_at":2,"messages":$messages,"provider_id":"$storedProvider","model_id":"$storedModel","future_root":"kept"}}"""
                 }
                 "session.save" -> { saved = request.data.toString(); """{"session_id":"${request.sessionId}","revision":2,"conversation":${request.data!!.getValue("conversation")}}""" }
                 "session.configure" -> { configureSource = request.data!!.getValue("runtime").toString(); """{"session_id":"${request.sessionId}"}""" }
@@ -65,6 +77,14 @@ class RemoteWorkspaceTest {
             return RpcReply(request.id, true, Json.parseToJsonElement(body))
         }
     }
+    @Test fun distinguishesRemoteAuthenticationTlsAndCapabilityFailures() {
+        val classify = ::remoteConnectionFailure
+        assertEquals(RemoteConnectionFailure.UNAUTHORIZED, classify(ServerSideHttpException(401)))
+        assertEquals(RemoteConnectionFailure.CERTIFICATE, classify(javax.net.ssl.SSLException("pin mismatch")))
+        assertEquals(RemoteConnectionFailure.INCOMPATIBLE, classify(ServerSideProtocolException("missing capability")))
+        assertEquals(RemoteConnectionFailure.UNAVAILABLE, classify(java.io.IOException("offline")))
+    }
+
     @Test fun switchingServersClearsPreviousHistoryAndDisableRestoresLocalMode() = runBlocking {
         val a = Wire("a"); val b = Wire("b")
         val workspace = RemoteWorkspace({ id -> ServerSideSessions(ServerSideClient(if (id == "a") a else b, PairedIdentity("device", "secret", id))) }, this)
@@ -75,6 +95,34 @@ class RemoteWorkspaceTest {
         ready(); assertEquals("b-chat", workspace.state.value.items.single().id)
         workspace.disable(); assertFalse(workspace.state.value.enabled); assertNull(workspace.state.value.conversation)
     }
+    @Test fun localProviderIsAppendedAndRunsOnRemoteOnlyWhileAllowed() = runBlocking {
+        val wire = Wire("remote")
+        val provider = ModelProvider(id = "p", name = "Local", type = ModelApiType.OPENAI,
+            baseUrl = "https://example.com/v1",
+            auth = Authorization(AuthMethod.NONE),
+            config = ProviderConfiguration(modelIds = listOf("m")))
+        val workspace = RemoteWorkspace(
+            { ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) },
+            this, resolveLocalProvider = { provider })
+        workspace.enable("server")
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertEquals(listOf("p"), workspace.state.value.providers.map { it.id })
+        workspace.setLocalProviders("other", listOf(provider))
+        assertEquals(listOf("p"), workspace.state.value.providers.map { it.id })
+        workspace.setLocalProviders("server", listOf(provider))
+        assertEquals(listOf("p", "local:p"), workspace.state.value.providers.map { it.id })
+        workspace.selectModel("local:p", "m")
+        assertTrue(workspace.send("hello", emptyList()))
+        withTimeout(5000) { while (workspace.state.value.busy || workspace.state.value.running) yield() }
+        assertTrue(wire.configureSource.contains("mobile_ephemeral"))
+        assertEquals(1, wire.operations.count { it == "session.run" })
+        workspace.setLocalProviders("server", emptyList())
+        assertEquals(listOf("p"), workspace.state.value.providers.map { it.id })
+        workspace.selectModel("local:p", "m")
+        assertNotEquals("local:p", workspace.state.value.providerId)
+        workspace.disable()
+    }
+
     @Test fun offlineRemainsRemoteAndNeverSends() = runBlocking {
         val wire = Wire("offline", true)
         val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
@@ -191,6 +239,34 @@ class RemoteWorkspaceTest {
         withTimeout(5000) { while (workspace.state.value.snapshot?.revision != 2L) yield() }
         assertTrue(wire.saved.contains("future_root")); assertTrue(wire.saved.contains("future_version"))
         assertTrue(wire.saved.contains("\"expected_revision\":1")); assertTrue(wire.saved.contains("\"content\":\"new\""))
+        workspace.disable()
+    }
+
+    @Test fun openingChatRestoresServerModelAndRejectsUnavailableModel() = runBlocking {
+        val wire = Wire("remote")
+        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertEquals("p", workspace.state.value.providerId)
+        assertEquals("m", workspace.state.value.modelId)
+        wire.storedModel = "different-model"
+        workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertTrue(workspace.state.value.modelId.isEmpty())
+        assertFalse(workspace.send("must-not-use-default", emptyList()))
+        workspace.disable()
+    }
+
+    @Test fun revisionConflictDoesNotDisableRemoteChat() = runBlocking {
+        val wire = Wire("remote").apply { conflictOnSave = true }
+        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        workspace.rename("remote-chat", "Edited")
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertFalse(workspace.state.value.error)
+        assertEquals(org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.REVISION_CONFLICT,
+            workspace.state.value.actionFailure)
+        assertTrue(workspace.send("new message", emptyList()))
         workspace.disable()
     }
 

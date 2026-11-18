@@ -1,17 +1,14 @@
 package org.starfall.generative.features.mcp.editor.ui
 
-import org.starfall.generative.shared.ui.layout.AppSwipeTabs
-import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
+import org.starfall.generative.shared.ui.mcp.McpEditorLayout
 import org.starfall.generative.features.mcp.shared.ui.McpConnectionSettings
 import org.starfall.generative.features.mcp.shared.ui.McpToolsTab
 import org.starfall.generative.shared.model.McpAuthMethod
@@ -20,10 +17,8 @@ import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.McpToolParameterConfig
-import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.auth.bearerHeaderValue
 import org.starfall.generative.shared.model.isContentApiName
-import org.starfall.generative.shared.ui.screens.EditorScreenTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,55 +73,41 @@ fun ServerEditor(
             !it.second.any { ch -> ch == '\r' || ch == '\n' }
     }
     fun refreshTools() { if (canSave && !cachedLoading) scope.launch { onRefreshTools(currentServer()) } }
-    EditorScreenTemplate(
-        title = {
-            Text(name.trim().ifEmpty { stringResource(R.string.common_name) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        onBack = onDismiss,
-        actions = {
-            Button(onClick = { onSave(currentServer()) }, enabled = canSave && !iconImporting,
-                modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(R.string.common_save)) }
-        }
-    ) { scaffoldPadding ->
-        val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 8.dp, bottom = 16.dp)
-
-            Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                AppSwipeTabs(
-                    tabs = listOf(stringResource(R.string.mcp_basic_settings), stringResource(R.string.common_tools)),
-                    pagerState = pager,
-                    modifier = Modifier.weight(1f).fillMaxWidth()
-                ) { page ->
-                    if (page == 0) McpConnectionSettings(
-                    name = name, onNameChange = { name = it }, icon = serverIcon,
-                    onIconChange = { serverIcon = it; onSaveIcon(currentServer()) }, onIconBusyChange = { iconImporting = it },
-                    protocol = protocol, onProtocolChange = { protocol = it }, url = url,
-                    onUrlChange = { changed -> if (authMethod == McpAuthMethod.OAUTH2 && changed.trim() != url.trim()) oauthAuthorized = false; url = changed },
-                    authMethod = authMethod, onAuthMethodChange = { method ->
-                        if (method != authMethod) { authValue = ""; if (method == McpAuthMethod.OAUTH2) oauthAuthorized = false }
-                        authMethod = method; authKey = if (method == McpAuthMethod.QUERY_PARAM) "key" else "Authorization"
-                    }, authKey = authKey, onAuthKeyChange = { authKey = it }, authValue = authValue, onAuthValueChange = { authValue = it }, authValid = authValid,
-                     headers = headers, onHeadersChange = { headers = it }, oauthClientId = oauthClientId,
-                     onOauthClientIdChange = { changed -> if (changed.trim() != oauthClientId.trim()) oauthAuthorized = false; oauthClientId = changed },
-                     oauthClientSecret = oauthClientSecret,
-                     onOauthClientSecretChange = { changed -> if (changed != oauthClientSecret) oauthAuthorized = false; oauthClientSecret = changed },
-                     oauthRedirectUri = oauthRedirectUri,
-                     onOauthRedirectUriChange = { changed -> if (changed.trim() != oauthRedirectUri.trim()) oauthAuthorized = false; oauthRedirectUri = changed },
-                     oauthAuthorized = oauthAuthorized, onAuthorizeOAuth = {
-                         onAuthorizeOAuth(currentServer()).map { authorized ->
-                             oauthClientId = authorized.auth.oauthClientId.orEmpty(); oauthClientSecret = authorized.auth.oauthClientSecret.orEmpty()
-                             oauthRedirectUri = authorized.auth.oauthRedirectUri ?: org.starfall.generative.integrations.mcp.McpOAuthService.REDIRECT_URI
-                             oauthAuthorized = authorized.auth.oauthAuthorized; authValue = authorized.auth.value.orEmpty()
-                         }
-                    }, onClearOAuth = {
-                         val cleared = onClearOAuth(currentServer())
-                         oauthClientId = cleared.auth.oauthClientId.orEmpty(); oauthClientSecret = cleared.auth.oauthClientSecret.orEmpty()
-                         oauthRedirectUri = cleared.auth.oauthRedirectUri ?: org.starfall.generative.integrations.mcp.McpOAuthService.REDIRECT_URI
-                         oauthAuthorized = false; authValue = cleared.auth.value.orEmpty()
-                    }, modifier = Modifier.fillMaxSize()
-                ) else McpToolsTab(initialServer.id, cachedTools, cachedLoading, cachedError, canSave, toolSettings,
+    McpEditorLayout(
+        title = name.trim().ifEmpty { stringResource(R.string.common_name) },
+        onBack = onDismiss, canSave = canSave && !iconImporting, onSave = { onSave(currentServer()) },
+        pager = pager, tools = {
+            McpToolsTab(initialServer.id, cachedTools, cachedLoading, cachedError, canSave, toolSettings,
                     onSetToolEnabled, onSetToolParameter, ::refreshTools, Modifier.fillMaxSize())
-                }
-            }
-
+        }
+    ) {
+        McpConnectionSettings(
+            name = name, onNameChange = { name = it }, icon = serverIcon,
+            onIconChange = { serverIcon = it; onSaveIcon(currentServer()) }, onIconBusyChange = { iconImporting = it },
+            protocol = protocol, onProtocolChange = { protocol = it }, url = url,
+            onUrlChange = { changed -> if (authMethod == McpAuthMethod.OAUTH2 && changed.trim() != url.trim()) oauthAuthorized = false; url = changed },
+            authMethod = authMethod, onAuthMethodChange = { method ->
+                if (method != authMethod) { authValue = ""; if (method == McpAuthMethod.OAUTH2) oauthAuthorized = false }
+                authMethod = method; authKey = if (method == McpAuthMethod.QUERY_PARAM) "key" else "Authorization"
+            }, authKey = authKey, onAuthKeyChange = { authKey = it }, authValue = authValue, onAuthValueChange = { authValue = it }, authValid = authValid,
+             headers = headers, onHeadersChange = { headers = it }, oauthClientId = oauthClientId,
+             onOauthClientIdChange = { changed -> if (changed.trim() != oauthClientId.trim()) oauthAuthorized = false; oauthClientId = changed },
+             oauthClientSecret = oauthClientSecret,
+             onOauthClientSecretChange = { changed -> if (changed != oauthClientSecret) oauthAuthorized = false; oauthClientSecret = changed },
+             oauthRedirectUri = oauthRedirectUri,
+             onOauthRedirectUriChange = { changed -> if (changed.trim() != oauthRedirectUri.trim()) oauthAuthorized = false; oauthRedirectUri = changed },
+             oauthAuthorized = oauthAuthorized, onAuthorizeOAuth = {
+                 onAuthorizeOAuth(currentServer()).map { authorized ->
+                     oauthClientId = authorized.auth.oauthClientId.orEmpty(); oauthClientSecret = authorized.auth.oauthClientSecret.orEmpty()
+                     oauthRedirectUri = authorized.auth.oauthRedirectUri ?: org.starfall.generative.integrations.mcp.McpOAuthService.REDIRECT_URI
+                     oauthAuthorized = authorized.auth.oauthAuthorized; authValue = authorized.auth.value.orEmpty()
+                 }
+            }, onClearOAuth = {
+                 val cleared = onClearOAuth(currentServer())
+                 oauthClientId = cleared.auth.oauthClientId.orEmpty(); oauthClientSecret = cleared.auth.oauthClientSecret.orEmpty()
+                 oauthRedirectUri = cleared.auth.oauthRedirectUri ?: org.starfall.generative.integrations.mcp.McpOAuthService.REDIRECT_URI
+                 oauthAuthorized = false; authValue = cleared.auth.value.orEmpty()
+            }, modifier = Modifier.fillMaxSize()
+        )
     }
 }

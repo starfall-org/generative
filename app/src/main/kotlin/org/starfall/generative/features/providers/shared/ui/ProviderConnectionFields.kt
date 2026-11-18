@@ -19,7 +19,7 @@ import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_CHANGEL
 import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
 import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
 import org.starfall.generative.shared.model.auth.AuthMethod
-import org.starfall.generative.shared.ui.inputs.ApiKeyField
+import org.starfall.generative.shared.ui.providers.ProviderCredentialField
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.menus.DropdownMenuItem
@@ -153,7 +153,7 @@ internal fun ProviderAuthField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val hasKey = method !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)
-    ApiKeyField(
+    ProviderCredentialField(
         value = if (hasKey) value else "", onValueChange = onValueChange,
         label = {
             Text(
@@ -180,10 +180,6 @@ internal fun ProviderAuthField(
             }
         }) else null,
         visibilityKey = method,
-        maxLines = 3,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("provider_api_key")
-            .onFocusChanged { if (!it.isFocused) onFocusLost() }
+        onFocusLost = onFocusLost
     )
 }

@@ -23,6 +23,18 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.put
 
+/** Server-advertised chat restrictions, bounded by the Android wire's supported sizes. */
+data class ServerChatCapabilities(
+    val maxConversationBytes: Int = 3 shl 20,
+    val maxRunContentBytes: Int = 64 shl 10,
+    val maxHistoryMessages: Int = 256,
+    val attachments: Boolean = false,
+    val multimodalInput: Boolean = false,
+    val toolLoop: Boolean = false,
+    val reasoningHistory: Boolean = false,
+    val mobileProviders: Boolean = false,
+)
+
 /** Session RPCs preserve the complete server snapshot, including unrecognised fields. */
 class ServerSideSessions(private val client: ServerSideClient) {
     private suspend fun request(op: String, sessionId: String? = null, data: JsonObject? = null): JsonElement {
@@ -30,7 +42,9 @@ class ServerSideSessions(private val client: ServerSideClient) {
         return ServerSideCodec.requireSuccess(reply) ?: throw ServerSideProtocolException("Missing RPC data")
     }
 
-    suspend fun verifyCapabilities() {
+    fun close() = client.close()
+
+    suspend fun verifyCapabilities(): ServerChatCapabilities {
         val capabilities = request("capabilities.get").jsonObject
         val operations = capabilities["operations"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty()
         val features = capabilities["chat_features"]?.jsonObject
@@ -40,6 +54,24 @@ class ServerSideSessions(private val client: ServerSideClient) {
             features["streaming"]?.jsonPrimitive?.booleanOrNull != true) {
             throw ServerSideProtocolException("Incompatible server capabilities")
         }
+        fun bounded(value: kotlinx.serialization.json.JsonElement?, fallback: Int, maximum: Int): Int {
+            if (value == null) return fallback // Compatible with earlier v5 servers.
+            val parsed = value.jsonPrimitive.intOrNull
+                ?: throw ServerSideProtocolException("Invalid server capability limit")
+            if (parsed !in 1..maximum) throw ServerSideProtocolException("Invalid server capability limit")
+            return parsed
+        }
+        val generation = features["negotiation"]?.jsonObject?.get("generation")?.jsonObject
+        return ServerChatCapabilities(
+            maxConversationBytes = bounded(features["conversation_max_bytes"], 3 shl 20, 8 shl 20),
+            maxRunContentBytes = bounded(generation?.get("max_run_content_bytes"), 64 shl 10, 512 shl 10),
+            maxHistoryMessages = bounded(generation?.get("max_history_messages"), 256, 100_000),
+            attachments = features["attachments"]?.jsonPrimitive?.booleanOrNull == true,
+            multimodalInput = features["multimodal_input"]?.jsonPrimitive?.booleanOrNull == true,
+            toolLoop = features["generation_tool_loop"]?.jsonPrimitive?.booleanOrNull == true,
+            reasoningHistory = features["reasoning_history"]?.jsonPrimitive?.booleanOrNull == true,
+            mobileProviders = features["runtime_sources"]?.jsonArray?.any { it.jsonPrimitive.content == "mobile_ephemeral" } == true,
+        )
     }
 
     suspend fun list(): List<SessionListItem> {
@@ -108,6 +140,9 @@ class ServerSideSessions(private val client: ServerSideClient) {
     suspend fun configure(id: String, providerId: String, modelId: String, keyId: String? = null) {
         require(providerId.isNotBlank() && modelId.isNotBlank())
         val runtime = buildJsonObject { put("source", "stored"); put("provider_id", providerId); put("model_id", modelId); if (!keyId.isNullOrBlank()) put("key_id", keyId) }
+        configureRuntime(id, runtime)
+    }
+    internal suspend fun configureRuntime(id: String, runtime: JsonObject) {
         request("session.configure", id, buildJsonObject { put("runtime", runtime) })
     }
     suspend fun run(id: String, requestId: String, content: String) {
@@ -142,6 +177,36 @@ class ServerSideSessions(private val client: ServerSideClient) {
     suspend fun delete(id: String, revision: Long, operationId: String) {
         request("session.delete", id, buildJsonObject { put("expected_revision", revision); put("idempotency_key", operationId) })
     }
+    suspend fun supportsCatalogImport(providers: Boolean): Boolean {
+        val operations = request("capabilities.get").jsonObject["operations"]?.jsonArray.orEmpty()
+        val operation = if (providers) "provider.import" else "mcp.import"
+        return operations.any { it.jsonPrimitive.content == operation }
+    }
+
+    suspend fun importProvider(provider: org.starfall.generative.shared.model.provider.ModelProvider) {
+        val payload = ServerSideCodec.json.encodeToJsonElement(
+            org.starfall.generative.shared.model.provider.ModelProvider.serializer(), provider).jsonObject
+        confirmImport("provider.import", payload)
+    }
+
+    suspend fun importMcp(server: org.starfall.generative.shared.model.McpInfo) {
+        val payload = ServerSideCodec.json.encodeToJsonElement(
+            org.starfall.generative.shared.model.McpInfo.serializer(), server).jsonObject
+        confirmImport("mcp.import", payload)
+    }
+
+    private suspend fun confirmImport(operation: String, payload: JsonObject) {
+        if (request(operation, data = payload).jsonObject["imported"]?.jsonPrimitive?.booleanOrNull != true) {
+            throw ServerSideProtocolException("Server did not confirm import")
+        }
+    }
+
+    suspend fun mcpCatalog(): List<JsonObject>? = try {
+        request("mcp.catalog").jsonArray.map { it.jsonObject }
+    } catch (e: ServerSideRpcException) {
+        if (e.rpcError.code == "unsupported_feature") null else throw e
+    }
+
     suspend fun catalog(): ProviderCatalog = ServerSideCodec.json.decodeFromString(request("provider.catalog").toString())
     fun events(id: String, after: Long = 0): Flow<SessionEvent> = client.events(id, after)
 

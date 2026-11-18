@@ -14,8 +14,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.database.repositories.RemoteCacheScope
-import org.starfall.generative.database.repositories.RemoteConversationCache
+import org.starfall.generative.integrations.serverside.RemoteCacheScope
+import org.starfall.generative.integrations.serverside.RemoteConversationCache
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
 import org.starfall.generative.integrations.serverside.*
 

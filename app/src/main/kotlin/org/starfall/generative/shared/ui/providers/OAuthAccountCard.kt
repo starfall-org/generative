@@ -1,4 +1,4 @@
-package org.starfall.generative.features.providers.shared.ui
+package org.starfall.generative.shared.ui.providers
 
 import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
@@ -15,8 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.api.ModelApiType
-import org.starfall.generative.shared.subfeatures.auth.ui.DeviceCodeChallengeText
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.layout.nestedContainerBorder
@@ -24,7 +22,6 @@ import org.starfall.generative.shared.ui.layout.nestedContainerColor
 
 @Composable
 internal fun OAuthAccountCard(
-    providerType: ModelApiType,
     signedIn: Boolean,
     identity: String?,
     signingIn: Boolean,
@@ -33,10 +30,12 @@ internal fun OAuthAccountCard(
     canSignOut: Boolean,
     canCancelSignIn: Boolean,
     error: String?,
-    onSignIn: () -> Unit,
-    onCancelSignIn: () -> Unit,
-    onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
+    onSignIn: (() -> Unit)? = null,
+    onCancelSignIn: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    supportingText: String? = null,
+    pendingContent: @Composable ColumnScope.() -> Unit = {}
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val busy = signingIn || signingOut
@@ -80,7 +79,7 @@ internal fun OAuthAccountCard(
                     Text(status, style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(
-                        text = when {
+                        text = supportingText ?: when {
                             signingOut -> stringResource(R.string.oauth_removing_account)
                             signingIn -> stringResource(R.string.oauth_browser_pending)
                             signedIn -> identity?.takeIf { it.isNotBlank() }
@@ -91,34 +90,34 @@ internal fun OAuthAccountCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (signedIn) {
+                if (signedIn && (onSignIn != null || onSignOut != null)) {
                     Box {
                         IconButton(onClick = { menuExpanded = true }, enabled = !busy) {
                             SharedIcon(Icons.Outlined.MoreVert, stringResource(R.string.oauth_account_actions))
                         }
                         if (menuExpanded && !busy) ContextDropdownMenu(
                             expanded = true,
-                            actions = listOf(
-                                ContextMenuAction(
+                            actions = buildList {
+                                if (onSignIn != null) add(ContextMenuAction(
                                     stringResource(R.string.oauth_sign_in_again),
                                     onSignIn,
                                     Icons.Outlined.OpenInBrowser,
                                     enabled = canSignIn
-                                ),
-                                ContextMenuAction(
+                                ))
+                                if (onSignOut != null) add(ContextMenuAction(
                                     stringResource(R.string.oauth_sign_out),
                                     onSignOut,
                                     Icons.AutoMirrored.Outlined.Logout,
                                     enabled = canSignOut,
                                     destructive = true
-                                )
-                            ),
+                                ))
+                            },
                             onDismissRequest = { menuExpanded = false }
                         )
                     }
                 }
             }
-            if (!signedIn && !busy) {
+            if (!signedIn && !busy && onSignIn != null) {
                 Button(onClick = onSignIn, enabled = canSignIn, modifier = Modifier.fillMaxWidth()) {
                     SharedIcon(Icons.Outlined.OpenInBrowser, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -126,9 +125,11 @@ internal fun OAuthAccountCard(
                 }
             }
             if (signingIn) {
-                DeviceCodeChallengeText(providerType)
-                OutlinedButton(onClick = onCancelSignIn, enabled = canCancelSignIn, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.common_cancel))
+                pendingContent()
+                if (onCancelSignIn != null) {
+                    OutlinedButton(onClick = onCancelSignIn, enabled = canCancelSignIn, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
                 }
             }
             error?.let {

@@ -16,7 +16,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 @Composable
 fun ItemCard(
     isGrid: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     color: Color = prominentContainerColor(),

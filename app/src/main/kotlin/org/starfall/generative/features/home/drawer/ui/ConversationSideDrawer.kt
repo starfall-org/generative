@@ -91,17 +91,19 @@ fun ConversationSideDrawer(
     onOpenRemoteMachines: () -> Unit = {},
     serverProfiles: List<org.starfall.generative.database.repositories.ServerConnectionProfile> = emptyList(),
     remoteEnabled: Boolean = false,
+    remoteConnectionId: String? = null,
+    runtimeSelecting: Boolean = false,
     remoteError: Boolean = false,
     onReconnectServer: () -> Unit = {},
-    onSelectServer: (String) -> Unit = {},
-    onRemoteEnabled: (Boolean) -> Unit = {},
+    onSelectRuntime: (String?) -> Unit = {},
     onOpenServerConnections: () -> Unit = {},
     onOpenTerminal: (RemoteMachine) -> Unit = {},
     onPortForward: (RemoteMachine) -> Unit = {},
     onSaveMachineTools: (RemoteMachine) -> Unit = {},
     modifier: Modifier = Modifier,
     providers: List<ModelProvider> = emptyList(),
-    onSuggestConversationTitle: (suspend (String) -> Result<String>)? = null
+    onSuggestConversationTitle: (suspend (String) -> Result<String>)? = null,
+    onOpenProject: (() -> Unit)? = null
 ) {
     val providersById = remember(providers) { providers.associateBy { it.id } }
     var search by rememberSaveable { mutableStateOf("") }
@@ -225,43 +227,6 @@ fun ConversationSideDrawer(
                         )
                     }
             ) {
-            // Keep Remote Services, Instructions, and Media mounted in normal and selection modes.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DrawerQuickShortcuts(
-                    onOpenMediaStorage = {
-                        unfocusSearch()
-                        onOpenMediaStorage()
-                    },
-                    onOpenRemoteMachines = {
-                        unfocusSearch()
-                        onOpenRemoteMachines()
-                    },
-                    onOpenTerminal = { machine ->
-                        unfocusSearch()
-                        onOpenTerminal(machine)
-                    },
-                    onPortForward = { machine ->
-                        unfocusSearch()
-                        onPortForward(machine)
-                    },
-                    onSaveMachineTools = onSaveMachineTools,
-                    serverProfiles = serverProfiles, remoteEnabled = remoteEnabled, remoteError = remoteError,
-                    onReconnectServer = onReconnectServer,
-                    onSelectServer = onSelectServer, onRemoteEnabled = onRemoteEnabled,
-                    onOpenServerConnections = onOpenServerConnections,
-                    modifier = Modifier.testTag("conversation_drawer_quick_shortcuts"),
-                    maxExpandedHeight = halfDrawerHeight
-                )
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            )
             if (selecting) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp)
@@ -278,13 +243,17 @@ fun ConversationSideDrawer(
                         },
                         enabled = matchingIds.isNotEmpty()
                     )
-                    IconButton(onClick = {
+                    IconButton(enabled = onOpenProject == null || selected.isEmpty(), onClick = {
                         folderName = ""
-                        if (selected.isEmpty()) creatingFolder = true else grouping = true
+                        if (onOpenProject != null) {
+                            stopSelecting()
+                            onOpenProject()
+                        } else if (selected.isEmpty()) creatingFolder = true else grouping = true
                     }) {
                         SharedIcon(
-                            Icons.Outlined.CreateNewFolder,
-                            stringResource(if (selected.isEmpty()) R.string.sidebar_create_folder else R.string.sidebar_move_selected_to_folder)
+                            if (onOpenProject != null) Icons.Outlined.FolderOpen else Icons.Outlined.CreateNewFolder,
+                            stringResource(if (onOpenProject != null) R.string.sidebar_open_project
+                                else if (selected.isEmpty()) R.string.sidebar_create_folder else R.string.sidebar_move_selected_to_folder)
                         )
                     }
                     IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
@@ -310,6 +279,40 @@ fun ConversationSideDrawer(
                         contentPadding = PaddingValues(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                item(key = "quick-shortcuts") {
+                    Column(Modifier.fillMaxWidth()) {
+                        DrawerQuickShortcuts(
+                            onOpenMediaStorage = {
+                                unfocusSearch()
+                                onOpenMediaStorage()
+                            },
+                            onOpenRemoteMachines = {
+                                unfocusSearch()
+                                onOpenRemoteMachines()
+                            },
+                            onOpenTerminal = { machine ->
+                                unfocusSearch()
+                                onOpenTerminal(machine)
+                            },
+                            onPortForward = { machine ->
+                                unfocusSearch()
+                                onPortForward(machine)
+                            },
+                            onSaveMachineTools = onSaveMachineTools,
+                            serverProfiles = serverProfiles, remoteEnabled = remoteEnabled, remoteError = remoteError,
+                            remoteConnectionId = remoteConnectionId, runtimeSelecting = runtimeSelecting,
+                            onReconnectServer = onReconnectServer,
+                            onSelectRuntime = onSelectRuntime,
+                            onOpenServerConnections = onOpenServerConnections,
+                            modifier = Modifier.testTag("conversation_drawer_quick_shortcuts"),
+                            maxExpandedHeight = halfDrawerHeight
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                }
                 val folders = folderOrder.sortedByDescending { it.pinned }
                 if (folders.isNotEmpty()) item(key = "folders-label") { SidebarLabel(stringResource(R.string.sidebar_folders)) }
                 folders.forEach { folder ->

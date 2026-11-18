@@ -401,6 +401,15 @@ class RemoteMachineService(
     fun disconnectAllWhenIdle() = connectionManager.disconnectAllWhenIdle()
     suspend fun disconnectMachineNow(machineId: String): Boolean = connectionManager.disconnectMachineNow(machineId)
 
+    /** Open a binary exec channel through Remote SSH's existing shared connection and settings. */
+    suspend fun openExecStream(machineId: String, command: String): RemoteExecStream {
+        store.awaitInitialized()
+        val machine = requireNotNull(state.value.machines.firstOrNull {
+            it.id == machineId && it.type == RemoteMachineType.SSH
+        }) { "Saved SSH machine is unavailable" }
+        return connectionManager.openExecStream(machine, command)
+    }
+
     private suspend fun openSession(
         machine: RemoteMachine,
         passwordOverride: String? = null,

@@ -72,6 +72,7 @@ import org.starfall.generative.features.tools.ui.MediaRequestProfileEditor
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.chat.logic.contextWindowStatus
 import org.starfall.generative.features.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.chat.ui.ChatBackend
 import org.starfall.generative.features.home.chat.ui.RetainedChatConversations
 import org.starfall.generative.features.home.chat.ui.RetainedChatPages
 import org.starfall.generative.features.home.chat.ui.RemoteKeyDialog
@@ -192,11 +193,13 @@ internal fun AppNavigation(
     var profilesLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(serverConnections) { serverConnections.profiles.collect { serverProfiles = it; profilesLoaded = true } }
     val selectedServer = serverProfiles.firstOrNull { it.selected }
+    var runtimeSelecting by remember { mutableStateOf(false) }
     // Re-pairing a selected server replaces its device identity under the same profile ID.
     // A live remote session must reconnect as that new identity, not keep the old bearer.
     var boundRemoteIdentity by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     val selectedIdentity = selectedServer?.let { Triple(it.id, it.clientId, it.pin) }
-    LaunchedEffect(remote.enabled, selectedIdentity, profilesLoaded) {
+    LaunchedEffect(remote.enabled, selectedIdentity, profilesLoaded, runtimeSelecting) {
+        if (runtimeSelecting) return@LaunchedEffect
         if (remote.enabled && profilesLoaded && !(remote.error && remote.connectionId == null)) {
             if (selectedIdentity == null && remote.connectionId != null) {
                 remoteWorkspace.profileRemoved()
@@ -216,6 +219,14 @@ internal fun AppNavigation(
     val remoteIdentityReady = !remote.enabled ||
         (selectedIdentity != null && boundRemoteIdentity == selectedIdentity && remote.connectionId == selectedIdentity.first)
     fun unsupportedRemote() { Toast.makeText(context, R.string.server_remote_unsupported, Toast.LENGTH_SHORT).show() }
+    fun sendRemote(text: String, files: List<String>): Boolean {
+        val current = remoteWorkspace.state.value
+        val permitted = current.providerId !in current.localProviderIds || selectedServer?.allowLocalProviders == true
+        val sent = remoteIdentityReady && permitted && remoteWorkspace.send(text, files)
+        if (!sent && remoteWorkspace.state.value.pendingKeys.isEmpty()) unsupportedRemote()
+        return sent
+    }
+
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -314,6 +325,12 @@ internal fun AppNavigation(
     val appPrefs: AppPreferences by settingsViewModel.preferences.collectAsStateWithLifecycle()
     val providers: List<ModelProvider> by viewModel.providers.collectAsStateWithLifecycle()
     val providerGroups: List<ProviderGroup> by configurationViewModel.providerGroups.collectAsStateWithLifecycle()
+    LaunchedEffect(remote.connectionId, remote.capabilities.mobileProviders, selectedServer, providers) {
+        val id = remote.connectionId ?: return@LaunchedEffect
+        val allowed = selectedServer?.takeIf { it.id == id }?.allowLocalProviders == true
+        remoteWorkspace.setLocalProviders(id, if (allowed) providers.sortedWith(
+            compareBy<ModelProvider> { it.sortOrder }.thenBy { it.id }) else emptyList())
+    }
     val mcpServers: List<McpInfo> by viewModel.mcpServers.collectAsStateWithLifecycle()
     val speechServices: List<SpeechService> by configurationViewModel.speechServices.collectAsStateWithLifecycle()
     val mcpToolsCache by configurationViewModel.mcpToolsCache.collectAsStateWithLifecycle()
@@ -693,19 +710,28 @@ internal fun AppNavigation(
                                             openConfiguration(AppDestination.REMOTE_MACHINES)
                                         },
                                         serverProfiles = serverProfiles, remoteEnabled = remoteActive, remoteError = remote.error,
+                                        remoteConnectionId = remote.connectionId ?: selectedServer?.id,
+                                        runtimeSelecting = runtimeSelecting,
                                         onReconnectServer = { selectedServer?.let { remoteWorkspace.enable(it.id) } },
-                                        onSelectServer = { id ->
-                                            coroutineScope.launch {
-                                                try {
-                                                    serverConnections.select(id)
-                                                    val current = remoteWorkspace.state.value
-                                                    if (current.enabled && current.connectionId == null) remoteWorkspace.enable(id)
+                                        onSelectRuntime = { id ->
+                                            if (!runtimeSelecting) {
+                                                if (id == null) {
+                                                    remoteWorkspace.disable()
+                                                } else if (!remoteWorkspace.state.value.enabled || remoteWorkspace.state.value.connectionId != id) {
+                                                    runtimeSelecting = true
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            serverConnections.select(id)
+                                                            val current = remoteWorkspace.state.value
+                                                            // The existing selected-identity effect handles remote-to-remote swaps.
+                                                            // Starting from local (or a removed profile) needs explicit activation.
+                                                            if (!current.enabled || current.connectionId == null) remoteWorkspace.enable(id)
+                                                        } catch (e: CancellationException) { throw e }
+                                                        catch (_: Exception) { Toast.makeText(context, R.string.server_remote_offline, Toast.LENGTH_SHORT).show() }
+                                                        finally { runtimeSelecting = false }
+                                                    }
                                                 }
-                                                catch (_: Exception) { Toast.makeText(context, R.string.server_remote_offline, Toast.LENGTH_SHORT).show() }
                                             }
-                                        },
-                                        onRemoteEnabled = { enabled ->
-                                            if (enabled) selectedServer?.let { remoteWorkspace.enable(it.id) } else remoteWorkspace.disable()
                                         },
                                         onOpenServerConnections = { openConfiguration(AppDestination.SERVER_CONNECTIONS) },
                                         onPortForward = { machine ->
@@ -733,121 +759,158 @@ internal fun AppNavigation(
                             conversation = if (remotePage) remote.conversation.takeIf { remoteIdentityReady } else currentConvState.value,
                             availableIds = if (remotePage) remote.items.takeIf { remoteIdentityReady }?.mapTo(mutableSetOf()) { it.id }.orEmpty() else availableChatIds,
                             foreground = chatOnTop && visible,
-                            keepOverlayState = navBackStackEntry?.destination?.route == BrowserRoutes.CODE_PREVIEW
+                            keepOverlayState = navBackStackEntry?.destination?.route == BrowserRoutes.CODE_PREVIEW,
+                            restoreChatState = remotePage
                         ) { chatPage, pageActive ->
                     val active = pageActive && visible
+                    val backend = if (remotePage) {
+                        val remoteError = if (remote.error) when (remote.connectionFailure) {
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.UNAUTHORIZED -> stringResource(R.string.server_remote_auth_failed)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.CERTIFICATE -> stringResource(R.string.server_remote_tls_failed)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.INCOMPATIBLE -> stringResource(R.string.server_remote_incompatible)
+                            else -> stringResource(R.string.server_remote_offline)
+                        } else if (!remoteIdentityReady || remote.restoring) stringResource(R.string.server_remote_loading)
+                        else when (remote.actionFailure) {
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
+                            null -> null
+                        }
+                        val serverGroup = "serverside:server"
+                        val localGroup = "serverside:local"
+                        val combined = remote.providers.takeIf { remoteIdentityReady }.orEmpty()
+                        val localIds = remote.localProviderIds.takeIf { selectedServer?.allowLocalProviders == true }.orEmpty()
+                        val visible = combined.filter { it.id !in remote.localProviderIds || it.id in localIds }
+                        val sourceGroups = if (localIds.isEmpty()) emptyList() else listOf(
+                            ProviderGroup(id = serverGroup, name = stringResource(R.string.server_remote_label), sortOrder = 0),
+                            ProviderGroup(id = localGroup, name = stringResource(R.string.server_connection_providers_local), sortOrder = 1),
+                        )
+                        ChatBackend(
+                            restoreRemoteViewport = true,
+                            isGenerating = remote.running && remoteIdentityReady && active,
+                            generatingConversationId = remote.snapshot?.sessionId.takeIf { remoteIdentityReady },
+                            chatError = remoteError,
+                            providers = if (sourceGroups.isEmpty()) visible else visible.map { it.copy(
+                                groupId = if (it.id in localIds) localGroup else serverGroup) },
+                            providerGroups = sourceGroups,
+                            mediaProviders = supportedDirectMediaProviders(visible),
+                            modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
+                            modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
+                            selectedProviderId = remote.providerId.takeIf { remoteIdentityReady }.orEmpty(),
+                            selectedModelName = remote.modelId.takeIf { remoteIdentityReady }.orEmpty(),
+                            workspaceLabel = stringResource(R.string.server_remote_label) + " · " + (selectedServer?.name ?: ""),
+                            onSendMessage = ::sendRemote,
+                            onSendMessageWithSkill = { text, files, requested, skillName ->
+                                if (requested || skillName != null || !remoteIdentityReady) { unsupportedRemote(); false }
+                                else sendRemote(text, files)
+                            },
+                            onSendMedia = { unsupportedRemote(); false },
+                            onMediaModeChange = { type, _, _ -> if (type != null) unsupportedRemote() },
+                            onResendUserMessage = { unsupportedRemote(); false },
+                            onStopGenerating = { if (remoteIdentityReady) remoteWorkspace.stop() else unsupportedRemote() },
+                            onRegenerate = { unsupportedRemote() },
+                            onRetryFromError = { unsupportedRemote() },
+                            onEditMessage = { id, content, files ->
+                                (remoteIdentityReady && remoteWorkspace.editMessage(id, content, files)).also { if (!it) unsupportedRemote() }
+                            },
+                            onDeleteMessage = { id -> if (remoteIdentityReady) remoteWorkspace.deleteMessage(id) else unsupportedRemote() },
+                            onDeleteAssistantBlock = { _, _ -> unsupportedRemote() },
+                            onDeleteMessageVersion = { unsupportedRemote() },
+                            onEditQueuedMessage = { _, _, _ -> unsupportedRemote(); false },
+                            onDeleteQueuedMessage = { unsupportedRemote() },
+                            onSwitchVersion = { _, _ -> unsupportedRemote() },
+                            onSelectModel = { provider, model ->
+                                if (remoteIdentityReady && (provider !in remote.localProviderIds || selectedServer?.allowLocalProviders == true))
+                                    remoteWorkspace.selectModel(provider, model) else unsupportedRemote()
+                            },
+                            onSetReasoningEffort = { unsupportedRemote() },
+                            onSetThinkingPassback = { _, _, _ -> unsupportedRemote() },
+                            onSetModelReasoningEffort = { _, _, _ -> unsupportedRemote() },
+                            onSetModelTools = { _, _, _ -> unsupportedRemote() },
+                            onEditModel = { _, _ -> unsupportedRemote() },
+                            onEditProvider = { unsupportedRemote() },
+                            onStartConversationSummary = { unsupportedRemote(); false },
+                            onCancelConversationSummary = { unsupportedRemote() },
+                            onSummaryRoleChange = { unsupportedRemote() },
+                            onDeleteSummary = { unsupportedRemote() },
+                            onReadMessage = { _, _ -> unsupportedRemote() },
+                        )
+                    } else {
+                        ChatBackend(
+                            loadingConversationId = loadingConversationId.takeIf { active },
+                            activeStream = viewModel.activeStreamForCurrentConversation.takeIf { active },
+                            isGenerating = isGenerating && active,
+                            generatingConversationId = generatingConversationId.takeIf { active },
+                            chatError = chatError.takeIf { active },
+                            providers = providers,
+                            mediaProviders = supportedDirectMediaProviders(providers),
+                            providerGroups = providerGroups,
+                            modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
+                            modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
+                            onModelPickerCollapsedGroupsChange = settingsViewModel::setModelPickerCollapsedGroups,
+                            onModelPickerCollapsedProvidersChange = settingsViewModel::setModelPickerCollapsedProviders,
+                            selectedProviderId = chatProviderId,
+                            selectedModelName = chatModelId,
+                            onSendMedia = viewModel::sendMedia,
+                            onMediaModeChange = viewModel::setComposerMedia,
+                            onResendUserMessage = viewModel::resendUserMessage,
+                            onSendMessage = { text, files -> viewModel.sendMessage(text, files) },
+                            onSendMessageWithSkill = { text, files, requested, skillName -> viewModel.sendMessage(text, files, requested, skillName) },
+                            onStopGenerating = viewModel::stopGeneration,
+                            onRegenerate = viewModel::regenerateMessage,
+                            onRetryFromError = viewModel::retryFromError,
+                            onEditMessage = viewModel::editMessage,
+                            onDeleteMessage = viewModel::deleteMessage,
+                            onDeleteAssistantBlock = viewModel::deleteAssistantBlock,
+                            onDeleteMessageVersion = viewModel::deleteMessageVersion,
+                            queuedMessages = queuedMessages.takeIf { active }.orEmpty(),
+                            onEditQueuedMessage = viewModel::editQueuedMessage,
+                            onDeleteQueuedMessage = viewModel::deleteQueuedMessage,
+                            onSwitchVersion = viewModel::switchMessageVersion,
+                            onSelectModel = viewModel::selectModel,
+                            summaryProgress = summaryProgress.takeIf { active },
+                            contextWindowStatus = contextWindowStatus.takeIf { active },
+                            onSetReasoningEffort = viewModel::setConversationReasoningEffort,
+                            onSetThinkingPassback = configurationViewModel::setThinkingPassback,
+                            onSetModelReasoningEffort = configurationViewModel::setModelReasoningEffort,
+                            onSetModelTools = configurationViewModel::setModelTools,
+                            onEditModel = { providerId, modelId ->
+                                navController.navigate("providers/edit/${Uri.encode(providerId)}?modelId=${Uri.encode(modelId)}&returnToChat=true") {
+                                    launchSingleTop = true
+                                }
+                            },
+                            onEditProvider = { providerId ->
+                                navController.navigate("providers/edit/${Uri.encode(providerId)}?returnToChat=true") { launchSingleTop = true }
+                            },
+                            onStartConversationSummary = viewModel::startConversationSummary,
+                            onCancelConversationSummary = viewModel::cancelConversationSummary,
+                            onSummaryRoleChange = viewModel::setSummaryRole,
+                            onDeleteSummary = viewModel::deleteConversationSummary,
+                            speakingMessageId = speakingMessageId.takeIf { active },
+                            onReadMessage = { messageId, text -> viewModel.speakText(text, messageId) },
+                            dynamicModels = rememberLocalChatModels(
+                                providers = providers, foreground = active && chatOnTop,
+                                fetch = configurationViewModel::fetchOllamaModels,
+                            ),
+                        )
+                    }
                     ChatScreen(
+                        backend = backend,
+                        conversation = chatPage,
                         backgroundImage = appPrefs.userProfile.chatBackground,
                         backgroundTransparency = appPrefs.userProfile.chatTransparency,
-                        conversation = chatPage,
-                        // A pending disk read veils the outgoing chat without clearing its viewport.
-                        loadingConversationId = if (remotePage) null else loadingConversationId.takeIf { active },
                         isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
-                        activeStream = if (remotePage) null else viewModel.activeStreamForCurrentConversation.takeIf { active },
-                        isGenerating = if (remotePage) remote.running && remoteIdentityReady && active else isGenerating && active,
-                        generatingConversationId = if (remotePage) remote.snapshot?.sessionId.takeIf { remoteIdentityReady } else generatingConversationId.takeIf { active },
-                        chatError = if (remotePage && remote.error) stringResource(R.string.server_remote_offline) else if (remotePage && (!remoteIdentityReady || remote.busy || remote.restoring)) stringResource(R.string.server_remote_loading) else if (remotePage) null else chatError.takeIf { active },
-                        providers = if (remotePage) remote.providers.takeIf { remoteIdentityReady }.orEmpty() else providers,
-                        providerGroups = if (remotePage) emptyList() else providerGroups,
-                        modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
-                        modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
-                        onModelPickerCollapsedGroupsChange = { groups -> if (!remotePage) settingsViewModel.setModelPickerCollapsedGroups(groups) },
-                        onModelPickerCollapsedProvidersChange = { groups -> if (!remotePage) settingsViewModel.setModelPickerCollapsedProviders(groups) },
-                         selectedProviderId = if (remotePage && remoteIdentityReady) remote.providerId else if (remotePage) "" else chatProviderId,
-                          selectedModelName = if (remotePage && remoteIdentityReady) remote.modelId else if (remotePage) "" else chatModelId,
-                         agentSkills = appPrefs.agentSkills.skills,
-                         onOpenSkillsSettings = { openSkillsSettings() },
-                          featuresLogoImage = appPrefs.featuresLogoImage,
-                        workspaceLabel = if (remotePage) stringResource(R.string.server_remote_label) + " · " + (selectedServer?.name ?: "") else null,
+                        agentSkills = appPrefs.agentSkills.skills,
+                        onOpenSkillsSettings = { openSkillsSettings() },
+                        featuresLogoImage = appPrefs.featuresLogoImage,
                         autoScroll = appPrefs.autoScroll,
-                        onSendMedia = { request -> if (remotePage) { unsupportedRemote(); false } else viewModel.sendMedia(request) },
-                        onMediaModeChange = { type, provider, model -> if (remotePage) { if (type != null) unsupportedRemote() } else viewModel.setComposerMedia(type, provider, model) },
-                        onResendUserMessage = { id -> if (remotePage) { unsupportedRemote(); false } else viewModel.resendUserMessage(id) },
-                        onSendMessage = { text, files -> if (remotePage) (remoteIdentityReady && remoteWorkspace.send(text, files)).also { if (!it) unsupportedRemote() } else viewModel.sendMessage(text, files) },
-                        onSendMessageWithSkill = { text, files, requested, skillName ->
-                            if (remotePage) { if (requested || skillName != null || !remoteIdentityReady) { unsupportedRemote(); false } else remoteWorkspace.send(text, files).also { if (!it) unsupportedRemote() } } else viewModel.sendMessage(text, files, requested, skillName)
-                        },
-                        onStopGenerating = {
-                            if (remotePage) { if (remoteIdentityReady) remoteWorkspace.stop() else unsupportedRemote() } else viewModel.stopGeneration()
-                        },
-                        onOpenDrawer = {
-                            coroutineScope.launch { drawerState.open() }
-                        },
-                        onNewChat = {
-                            startNewChat()
-                        },
+                        onOpenDrawer = { coroutineScope.launch { drawerState.open() } },
+                        onNewChat = { startNewChat() },
                         onOpenTemporaryChat = { startTemporaryChat() },
-                        onOpenSettings = {
-                            navigate(AppDestination.FEATURES)
-                        },
-                        onRegenerate = { id ->
-                            if (remotePage) unsupportedRemote() else viewModel.regenerateMessage(id)
-                        },
-                        onRetryFromError = { id ->
-                            if (remotePage) unsupportedRemote() else viewModel.retryFromError(id)
-                        },
-                        onEditMessage = { id, content, files ->
-                            if (remotePage) (remoteIdentityReady && remoteWorkspace.editMessage(id, content, files)).also { if (!it) unsupportedRemote() } else viewModel.editMessage(id, content, files)
-                        },
-                        onDeleteMessage = { id ->
-                            if (remotePage) { if (remoteIdentityReady) remoteWorkspace.deleteMessage(id) else unsupportedRemote() } else viewModel.deleteMessage(id)
-                        },
-                        onDeleteAssistantBlock = { id, block ->
-                            if (remotePage) unsupportedRemote() else viewModel.deleteAssistantBlock(id, block)
-                        },
-                        onDeleteMessageVersion = { id ->
-                            if (remotePage) unsupportedRemote() else viewModel.deleteMessageVersion(id)
-                        },
-                        queuedMessages = if (active && !remotePage) queuedMessages else emptyList(),
-                        onEditQueuedMessage = { id, content, files ->
-                            if (remotePage) { unsupportedRemote(); false } else viewModel.editQueuedMessage(id, content, files)
-                        },
-                        onDeleteQueuedMessage = { id ->
-                            if (remotePage) unsupportedRemote() else viewModel.deleteQueuedMessage(id)
-                        },
-                        onSwitchVersion = { id, idx ->
-                            if (remotePage) unsupportedRemote() else viewModel.switchMessageVersion(id, idx)
-                        },
-                        onSelectModel = { provId, modelId ->
-                            if (remotePage) { if (remoteIdentityReady) remoteWorkspace.selectModel(provId, modelId) else unsupportedRemote() }
-                            else viewModel.selectModel(provId, modelId)
-                        },
-                        summaryProgress = if (remotePage) null else summaryProgress.takeIf { active },
-                        contextWindowStatus = if (remotePage) null else contextWindowStatus.takeIf { active },
-                        onSetReasoningEffort = { effort -> if (remotePage) unsupportedRemote() else viewModel.setConversationReasoningEffort(effort) },
-                        onSetThinkingPassback = { p, m, mode -> if (remotePage) unsupportedRemote() else configurationViewModel.setThinkingPassback(p, m, mode) },
-                        onSetModelReasoningEffort = { p, m, effort -> if (remotePage) unsupportedRemote() else configurationViewModel.setModelReasoningEffort(p, m, effort) },
-                        onSetModelTools = { p, m, tools -> if (remotePage) unsupportedRemote() else configurationViewModel.setModelTools(p, m, tools) },
-                        onEditModel = { providerId, modelId ->
-                            if (remotePage) unsupportedRemote() else navController.navigate(
-                                "providers/edit/${Uri.encode(providerId)}?modelId=${
-                                    Uri.encode(
-                                        modelId
-                                    )
-                                }&returnToChat=true"
-                            ) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onEditProvider = { providerId ->
-                            if (remotePage) unsupportedRemote() else navController.navigate("providers/edit/${Uri.encode(providerId)}?returnToChat=true") {
-                                launchSingleTop = true
-                            }
-                        },
-                        onStartConversationSummary = { req -> if (remotePage) { unsupportedRemote(); false } else viewModel.startConversationSummary(req) },
-                        onCancelConversationSummary = { if (remotePage) unsupportedRemote() else viewModel.cancelConversationSummary() },
-                        onSummaryRoleChange = { role -> if (remotePage) unsupportedRemote() else viewModel.setSummaryRole(role) },
-                        onDeleteSummary = { if (remotePage) unsupportedRemote() else viewModel.deleteConversationSummary() },
-                        speakingMessageId = if (remotePage) null else speakingMessageId.takeIf { active },
-                        onReadMessage = { messageId, text ->
-                            if (remotePage) unsupportedRemote() else viewModel.speakText(text, messageId)
-                        },
-                        onFetchOllamaModels = if (remotePage) null else { url ->
-                            configurationViewModel.fetchOllamaModels(url)
-                        },
-                         onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
-                         onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) }
-                     )
+                        onOpenSettings = { navigate(AppDestination.FEATURES) },
+                        onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
+                        onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) },
+                    )
                         }
                         }
                         }
@@ -1269,7 +1332,17 @@ internal fun AppNavigation(
                     }
                     browserScreens(navController)
                     composable(AppDestination.SERVER_CONNECTIONS.route) {
-                        org.starfall.generative.features.serverconnection.ui.ServerConnectionsScreen(serverConnections) { navController.popBackStack() }
+                        org.starfall.generative.features.serverconnection.ui.ServerConnectionsScreen(serverConnections,
+                            onProviders = { navController.navigate("server_inventory/${Uri.encode(it)}/providers") },
+                            onMcp = { navController.navigate("server_inventory/${Uri.encode(it)}/mcp") },
+                            onBack = { navController.popBackStack() })
+                    }
+                    composable("server_inventory/{connectionId}/{kind}") { entry ->
+                        val connectionId = entry.arguments?.getString("connectionId").orEmpty()
+                        val kind = entry.arguments?.getString("kind").orEmpty()
+                        org.starfall.generative.features.serverconnection.ui.ServerInventoryScreen(
+                            service = serverConnections, connectionId = connectionId,
+                            providers = kind == "providers", onBack = { navController.popBackStack() })
                     }
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings page on re-entry.

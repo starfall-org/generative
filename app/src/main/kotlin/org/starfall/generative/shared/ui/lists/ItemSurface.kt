@@ -19,7 +19,7 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 @Composable
 fun ItemSurface(
     isGrid: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     color: Color = prominentContainerColor(),
@@ -27,12 +27,14 @@ fun ItemSurface(
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(if (isGrid) 20.dp else 16.dp)
-    if (onLongClick == null) {
+    if (onClick == null && onLongClick == null) {
+        Surface(modifier = modifier.fillMaxWidth(), shape = shape, color = color, border = border, content = content)
+    } else if (onLongClick == null && onClick != null) {
         Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape,
             color = color, border = border, content = content)
     } else {
         Surface(modifier = modifier.fillMaxWidth().clip(shape).combinedClickable(
-            onClick = onClick, onLongClick = onLongClick
+            onClick = onClick ?: {}, onLongClick = onLongClick
         ), shape = shape, color = color, border = border, content = content)
     }
 }

@@ -47,10 +47,12 @@ internal val LocalChatKeepOverlayState = compositionLocalOf { false }
 
 /** Eligibility and one replaceable intent. LazyColumn owns all measurement, motion and arbitration. */
 @Stable
-internal class ChatMessageListState(initialMessages: List<StoredMessage> = emptyList()) {
+internal class ChatMessageListState(initialMessages: List<StoredMessage> = emptyList(),
+    restoredScrollIndex: Int? = null, restoredScrollOffset: Int = 0) {
     // The final keyed boundary is part of initial measurement. Compose fills the viewport
     // with preceding chronological content; no opening scroll or synthetic offset is needed.
-    val listState = LazyListState(firstVisibleItemIndex = chatMessageTurns(initialMessages).size)
+    val listState = LazyListState(firstVisibleItemIndex = restoredScrollIndex?.coerceAtLeast(0)
+        ?: chatMessageTurns(initialMessages).size, firstVisibleItemScrollOffset = restoredScrollOffset.coerceAtLeast(0))
     val sentMessages = SentMessageDetector()
     internal val jumpViewportBounds = LayoutBoundsHolder()
     internal val latestContentBounds = LayoutBoundsHolder()

@@ -42,6 +42,7 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Generative">
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.tool-files"

@@ -13,8 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import org.starfall.generative.features.providers.shared.ui.OAuthAccountCard
-import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.ui.providers.OAuthAccountCard
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 
 @RunWith(RobolectricTestRunner::class)
@@ -28,7 +27,6 @@ class OAuthAccountErrorUiTest {
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", dynamicColor = false) {
                 OAuthAccountCard(
-                    providerType = ModelApiType.DEVIN,
                     signedIn = false,
                     identity = null,
                     signingIn = false,

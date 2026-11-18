@@ -9,8 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
@@ -45,6 +43,9 @@ import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.model.provider.ProviderPlacement
 import org.starfall.generative.shared.model.provider.ProviderRootOrderItem
 import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
+import org.starfall.generative.shared.ui.lists.EntityGrid
+import org.starfall.generative.shared.ui.providers.ProviderEmptyState
+import org.starfall.generative.shared.ui.providers.providerCardCell
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import org.starfall.generative.shared.ui.lists.moved
 
@@ -448,7 +449,6 @@ fun ProvidersScreen(
                         modifier = Modifier.fillMaxSize()
                     ) { gridMode ->
                         val gridState = rememberLazyGridState()
-                        val cellHeight = if (gridMode) 164.dp else 100.dp
                         val activeDrag = dndState.session
                         // Near the top, the first card lives below the Scaffold header,
                         // outside the narrow auto-scroll edge. Let it yield once the
@@ -482,9 +482,9 @@ fun ProvidersScreen(
                                     }
                             }
                         }
-                        LazyVerticalGrid(
+                        EntityGrid(
                             state = gridState,
-                            columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                            isGrid = gridMode,
                             contentPadding = padding,
                             modifier = Modifier.fillMaxSize()
                                 .dropTarget(
@@ -526,9 +526,7 @@ fun ProvidersScreen(
                                 Box(
                                     Modifier
                                         .animateItem()
-                                        .fillMaxWidth()
-                                        .height(cellHeight)
-                                        .padding(6.dp)
+                                        .providerCardCell(gridMode)
                                         .dragSource(
                                             state = dndState, key = key, data = item.toOrderItem(),
                                             enabled = !searching && query.isBlank() && openGroupId == null,

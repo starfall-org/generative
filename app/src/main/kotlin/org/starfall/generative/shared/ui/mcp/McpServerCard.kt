@@ -1,4 +1,4 @@
-package org.starfall.generative.features.mcp.shared.ui
+package org.starfall.generative.shared.ui.mcp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -15,9 +16,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.McpInfo
-import org.starfall.generative.shared.model.isWebSearchProvider
-import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -26,37 +24,39 @@ import org.starfall.generative.shared.ui.menus.ItemContextMenu
 import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 
 @Composable
-fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifier, toolCount: Int?, toolError: String?,
-    loading: Boolean, isEnabled: Boolean, onToggleEnabled: () -> Unit,
-    onToolErrorClick: (String) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
-    managedSettings: ToolSettings = ToolSettings()) {
+fun McpUnifiedCard(
+    name: String, detail: String, isGrid: Boolean, modifier: Modifier = Modifier, icon: String? = null,
+    toolCount: Int? = null, toolError: String? = null, loading: Boolean = false,
+    onToolErrorClick: ((String) -> Unit)? = null,
+    onEdit: (() -> Unit)? = null, onDelete: (() -> Unit)? = null,
+    firstActionText: String? = null, firstActionIcon: Int? = null,
+    firstActionImageVector: ImageVector? = null, onFirstAction: (() -> Unit)? = null,
+    actionsEnabled: Boolean = true
+) {
     ItemCard(
         isGrid = isGrid,
-        onClick = onEdit,
+        onClick = onEdit.takeIf { actionsEnabled },
         modifier = modifier,
-            icon = { EntityIcon(server.icon, Modifier.size(42.dp), text = providerInitials(server.name),
-                fallback = Icons.Outlined.Mcp, matchName = server.name) },
+            icon = { EntityIcon(icon, Modifier.size(42.dp), text = providerInitials(name),
+                fallback = Icons.Outlined.Mcp, matchName = name) },
             actions = {
-                ItemContextMenu(
-                    onEdit = onEdit,
-                    onDelete = onDelete,
-                    deleteColor = MaterialTheme.colorScheme.error,
-                    firstActionText = if (isWebSearchProvider(managedSettings, server.id)) null
-                        else stringResource(if (isEnabled) R.string.mcp_enabled else R.string.mcp_enable),
-                    firstActionIcon = (if (isEnabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked)
-                        .takeUnless { isWebSearchProvider(managedSettings, server.id) },
-                    onFirstAction = onToggleEnabled.takeUnless { isWebSearchProvider(managedSettings, server.id) }
+                if (onEdit != null || onDelete != null || onFirstAction != null) ItemContextMenu(
+                    onEdit = onEdit, onDelete = onDelete, deleteColor = MaterialTheme.colorScheme.error,
+                    firstActionText = firstActionText, firstActionIcon = firstActionIcon,
+                    firstActionImageVector = firstActionImageVector, onFirstAction = onFirstAction,
+                    enabled = actionsEnabled
                 )
             },
             content = {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(server.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    Text(name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(server.url ?: stringResource(R.string.mcp_no_endpoint), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    Text(detail, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     when {
                         toolError != null -> Row(Modifier.clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)).clickable { onToolErrorClick(toolError) }
+                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                            .then(if (onToolErrorClick != null && actionsEnabled) Modifier.clickable { onToolErrorClick(toolError) } else Modifier)
                             .padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             SharedIcon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(12.dp))
                             Spacer(Modifier.width(4.dp))
@@ -69,4 +69,22 @@ fun McpUnifiedCard(server: McpInfo, isGrid: Boolean, modifier: Modifier = Modifi
                     }
                 }
             })
+}
+
+@Composable
+internal fun McpEmptyState(hasSearchQuery: Boolean) {
+    Box(
+        Modifier.fillMaxSize().then(if (hasSearchQuery) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (hasSearchQuery) {
+            Text(stringResource(R.string.content_list_no_results))
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                SharedIcon(Icons.Outlined.Mcp, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.no_mcp_servers), style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
 }
