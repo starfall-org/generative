@@ -4,7 +4,7 @@ import org.starfall.generative.features.home.chat.ui.LocalChatForeground
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -231,7 +231,7 @@ private fun CodeBlockDialog(
                 style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
         },
         content = {
-            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Box(Modifier.fillMaxSize().fadingVerticalScroll(rememberScrollState())) {
                 CodeBlockSurface(
                     language = language,
                     code = code,

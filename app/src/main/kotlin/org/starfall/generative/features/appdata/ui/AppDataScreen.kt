@@ -1,5 +1,6 @@
 package org.starfall.generative.features.appdata.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.dialogs.Dialog
@@ -75,7 +75,7 @@ fun AppDataScreen(
     ) { scaffoldPadding ->
         val innerPadding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 20.dp, top = 16.dp, bottom = 16.dp)
 
-        LazyColumn(
+        FadingLazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = innerPadding,
             verticalArrangement = Arrangement.spacedBy(20.dp)

@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.dialogs
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import org.starfall.generative.shared.ui.inputs.InputFocusHost
 import android.app.Activity
 import android.content.ContextWrapper
@@ -24,7 +25,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -179,7 +179,7 @@ fun Dialog(
                             ProvideTextStyle(MaterialTheme.typography.headlineSmall) { title() }
                         }
                     }
-                    val contentScroll = if (scrollableContent) Modifier.verticalScroll(rememberScrollState()) else Modifier
+                    val contentScroll = if (scrollableContent) Modifier.fadingVerticalScroll(rememberScrollState()) else Modifier
                     Box(
                         Modifier.weight(1f, fill = edgeToEdge).fillMaxWidth().padding(horizontal = 24.dp)
                             .then(contentScroll).testTag("app-dialog-content")

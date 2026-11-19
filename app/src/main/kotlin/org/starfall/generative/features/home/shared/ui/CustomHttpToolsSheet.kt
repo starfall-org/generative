@@ -1,8 +1,8 @@
 package org.starfall.generative.features.home.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,7 +16,7 @@ import org.starfall.generative.shared.ui.lists.ItemCard
 @Composable
 internal fun CustomHttpToolsSheetContent(onBack: () -> Unit, onOpenSettings: () -> Unit) {
     val controls = LocalToolControls.current
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+    Column(Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         QuickActionsSubpageHeader(title = stringResource(R.string.custom_http_tools), onBack = onBack, actions = {
             QuickActionsSettingsButton(stringResource(R.string.custom_http_tools), onOpenSettings)

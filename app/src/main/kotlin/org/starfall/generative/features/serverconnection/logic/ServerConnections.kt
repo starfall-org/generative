@@ -254,7 +254,11 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             return
         }
         val sessions = ServerSideSessions(clientFactory(id))
-        try { sessions.verifyCapabilities() }
+        try {
+            sessions.verifyCapabilities()
+            sessions.catalog()
+            sessions.list()
+        }
         finally { sessions.close() }
     }
 }

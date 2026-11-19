@@ -1,5 +1,6 @@
 package org.starfall.generative.features.machines.shared.ui.terminal
 
+import org.starfall.generative.shared.ui.layout.fadingAppBarSurface
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +34,7 @@ internal fun TerminalAppBar(
     onToggleForceMouse: () -> Unit
 ) {
     TopAppBar(
+        modifier = fadingAppBarSurface(),
         colors = edgeToEdgeTopAppBarColors(),
         title = {},
         // The screen handles system insets for the entire terminal surface.

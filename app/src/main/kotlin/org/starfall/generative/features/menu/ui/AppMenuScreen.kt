@@ -1,5 +1,6 @@
 package org.starfall.generative.features.menu.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.icons.SharedIcon
@@ -112,7 +112,7 @@ fun AppMenuScreen(
             )
         }
     ) {
-    LazyColumn(
+    FadingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         // Draw the list itself behind transparent system bars, but keep interactive content inside
         // the safe area. This is the same edge-to-edge arrangement used by ChatScreen.

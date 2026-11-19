@@ -275,7 +275,6 @@ class ConversationDrawerFocusTest {
         isOpen = true
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_side_drawer").assertWidthIsEqualTo(420.dp)
-        // At rest, Search, Menu and New chat share the same 52dp height; Search and New chat are 52dp squares.
         compose.onNodeWithTag("conversation_drawer_search_button")
             .assertIsDisplayed()
             .assertWidthIsEqualTo(52.dp)
@@ -289,13 +288,21 @@ class ConversationDrawerFocusTest {
             .assertHeightIsEqualTo(52.dp)
         compose.onNodeWithTag("conversation_drawer_search").assertDoesNotExist()
 
+        compose.onNodeWithTag("drawer_server_row").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_app_bar_toggle").performClick()
+        compose.onNodeWithTag("drawer_server_row").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_remote_selected_machine").assertIsDisplayed()
+        compose.onNodeWithTag("conversation_drawer_app_bar_toggle").performClick()
+        compose.onNodeWithTag("drawer_server_row").assertDoesNotExist()
+        compose.onNodeWithTag("drawer_remote_selected_machine").assertDoesNotExist()
+
         compose.onNodeWithTag("conversation_drawer_search_button").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("conversation_drawer_search").assertIsFocused()
         compose.onNodeWithTag("conversation_drawer_search_button").assertDoesNotExist()
-        compose.onNodeWithTag("conversation_drawer_menu_button").assertDoesNotExist()
+        compose.onNodeWithTag("conversation_drawer_menu_button").assertIsDisplayed()
         compose.onNodeWithTag("conversation_drawer_new_chat")
             .assertIsDisplayed()
-            .assertWidthIsEqualTo(42.dp)
+            .assertWidthIsEqualTo(52.dp)
     }
 }

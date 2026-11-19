@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.subfeatures.modelpicker.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.subfeatures.modelpicker.logic.ModelPickerItem
 import org.starfall.generative.shared.subfeatures.modelpicker.logic.sectionKey
 import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerItems
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
@@ -301,7 +301,7 @@ internal fun ModelPickerSheetContent(
                 )
             }
 
-            LazyColumn(
+            FadingLazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -1,8 +1,8 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -127,7 +127,7 @@ internal fun ModelCatalogDialog(
                     copyButtonModifier = Modifier.testTag("provider-model-catalog-copy-error")
                 )
             }
-            LazyColumn(
+            FadingLazyColumn(
                 Modifier
                     // Wrap short results; long lists consume the maximum available height.
                     .weight(1f, fill = false)

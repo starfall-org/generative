@@ -1,10 +1,11 @@
 package org.starfall.generative.features.serverconnection.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -101,7 +102,7 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
             if (matching.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(stringResource(R.string.server_connection_empty))
             } else FadeGridListContent(isGrid = grid, modifier = Modifier.fillMaxSize()) { gridMode ->
-                LazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                FadingLazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1),
                     verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(matching, key = { it.id }) { profile ->
                         ItemCard(isGrid = gridMode, onClick = { result = null; editorPage = ConnectionEditorPage(profile) },
@@ -203,7 +204,7 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
             SharedIcon(Icons.Outlined.Check, stringResource(R.string.common_save))
         }
     }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+        Column(Modifier.fillMaxSize().padding(padding).fadingVerticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (error != null) Text(stringResource(error), color = MaterialTheme.colorScheme.error)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.server_connection_name)) }, singleLine = true)

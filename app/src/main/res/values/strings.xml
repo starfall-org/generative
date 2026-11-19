@@ -127,7 +127,7 @@
     <string name="chat_temporary_title">Temporary Chat</string>
     <string name="chat_temporary_description">This is a temporary chat. It won’t appear in your sidebar or be saved to chat history. Switching chats ends this session, cancels its requests, and removes its temporary files.</string>
     <string name="sidebar_search">Search</string>
-    <string name="sidebar_menu">Generative</string>
+    <string name="sidebar_menu">App Menu</string>
     <string name="sidebar_clear_search">Clear search</string>
     <string name="sidebar_exit_selection">Exit selection</string>
     <string name="sidebar_move_selected_to_folder">Move selected chats to folder</string>
@@ -850,6 +850,7 @@
     <string name="settings_open_github_release">Open GitHub Release Page</string>
     <string name="settings_find_latest_release">Find the latest Generative release on GitHub.</string>
     <string name="drawer_remote_services_settings_label">Remote Services</string>
+    <string name="drawer_remote_access">Remote Access</string>
     <string name="remote_select_server">Select server</string>
     <string name="remote_server_selection_title">Choose a server for AI tools</string>
     <string name="remote_server_none_selected">No server selected</string>

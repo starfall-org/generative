@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.subfeatures.crashreports.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import org.starfall.generative.shared.ui.dialogs.Dialog
 
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.ErrorContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,7 +30,7 @@ internal fun CrashReportDialog(report: CrashReport, onCreateIssue: () -> Unit, o
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.crash_report_title)) },
         content = {
-            Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
+            Column(Modifier.heightIn(max = 400.dp).fadingVerticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.crash_report_description))
                 Text("${report.appVersion} · ${report.androidVersion}", style = MaterialTheme.typography.bodySmall)

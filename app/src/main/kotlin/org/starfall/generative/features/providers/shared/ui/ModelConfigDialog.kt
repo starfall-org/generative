@@ -1,12 +1,12 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -48,7 +48,7 @@ fun ModelConfigDialog(
         onDismissRequest = onDismiss,
         title = { Text(modelId, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         content = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.fadingVerticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(provider.name, style = MaterialTheme.typography.labelLarge)
                 Text(stringResource(R.string.model_stream_settings_description))
                 OutlinedTextField(temperature, { temperature = it }, label = { Text(stringResource(R.string.model_temperature_label, tempMax)) },
@@ -124,7 +124,7 @@ fun ModelToolsDialog(
         scrollableContent = false,
         text = {
             Column(
-                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).fadingVerticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(modelId, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)

@@ -1,9 +1,9 @@
 package org.starfall.generative.features.home.chat.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -119,7 +119,7 @@ fun ConversationSummaryDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowHeightIn(maxFraction = 0.75f)
-                    .verticalScroll(rememberScrollState())
+                    .fadingVerticalScroll(rememberScrollState())
                     .testTag("summary-dialog-content"),
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -129,7 +129,6 @@ fun ConversationSummaryDialog(
                 Modifier.fillMaxWidth().testTag("summary-dialog-controls"),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                HorizontalDivider()
                 Text(stringResource(R.string.summary_send_as), style = MaterialTheme.typography.titleSmall)
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("summary-role-selector")) {
                     val roles = listOf(

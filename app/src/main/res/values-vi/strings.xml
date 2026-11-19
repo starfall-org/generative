@@ -103,6 +103,7 @@
     <string name="chat_temporary_title">Chat tạm thời</string>
     <string name="chat_temporary_description">Đây là một chat tạm thời. Nó không hiện trên thanh bên và không được lưu vào lịch sử chat. Khi chuyển sang chat khác, phiên này kết thúc, các yêu cầu của nó bị hủy và các tệp tạm thời bị xóa.</string>
     <string name="sidebar_search">Tìm kiếm</string>
+    <string name="sidebar_menu">Menu ứng dụng</string>
     <string name="sidebar_clear_search">Xóa tìm kiếm</string>
     <string name="sidebar_exit_selection">Thoát chế độ chọn</string>
     <string name="sidebar_move_selected_to_folder">Chuyển các chat đã chọn vào thư mục</string>
@@ -664,6 +665,7 @@
     <string name="settings_up_to_date">Đã là bản mới nhất (%1$s)</string>
     <string name="settings_open_github_release">Mở trang bản phát hành trên GitHub</string>
     <string name="settings_find_latest_release">Tìm bản Generative mới nhất trên GitHub.</string>
+    <string name="drawer_remote_access">Truy cập từ xa</string>
     <string name="remote_select_server">Chọn máy chủ</string>
     <string name="remote_server_selection_title">Chọn máy chủ cho công cụ AI</string>
     <string name="remote_server_none_selected">Chưa chọn máy chủ</string>

@@ -1,5 +1,6 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
@@ -114,7 +114,7 @@ internal fun SkillsTab(
             scrollableContent = false,
             text = {
                 Column(
-                    Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                    Modifier.heightIn(max = 360.dp).fadingVerticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(skill.description, style = MaterialTheme.typography.bodyMedium)

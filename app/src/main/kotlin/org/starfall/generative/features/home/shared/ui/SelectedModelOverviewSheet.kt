@@ -1,7 +1,7 @@
 package org.starfall.generative.features.home.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -174,7 +174,7 @@ internal fun SelectedModelOverviewContent(
     val contentColor = if (maxEffortSheet) Color.White else MaterialTheme.colorScheme.onSurface
     CompositionLocalProvider(LocalContentColor provides contentColor) {
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

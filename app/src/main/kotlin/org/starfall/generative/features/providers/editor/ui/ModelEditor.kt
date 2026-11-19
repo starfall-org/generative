@@ -1,11 +1,11 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import androidx.compose.material3.*
@@ -146,7 +146,7 @@ fun ModelEditor(
     ) { padding ->
         Column(
             Modifier.fillMaxSize().consumeWindowInsets(padding)
-                .verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
+                .fadingVerticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             IconPickerRow(
@@ -362,7 +362,7 @@ fun ModelEditor(
                 Box(
                     Modifier.fillMaxWidth()
                         .heightIn(max = 480.dp)
-                        .verticalScroll(rememberScrollState())
+                        .fadingVerticalScroll(rememberScrollState())
                         .testTag("model-json-code")
                 ) {
                     CodeBlockSurface(language = "json", code = modelJsonCode)

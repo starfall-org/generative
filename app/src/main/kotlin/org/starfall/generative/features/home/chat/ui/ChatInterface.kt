@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.chat.ui
 
+import org.starfall.generative.shared.ui.layout.fadingBarSurface
 import org.starfall.generative.R
 import org.starfall.generative.features.home.BottomSheetsLinkState
 
@@ -341,6 +342,13 @@ fun ChatInterface(
                     modifier = Modifier
                         .testTag("chat-bottom-panel")
                         .fillMaxWidth()
+                        .fadingBarSurface(
+                            MaterialTheme.colorScheme.background.copy(
+                                alpha = LocalInputAreaAppearance.current.alpha * 0.6f
+                            ),
+                            footer = true,
+                            depth = androidx.compose.ui.unit.Dp.Unspecified
+                        )
                         .navigationBarsPadding()
                 ) {
                     inlineChatError?.let { error ->

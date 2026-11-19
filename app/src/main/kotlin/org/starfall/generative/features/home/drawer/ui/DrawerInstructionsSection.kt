@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.drawer.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -64,7 +64,7 @@ internal fun DrawerInstructionsSection(
         Column(
             modifier = Modifier.fillMaxWidth()
                 .heightIn(max = (maxExpandedHeight - 84.dp).coerceAtLeast(80.dp))
-                .verticalScroll(rememberScrollState())
+                .fadingVerticalScroll(rememberScrollState())
                 .testTag("drawer_instructions_list")
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)

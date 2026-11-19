@@ -1,5 +1,6 @@
 package org.starfall.generative.features.httptools.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
@@ -44,7 +45,7 @@ fun CustomHttpToolsScreen(
         if (matching.isEmpty()) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             Text(stringResource(if (tools.isEmpty()) R.string.http_tools_empty else R.string.content_list_no_results))
         } else FadeGridListContent(isGrid = grid, modifier = Modifier.fillMaxSize()) { gridMode ->
-            LazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1), contentPadding = padding,
+            FadingLazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1), contentPadding = padding,
                 verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(matching, key = { it.id }) { tool ->
                     var menu by remember { mutableStateOf(false) }

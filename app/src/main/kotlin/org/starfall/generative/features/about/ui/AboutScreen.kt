@@ -1,5 +1,6 @@
 package org.starfall.generative.features.about.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -64,7 +64,7 @@ fun AboutScreen(
     val versionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
 
     Column(
-        modifier = modifier.fillMaxSize().then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
+        modifier = modifier.fillMaxSize().then(if (scrollable) Modifier.fadingVerticalScroll(scrollState) else Modifier)
             .padding(contentPadding).padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -157,7 +157,7 @@ private fun ReleaseEntry(latest: GitHubReleaseInfo) {
             Box(
                 modifier = Modifier.fillMaxWidth()
                     .heightIn(max = 240.dp)
-                    .verticalScroll(rememberScrollState())
+                    .fadingVerticalScroll(rememberScrollState())
             ) {
                 Text(latest.body, style = MaterialTheme.typography.bodySmall)
             }

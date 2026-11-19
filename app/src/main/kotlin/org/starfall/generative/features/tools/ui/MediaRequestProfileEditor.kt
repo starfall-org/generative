@@ -1,12 +1,12 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -167,7 +167,7 @@ fun MediaRequestProfileEditor(
             }
         }
     ) { padding ->
-        LazyColumn(
+        FadingLazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = scrollableScaffoldPadding(padding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -347,7 +347,7 @@ fun MediaRequestProfileEditor(
         val index = selectedIndex.coerceIn(0, draft.chain.steps.lastIndex)
         ContentSheet(onDismissRequest = ::closeStepEditor, fixedHeightFraction = 0.92f) {
             Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
+                Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -471,7 +471,7 @@ fun MediaRequestProfileEditor(
     if (editingFinalResponse) {
         ContentSheet(onDismissRequest = { editingFinalResponse = false }, fixedHeightFraction = 0.72f) {
             Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(16.dp),
+                Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState()).imePadding().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

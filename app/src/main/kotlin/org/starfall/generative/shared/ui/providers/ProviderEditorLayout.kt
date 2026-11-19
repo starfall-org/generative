@@ -1,9 +1,9 @@
 package org.starfall.generative.shared.ui.providers
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.IconButton
@@ -47,7 +47,7 @@ internal fun ProviderEditorLayout(
 
 @Composable
 private fun ProviderConfigurationForm(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().testTag("provider-configuration-form").verticalScroll(rememberScrollState()).padding(16.dp),
+    Column(Modifier.fillMaxSize().testTag("provider-configuration-form").fadingVerticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 

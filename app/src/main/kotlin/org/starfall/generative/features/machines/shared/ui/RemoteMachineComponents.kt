@@ -2,6 +2,7 @@
 
 package org.starfall.generative.features.machines.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingAppBarSurface
 import org.starfall.generative.shared.ui.layout.edgeToEdgeTopAppBarColors
 import org.starfall.generative.shared.ui.ErrorContainer
 import androidx.compose.foundation.background
@@ -62,7 +63,7 @@ internal fun RemoteMachinesTopBar(
 ) {
     TopAppBar(
         colors = edgeToEdgeTopAppBarColors(),
-        modifier = modifier,
+        modifier = modifier.then(fadingAppBarSurface()),
         title = {
             if (subtitle == null) FixedAppBarTitle(title) else Column {
                 Text(

@@ -135,8 +135,12 @@ class ServerSideSshTransport internal constructor(
     }
 
     companion object {
-        private const val STREAM_COMMAND = "serverside stream --stdio"
-        private const val PAIR_COMMAND = "serverside pair --stdio --transport tcp"
+        // Start the installed service with its existing configuration. Still try
+        // the command when a manually started daemon or an older CLI is in use.
+        // Service output must never enter the JSON or binary stdout stream.
+        private const val START_SERVICE = "serverside service start </dev/null >/dev/null 2>&1 || :"
+        private const val STREAM_COMMAND = "$START_SERVICE; exec serverside stream --stdio"
+        private const val PAIR_COMMAND = "$START_SERVICE; exec serverside pair --stdio --transport tcp"
         private const val MAX_FRAME_BYTES = 4 * 1024 * 1024
         private const val MAX_UNSOLICITED_FRAMES = 4096
 

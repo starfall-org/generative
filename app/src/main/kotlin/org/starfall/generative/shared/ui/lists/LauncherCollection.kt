@@ -4,13 +4,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
@@ -82,7 +80,7 @@ fun <Item : Any, Drag : Any> LauncherCollection(
 
     if (columns == null) {
         val listScroll = listState ?: rememberLazyListState()
-        LazyColumn(
+        FadingLazyColumn(
             state = listScroll,
             modifier = modifier.onGloballyPositioned { viewport = it.boundsInWindow() }
                 .then(if (enabled) Modifier.launcherDragAutoScroll(state, listScroll,
@@ -107,7 +105,7 @@ fun <Item : Any, Drag : Any> LauncherCollection(
         }
     } else {
         val gridScroll = gridState ?: rememberLazyGridState()
-        LazyVerticalGrid(
+        FadingLazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = gridScroll,
             modifier = modifier.onGloballyPositioned { viewport = it.boundsInWindow() }

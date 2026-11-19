@@ -12,7 +12,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
@@ -22,7 +21,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.features.home.drawer.ui.DrawerQuickShortcuts
+import org.starfall.generative.features.home.drawer.ui.DrawerRemoteControls
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.withSelectedRemoteMachine
@@ -60,19 +59,16 @@ class DrawerRemoteMachineContextMenuTest {
                         }
                     )
                 ) {
-                    DrawerQuickShortcuts(
-                        onOpenMediaStorage = {},
+                    DrawerRemoteControls(
                         onOpenRemoteMachines = {},
                         onOpenTerminal = { terminal = it },
                         onPortForward = { forwarded = it },
-                        onSaveMachineTools = { toolsSaved = it },
-                        maxExpandedHeight = 400.dp
+                        onSaveMachineTools = { toolsSaved = it }
                     )
                 }
             }
         }
 
-        compose.onNodeWithText("Remote Services").performClick()
         compose.onNodeWithText("Select server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_options_machine-1").assertDoesNotExist()
         compose.onNodeWithTag("drawer_machine_options_machine-2").assertDoesNotExist()
@@ -150,16 +146,14 @@ class DrawerRemoteMachineContextMenuTest {
                         settings = settings.withRemoteMachineEnabled(id, enabled, machines.map { machine -> machine.id })
                     }
                 )) {
-                    DrawerQuickShortcuts(
-                        onOpenMediaStorage = {},
+                    DrawerRemoteControls(
                         onOpenRemoteMachines = {},
-                        onSaveMachineTools = {},
-                        maxExpandedHeight = 400.dp
+                        onSaveMachineTools = {}
                     )
                 }
             }
         }
-        compose.onNodeWithText("Remote Services").performClick()
+
         compose.onNodeWithTag("drawer_machine_options_machine-a").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_machine_picker_item_machine-b").performClick()
@@ -194,17 +188,18 @@ class DrawerRemoteMachineContextMenuTest {
         val selections = mutableListOf<String?>()
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
-                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                DrawerRemoteControls(onOpenRemoteMachines = {}, onSaveMachineTools = {},
                     serverProfiles = listOf(profile, other, openCode),
                     remoteEnabled = runtimeId != null, remoteConnectionId = runtimeId,
-                    onSelectRuntime = { selections += it; runtimeId = it }, maxExpandedHeight = 400.dp)
+                    onSelectRuntime = { selections += it; runtimeId = it })
             }
         }
-        compose.onNodeWithText("Remote Services").performClick()
+
         val ssh = compose.onNodeWithTag("drawer_remote_selected_machine").fetchSemanticsNode().boundsInRoot
         val remote = compose.onNodeWithTag("drawer_server_row").fetchSemanticsNode().boundsInRoot
-        assertTrue(remote.top >= ssh.bottom)
+        assertTrue(remote.bottom <= ssh.top)
         compose.onNodeWithText("Runtime").assertIsDisplayed()
+        compose.onNodeWithText("Remote Access").assertIsDisplayed()
         compose.onNodeWithText("Local").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_switch").assertDoesNotExist()
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
@@ -226,11 +221,10 @@ class DrawerRemoteMachineContextMenuTest {
     @Test fun runtimePickerOffersLocalEvenWithoutServers() {
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
-                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
-                    maxExpandedHeight = 400.dp)
+                DrawerRemoteControls(onOpenRemoteMachines = {}, onSaveMachineTools = {})
             }
         }
-        compose.onNodeWithText("Remote Services").performClick()
+
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_runtime_picker_local").assertIsDisplayed()
     }
@@ -242,12 +236,12 @@ class DrawerRemoteMachineContextMenuTest {
         var reconnects = 0
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
-                DrawerQuickShortcuts(onOpenMediaStorage = {}, onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                DrawerRemoteControls(onOpenRemoteMachines = {}, onSaveMachineTools = {},
                     serverProfiles = listOf(profile), remoteEnabled = true, remoteConnectionId = profile.id, remoteError = error,
-                    onReconnectServer = { reconnects++; error = false }, maxExpandedHeight = 400.dp)
+                    onReconnectServer = { reconnects++; error = false })
             }
         }
-        compose.onNodeWithText("Remote Services").performClick()
+
         compose.onNodeWithText("Chat server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_reconnect").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(1, reconnects) }

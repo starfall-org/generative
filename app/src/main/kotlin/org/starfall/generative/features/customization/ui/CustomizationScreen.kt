@@ -1,5 +1,6 @@
 package org.starfall.generative.features.customization.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.inputs.ControlledSlider
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -130,7 +130,7 @@ fun CustomizationScreen(
     ) { scaffoldPadding ->
         val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 12.dp, bottom = 12.dp)
 
-        LazyColumn(
+        FadingLazyColumn(
             modifier = Modifier.fillMaxSize().testTag("customization-list"),
             contentPadding = padding,
             verticalArrangement = Arrangement.spacedBy(12.dp)

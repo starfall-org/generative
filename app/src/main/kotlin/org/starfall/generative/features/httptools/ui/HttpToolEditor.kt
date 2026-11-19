@@ -1,8 +1,8 @@
 package org.starfall.generative.features.httptools.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,7 +71,7 @@ fun HttpToolEditor(tool: CustomHttpTool, onSave: suspend (CustomHttpTool) -> Uni
             }
         }) { SharedIcon(Icons.Outlined.Check, stringResource(R.string.common_save)) }
     }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+        Column(Modifier.fillMaxSize().padding(padding).fadingVerticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (invalid) Text(stringResource(R.string.http_tool_invalid), color = MaterialTheme.colorScheme.error)
             if (saveFailed) Text(stringResource(R.string.save_change_failed), color = MaterialTheme.colorScheme.error)

@@ -1,7 +1,7 @@
 package org.starfall.generative.shared.subfeatures.logging.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
@@ -30,7 +30,7 @@ internal fun DebugLogDetailDialog(entry: DebugLogEntry, onDismiss: () -> Unit, o
     Dialog(onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.debug_log_details)) },
         content = {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp)
+            FadingLazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp)
                 .testTag("debug-log-detail"),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item(key = "metadata") {

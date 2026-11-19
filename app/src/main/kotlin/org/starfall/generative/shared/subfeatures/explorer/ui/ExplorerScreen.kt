@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.subfeatures.explorer.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -236,7 +236,7 @@ fun ExplorerScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize()) {
             FadeGridListContent(isGrid = grid, modifier = Modifier.fillMaxSize()) { gridMode ->
-                LazyVerticalGrid(
+                FadingLazyVerticalGrid(
                     columns = GridCells.Fixed(if (gridMode) 2 else 1),
                     contentPadding = padding,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

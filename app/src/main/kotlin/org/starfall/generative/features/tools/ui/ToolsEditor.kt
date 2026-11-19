@@ -1,7 +1,7 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,7 +77,7 @@ fun ToolsEditor(
             tabRowModifier = Modifier.padding(horizontal = 16.dp),
             tabTag = { if (it == 0) "built-in-tools-media-tab" else "built-in-tools-others-tab" }
         ) { page ->
-            LazyColumn(
+            FadingLazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)

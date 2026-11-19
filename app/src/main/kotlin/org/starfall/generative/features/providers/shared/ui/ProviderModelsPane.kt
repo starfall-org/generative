@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -43,7 +43,7 @@ internal fun ProviderModelsPane(models: List<String>, configurations: Map<String
                 showReasoningEffort = false, onClick = {})
         }
     }) {
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize().autoScroll(dndState, listState),
+    FadingLazyColumn(state = listState, modifier = Modifier.fillMaxSize().autoScroll(dndState, listState),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (models.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally,

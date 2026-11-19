@@ -1,5 +1,6 @@
 package org.starfall.generative.features.storage.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -7,7 +8,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.saveable.rememberSaveable
 import org.starfall.generative.shared.ui.lists.EmptyState
@@ -137,7 +137,7 @@ fun StorageScreen(store: ToolFiles, onBack: () -> Unit, onBrowseFiles: () -> Uni
                 }
             } else {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
-                    LazyVerticalGrid(
+                    FadingLazyVerticalGrid(
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         modifier = Modifier.testTag("storage-preview-list"),
                         contentPadding = padding,

@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.screens
 
+import org.starfall.generative.shared.ui.layout.fadingAppBarSurface
 import org.starfall.generative.shared.ui.inputs.rememberClearInputFocus
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -154,7 +155,7 @@ fun ListScreenTemplate(
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
-                modifier = appBarModifier,
+                modifier = appBarModifier.then(fadingAppBarSurface()),
                 colors = edgeToEdgeTopAppBarColors(),
                 title = {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {

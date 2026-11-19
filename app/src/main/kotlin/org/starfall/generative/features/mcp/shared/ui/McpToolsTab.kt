@@ -1,7 +1,7 @@
 package org.starfall.generative.features.mcp.shared.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -56,7 +56,7 @@ internal fun McpToolsTab(
         when {
             tools == null -> ToolListPlaceholder(R.string.no_cached_tools_yet)
             tools.isEmpty() -> ToolListPlaceholder(R.string.server_reported_no_tools)
-            else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            else -> FadingLazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(tools, key = { it.name }) { tool ->
                     McpToolItem(

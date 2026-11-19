@@ -1,5 +1,6 @@
 package org.starfall.generative.features.settings.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -13,7 +14,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -99,7 +99,7 @@ fun AppearanceSettingsView(
     onMessageFontFamilyChange: (MessageFontFamily) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
-    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    FadingLazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             org.starfall.generative.shared.ui.layout.SettingsCard {
                 SettingsChoicePreference(
@@ -161,7 +161,7 @@ fun PreferencesSettingsView(
     onOpenDeveloperOptions: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(bottom = 24.dp)
 ) {
-    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    FadingLazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             org.starfall.generative.shared.ui.layout.SettingsCard {
                 SettingsChoicePreference(

@@ -15,6 +15,8 @@ Generative uses **Jetpack Compose and Material 3**, with app-specific layouts an
 - **ChatAppBar scrim is intentionally independent:** render a `MaterialTheme.colorScheme.background` overlay only behind the ChatAppBar controls, from 60% opacity at the top of the status bar to 0% at the app-bar bottom. This scrim follows the themed/custom background color (light or dark) but ignores component transparency and UserProfile photo alpha; it fades scrolling content underneath through normal compositing. Never apply the fade directly to text, messages, media blocks, or their individual alpha values.
 - Entity collections use `ItemCard`, `ListViewToggle`, and `FadeGridListContent`; expandable items can use `ItemSurface`. Use the shared dialog, sheet and menu components. Keep long dialog content independently scrollable.
 
+- **Fading boundaries:** use the shared fading bar surface for non-chat AppBars and scroll-edge fading for the body viewports of screens, sheets and dialogs (`FadingLazyColumn`, `FadingLazyVerticalGrid`, `fadingVerticalScroll`). Do not fade pinned controls or the profile/modal background. Only fade a clipped scroll edge while content continues past it; non-scrollable content and settled first/last edges remain fully readable. Preserve the dedicated ChatAppBar scrim; the chat footer fades its themed backdrop independently.
+
 ## Icons
 
 Source: [Fluent UI System Icons](https://composables.com/icons/icon-libraries/fluentui-system-icons).

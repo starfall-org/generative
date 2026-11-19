@@ -1,9 +1,9 @@
 package org.starfall.generative.features.customization.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +42,7 @@ internal fun MediaStoragePhotoSheet(onDismiss: () -> Unit, onSelected: (File) ->
                     Text(stringResource(R.string.user_profile_no_photos), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyVerticalGrid(
+                FadingLazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

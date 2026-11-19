@@ -1,5 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.shared.model.maskedProviderApiKey
@@ -9,13 +11,11 @@ import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,7 +71,7 @@ internal fun ProviderApiKeysDialog(
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
         content = {
-            if (editing) Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            if (editing) Column(Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(label, { label = it }, label = { Text(stringResource(R.string.common_label)) },
                     singleLine = true, modifier = Modifier.fillMaxWidth().testTag("provider_api_key_label"))
@@ -88,7 +88,7 @@ internal fun ProviderApiKeysDialog(
                 val ordered = state.entries.sortedBy { it.id != selectedId }
                 if (ordered.isEmpty()) Text(stringResource(R.string.provider_no_api_keys),
                     style = MaterialTheme.typography.bodyMedium)
-                else LazyColumn(
+                else FadingLazyColumn(
                     Modifier.fillMaxWidth().heightIn(max = 400.dp),
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)

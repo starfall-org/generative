@@ -1,5 +1,6 @@
 package org.starfall.generative.features.mcp.list.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -140,7 +140,7 @@ fun ServerListScreen(
         AlertDialog(onDismissRequest = { selectedToolError = null }, title = { Text(stringResource(R.string.mcp_tool_discovery_error_title, serverName)) },
             scrollableContent = false,
             text = {
-                Box(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).fadingVerticalScroll(rememberScrollState())) {
                     SelectionContainer { Text(error, style = MaterialTheme.typography.bodySmall) }
                 }
             }, confirmButton = { TextButton(onClick = {

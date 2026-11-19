@@ -36,7 +36,10 @@ class ServerSideSshTransportTest {
         var released = 0
         val payload = """{"protocol":5,"client_id":"owner","secret":"secret","fingerprint":"server","endpoint":"tcp://server","transport":"tcp"}"""
         val paired = ServerSideSshTransport.pairUsing { command ->
-            assertEquals("serverside pair --stdio --transport tcp", command)
+            assertEquals(
+                "serverside service start </dev/null >/dev/null 2>&1 || :; exec serverside pair --stdio --transport tcp",
+                command
+            )
             RemoteExecStream(ByteArrayInputStream(payload.toByteArray()), ByteArrayOutputStream()) { released++ }
         }
         assertEquals("owner", paired.identity.clientId)
@@ -69,7 +72,10 @@ class ServerSideSshTransportTest {
         }
         val identity = PairedIdentity("owner", "secret", "server")
         val client = ServerSideClient(ServerSideSshTransport({ command ->
-            assertEquals("serverside stream --stdio", command)
+            assertEquals(
+                "serverside service start </dev/null >/dev/null 2>&1 || :; exec serverside stream --stdio",
+                command
+            )
             stream
         }, identity), identity)
         withTimeout(5000) {

@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.subfeatures.media.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -214,7 +214,7 @@ private fun FileCornerActions(reference: String, name: String, mime: String, sel
             title = { Text(stringResource(R.string.file_download_failed)) },
             scrollableContent = false,
             text = {
-                Column(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f).fadingVerticalScroll(rememberScrollState())) {
                     Text(name, style = MaterialTheme.typography.labelMedium)
                     Spacer(Modifier.height(8.dp))
                     SelectionContainer { Text(error, style = MaterialTheme.typography.bodySmall) }

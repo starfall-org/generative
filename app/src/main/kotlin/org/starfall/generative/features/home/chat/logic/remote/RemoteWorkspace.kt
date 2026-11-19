@@ -208,7 +208,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                 opening = api
                 val capabilities = api.verifyCapabilities()
                 verified = true
-                val catalog = api.catalog(); require(catalog.version == 1)
+                val catalog = api.catalog()
                 val providers = catalog.providers.mapNotNull { p ->
                     val type = when (p.type) { "openai" -> ModelApiType.OPENAI; "openai_responses" -> ModelApiType.OPENAI_RESPONSES; "anthropic" -> ModelApiType.ANTHROPIC; "google" -> ModelApiType.GOOGLE; else -> return@mapNotNull null }
                     val models = p.models.filter { it.textGeneration && (it.availability == "available" || it.availability == "key_selection_required") }
@@ -285,6 +285,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
     }
     fun dismissKeySelection() { pendingSelection = null; mutable.update { it.copy(pendingKeys = emptyList()) } }
     fun select(id: String) {
+        if (sessions == null && mutable.value.busy) return
         val connection = mutable.value.connectionId ?: return
         val owner = activeCacheScope
         val api = sessions
@@ -320,6 +321,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         } }
     }
     fun newChat() {
+        if (sessions == null && mutable.value.busy) return
         generation++
         stream?.cancel(); requestId = null
         mutable.value.connectionId?.let { connection ->

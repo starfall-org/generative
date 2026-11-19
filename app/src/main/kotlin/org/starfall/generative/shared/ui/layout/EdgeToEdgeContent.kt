@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import org.starfall.generative.shared.ui.theme.LocalAmoledMode
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -44,14 +45,17 @@ internal fun appBarSurfaceColor(surface: Color, transparency: Float, amoled: Boo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun edgeToEdgeTopAppBarColors(): TopAppBarColors {
-    val color = appBarSurfaceColor(
+fun fadingAppBarSurface(): Modifier {
+    return Modifier.fadingBarSurface(appBarSurfaceColor(
         MaterialTheme.colorScheme.surface,
         LocalItemTransparency.current,
         LocalAmoledMode.current
-    )
-    return TopAppBarDefaults.topAppBarColors(
-        containerColor = color,
-        scrolledContainerColor = color
-    )
+    ))
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun edgeToEdgeTopAppBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+    containerColor = Color.Transparent,
+    scrolledContainerColor = Color.Transparent
+)

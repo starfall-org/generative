@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
@@ -53,7 +52,7 @@ fun <T : Any> ReorderableCollection(
     Host(drag, modifier, preview = { session ->
         byId[session.item.data]?.let { preview(it) }
     }) {
-        LazyVerticalGrid(
+        FadingLazyVerticalGrid(
             state = grid,
             columns = columns,
             modifier = Modifier.fillMaxSize().autoScroll(drag, grid),

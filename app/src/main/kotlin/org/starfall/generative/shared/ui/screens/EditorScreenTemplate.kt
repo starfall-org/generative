@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.ui.screens
 
+import org.starfall.generative.shared.ui.layout.fadingAppBarSurface
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -44,6 +45,7 @@ fun EditorScreenTemplate(
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
+                modifier = fadingAppBarSurface(),
                 colors = edgeToEdgeTopAppBarColors(),
                 title = title,
                 navigationIcon = {

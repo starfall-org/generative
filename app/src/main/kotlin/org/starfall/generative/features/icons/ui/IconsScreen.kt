@@ -1,14 +1,15 @@
 package org.starfall.generative.features.icons.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,7 +18,6 @@ import org.starfall.generative.shared.ui.lists.ItemCard
 import org.starfall.generative.shared.ui.lists.EmptyState
 import org.starfall.generative.shared.ui.lists.FadeGridListContent
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -184,7 +184,7 @@ fun IconsScreen(onBack: () -> Unit) {
                 )
             } else {
                 FadeGridListContent(isGrid = isGrid, modifier = Modifier.weight(1f)) { gridMode ->
-                    LazyVerticalGrid(
+                    FadingLazyVerticalGrid(
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -228,7 +228,7 @@ fun IconsScreen(onBack: () -> Unit) {
             title = { Text(stringResource(R.string.icon_cache_edit)) },
             scrollableContent = false,
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fadingVerticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StoredIconPreview(entry.image, Modifier.size(48.dp))
                         Text(entry.filename, modifier = Modifier.weight(1f), maxLines = 2,
@@ -269,7 +269,7 @@ fun IconsScreen(onBack: () -> Unit) {
                             }
                         }
                     }
-                    LazyColumn(Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FadingLazyColumn(Modifier.heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(patterns.size) { index ->
                             val pattern = patterns[index]
                             val invalid = pattern.isBlank() || runCatching { Regex(pattern) }.isFailure

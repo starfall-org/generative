@@ -17,13 +17,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.starfall.generative.features.home.drawer.ui.DrawerQuickShortcuts
+import org.starfall.generative.features.home.drawer.ui.DrawerRemoteControls
 import org.starfall.generative.shared.model.RemoteMachine
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.withSelectedRemoteMachine
@@ -127,17 +126,15 @@ class RemoteNavigationDeviceTest {
                         }
                     )
                 ) {
-                    DrawerQuickShortcuts(
-                        onOpenMediaStorage = {},
+                    DrawerRemoteControls(
                         onOpenRemoteMachines = {},
                         onPortForward = { forwarded = it },
-                        onSaveMachineTools = {},
-                        maxExpandedHeight = 400.dp
+                        onSaveMachineTools = {}
                     )
                 }
             }
         }
-        compose.onNodeWithText("Remote Services").performClick()
+
         compose.onNodeWithText("Select server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_machine_picker_item_device-drawer-b").performClick()

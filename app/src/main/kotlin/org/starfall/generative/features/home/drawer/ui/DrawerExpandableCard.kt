@@ -37,7 +37,7 @@ import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
-/** Shared expandable drawer container for Remote Services and Instructions. */
+/** Expandable drawer container for Instructions. */
 @Composable
 internal fun DrawerExpandableCard(
     title: String,

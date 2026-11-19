@@ -1,11 +1,11 @@
 package org.starfall.generative.features.speech.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyVerticalGrid
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.*
@@ -142,7 +142,7 @@ fun SpeechServicesScreen(
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(stringResource(R.string.content_list_no_results))
                         }
-                    } else LazyVerticalGrid(state = gridState,
+                    } else FadingLazyVerticalGrid(state = gridState,
                         columns = GridCells.Fixed(if (gridMode) 2 else 1),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),

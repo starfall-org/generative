@@ -1,5 +1,6 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionTests
 
 import org.starfall.generative.features.providers.shared.logic.ModelConnectionRemovals
@@ -8,7 +9,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -79,7 +79,7 @@ internal fun ModelConnectionDialog(provider: ModelProvider, tests: ModelConnecti
             }
         },
         content = {
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
+            FadingLazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).windowHeightIn(maxFraction = 0.75f)
                 .testTag("connection-model-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (textModels.isEmpty()) item { Text(stringResource(R.string.provider_test_no_chat_models)) }
                 items(textModels, key = { it }) { id ->

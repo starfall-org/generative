@@ -20,7 +20,7 @@ import org.starfall.generative.shared.model.SavedInstruction
 class DrawerInstructionsDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun instructionsAppearDirectlyBelowRemoteAndUseTheSameExpandableContainer() {
+    @Test fun instructionsAppearAboveMediaAndCanBeExpanded() {
         val instruction = SavedInstruction("instruction-id", "System instruction", "Answer clearly")
         var library by mutableStateOf(InstructionLibrary(listOf(instruction), setOf(instruction.id)))
         var openedSettings = false
@@ -36,19 +36,13 @@ class DrawerInstructionsDeviceTest {
                     openInstructions = { openedSettings = true },
                     editInstruction = { editedInstructionId = it }
                 )) {
-                    DrawerQuickShortcuts(
-                        onOpenMediaStorage = {},
-                        onOpenRemoteMachines = {},
-                        onSaveMachineTools = {}
-                    )
+                    DrawerQuickShortcuts(onOpenMediaStorage = {})
                 }
             }
         }
 
-        val remote = compose.onNodeWithTag("drawer_remote_header").fetchSemanticsNode().boundsInRoot
         val instructions = compose.onNodeWithTag("drawer_instructions_header").fetchSemanticsNode().boundsInRoot
         val media = compose.onNodeWithTag("drawer_media_card").fetchSemanticsNode().boundsInRoot
-        assertTrue("Instructions must be directly below Remote Services", instructions.top >= remote.bottom)
         assertTrue("Media must be the last item in the group", media.top >= instructions.bottom)
         compose.onNodeWithTag("drawer_instructions_list").assertDoesNotExist()
         compose.onNodeWithTag("drawer_instructions_header").performClick()
@@ -63,9 +57,9 @@ class DrawerInstructionsDeviceTest {
             assertEquals("instruction-id", editedInstructionId)
             assertTrue(openedSettings)
         }
-        compose.onNodeWithTag("drawer_remote_header").performClick()
+        compose.onNodeWithTag("drawer_instructions_header").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("drawer_instructions_list").assertDoesNotExist()
-        compose.onNodeWithTag("drawer_machine_picker_trigger").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_machine_picker_trigger").assertDoesNotExist()
     }
 }

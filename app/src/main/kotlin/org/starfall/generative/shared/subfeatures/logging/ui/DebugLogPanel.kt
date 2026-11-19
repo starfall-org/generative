@@ -1,12 +1,12 @@
 package org.starfall.generative.shared.subfeatures.logging.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -148,7 +148,7 @@ internal fun DebugLogPanel(modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize(),
+                FadingLazyColumn(modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     items(visible, key = { it.id }) { entry ->

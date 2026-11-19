@@ -1,5 +1,6 @@
 package org.starfall.generative.shared.subfeatures.icons.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 
 import android.content.Context
@@ -8,7 +9,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -141,7 +141,7 @@ internal fun FaviconDialog(
         scrollableContent = false,
         text = {
             Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                Modifier.fillMaxWidth().fadingVerticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(

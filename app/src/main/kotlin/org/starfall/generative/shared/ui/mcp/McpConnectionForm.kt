@@ -1,8 +1,8 @@
 package org.starfall.generative.shared.ui.mcp
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -50,7 +50,7 @@ internal fun McpConnectionForm(
     authenticationContent: @Composable ColumnScope.() -> Unit = {},
     additionalContent: @Composable ColumnScope.() -> Unit = {}
 ) {
-    Column(modifier.testTag("mcp-connection-settings").verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier.testTag("mcp-connection-settings").fadingVerticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         leadingContent()
         McpNameField(name, onNameChange, literal = nameLiteral, isError = nameError)
         connectionTypeContent()

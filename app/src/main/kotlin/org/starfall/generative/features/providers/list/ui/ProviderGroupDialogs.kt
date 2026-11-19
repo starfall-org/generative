@@ -1,5 +1,6 @@
 package org.starfall.generative.features.providers.list.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
@@ -8,7 +9,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -126,7 +126,7 @@ internal fun ProviderGroupPickerDialog(
         title = { Text(stringResource(R.string.move_to_group)) },
         scrollableContent = false,
         text = {
-            LazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f)) {
+            FadingLazyColumn(Modifier.fillMaxWidth().windowHeightIn(maxFraction = 0.6f)) {
                 item(key = UNGROUPED_SECTION) {
                     ProviderGroupChoiceCard(
                         title = stringResource(R.string.ungrouped),

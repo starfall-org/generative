@@ -1,12 +1,12 @@
 package org.starfall.generative.shared.subfeatures.media.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.R
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -203,7 +203,7 @@ internal fun MediaViewer(
             if (isPreviewableMedia(mime)) {
                 MediaContent(file.path, mime, onImageZoomChanged = onZoomChanged)
             } else MediaTapShield {
-                LazyColumn(Modifier.windowHeightIn(maxFraction = 0.8f)) {
+                FadingLazyColumn(Modifier.windowHeightIn(maxFraction = 0.8f)) {
                     item {
                         when {
                             textual -> text?.let { content ->

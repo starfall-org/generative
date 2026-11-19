@@ -207,7 +207,11 @@ class ServerSideSessions(private val client: ServerSideClient) {
         if (e.rpcError.code == "unsupported_feature") null else throw e
     }
 
-    suspend fun catalog(): ProviderCatalog = ServerSideCodec.json.decodeFromString(request("provider.catalog").toString())
+    suspend fun catalog(): ProviderCatalog {
+        val catalog = ServerSideCodec.json.decodeFromString<ProviderCatalog>(request("provider.catalog").toString())
+        if (catalog.version != 1) throw ServerSideProtocolException("Incompatible provider catalog")
+        return catalog
+    }
     fun events(id: String, after: Long = 0): Flow<SessionEvent> = client.events(id, after)
 
     private fun snapshot(data: JsonElement, expectedId: String): ServerSnapshot = try {

@@ -1,5 +1,6 @@
 package org.starfall.generative.features.chatoptions.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.ui.platform.LocalLayoutDirection
 import org.starfall.generative.shared.ui.layout.AppSwipeTabs
 import androidx.activity.compose.BackHandler
@@ -16,7 +17,6 @@ import org.starfall.generative.shared.model.parseAgentSkillDocument
 import org.starfall.generative.shared.model.agentSkillDocument
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -325,7 +325,7 @@ fun ChatOptionsScreen(
                         verticalAlignment = Alignment.Top
                     ) { page ->
                         when (page) {
-                            0 -> LazyColumn(
+                            0 -> FadingLazyColumn(
                                 modifier = Modifier.fillMaxSize().testTag("chat-options-list"),
                                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + padding.calculateBottomPadding()),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)

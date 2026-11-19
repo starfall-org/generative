@@ -344,4 +344,21 @@ class RemoteWorkspaceTest {
         assertEquals(RemoteConnectionFailure.CHAT_LOAD_FAILED, workspace.state.value.connectionFailure)
         workspace.disable()
     }
+
+    @Test fun newChatCannotInterruptRemoteActivation() = runBlocking {
+        val opening = CompletableDeferred<Unit>()
+        val wire = Wire("a")
+        val workspace = RemoteWorkspace({
+            opening.await()
+            ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a")))
+        }, this)
+        workspace.enable("a")
+        workspace.newChat()
+        assertTrue(workspace.state.value.busy)
+        opening.complete(Unit)
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertFalse(workspace.state.value.error)
+        assertEquals("p", workspace.state.value.providerId)
+        workspace.disable()
+    }
 }

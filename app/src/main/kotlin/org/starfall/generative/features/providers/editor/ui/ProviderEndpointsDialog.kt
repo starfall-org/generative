@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.editor.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -32,7 +32,7 @@ internal fun endpointFields(type: ModelApiType): List<Pair<String, String>> = wh
 @Composable
 internal fun ProviderEndpointsDialog(type: ModelApiType, baseUrl: String, endpoints: Map<String, String>, onChange: (Map<String, String>) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.provider_custom_endpoints)) }, content = {
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        FadingLazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(stringResource(R.string.provider_custom_endpoints_hint), style = MaterialTheme.typography.bodySmall) }
             items(endpointFields(type), key = { it.first }) { (key, label) ->
                 val value = endpoints[key].orEmpty()

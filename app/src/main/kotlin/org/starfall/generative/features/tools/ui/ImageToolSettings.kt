@@ -1,9 +1,9 @@
 package org.starfall.generative.features.tools.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import org.starfall.generative.shared.ui.layout.scrollableScaffoldPadding
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,7 +59,7 @@ fun ImageToolSettings(provider: ModelProvider, config: SystemToolConfig, onSave:
     ) { scaffoldPadding ->
         val padding = scrollableScaffoldPadding(scaffoldPadding, horizontal = 16.dp, top = 16.dp, bottom = 16.dp)
 
-        LazyColumn(
+        FadingLazyColumn(
             Modifier.fillMaxSize().consumeWindowInsets(padding).imePadding(),
              contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

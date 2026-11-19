@@ -1,12 +1,12 @@
 package org.starfall.generative.features.speech.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import org.starfall.generative.features.speech.logic.brandHomepage
 import org.starfall.generative.features.speech.logic.requestSpeechEngineIcons
 import org.starfall.generative.shared.ui.menus.DropdownMenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -224,7 +224,7 @@ fun SpeechEditor(
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize().consumeWindowInsets(padding)
-                    .verticalScroll(rememberScrollState()).padding(padding)
+                    .fadingVerticalScroll(rememberScrollState()).padding(padding)
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 OutlinedTextField(

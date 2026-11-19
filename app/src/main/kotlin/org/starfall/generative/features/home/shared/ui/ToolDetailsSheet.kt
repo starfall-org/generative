@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.shared.ui
 
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.starfall.generative.shared.ui.text.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -112,7 +112,7 @@ internal fun ToolDetailsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(scrollState)
+                .fadingVerticalScroll(scrollState)
                 .padding(start = 20.dp, end = 20.dp, bottom = 28.dp)
         ) {
             Text(
@@ -137,7 +137,7 @@ internal fun ToolDetailsSheet(
                 showDivider = false,
                 spacing = 10.dp
             ) { page ->
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxSize().fadingVerticalScroll(rememberScrollState())) {
                     if (content == null) ToolPayloadStatus(load)
                     else if (page == 0) PrettyArguments(content.arguments, content.parsedArguments)
                     else RawValueBlock(content.arguments.ifBlank { "{}" })

@@ -1,5 +1,7 @@
 package org.starfall.generative.shared.ui.screens
 
+import org.starfall.generative.shared.ui.layout.fadingAppBarSurface
+import org.starfall.generative.shared.ui.layout.fadingVerticalScroll
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -52,6 +53,7 @@ fun PreviewScreenTemplate(
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         topBar = {
             TopAppBar(
+                modifier = fadingAppBarSurface(),
                 colors = edgeToEdgeTopAppBarColors(),
                 title = { Text(title) },
                 navigationIcon = {
@@ -66,7 +68,7 @@ fun PreviewScreenTemplate(
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier.fillMaxSize()
-                .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
+                .then(if (scrollable) Modifier.fadingVerticalScroll(scrollState) else Modifier)
                 .padding(scrollableScaffoldPadding(
                     scaffoldPadding, horizontal = horizontalPadding,
                     top = topPadding, bottom = bottomPadding

@@ -1,7 +1,7 @@
 package org.starfall.generative.features.providers.shared.ui
 
+import org.starfall.generative.shared.ui.lists.FadingLazyColumn
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -39,7 +39,7 @@ internal fun ProviderHeadersDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.headers), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         content = {
-            LazyColumn(
+            FadingLazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                 contentPadding = PaddingValues(vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
