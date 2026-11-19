@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -104,7 +104,7 @@ private fun DrawerInstructionToggleRow(
             .clip(shape)
             .semantics(mergeDescendants = true) { toggleableState = ToggleableState(active) }
             .combinedClickable(
-                role = Role.Switch,
+                role = Role.Checkbox,
                 onLongClickLabel = stringResource(R.string.instruction_edit_accessibility, instruction.name),
                 onLongClick = onEdit,
                 onClick = { onToggle(!active) }
@@ -130,7 +130,7 @@ private fun DrawerInstructionToggleRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Switch(checked = active, onCheckedChange = null)
+            Checkbox(checked = active, onCheckedChange = null)
         }
     }
 }
