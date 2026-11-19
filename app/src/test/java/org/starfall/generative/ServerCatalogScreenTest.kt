@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -20,6 +21,8 @@ import org.starfall.generative.features.serverconnection.ui.RemoteMcpScreen
 import org.starfall.generative.features.serverconnection.ui.ProviderCatalogEntry
 import org.starfall.generative.features.serverconnection.ui.RemoteProvidersScreen
 import org.starfall.generative.features.serverconnection.ui.ProviderIntegrationScreen
+import org.starfall.generative.features.serverconnection.ui.RemoteProviderEditor
+import org.starfall.generative.integrations.opencode.OpenCodeProviderConfigFile
 import org.starfall.generative.features.serverconnection.ui.McpRuntimeEditor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -137,6 +140,27 @@ class ServerCatalogScreenTest {
         compose.onNodeWithTag("mcp_url").performTextInput("https://example.com/mcp")
         compose.onNodeWithText("Save").performClick()
         assertEquals(listOf("runtime" to Json.parseToJsonElement("""{"type":"remote","url":"https://example.com/mcp"}""").jsonObject), saves)
+    }
+
+    @Test fun addProviderUsesSharedConfigurationFieldsAndSavesCustomProvider() {
+        val saves = mutableListOf<Pair<String, JsonObject>>()
+        compose.setScreenContent {
+            MaterialTheme {
+                RemoteProviderEditor(OpenCodeProviderConfigFile("/home/server/.config/opencode/opencode.json", true),
+                    existingIds = emptySet(), busy = false, failed = false, insecure = false,
+                    onBack = {}, onSave = { id, config -> saves += id to config })
+            }
+        }
+        compose.onNodeWithTag("provider-configuration-form").assertExists()
+        compose.onNodeWithTag("provider-type-selector").assertExists()
+        compose.onNodeWithTag("provider_name").performTextInput("My Gateway")
+        compose.onNodeWithTag("remote_provider_id").performTextInput("my-gateway")
+        compose.onNodeWithTag("provider_api_key").performTextInput("server-key")
+        compose.onNodeWithTag("remote_provider_models").performScrollTo().performTextInput("model-a")
+        compose.onNodeWithText("Save").performClick()
+        assertEquals(listOf("my-gateway" to Json.parseToJsonElement(
+            """{"name":"My Gateway","package":"@opencode/ai/providers/openai-compatible","settings":{"baseURL":"https://api.openai.com/v1","apiKey":"server-key"},"models":{"model-a":{}}}"""
+        ).jsonObject), saves)
     }
 
     @Test fun providerIntegrationUsesSharedEditorAndCredentialField() {

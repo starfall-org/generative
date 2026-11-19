@@ -56,16 +56,19 @@ class ServerInventoryScopeUiTest {
                         ServerInventoryScreen(service, connectionId, providers = true, onBack = {})
                     }
                 }
-                awaitProvider("First default")
+                awaitText("First default")
+                awaitText("Server default")
+                compose.onNodeWithContentDescription("Add").assertExists()
                 compose.onNodeWithContentDescription("Switch to Grid View").performClick()
                 compose.onNodeWithContentDescription("Search providers").performClick()
                 compose.onNodeWithTag("list-screen-search").performTextInput("First")
                 compose.onNodeWithText("First default").assertExists()
 
                 // The same provider ID exists in a different project. No first-project row is reused.
+                awaitText("Server default")
                 compose.onNodeWithText("Server default").performClick()
                 compose.onNodeWithText("Project A · /a").performClick()
-                awaitProvider("First project")
+                awaitText("First project")
                 compose.onNodeWithText("First default").assertDoesNotExist()
                 compose.onNodeWithContentDescription("Switch to Grid View").assertExists()
                 assertTrue(firstLocations.contains("/a"))
@@ -73,16 +76,57 @@ class ServerInventoryScopeUiTest {
                 compose.onNodeWithContentDescription("Search providers").performClick()
                 compose.onNodeWithTag("list-screen-search").performTextInput("First")
                 compose.runOnIdle { connectionId = "second" }
-                awaitProvider("Second default")
+                awaitText("Second default")
                 compose.onNodeWithText("First project").assertDoesNotExist()
-                compose.onNodeWithText("Server default").assertExists()
+                awaitText("Server default")
                 assertTrue(secondLocations.contains("default"))
                 assertTrue(runBlocking { requireNotNull(repository.profile("first")).selected })
             } }
         } finally { db.close() }
     }
 
-    private fun awaitProvider(name: String) {
+    @Test fun catalogsLoadWhenProjectListingFails() {
+        installTestAndroidKeyStore()
+        val db = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java
+        ).build()
+        try {
+            MockWebServer().use { server ->
+                server.dispatcher = object : Dispatcher() {
+                    override fun dispatch(request: RecordedRequest): MockResponse =
+                        when (request.requestUrl?.encodedPath) {
+                            "/api/project" -> MockResponse().setResponseCode(503)
+                            "/api/provider" -> MockResponse().setBody(
+                                """{"data":[{"id":"p","name":"Remote provider","package":"pkg"}]}"""
+                            )
+                            "/api/mcp" -> MockResponse().setBody(
+                                """{"data":[{"name":"Remote MCP","status":{"status":"connected"}}]}"""
+                            )
+                            else -> MockResponse().setResponseCode(404)
+                        }
+                }
+                val repository = ServerConnectionRepository(db)
+                runBlocking {
+                    repository.saveOpenCode("server", "Server", server.url("/").toString(),
+                        OpenCodeCredentials("opencode", "secret"))
+                }
+                val service = ServerConnections(repository, clientFactory = { error("Unexpected ServerSide request") })
+                var providers by mutableStateOf(true)
+                compose.setScreenContent {
+                    MaterialTheme {
+                        ServerInventoryScreen(service, "server", providers = providers, onBack = {})
+                    }
+                }
+                awaitText("Remote provider")
+                awaitText("Could not load the project list.")
+                compose.runOnIdle { providers = false }
+                awaitText("Remote MCP")
+                awaitText("Could not load the project list.")
+            }
+        } finally { db.close() }
+    }
+
+    private fun awaitText(name: String) {
         compose.waitUntil(10_000) { compose.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText(name).assertExists()
     }

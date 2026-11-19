@@ -46,7 +46,9 @@ import org.starfall.generative.shared.model.provider.ProviderAuxiliaryChange
 import org.starfall.generative.features.providers.shared.model.ProviderApiKeysState
 import org.starfall.generative.shared.ui.providers.ProviderEditorLayout
 import org.starfall.generative.features.providers.shared.ui.ProviderAuthField
-import org.starfall.generative.features.providers.shared.ui.ProviderBaseUrlField
+import org.starfall.generative.shared.ui.providers.ProviderBaseUrlField
+import org.starfall.generative.shared.ui.providers.ProviderNameField
+import org.starfall.generative.shared.ui.providers.ProviderApiTypeSelector
 import org.starfall.generative.features.providers.shared.ui.ProviderHeadersDialog
 import org.starfall.generative.features.providers.shared.ui.ProviderModelsPane
 import org.starfall.generative.features.providers.shared.ui.ProviderOAuthAccountsDialog
@@ -460,14 +462,7 @@ fun ProviderEditor(
                     onSaveIcon(draft())
                     providerPersisted = true
                 }, text = providerInitials(name), onBusyChange = { iconImporting = it }, matchName = name, faviconBaseUrl = baseUrl, fetchState = faviconFetch)
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.common_name)) },
-                    placeholder = { Text(type.defaultName) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                ProviderNameField(name, type) { name = it }
                 ProviderApiTypeSelector(type) { next ->
                     if (next != type) {
                         val updated = initialProvider.copy(name = name, type = type, baseUrl = baseUrl)

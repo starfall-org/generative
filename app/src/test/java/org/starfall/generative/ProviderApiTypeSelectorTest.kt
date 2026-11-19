@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.features.providers.editor.ui.ProviderApiTypeSelector
+import org.starfall.generative.shared.ui.providers.ProviderApiTypeSelector
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.ui.theme.GenerativeTheme
 

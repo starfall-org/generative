@@ -1085,6 +1085,9 @@
     <string name="server_connection_selected">Đã chọn</string>
     <string name="server_connection_select">Chọn</string>
     <string name="server_connection_test">Kiểm tra kết nối</string>
+    <string name="server_connection_testing">Đang kiểm tra kết nối đến %1$s…</string>
+    <string name="server_connection_test_success">Kiểm tra kết nối đến %1$s thành công.</string>
+    <string name="server_connection_test_failed">Kiểm tra kết nối đến %1$s thất bại.</string>
     <string name="server_connection_success">Đã hoàn tất thao tác kết nối</string>
     <string name="server_connection_failed">Không thể kết nối. Hãy kiểm tra giao thức, máy Remote SSH hoặc lời mời HTTPS và trạng thái máy chủ.</string>
     <string name="server_connection_delete_confirm">Xóa %1$s khỏi thiết bị này? Lịch sử vẫn được giữ trên máy chủ.</string>
@@ -1103,6 +1106,8 @@
     <string name="server_remote_auth_failed">Xác thực với máy chủ thất bại. Hãy ghép nối lại hoặc kiểm tra quyền truy cập.</string>
     <string name="server_remote_tls_failed">Không xác minh được chứng chỉ TLS của máy chủ. Hãy kiểm tra máy chủ và lời mời.</string>
     <string name="server_remote_incompatible">Máy chủ này không hỗ trợ giao thức Server Connection cần thiết.</string>
+    <string name="server_remote_chat_load_failed">Máy chủ đã phản hồi nhưng không tải được dữ liệu trò chuyện.</string>
+    <string name="server_remote_conversation_load_failed">Không mở được cuộc trò chuyện này. Bạn vẫn có thể mở cuộc trò chuyện khác hoặc bắt đầu cuộc trò chuyện mới.</string>
     <string name="server_connection_opencode_hint">Kết nối với máy chủ OpenCode 2.x đang chạy bằng opencode serve.</string>
     <string name="server_connection_auth_method">Xác thực</string>
     <string name="server_connection_auth_password">Tên người dùng và mật khẩu</string>
@@ -1128,6 +1133,7 @@
     <string name="server_inventory_unsupported">Giao thức máy chủ này không cung cấp danh sách MCP.</string>
     <string name="server_inventory_failed">Không thể tải dữ liệu từ máy chủ này.</string>
     <string name="server_inventory_empty">Không có mục nào trên máy chủ này.</string>
+    <string name="server_inventory_projects_failed">Không thể tải danh sách dự án.</string>
     <string name="server_inventory_project">Dự án</string>
     <string name="server_inventory_default_project">Mặc định của máy chủ</string>
     <string name="server_mcp_runtime_hint">Thay đổi kết nối tại đây có hiệu lực đến khi máy chủ OpenCode khởi động lại.</string>
@@ -1145,7 +1151,13 @@
     <string name="server_mcp_add_hint">Thay đổi chỉ có hiệu lực đến khi máy chủ khởi động lại. Nhập các tùy chọn OpenCode bổ sung dưới dạng JSON. Nếu thiết bị khác đồng thời tạo cùng tên, mục đó có thể bị thay thế.</string>
     <string name="server_mcp_name_exists">Tên này đã được sử dụng.</string>
     <string name="server_mcp_remove_confirm">Xóa %1$s khỏi OpenCode đang chạy? Mục này có thể xuất hiện lại sau khi máy chủ khởi động lại.</string>
-    <string name="server_provider_integrations">Integrations</string>
+    <string name="server_provider_id">ID nhà cung cấp</string>
+    <string name="server_provider_invalid_id">Dùng ID duy nhất gồm chữ cái, chữ số, dấu chấm, gạch dưới hoặc gạch ngang.</string>
+    <string name="server_provider_models_hint">Mỗi dòng một ID model.</string>
+    <string name="server_provider_config_failed">Không thể xác nhận thay đổi cấu hình. Kiểm tra tệp và máy chủ trước khi thử lại.</string>
+    <string name="server_provider_reload_failed">Đã lưu provider vào tệp cấu hình. Tải lại OpenCode để áp dụng.</string>
+    <string name="server_provider_config_http_warning">Kết nối máy chủ sử dụng HTTP không mã hóa.</string>
+    <string name="server_provider_config_key_warning">API key sẽ được lưu trong tệp cấu hình này. Hãy giữ tệp ở chế độ riêng tư.</string>
     <string name="server_provider_connect_hint">Chọn provider có integration để kết nối tài khoản.</string>
     <string name="server_provider_no_method">Integration này không có phương thức xác thực được hỗ trợ.</string>
     <string name="server_provider_connected">Đã kết nối tài khoản.</string>

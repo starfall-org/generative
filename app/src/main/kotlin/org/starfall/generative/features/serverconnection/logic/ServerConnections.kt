@@ -2,6 +2,8 @@ package org.starfall.generative.features.serverconnection.logic
 
 import java.util.UUID
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.database.repositories.McpRepository
 import org.starfall.generative.integrations.opencode.openCodeMcpImportConfig
@@ -21,6 +23,7 @@ import org.starfall.generative.integrations.opencode.OpenCodeAuthentication
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 import org.starfall.generative.integrations.opencode.OpenCodePairingLink
 import org.starfall.generative.integrations.opencode.OpenCodeApi
+import org.starfall.generative.integrations.opencode.OpenCodeProviderConfigFile
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonObject
@@ -33,6 +36,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     private val localMcp: McpRepository? = null) {
     val sshMachines = remote?.state
     val profiles = repository.profiles
+    private val providerConfigWrites = Mutex()
 
     private suspend fun openCode(id: String): OpenCodeApi {
         val profile = requireNotNull(repository.profile(id))
@@ -40,7 +44,12 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         return OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id))
     }
 
-    suspend fun integrations(id: String, directory: String?) = openCode(id).integrations(directory)
+    suspend fun providerConfigFile(id: String, directory: String?) = openCode(id).providerConfigFile(directory)
+
+    suspend fun addConfiguredProvider(id: String, file: OpenCodeProviderConfigFile, providerId: String,
+        config: JsonObject, directory: String?): Boolean =
+        providerConfigWrites.withLock { openCode(id).addConfiguredProvider(file, providerId, config, directory) }
+
     suspend fun integration(id: String, integrationId: String, directory: String?) = openCode(id).integration(integrationId, directory)
     suspend fun connectIntegrationKey(id: String, integrationId: String, key: String, answer: JsonObject?, directory: String?) =
         openCode(id).connectIntegrationKey(integrationId, key, answer, directory)

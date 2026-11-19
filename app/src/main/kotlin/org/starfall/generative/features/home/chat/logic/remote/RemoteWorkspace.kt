@@ -1,5 +1,6 @@
 package org.starfall.generative.features.home.chat.logic.remote
 
+import java.io.IOException
 import java.util.UUID
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.CancellationException
@@ -32,8 +33,8 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.api.ModelApiType
 
 /** A recoverable remote mutation error must not disable the entire remote workspace. */
-enum class RemoteActionFailure { REVISION_CONFLICT, OPERATION_FAILED, GENERATION_FAILED }
-enum class RemoteConnectionFailure { UNAUTHORIZED, CERTIFICATE, INCOMPATIBLE, UNAVAILABLE }
+enum class RemoteActionFailure { REVISION_CONFLICT, OPERATION_FAILED, GENERATION_FAILED, CONVERSATION_LOAD_FAILED }
+enum class RemoteConnectionFailure { UNAUTHORIZED, CERTIFICATE, INCOMPATIBLE, UNAVAILABLE, CHAT_LOAD_FAILED }
 
 internal fun remoteConnectionFailure(failure: Exception): RemoteConnectionFailure = when (failure) {
     is SSLException -> RemoteConnectionFailure.CERTIFICATE
@@ -46,6 +47,12 @@ internal fun remoteConnectionFailure(failure: Exception): RemoteConnectionFailur
     }
     is ServerSideProtocolException -> RemoteConnectionFailure.INCOMPATIBLE
     else -> RemoteConnectionFailure.UNAVAILABLE
+}
+
+private fun isConversationLoadFailure(failure: Exception): Boolean = when (failure) {
+    is ServerSideRpcException -> remoteConnectionFailure(failure) == RemoteConnectionFailure.UNAVAILABLE
+    is ServerSideProtocolException, is IllegalArgumentException -> true
+    else -> false
 }
 
 /** Remote state never writes to the local conversation repository. */
@@ -176,6 +183,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         val activation = persistActivation(id, epoch)
         scope.launch {
             var opening: ServerSideSessions? = null
+            var verified = false
             try {
                 activation.join()
                 if (epoch != generation) return@launch
@@ -183,7 +191,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                 // Private, encrypted cache provides an immediate read-only view while
                 // the server is checked; the server list/revision is authoritative.
                 val owner = cacheOrNull { cacheScope(id) }
-                val remembered = if (lastSession.containsKey(id)) lastSession[id] else loadLastSession(id)
+                val remembered = if (lastSession.containsKey(id)) lastSession[id] else cacheOrNull { loadLastSession(id) }
                 val localList = if (owner == null || cache == null) null else cacheOrNull { cache.list(owner) }
                 val initial = remembered?.let { previous ->
                     localList?.firstOrNull { it.id == previous && it.deletedAt == null }
@@ -199,6 +207,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                 val api = sessionFactory(id)
                 opening = api
                 val capabilities = api.verifyCapabilities()
+                verified = true
                 val catalog = api.catalog(); require(catalog.version == 1)
                 val providers = catalog.providers.mapNotNull { p ->
                     val type = when (p.type) { "openai" -> ModelApiType.OPENAI; "openai_responses" -> ModelApiType.OPENAI_RESPONSES; "anthropic" -> ModelApiType.ANTHROPIC; "google" -> ModelApiType.GOOGLE; else -> return@mapNotNull null }
@@ -213,7 +222,14 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                     (initial?.takeIf { it.sessionId == previous } ?: cached(previous, owner))
                         ?.takeIf { item -> list.any { it.id == previous && it.revision == item.revision } }
                 }
-                val opened = prior?.let { api.open(it, hint) }
+                val opened = prior?.let {
+                    try {
+                        api.open(it, hint).also { snapshot -> snapshot.ui() }
+                    } catch (failure: Exception) {
+                        if (!isConversationLoadFailure(failure)) throw failure
+                        null
+                    }
+                }
                 if (epoch != generation) return@launch
                 // Complete the cache checkpoint before declaring activation ready,
                 // so an immediate app close/reconnect cannot lose the fetched chat.
@@ -229,10 +245,17 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                     else defaultProvider?.id.orEmpty() to defaultProvider?.config?.modelIds?.firstOrNull().orEmpty()
                 mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, items = list.map { it.ui() }, revisions = list.associate { it.id to it.revision }, providers = combined, localProviderIds = localIds,
                     providerId = selected.first, modelId = selected.second, snapshot = opened,
-                    conversation = opened?.ui(), busy = false, capabilities = capabilities)
+                    conversation = opened?.ui(), busy = false, capabilities = capabilities,
+                    actionFailure = if (prior != null && opened == null) RemoteActionFailure.CONVERSATION_LOAD_FAILED else null)
             } catch (e: CancellationException) { throw e }
-            catch (failure: Exception) { if (epoch == generation) mutable.update { it.copy(busy = false, error = true,
-                connectionFailure = remoteConnectionFailure(failure)) } }
+            catch (failure: Exception) {
+                val reason = remoteConnectionFailure(failure)
+                if (epoch == generation) mutable.update { it.copy(busy = false, error = true,
+                    connectionFailure = if (verified && reason == RemoteConnectionFailure.UNAVAILABLE &&
+                        failure !is IOException) {
+                        RemoteConnectionFailure.CHAT_LOAD_FAILED
+                    } else reason) }
+            }
             finally { if (sessions !== opening) opening?.close() }
         }
     }
@@ -284,11 +307,17 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
             val snap = api.open(id, hint)
             if (epoch != generation) return@launch
             lastSession[connection] = id
-            saveLastSession(connection, id)
+            cacheOrNull { saveLastSession(connection, id) }
             if (epoch != generation) return@launch
             store(snap, owner)
             if (epoch == generation) mutable.update { setSnapshot(it, snap).copy(busy = false, error = false, actionFailure = null, connectionFailure = null) }
-        } catch (e: CancellationException) { throw e } catch (_: Exception) { if (epoch == generation) mutable.update { it.copy(busy = false, error = true) } } }
+        } catch (e: CancellationException) { throw e }
+        catch (failure: Exception) {
+            val conversationFailed = api != null && isConversationLoadFailure(failure)
+            if (epoch == generation) mutable.update { it.copy(busy = false, error = !conversationFailed,
+                connectionFailure = if (conversationFailed) null else remoteConnectionFailure(failure),
+                actionFailure = if (conversationFailed) RemoteActionFailure.CONVERSATION_LOAD_FAILED else null) }
+        } }
     }
     fun newChat() {
         generation++

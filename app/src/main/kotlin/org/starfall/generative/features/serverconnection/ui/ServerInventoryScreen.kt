@@ -12,12 +12,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
 import org.starfall.generative.features.serverconnection.logic.ServerInventoryItem
 import org.starfall.generative.features.serverconnection.logic.ServerProject
+import org.starfall.generative.integrations.opencode.OpenCodeProviderConfigFile
 import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 import org.starfall.generative.shared.ui.providers.ProviderEditorLayout
 import org.starfall.generative.shared.ui.screens.ScreenDestination
@@ -61,17 +59,19 @@ private fun RemoteInventoryContent(
     var loaded by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var operationFailed by remember { mutableStateOf(false) }
+    var providerReloadFailed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf<Boolean?>(null) }
     var deleting by remember { mutableStateOf<String?>(null) }
     var connecting by remember { mutableStateOf<String?>(null) }
-    var choosingIntegration by remember { mutableStateOf<Boolean?>(null) }
     var importing by remember { mutableStateOf(false) }
     var importItems by remember { mutableStateOf<List<org.starfall.generative.features.serverconnection.logic.LocalImportItem>>(emptyList()) }
     var importSupported by remember { mutableStateOf<Boolean?>(null) }
     var importError by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
+    val profiles by service.profiles.collectAsState(initial = emptyList())
+    val insecure = profiles.firstOrNull { it.id == connectionId }?.endpoint?.startsWith("http://", true) == true
 
     LaunchedEffect(importing) {
         if (!importing) return@LaunchedEffect
@@ -106,11 +106,6 @@ private fun RemoteInventoryContent(
         }
     )
 
-    ScreenDestination(page = choosingIntegration, onClosed = { choosingIntegration = null; reload++ }) { page ->
-        if (page != null) ServerIntegrationCatalog(service, connectionId, location,
-            onBack = { choosingIntegration = null; reload++ }, onConnect = { connecting = it })
-    }
-
     ScreenDestination(page = connecting, onClosed = { connecting = null; reload++ }) { integrationId ->
         if (integrationId != null) {
             var integration by remember(integrationId) { mutableStateOf<JsonObject?>(null) }
@@ -137,7 +132,32 @@ private fun RemoteInventoryContent(
     }
 
     ScreenDestination(page = adding, onClosed = { adding = null }) { page ->
-        if (page != null) McpRuntimeEditor(existingNames = items.orEmpty().mapTo(hashSetOf()) { it.id },
+        if (page != null && providers) {
+            var file by remember { mutableStateOf<OpenCodeProviderConfigFile?>(null) }
+            LaunchedEffect(Unit) {
+                try { file = service.providerConfigFile(connectionId, location) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { operationFailed = true }
+            }
+            RemoteProviderEditor(file, existingIds = items.orEmpty().mapTo(hashSetOf()) { it.id },
+                busy = busy, failed = operationFailed, insecure = insecure, onBack = { adding = null },
+                onSave = { providerId, config ->
+                    val target = file
+                    if (!busy && target != null) {
+                        busy = true
+                        operationFailed = false
+                        providerReloadFailed = false
+                        scope.launch {
+                            try {
+                                providerReloadFailed = !service.addConfiguredProvider(connectionId, target, providerId, config, location)
+                                adding = null
+                            } catch (e: CancellationException) { throw e }
+                            catch (_: Exception) { operationFailed = true }
+                            finally { busy = false; reload++ }
+                        }
+                    }
+                })
+        } else if (page != null) McpRuntimeEditor(existingNames = items.orEmpty().mapTo(hashSetOf()) { it.id },
             busy = busy, failed = operationFailed, onBack = { adding = null }, onSave = { name, config ->
                 if (!busy) {
                     busy = true
@@ -152,8 +172,7 @@ private fun RemoteInventoryContent(
             })
     }
 
-    LaunchedEffect(projectLoaded, projectError, reload) {
-        if (!projectLoaded || projectError) return@LaunchedEffect
+    LaunchedEffect(reload) {
         loaded = false
         failed = false
         try {
@@ -171,20 +190,26 @@ private fun RemoteInventoryContent(
                     options = listOf("" to stringResource(R.string.server_inventory_default_project)) +
                         available.map { it.directory to "${it.name} · ${it.directory}" },
                     selected = directory, onSelect = onDirectoryChange,
-                    enabled = !busy && adding == null && deleting == null && connecting == null && choosingIntegration == null && !importing,
+                    enabled = !busy && adding == null && deleting == null && connecting == null && !importing,
                     modifier = Modifier.fillMaxWidth())
             }
-            Text(stringResource(if (!providers && projects != null) R.string.server_mcp_runtime_hint else if (providers && projects != null)
-                R.string.server_provider_connect_hint else R.string.server_inventory_stored_hint),
-                style = MaterialTheme.typography.bodySmall)
-            if (operationFailed) Text(stringResource(R.string.server_mcp_operation_failed), color = MaterialTheme.colorScheme.error)
+            if (projectError) {
+                Text(stringResource(R.string.server_inventory_projects_failed), style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onProjectRetry) { Text(stringResource(R.string.common_retry)) }
+            } else if (projectLoaded) {
+                Text(stringResource(if (projects == null) R.string.server_inventory_stored_hint
+                    else if (providers) R.string.server_provider_connect_hint else R.string.server_mcp_runtime_hint),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (!providers && operationFailed) Text(stringResource(R.string.server_mcp_operation_failed), color = MaterialTheme.colorScheme.error)
+            if (providers && providerReloadFailed) Text(stringResource(R.string.server_provider_reload_failed), color = MaterialTheme.colorScheme.error)
         }
     }
     val status: (@Composable ColumnScope.() -> Unit)? = when {
-        !projectLoaded || (!projectError && !loaded) -> ({ CircularProgressIndicator() })
-        projectError || failed -> ({
+        !loaded -> ({ CircularProgressIndicator() })
+        failed -> ({
             Text(stringResource(R.string.server_inventory_failed))
-            TextButton(onClick = { if (projectError) onProjectRetry() else reload++ }) { Text(stringResource(R.string.common_retry)) }
+            TextButton(onClick = { reload++ }) { Text(stringResource(R.string.common_retry)) }
         })
         items == null -> ({ Text(stringResource(R.string.server_inventory_unsupported)) })
         else -> null
@@ -200,7 +225,7 @@ private fun RemoteInventoryContent(
         RemoteProvidersScreen(catalog = items.orEmpty().map { ProviderCatalogEntry(it.id, it.name, it.detail, it.integrationId) },
             onBack = onBack, header = header.takeIf { ready }, status = status,
             onConnect = if (ready && projects != null) ({ connecting = it }) else null,
-            onAdd = if (ready && projects != null) ({ choosingIntegration = true }) else null,
+            onAdd = if (ready && projects != null && !projectError) ({ operationFailed = false; adding = true }) else null,
             onImport = openImport, busy = busy)
     } else {
         RemoteMcpScreen(catalog = items.orEmpty().map { McpCatalogEntry(it.id, it.name, it.detail) }, busy = busy,
@@ -238,40 +263,4 @@ private fun RemoteInventoryContent(
             }) { Text(stringResource(R.string.common_delete)) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.common_close)) } })
     }
-}
-
-/** Integrations are listed separately: OpenCode's provider catalog can omit unconnected providers. */
-@Composable
-private fun ServerIntegrationCatalog(service: ServerConnections, connectionId: String, directory: String?,
-    onBack: () -> Unit, onConnect: (String) -> Unit) {
-    var entries by remember(connectionId, directory) { mutableStateOf<List<ProviderCatalogEntry>?>(null) }
-    var failed by remember(connectionId, directory) { mutableStateOf(false) }
-    var retry by remember { mutableIntStateOf(0) }
-    LaunchedEffect(connectionId, directory, retry) {
-        failed = false
-        try {
-            entries = service.integrations(connectionId, directory).mapNotNull { integration ->
-                val id = (integration["id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
-                val name = (integration["name"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
-                val methods = (integration["methods"] as? JsonArray).orEmpty().mapNotNull method@{ method ->
-                    val obj = method as? JsonObject ?: return@method null
-                    val kind = (obj["type"] as? JsonPrimitive)?.contentOrNull
-                    if (kind in listOf("key", "oauth")) (obj["label"] as? JsonPrimitive)?.contentOrNull ?: kind else null
-                }
-                if (methods.isEmpty()) null else ProviderCatalogEntry(id, name, methods.joinToString(" · "), id)
-            }.sortedBy { it.name.lowercase() }
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
-    }
-    val title = stringResource(R.string.server_provider_integrations)
-    val catalog = entries
-    val status: (@Composable ColumnScope.() -> Unit)? = when {
-        failed -> ({
-            Text(stringResource(R.string.server_inventory_failed))
-            TextButton(onClick = { retry++ }) { Text(stringResource(R.string.common_retry)) }
-        })
-        catalog == null -> ({ CircularProgressIndicator() })
-        else -> null
-    }
-    RemoteProvidersScreen(catalog.orEmpty(), onBack, onConnect = onConnect, title = title, status = status)
 }

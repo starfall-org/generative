@@ -768,12 +768,14 @@ internal fun AppNavigation(
                             org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.UNAUTHORIZED -> stringResource(R.string.server_remote_auth_failed)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.CERTIFICATE -> stringResource(R.string.server_remote_tls_failed)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.INCOMPATIBLE -> stringResource(R.string.server_remote_incompatible)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.CHAT_LOAD_FAILED -> stringResource(R.string.server_remote_chat_load_failed)
                             else -> stringResource(R.string.server_remote_offline)
                         } else if (!remoteIdentityReady || remote.restoring) stringResource(R.string.server_remote_loading)
                         else when (remote.actionFailure) {
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.CONVERSATION_LOAD_FAILED -> stringResource(R.string.server_remote_conversation_load_failed)
                             null -> null
                         }
                         val serverGroup = "serverside:server"

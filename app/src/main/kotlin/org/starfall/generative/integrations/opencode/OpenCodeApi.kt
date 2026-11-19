@@ -18,6 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /** OpenCode 2.x HTTP API. Requests are bound to the configured origin and never retried. */
@@ -54,8 +55,6 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     suspend fun providers(directory: String? = null): List<JsonObject> = locationList("provider", directory)
 
     suspend fun mcpServers(directory: String? = null): List<JsonObject> = locationList("mcp", directory)
-
-    suspend fun integrations(directory: String? = null): List<JsonObject> = locationList("integration", directory)
 
     suspend fun integration(id: String, directory: String? = null): JsonObject =
         obj(obj(request("GET", listOf("api", "integration", validId(id)), locationQuery(directory))).required("data"))
@@ -97,6 +96,34 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
 
     suspend fun removeMcp(name: String, directory: String? = null) {
         request("DELETE", listOf("api", "experimental", "mcp", validId(name)), locationQuery(directory))
+    }
+
+    suspend fun providerConfigFile(directory: String?): OpenCodeProviderConfigFile =
+        selectOpenCodeProviderConfig(array(request("GET", listOf("api", "config"), locationQuery(directory))).map(::obj), directory)
+
+    suspend fun addConfiguredProvider(file: OpenCodeProviderConfigFile, id: String, config: JsonObject,
+        directory: String?): Boolean {
+        // Resolve the same file again after editing; never redirect a pending save to a different scope.
+        require(providerConfigFile(directory) == file)
+        require(providers(directory).none { it["id"]?.jsonPrimitive?.content == id })
+        val query = locationQuery(file.parent)
+        val raw = try {
+            rawRequest("GET", listOf("api", "fs", "read", file.name), query)
+        } catch (e: OpenCodeHttpException) {
+            if (e.status != 404 || file.exists) throw e
+            "{}"
+        }
+        val updated = insertOpenCodeProvider(raw, id, config)
+        val written = rawRequest("POST", listOf("api", "experimental", "fs", "write"),
+            query + ("path" to file.path), updated.toRequestBody("application/octet-stream".toMediaType()))
+        val confirmedPath = string(obj(obj(Json.parseToJsonElement(written)).required("data")), "path")
+        require(confirmedPath == file.path) { "Unexpected written config path" }
+        // Reload may fail independently of the write. Do not retry the mutation.
+        return try {
+            request("POST", listOf("api", "location", "reload"))
+            true
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { false }
     }
 
     private fun locationQuery(directory: String?): Map<String, String> =
@@ -210,6 +237,13 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
 
     private suspend fun request(method: String, path: List<String>, query: Map<String, String> = emptyMap(),
         body: JsonObject? = null): JsonElement {
+        val response = rawRequest(method, path, query, body?.toString()?.toRequestBody("application/json".toMediaType()))
+        if (response.isEmpty()) return JsonNull
+        return try { Json.parseToJsonElement(response) } catch (_: Exception) { throw OpenCodeProtocolException("Invalid API response") }
+    }
+
+    private suspend fun rawRequest(method: String, path: List<String>, query: Map<String, String> = emptyMap(),
+        body: RequestBody? = null): String {
         val url = transport.base.newBuilder().apply {
             path.forEach { addPathSegment(it) }
             query.forEach { (key, value) -> addQueryParameter(key, value) }
@@ -218,15 +252,13 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
             .header("Authorization", credentials.authorization())
         val request = when (method) {
             "GET" -> builder.get().build()
-            "POST" -> builder.post((body?.toString() ?: "").toRequestBody("application/json".toMediaType())).build()
-            "PUT" -> builder.put(requireNotNull(body).toString().toRequestBody("application/json".toMediaType())).build()
-            "PATCH" -> builder.patch(requireNotNull(body).toString().toRequestBody("application/json".toMediaType())).build()
+            "POST" -> builder.post(body ?: "".toRequestBody("application/json".toMediaType())).build()
+            "PUT" -> builder.put(requireNotNull(body)).build()
+            "PATCH" -> builder.patch(requireNotNull(body)).build()
             "DELETE" -> builder.delete().build()
             else -> error("Unsupported method")
         }
-        val response = transport.request(request)
-        if (response.isEmpty()) return JsonNull
-        return try { Json.parseToJsonElement(response) } catch (_: Exception) { throw OpenCodeProtocolException("Invalid API response") }
+        return transport.request(request)
     }
 
     private fun validId(value: String): String = value.also { require(it.isNotBlank() && '/' !in it && it != "." && it != "..") }

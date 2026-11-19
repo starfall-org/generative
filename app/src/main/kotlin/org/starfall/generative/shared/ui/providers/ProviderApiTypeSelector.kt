@@ -1,4 +1,4 @@
-package org.starfall.generative.features.providers.editor.ui
+package org.starfall.generative.shared.ui.providers
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -12,11 +12,12 @@ import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 @Composable
 internal fun ProviderApiTypeSelector(
     selected: ModelApiType,
+    types: List<ModelApiType> = ModelApiType.entries,
     onSelected: (ModelApiType) -> Unit
 ) {
     SelectionDropdown(
         label = stringResource(R.string.provider_api_type),
-        options = ModelApiType.entries.map { it to it.displayName },
+        options = types.map { it to it.displayName },
         selected = selected,
         onSelect = onSelected,
         modifier = Modifier.fillMaxWidth(),

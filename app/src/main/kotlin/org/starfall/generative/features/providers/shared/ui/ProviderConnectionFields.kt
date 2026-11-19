@@ -14,7 +14,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.Box
 import org.starfall.generative.R
-import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_CHANGELIST
 import org.starfall.generative.shared.model.provider.DEFAULT_ANTIGRAVITY_VERSION
 import org.starfall.generative.shared.model.provider.DEFAULT_CODEX_CLIENT_VERSION
@@ -52,25 +51,6 @@ fun AuthMethod.displayName(): String = when (this) {
     AuthMethod.BEARER_TOKEN -> stringResource(R.string.provider_auth_bearer_type)
     AuthMethod.CUSTOM_HEADER -> stringResource(R.string.provider_auth_custom_header)
     else -> displayNameFallback()
-}
-
-@Composable
-internal fun ProviderBaseUrlField(type: ModelApiType, value: String, valid: Boolean, onChange: (String) -> Unit) {
-    val defaultUrl = if (type == ModelApiType.OPENAI) "https://api.openai.com/v1" else type.defaultBaseUrl
-    OutlinedTextField(
-        value = value, onValueChange = onChange,
-        label = { Text(stringResource(R.string.provider_base_url)) },
-        isError = !valid,
-        supportingText = if (!valid) ({ Text(stringResource(R.string.provider_invalid_base_url)) }) else null,
-        trailingIcon = {
-            IconButton(onClick = { onChange(defaultUrl) }) {
-                SharedIcon(Icons.Outlined.Language, stringResource(R.string.provider_restore_default_url))
-            }
-        },
-        keyboardOptions = literalInputKeyboardOptions,
-        visualTransformation = VisualTransformation.None,
-        singleLine = true, modifier = Modifier.fillMaxWidth()
-    )
 }
 
 @Composable

@@ -14,6 +14,7 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
 import org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure
+import org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure
 import org.starfall.generative.features.home.chat.logic.remote.remoteConnectionFailure
 import org.starfall.generative.integrations.serverside.*
 
@@ -29,6 +30,8 @@ class RemoteWorkspaceTest {
         var storedProvider = "p"
         var storedModel = "m"
         var conflictOnSave = false
+        var unavailableConversation = false
+        var unavailableCatalog = false
         var evictPriorRunEvents = false
         val polledCursors = java.util.concurrent.CopyOnWriteArrayList<Pair<String, Long>>()
         private val runsPerSession = java.util.concurrent.ConcurrentHashMap<String, Int>()
@@ -56,6 +59,10 @@ class RemoteWorkspaceTest {
             operations += request.op
             if (request.op == "session.save" && conflictOnSave)
                 return RpcReply(request.id, false, error = RpcError("revision_conflict", "changed"))
+            if (request.op == "session.open" && unavailableConversation)
+                return RpcReply(request.id, false, error = RpcError("not_found", "conversation unavailable"))
+            if (request.op == "provider.catalog" && unavailableCatalog)
+                return RpcReply(request.id, false, error = RpcError("internal_error", "catalog unavailable"))
             val body = when (request.op) {
                 "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"runtime_sources":["stored","mobile_ephemeral"]}}"""
                 "provider.catalog" -> """{"version":1,"revision":1,"providers":[{"id":"p","name":"Provider","type":"openai","custom_model_id":false,"key_selection_required":false,"keys":[],"models":[{"id":"m","name":"Model","availability":"available","text_generation":true}]}]}"""
@@ -309,5 +316,32 @@ class RemoteWorkspaceTest {
         workspace.enable("a"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.state.value.enabled); assertTrue(workspace.state.value.error)
         assertFalse(workspace.send("hello", emptyList())); assertTrue(wire.operations.isEmpty())
+    }
+
+    @Test fun inaccessibleLastConversationKeepsWorkspaceConnected() = runBlocking {
+        val wire = Wire("a").apply { unavailableConversation = true }
+        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a"))) }, this,
+            loadLastSession = { "a-chat" })
+        workspace.enable("a")
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertFalse(workspace.state.value.error)
+        assertNull(workspace.state.value.conversation)
+        assertEquals("p", workspace.state.value.providerId)
+        assertEquals(RemoteActionFailure.CONVERSATION_LOAD_FAILED, workspace.state.value.actionFailure)
+
+        workspace.select("a-chat")
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertFalse(workspace.state.value.error)
+        assertEquals(RemoteActionFailure.CONVERSATION_LOAD_FAILED, workspace.state.value.actionFailure)
+        workspace.disable()
+    }
+
+    @Test fun catalogFailureAfterHandshakeIsReportedAsChatLoadFailure() = runBlocking {
+        val wire = Wire("a").apply { unavailableCatalog = true }
+        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a"))) }, this)
+        workspace.enable("a")
+        withTimeout(5000) { while (workspace.state.value.busy) yield() }
+        assertEquals(RemoteConnectionFailure.CHAT_LOAD_FAILED, workspace.state.value.connectionFailure)
+        workspace.disable()
     }
 }
