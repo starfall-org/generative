@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class ServerInventoryScopeUiTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun switchingProjectAndConnectionDoesNotReuseCatalogOrSearchState() {
+    @Test fun switchingConnectionDoesNotReuseCatalogOrSearchState() {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java
@@ -57,45 +57,37 @@ class ServerInventoryScopeUiTest {
                     }
                 }
                 awaitText("First default")
-                awaitText("Server default")
+                compose.onNodeWithText("Server default").assertDoesNotExist()
                 compose.onNodeWithContentDescription("Add").assertExists()
                 compose.onNodeWithContentDescription("Switch to Grid View").performClick()
                 compose.onNodeWithContentDescription("Search providers").performClick()
-                compose.onNodeWithTag("list-screen-search").performTextInput("First")
+                compose.onNodeWithTag("provider_search").performTextInput("First")
                 compose.onNodeWithText("First default").assertExists()
 
-                // The same provider ID exists in a different project. No first-project row is reused.
-                awaitText("Server default")
-                compose.onNodeWithText("Server default").performClick()
-                compose.onNodeWithText("Project A · /a").performClick()
-                awaitText("First project")
-                compose.onNodeWithText("First default").assertDoesNotExist()
-                compose.onNodeWithContentDescription("Switch to Grid View").assertExists()
-                assertTrue(firstLocations.contains("/a"))
-
-                compose.onNodeWithContentDescription("Search providers").performClick()
-                compose.onNodeWithTag("list-screen-search").performTextInput("First")
+                assertTrue(firstLocations.isNotEmpty() && firstLocations.all { it == "default" })
                 compose.runOnIdle { connectionId = "second" }
                 awaitText("Second default")
-                compose.onNodeWithText("First project").assertDoesNotExist()
-                awaitText("Server default")
-                assertTrue(secondLocations.contains("default"))
+                compose.onNodeWithText("First default").assertDoesNotExist()
+                compose.onNodeWithText("Server default").assertDoesNotExist()
+                compose.onNodeWithContentDescription("Switch to Grid View").assertExists()
+                assertTrue(secondLocations.isNotEmpty() && secondLocations.all { it == "default" })
                 assertTrue(runBlocking { requireNotNull(repository.profile("first")).selected })
             } }
         } finally { db.close() }
     }
 
-    @Test fun catalogsLoadWhenProjectListingFails() {
+    @Test fun bothCatalogsUseDefaultScopeWithoutRequestingProjects() {
         installTestAndroidKeyStore()
         val db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java
         ).build()
         try {
             MockWebServer().use { server ->
+                val requests = ConcurrentLinkedQueue<RecordedRequest>()
                 server.dispatcher = object : Dispatcher() {
-                    override fun dispatch(request: RecordedRequest): MockResponse =
-                        when (request.requestUrl?.encodedPath) {
-                            "/api/project" -> MockResponse().setResponseCode(503)
+                    override fun dispatch(request: RecordedRequest): MockResponse {
+                        requests.add(request)
+                        return when (request.requestUrl?.encodedPath) {
                             "/api/provider" -> MockResponse().setBody(
                                 """{"data":[{"id":"p","name":"Remote provider","package":"pkg"}]}"""
                             )
@@ -104,6 +96,7 @@ class ServerInventoryScopeUiTest {
                             )
                             else -> MockResponse().setResponseCode(404)
                         }
+                    }
                 }
                 val repository = ServerConnectionRepository(db)
                 runBlocking {
@@ -118,10 +111,14 @@ class ServerInventoryScopeUiTest {
                     }
                 }
                 awaitText("Remote provider")
-                awaitText("Could not load the project list.")
+                compose.onNodeWithContentDescription("Add").assertExists()
+                compose.onNodeWithText("Server default").assertDoesNotExist()
                 compose.runOnIdle { providers = false }
                 awaitText("Remote MCP")
-                awaitText("Could not load the project list.")
+                compose.onNodeWithContentDescription("Add").assertExists()
+                compose.onNodeWithText("Server default").assertDoesNotExist()
+                assertTrue(requests.none { it.requestUrl?.encodedPath == "/api/project" })
+                assertTrue(requests.all { it.requestUrl?.queryParameter("location[directory]") == null })
             }
         } finally { db.close() }
     }

@@ -1109,6 +1109,7 @@
     <string name="server_remote_tls_failed">Không xác minh được chứng chỉ TLS của máy chủ. Hãy kiểm tra máy chủ và lời mời.</string>
     <string name="server_remote_incompatible">Máy chủ này không hỗ trợ giao thức Server Connection cần thiết.</string>
     <string name="server_remote_chat_load_failed">Máy chủ đã phản hồi nhưng không tải được dữ liệu trò chuyện.</string>
+    <string name="server_remote_conversation_create_failed">OpenCode không tạo được cuộc trò chuyện. Kiểm tra kết nối và model đã chọn rồi thử lại.</string>
     <string name="server_remote_conversation_load_failed">Không mở được cuộc trò chuyện này. Bạn vẫn có thể mở cuộc trò chuyện khác hoặc bắt đầu cuộc trò chuyện mới.</string>
     <string name="server_connection_opencode_hint">Kết nối với máy chủ OpenCode 2.x đang chạy bằng opencode serve.</string>
     <string name="server_connection_auth_method">Xác thực</string>
@@ -1128,14 +1129,9 @@
     <string name="server_import_credentials">Cấu hình đã chọn và thông tin xác thực sẽ được sao chép lên máy chủ này.</string>
     <string name="server_import_runtime_credentials">Kết nối và thông tin xác thực đã chọn sẽ được sao chép lên OpenCode cho đến khi máy chủ khởi động lại.</string>
     <string name="server_import_failed">Không thể xác nhận nhập cấu hình. Máy chủ có thể không hỗ trợ cấu hình này hoặc mục đó đã tồn tại.</string>
-    <string name="server_inventory_stored_hint">Cấu hình nhập tại đây được lưu trên Generative Server.</string>
     <string name="server_inventory_read_only">Danh sách từ máy chủ chỉ có thể xem tại đây.</string>
     <string name="server_inventory_failed">Không thể tải dữ liệu từ máy chủ này.</string>
     <string name="server_inventory_empty">Không có mục nào trên máy chủ này.</string>
-    <string name="server_inventory_projects_failed">Không thể tải danh sách dự án.</string>
-    <string name="server_inventory_project">Dự án</string>
-    <string name="server_inventory_default_project">Mặc định của máy chủ</string>
-    <string name="server_mcp_runtime_hint">Thay đổi kết nối tại đây có hiệu lực đến khi máy chủ OpenCode khởi động lại.</string>
     <string name="server_mcp_operation_failed">Không thể xác nhận thay đổi. Trạng thái máy chủ sẽ được tải lại.</string>
     <string name="server_mcp_connect">Kết nối</string>
     <string name="server_mcp_disconnect">Ngắt kết nối</string>
@@ -1157,7 +1153,7 @@
     <string name="server_provider_reload_failed">Đã lưu provider vào tệp cấu hình. Tải lại OpenCode để áp dụng.</string>
     <string name="server_provider_config_http_warning">Kết nối máy chủ sử dụng HTTP không mã hóa.</string>
     <string name="server_provider_config_key_warning">API key sẽ được lưu trong tệp cấu hình này. Hãy giữ tệp ở chế độ riêng tư.</string>
-    <string name="server_provider_connect_hint">Chọn provider có integration để kết nối tài khoản.</string>
+    <string name="server_provider_link_account">Kết nối tài khoản</string>
     <string name="server_provider_no_method">Integration này không có phương thức xác thực được hỗ trợ.</string>
     <string name="server_provider_connected">Đã kết nối tài khoản.</string>
     <string name="server_provider_api_key">API key</string>

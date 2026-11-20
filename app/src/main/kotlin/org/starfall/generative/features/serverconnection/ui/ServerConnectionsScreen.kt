@@ -128,7 +128,6 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
                                         leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
                                     )
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; result = null; editorPage = ConnectionEditorPage(profile, repairing = true) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_select)) }, onClick = { menu = false; launchOperation { service.select(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Check, null) })
                                     if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) }, onClick = { menu = false; deleting = profile }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
                                 }

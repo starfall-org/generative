@@ -1429,6 +1429,7 @@
     <string name="server_remote_tls_failed">The server TLS certificate failed verification. Check the server and its invitation.</string>
     <string name="server_remote_incompatible">This server does not support the required Server Connection protocol.</string>
     <string name="server_remote_chat_load_failed">The server responded, but its chat data could not be loaded.</string>
+    <string name="server_remote_conversation_create_failed">OpenCode could not create a chat. Check the connection and selected model, then try again.</string>
     <string name="server_remote_conversation_load_failed">This conversation could not be opened. You can still open another conversation or start a new one.</string>
     <string name="server_connection_opencode_hint">Connect to a running OpenCode 2.x server started with opencode serve.</string>
     <string name="server_connection_auth_method">Authentication</string>
@@ -1450,14 +1451,9 @@
     <string name="server_import_credentials">The selected configuration and its credentials will be copied to this server.</string>
     <string name="server_import_runtime_credentials">The selected connection and credentials will be copied to OpenCode until it restarts.</string>
     <string name="server_import_failed">Import could not be confirmed. The server may not support this configuration or an entry may already exist.</string>
-    <string name="server_inventory_stored_hint">Configurations imported here are stored on Generative Server.</string>
     <string name="server_inventory_read_only">Server inventory is read-only here.</string>
     <string name="server_inventory_failed">Could not load data from this server.</string>
     <string name="server_inventory_empty">No entries found on this server.</string>
-    <string name="server_inventory_projects_failed">Could not load the project list.</string>
-    <string name="server_inventory_project">Project</string>
-    <string name="server_inventory_default_project">Server default</string>
-    <string name="server_mcp_runtime_hint">Connections changed here apply until the OpenCode server restarts.</string>
     <string name="server_mcp_operation_failed">Could not confirm the change. The server status will be refreshed.</string>
     <string name="server_mcp_connect">Connect</string>
     <string name="server_mcp_disconnect">Disconnect</string>
@@ -1479,7 +1475,7 @@
     <string name="server_provider_reload_failed">Provider saved to the config file. Reload OpenCode to apply it.</string>
     <string name="server_provider_config_http_warning">This server connection uses unencrypted HTTP.</string>
     <string name="server_provider_config_key_warning">The API key will be stored in this config file. Keep it private.</string>
-    <string name="server_provider_connect_hint">Select a provider with an integration to connect its account.</string>
+    <string name="server_provider_link_account">Connect account</string>
     <string name="server_provider_no_method">This integration does not offer a supported authentication method.</string>
     <string name="server_provider_connected">Account connected.</string>
     <string name="server_provider_api_key">API key</string>

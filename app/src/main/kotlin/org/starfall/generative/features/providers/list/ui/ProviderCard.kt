@@ -1,7 +1,6 @@
 package org.starfall.generative.features.providers.list.ui
 
 import org.starfall.generative.shared.ui.menus.ContextMenuAction
-import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
 import org.starfall.generative.features.providers.list.logic.*
 
 import org.starfall.generative.features.providers.list.logic.ProviderRootItem
@@ -21,9 +20,9 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
-import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.providers.ProviderCardMenu
 import org.starfall.generative.shared.ui.providers.ProviderDisplayCard
 import org.starfall.generative.shared.ui.providers.ProviderListCardHeight
 import org.starfall.generative.shared.ui.providers.ProviderGridCardHeight
@@ -158,24 +157,16 @@ private fun ProviderContextMenu(
     onDelete: () -> Unit,
     onToggleHidden: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
-        }
-        if (expanded) ContextDropdownMenu(
-            expanded = true,
-            actions = listOf(
-                ContextMenuAction(
-                    stringResource(if (isHidden) R.string.provider_show else R.string.provider_hide),
-                    onToggleHidden,
-                    if (isHidden) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff
-                ),
-                ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
-                ContextMenuAction(stringResource(R.string.move_to_group), onMoveToGroup, Icons.Outlined.Folder),
-                ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)
+    ProviderCardMenu(
+        actions = listOf(
+            ContextMenuAction(
+                stringResource(if (isHidden) R.string.provider_show else R.string.provider_hide),
+                onToggleHidden,
+                if (isHidden) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff
             ),
-            onDismissRequest = { expanded = false }
+            ContextMenuAction(stringResource(R.string.common_edit), onEdit, Icons.Outlined.Edit),
+            ContextMenuAction(stringResource(R.string.move_to_group), onMoveToGroup, Icons.Outlined.Folder),
+            ContextMenuAction(stringResource(R.string.common_delete), onDelete, Icons.Outlined.Delete, destructive = true)
         )
-    }
+    )
 }

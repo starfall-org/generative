@@ -188,6 +188,7 @@ fun ChatScreen(
             fallbackModelName = fallbackModelName,
             streamingHere = isGenerating && generatingConversationId == conversation?.id,
             saveError = saveError,
+            workspaceNotice = chatError.takeIf { restoreRemoteViewport && saveError == null },
             restoreViewport = restoreRemoteViewport,
             isGenerating = isGenerating,
             providers = providers,

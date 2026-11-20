@@ -134,6 +134,7 @@ fun ChatInterface(
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false,
     restoreViewport: Boolean = false,
+    workspaceNotice: String? = null,
 ) {
     SideEffect { ChatRenderMetrics.recordChatScreenRecomposition() }
     val density = LocalDensity.current
@@ -229,6 +230,7 @@ fun ChatInterface(
     // Persistence errors belong to the chat history; composer submission errors stay by InputArea.
     var saveConversationError by remember(conversationId) { mutableStateOf<String?>(null) }
     var inlineChatError by remember(conversationId) { mutableStateOf<String?>(null) }
+    var noticeDismissed by remember(workspaceNotice) { mutableStateOf(false) }
     fun submitMessage(action: () -> Boolean): Boolean {
         saveConversationError = null
         inlineChatError = null
@@ -351,10 +353,13 @@ fun ChatInterface(
                         )
                         .navigationBarsPadding()
                 ) {
-                    inlineChatError?.let { error ->
+                    (inlineChatError ?: workspaceNotice.takeUnless { noticeDismissed })?.let { error ->
                         ErrorContainer(
                             message = error,
-                            onDismiss = { inlineChatError = null },
+                            onDismiss = {
+                                if (inlineChatError != null) inlineChatError = null
+                                else noticeDismissed = true
+                            },
                             expandable = false,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )

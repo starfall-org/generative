@@ -2,7 +2,7 @@ package org.starfall.generative.shared.ui.providers
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.Modifier
@@ -16,6 +16,8 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.subfeatures.icons.ui.EntityIcon
 import org.starfall.generative.shared.subfeatures.icons.ui.providerInitials
 import org.starfall.generative.shared.ui.lists.ItemCard
+import org.starfall.generative.shared.ui.menus.ContextDropdownMenu
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 
@@ -91,4 +93,21 @@ internal fun ProviderDisplayCard(name: String, detail: String, isGrid: Boolean,
                 }
             }
         )
+}
+
+
+@Composable
+internal fun ProviderCardMenu(actions: List<ContextMenuAction>, enabled: Boolean = true) {
+    if (actions.isEmpty()) return
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(enabled = enabled, onClick = { expanded = true }) {
+            SharedIcon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.common_more_options))
+        }
+        if (expanded) ContextDropdownMenu(
+            expanded = true,
+            actions = actions,
+            onDismissRequest = { expanded = false }
+        )
+    }
 }

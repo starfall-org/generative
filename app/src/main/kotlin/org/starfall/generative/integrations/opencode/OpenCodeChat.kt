@@ -40,13 +40,13 @@ internal class OpenCodeChat(val api: OpenCodeApi, private val directory: String)
 
     suspend fun list(): List<ConversationListItem> = api.sessions(directory).map { it.conversation().listItem() }
 
-    suspend fun create(): Conversation = api.createSession(directory).conversation()
+    suspend fun create(providerId: String, modelId: String): Conversation =
+        api.createSession(directory, providerId, modelId).conversation()
 
-    suspend fun open(id: String): Conversation {
-        val session = api.session(id).conversation()
-        require(session.id == id)
-        return session.copy(messages = api.messages(id).mapNotNull(::message))
-    }
+    suspend fun open(id: String): Conversation =
+        session(id).copy(messages = api.messages(id).mapNotNull(::message))
+
+    suspend fun session(id: String): Conversation = api.session(id).conversation().also { require(it.id == id) }
 
     suspend fun readTurn(id: String, promptId: String): OpenCodeTurn {
         val rows = api.messages(id)
@@ -78,16 +78,25 @@ private fun message(row: JsonObject): StoredMessage? {
         "assistant" -> ChatRole.MODEL
         else -> return null
     }
-    val parts = (row["content"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
-    fun collect(type: String) = parts.filter { it.text("type") == type }.joinToString("\n") { it.requiredText("text") }
     val model = row["model"] as? JsonObject
-    val content = if (role == ChatRole.USER) row.text("text").orEmpty() else collect("text")
-    val reasoning = collect("reasoning").ifBlank { null }
-    if (role == ChatRole.MODEL && content.isBlank() && reasoning == null) return null
-    return StoredMessage(row.requiredText("id"), role, listOf(MessageVersion(
-        content = content, reasoningContent = reasoning,
-        providerId = model?.text("providerID").orEmpty(), modelId = model?.text("id").orEmpty()
-    )))
+    val providerId = model?.text("providerID").orEmpty()
+    val modelId = model?.text("id").orEmpty()
+    val version = if (role == ChatRole.USER) {
+        MessageVersion(content = row.text("text").orEmpty(), providerId = providerId, modelId = modelId)
+    } else {
+        val content = OpenCodeAssistantContent()
+        (row["content"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().forEachIndexed { index, part ->
+            when (part.text("type")) {
+                "text" -> content.text(false, index, part.text("text").orEmpty(), replace = true)
+                "reasoning" -> content.text(true, index, part.text("text").orEmpty(), replace = true)
+                "tool" -> content.storedTool(part)
+            }
+        }
+        content.version(providerId, modelId).takeUnless {
+            it.content.isBlank() && it.reasoningContent == null && it.toolActivity.isEmpty()
+        } ?: return null
+    }
+    return StoredMessage(row.requiredText("id"), role, listOf(version))
 }
 
 private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull

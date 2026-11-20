@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
@@ -24,6 +25,15 @@ class RemoteWorkspaceTest {
         var runRequest = ""
         var configureSource = ""
         var gap = false
+        @Volatile var holdRunEvents = false
+        @Volatile var typedOutput = false
+        private val toolOutput = """{"id":"call","name":"lookup","status":"success","response":"found",
+            "contentOffset":0,"reasoningOffset":8}"""
+        private fun typedConversation(id: String, message: String) =
+            """{"id":"$id","title":"$owner","created_at":1,"updated_at":2,
+                "messages":[{"id":"out","role":"model","versions":[$message]}],"provider_id":"p","model_id":"m"}"""
+        private fun typedFinal(id: String) = typedConversation(id,
+            """{"content":"Answer","reasoning_content":"Thinking","toolActivity":[$toolOutput]}""")
         var foreignSnapshot = false
         var withMessage = false
         var saved = ""
@@ -42,6 +52,21 @@ class RemoteWorkspaceTest {
         }
         override fun events(token: AccessToken, sessionId: String, after: Long): List<SessionEvent> {
             polledCursors += sessionId to after
+            if (typedOutput && after == 0L) {
+                val conversation = typedConversation(sessionId, """{"content":""}""")
+                return listOf(
+                    SessionEvent(sessionId, 1, runRequest, "conversation",
+                        Json.parseToJsonElement("""{"revision":2,"conversation":$conversation}""")),
+                    SessionEvent(sessionId, 2, runRequest, "reasoning_delta",
+                        Json.parseToJsonElement("""{"text":"Thinking","content_offset":0}""")),
+                    SessionEvent(sessionId, 3, runRequest, "tool_activity",
+                        Json.parseToJsonElement(toolOutput)),
+                    SessionEvent(sessionId, 4, runRequest, "delta",
+                        Json.parseToJsonElement("""{"text":"Answer"}"""))
+                )
+            }
+            if (holdRunEvents) return emptyList()
+            if (typedOutput && after == 4L) return listOf(SessionEvent(sessionId, 5, runRequest, "completed"))
             if (gap) throw GenerativeServerRpcException(RpcError("event_gap", "gap"))
             if (evictPriorRunEvents) {
                 val run = runsPerSession[sessionId] ?: 0
@@ -67,7 +92,9 @@ class RemoteWorkspaceTest {
                 "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"runtime_sources":["stored","mobile_ephemeral"]}}"""
                 "provider.catalog" -> """{"version":1,"revision":1,"providers":[{"id":"p","name":"Provider","type":"openai","custom_model_id":false,"key_selection_required":false,"keys":[],"models":[{"id":"m","name":"Model","availability":"available","text_generation":true}]}]}"""
                 "session.list" -> """{"version":1,"items":[{"id":"$owner-chat","title":"$owner","created_at":1,"updated_at":2,"revision":1}],"next_cursor":""}"""
-                "session.open", "session.get" -> {
+                "session.open", "session.get" -> if (request.op == "session.get" && typedOutput) {
+                    """{"session_id":"${request.sessionId}","revision":3,"conversation":${typedFinal(requireNotNull(request.sessionId))}}"""
+                } else {
                     val cursor = (runsPerSession[request.sessionId] ?: 0) * 2L
                     val messages = if (withMessage) """[{"id":"msg","role":"user","versions":[{"content":"old","future_version":"kept"}]}]""" else "[]"
                     """{"session_id":"${request.sessionId}","revision":1,"event_seq":$cursor,"conversation":{"id":"${request.sessionId}","title":"$owner","created_at":1,"updated_at":2,"messages":$messages,"provider_id":"$storedProvider","model_id":"$storedModel","future_root":"kept"}}"""
@@ -102,6 +129,33 @@ class RemoteWorkspaceTest {
         ready(); assertEquals("b-chat", workspace.state.value.items.single().id)
         workspace.disable(); assertFalse(workspace.state.value.enabled); assertNull(workspace.state.value.conversation)
     }
+    @Test fun newCliChatIsVisibleBeforeCompletionAndSurvivesAStaleSessionList() = runBlocking {
+        val wire = Wire("remote").apply { holdRunEvents = true; typedOutput = true }
+        val workspace = RemoteWorkspace(
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) },
+            this
+        )
+        workspace.enable("server")
+        withTimeout(5_000) { workspace.state.first { !it.busy } }
+        workspace.selectModel("p", "m")
+        assertTrue(workspace.send("Hello", emptyList()))
+        val opened = withTimeout(5_000) { workspace.state.first { it.running } }
+        val id = requireNotNull(opened.conversation).id
+        assertTrue(opened.items.any { it.id == id })
+        val running = withTimeout(5_000) {
+            workspace.state.first { it.running && it.conversation?.messages?.lastOrNull()?.content == "Answer" }
+        }
+        val live = requireNotNull(running.conversation).messages.single().activeVersion
+        assertEquals("Thinking", live.reasoningContent)
+        assertEquals("found", live.toolActivity.single().response.textBlocking())
+        wire.holdRunEvents = false
+        val completed = withTimeout(5_000) { workspace.state.first { !it.busy && !it.running } }
+        assertTrue(completed.items.any { it.id == id })
+        assertFalse(completed.error)
+        assertEquals(live, completed.conversation?.messages?.single()?.activeVersion)
+        workspace.disable()
+    }
+
     @Test fun localProviderIsAppendedAndRunsOnRemoteOnlyWhileAllowed() = runBlocking {
         val wire = Wire("remote")
         val provider = ModelProvider(id = "p", name = "Local", type = ModelApiType.OPENAI,

@@ -21,7 +21,6 @@ import org.starfall.generative.R
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import java.util.UUID
 import org.starfall.generative.shared.ui.mcp.McpUnifiedCard
-import org.starfall.generative.shared.ui.mcp.McpEmptyState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.McpProtocol
 import org.starfall.generative.shared.model.ToolDefinition
@@ -29,13 +28,11 @@ import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
-import org.starfall.generative.shared.ui.lists.EntityGrid
-import org.starfall.generative.shared.ui.lists.EntityCollectionViewport
-import org.starfall.generative.shared.ui.icons.SharedIcon
-import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
 import org.starfall.generative.shared.ui.layout.windowHeightIn
-import org.starfall.generative.shared.ui.screens.ListScreenTemplate
+import org.starfall.generative.shared.ui.screens.CatalogGrid
+import org.starfall.generative.shared.ui.screens.CatalogKind
+import org.starfall.generative.shared.ui.screens.CatalogScreen
 import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,59 +68,51 @@ fun ServerListScreen(
             firstActionIcon = if (canToggle) (if (enabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked) else null,
             onFirstAction = if (canToggle) ({ onSetMcpEnabled(server.id, !enabled) }) else null, actionsEnabled = !preview)
     }
-    ListScreenTemplate(
-        title = stringResource(R.string.mcp),
+    CatalogScreen(
+        kind = CatalogKind.Mcp,
         onBack = onBack,
         searchQuery = searchQuery,
         onSearchQueryChange = { searchQuery = it },
         isGrid = isGridView,
         onGridChange = { onToggleGridView?.invoke(it) },
-        bottomPadding = 8.dp,
-        primaryActions = {
-            IconButton(onClick = {
-                onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
-                    url = null, headers = emptyMap()), true)
-            }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
+        isEmpty = matchingServers.isEmpty(),
+        hasSearchQuery = mcpServers.isNotEmpty(),
+        onAdd = {
+            onOpenEditor(McpInfo(id = UUID.randomUUID().toString(), name = "", protocol = McpProtocol.STREAMABLE_HTTP,
+                url = null, headers = emptyMap()), true)
         }
-    ) { padding ->
-        EntityCollectionViewport(
-            isGrid = isGridView,
-            isEmpty = matchingServers.isEmpty(),
-            contentPadding = padding,
-            emptyContent = { McpEmptyState(hasSearchQuery = mcpServers.isNotEmpty()) }
-        ) { gridMode ->
-            val gridState = rememberLazyGridState()
-            val dndState = Launcher.rememberState<String>()
-            var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
-            Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
-                orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
-                    card(server, gridMode, Modifier.testTag("dragged_mcp"), true)
-                }
-            }) {
-                EntityGrid(state = gridState, isGrid = gridMode, spacing = 12.dp, contentPadding = padding,
-                    modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState).testTag("mcp_list")) {
-                    items(matchingServers, key = { it.id }) { server ->
-                        card(server, gridMode, Modifier.animateItem()
-                                    .dragSource(dndState, server.id, server.id,
-                                        onDragStart = { dragSnapshot = orderedServers },
-                                        onDragEnd = { outcome ->
-                                            if (outcome.accepted) onReorderMcpServers(orderedServers.map { it.id })
-                                            else dragSnapshot?.let { orderedServers = it }
-                                            dragSnapshot = null
-                                        })
-                                    .dropTarget(dndState, "slot:${server.id}",
-                                        accepts = { it.key != server.id },
-                                        onDragEnter = { dragged ->
-                                            val from = orderedServers.indexOfFirst { it.id == dragged.item.data }
-                                            val to = orderedServers.indexOfFirst { it.id == server.id }
-                                            if (from >= 0 && to >= 0 && from != to)
-                                                orderedServers = orderedServers.moved(from, to)
-                                        }, onDrop = { true })
-                                    .dropTarget(dndState, "self:${server.id}",
-                                        priority = 5,
-                                        accepts = { it.key == server.id },
-                                        onDrop = { dragSnapshot != orderedServers }), false)
-                    }
+    ) { gridMode, padding ->
+        val gridState = rememberLazyGridState()
+        val dndState = Launcher.rememberState<String>()
+        var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
+        Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
+            orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
+                card(server, gridMode, Modifier.testTag("dragged_mcp"), true)
+            }
+        }) {
+            CatalogGrid(kind = CatalogKind.Mcp, state = gridState, isGrid = gridMode, contentPadding = padding,
+                modifier = Modifier.autoScroll(dndState, gridState)) {
+                items(matchingServers, key = { it.id }) { server ->
+                    card(server, gridMode, Modifier.animateItem()
+                                .dragSource(dndState, server.id, server.id,
+                                    onDragStart = { dragSnapshot = orderedServers },
+                                    onDragEnd = { outcome ->
+                                        if (outcome.accepted) onReorderMcpServers(orderedServers.map { it.id })
+                                        else dragSnapshot?.let { orderedServers = it }
+                                        dragSnapshot = null
+                                    })
+                                .dropTarget(dndState, "slot:${server.id}",
+                                    accepts = { it.key != server.id },
+                                    onDragEnter = { dragged ->
+                                        val from = orderedServers.indexOfFirst { it.id == dragged.item.data }
+                                        val to = orderedServers.indexOfFirst { it.id == server.id }
+                                        if (from >= 0 && to >= 0 && from != to)
+                                            orderedServers = orderedServers.moved(from, to)
+                                    }, onDrop = { true })
+                                .dropTarget(dndState, "self:${server.id}",
+                                    priority = 5,
+                                    accepts = { it.key == server.id },
+                                    onDrop = { dragSnapshot != orderedServers }), false)
                 }
             }
         }

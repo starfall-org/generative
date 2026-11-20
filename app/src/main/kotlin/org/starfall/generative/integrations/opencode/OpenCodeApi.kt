@@ -140,16 +140,23 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     suspend fun messages(sessionId: String): List<JsonObject> = pages(
         listOf("api", "session", validId(sessionId), "message"), mapOf("order" to "asc"))
 
-    suspend fun createSession(directory: String): JsonObject {
+    suspend fun createSession(directory: String, providerId: String, modelId: String): JsonObject {
         require(directory.isNotBlank())
-        val body = buildJsonObject { put("location", buildJsonObject { put("directory", directory) }) }
+        val body = buildJsonObject {
+            put("location", buildJsonObject { put("directory", directory) })
+            put("model", modelRef(providerId, modelId))
+        }
         return obj(obj(request("POST", listOf("api", "session"), body = body)).required("data"))
     }
 
     suspend fun setModel(sessionId: String, providerId: String, modelId: String) {
-        require(providerId.isNotBlank() && modelId.isNotBlank())
-        val body = buildJsonObject { put("model", buildJsonObject { put("providerID", providerId); put("id", modelId) }) }
+        val body = buildJsonObject { put("model", modelRef(providerId, modelId)) }
         request("POST", listOf("api", "session", validId(sessionId), "model"), body = body)
+    }
+
+    private fun modelRef(providerId: String, modelId: String): JsonObject {
+        require(providerId.isNotBlank() && modelId.isNotBlank())
+        return buildJsonObject { put("providerID", providerId); put("id", modelId) }
     }
 
     /** An accepted prompt is never automatically retried: the server may already have executed it. */

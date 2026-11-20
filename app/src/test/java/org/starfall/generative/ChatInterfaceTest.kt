@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
@@ -24,6 +26,7 @@ import org.starfall.generative.features.home.chat.ui.ChatScreen
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
+import org.starfall.generative.shared.model.ToolActivity
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w360dp-h800dp-xhdpi", application = LibraryTestApplication::class)
@@ -71,6 +74,29 @@ class ChatInterfaceTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
     }
+    @Test fun remoteReplyUsesSeparateAnswerThinkingAndToolViews() {
+        val messages = listOf(
+            StoredMessage("question", ChatRole.USER, listOf(MessageVersion(content = "Host question"))),
+            StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion(
+                content = "Visible answer",
+                reasoningContent = "Check the input",
+                toolActivity = listOf(ToolActivity(
+                    id = "call", name = "lookup", status = "success", reasoningOffset = "Check the input".length
+                ))
+            )))
+        )
+        compose.setContent {
+            MaterialTheme {
+                ChatInterface(conversationId = "remote", conversationMessages = messages)
+            }
+        }
+        compose.onNodeWithText("Visible answer", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("lookup", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("processing-dropdown-toggle", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Check the input", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("lookup", useUnmergedTree = true).assertExists()
+    }
+
     @Test fun screenSendsThroughTheSelectedBackend() {
         val sent = mutableListOf<String>()
         var backend by mutableStateOf(ChatBackend(onSendMessage = { text, _ -> sent += "local:$text"; true }))

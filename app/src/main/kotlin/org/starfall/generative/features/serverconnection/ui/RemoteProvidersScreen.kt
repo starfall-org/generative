@@ -1,19 +1,26 @@
 package org.starfall.generative.features.serverconnection.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import org.starfall.generative.R
-import org.starfall.generative.shared.ui.providers.ProviderEmptyState
+import org.starfall.generative.shared.ui.icons.Icons
+import org.starfall.generative.shared.ui.menus.ContextMenuAction
+import org.starfall.generative.shared.ui.providers.ProviderCardMenu
+import org.starfall.generative.shared.ui.providers.ProviderSearchFilter
+import org.starfall.generative.shared.ui.screens.CatalogGrid
+import org.starfall.generative.shared.ui.screens.CatalogKind
+import org.starfall.generative.shared.ui.screens.CatalogScreen
 import org.starfall.generative.shared.ui.providers.ProviderDisplayCard
 import org.starfall.generative.shared.ui.providers.providerCardCell
 
 data class ProviderCatalogEntry(val id: String, val name: String, val detail: String, val integrationId: String? = null)
 
-/** Generative Server and OpenCode use this screen. Local provider organization is not part of it. */
+private enum class CatalogSearchField { NAME, ID }
 @Composable
 fun RemoteProvidersScreen(catalog: List<ProviderCatalogEntry>, onBack: () -> Unit,
     header: (@Composable () -> Unit)? = null, onConnect: ((String) -> Unit)? = null,
@@ -22,17 +29,74 @@ fun RemoteProvidersScreen(catalog: List<ProviderCatalogEntry>, onBack: () -> Uni
     onImport: (() -> Unit)? = null, busy: Boolean = false) {
     var search by rememberSaveable { mutableStateOf("") }
     var grid by rememberSaveable { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(false) }
+    var filterOpen by remember { mutableStateOf(false) }
+    var fields by remember { mutableStateOf(setOf(CatalogSearchField.NAME)) }
+    val query = search.trim()
     val filtered = catalog.filter { item ->
-        item.name.contains(search.trim(), ignoreCase = true) || item.id.contains(search.trim(), ignoreCase = true)
+        fields.any { field ->
+            val value = when (field) {
+                CatalogSearchField.NAME -> item.name
+                CatalogSearchField.ID -> item.id
+            }
+            value.contains(query, ignoreCase = true)
+        }
     }
-    RemoteCatalogLayout(items = filtered, itemKey = { it.id }, onBack = onBack,
-        searchQuery = search, onSearchChange = { search = it }, isGrid = grid,
-        onGridChange = { grid = it }, title = title, header = header, onAdd = onAdd, onImport = onImport, actionsEnabled = !busy, status = status,
-        listTag = "provider_list", searchPlaceholder = stringResource(R.string.search_providers),
-        emptyContent = { ProviderEmptyState(search.isNotBlank(), 0.dp) }) { item, gridMode, modifier ->
-        Box(modifier.providerCardCell(gridMode)) {
-            ProviderDisplayCard(item.name, item.detail, gridMode,
-                onClick = item.integrationId?.let { id -> onConnect?.let { connect -> { connect(id) } } })
+    CatalogScreen(
+        kind = CatalogKind.Providers,
+        isEmpty = filtered.isEmpty(),
+        hasSearchQuery = query.isNotEmpty(),
+        title = title,
+        onBack = onBack,
+        searchQuery = search,
+        onSearchQueryChange = { search = it },
+        searchExpanded = searching,
+        onSearchExpandedChange = {
+            searching = it
+            if (!it) filterOpen = false
+        },
+        searchPopupOpen = filterOpen,
+        isGrid = grid,
+        onGridChange = { grid = it },
+        header = header,
+        status = status,
+        busy = busy,
+        onAdd = onAdd,
+        onImport = onImport,
+        searchActions = {
+            ProviderSearchFilter(
+                fields = listOf(
+                    CatalogSearchField.NAME to R.string.provider_search_provider_name,
+                    CatalogSearchField.ID to R.string.server_provider_id
+                ),
+                defaultField = CatalogSearchField.NAME,
+                searchFields = fields,
+                searchFilterOpen = filterOpen,
+                onSearchFieldsChange = { fields = it },
+                onSearchFilterOpenChange = { filterOpen = it },
+                onDismiss = { searching = false }
+            )
+        }
+    ) { gridMode, padding ->
+        CatalogGrid(kind = CatalogKind.Providers, isGrid = gridMode, contentPadding = padding) {
+            items(filtered, key = { "provider_${it.id}" }) { item ->
+                val connect = item.integrationId?.let { id -> onConnect?.let { action -> { action(id) } } }
+                Box(Modifier.animateItem().providerCardCell(gridMode)) {
+                    ProviderDisplayCard(
+                        name = item.name, detail = item.detail, isGrid = gridMode,
+                        modifier = Modifier.testTag("provider_${item.id}"),
+                        onClick = connect.takeUnless { busy },
+                        actions = {
+                            if (connect != null) ProviderCardMenu(
+                                actions = listOf(ContextMenuAction(
+                                    stringResource(R.string.server_provider_link_account), connect, Icons.Outlined.Key
+                                )),
+                                enabled = !busy
+                            )
+                        }
+                    )
+                }
+            }
         }
     }
 }

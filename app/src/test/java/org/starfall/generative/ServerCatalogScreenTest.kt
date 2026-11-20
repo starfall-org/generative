@@ -79,7 +79,9 @@ class ServerCatalogScreenTest {
             }
         }
         compose.onNodeWithText("Remote provider").performClick()
-        assertEquals(listOf("integration-id"), calls)
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Connect account").performClick()
+        assertEquals(listOf("integration-id", "integration-id"), calls)
     }
 
     @Test fun mcpConnectActionCallsHostWithServerIdentity() {

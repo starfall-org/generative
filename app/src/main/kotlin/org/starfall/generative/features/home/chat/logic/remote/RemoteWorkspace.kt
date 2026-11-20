@@ -30,13 +30,15 @@ import org.starfall.generative.integrations.generativeserver.*
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.ConversationListItem
+import org.starfall.generative.shared.model.MessageVersion
+import org.starfall.generative.shared.model.ToolActivity
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.api.ModelApiType
 
 /** A recoverable remote mutation error must not disable the entire remote workspace. */
-enum class RemoteActionFailure { REVISION_CONFLICT, OPERATION_FAILED, GENERATION_FAILED, CONVERSATION_LOAD_FAILED }
+enum class RemoteActionFailure { REVISION_CONFLICT, OPERATION_FAILED, GENERATION_FAILED, CONVERSATION_LOAD_FAILED, CONVERSATION_CREATE_FAILED }
 enum class RemoteConnectionFailure { UNAUTHORIZED, CERTIFICATE, INCOMPATIBLE, UNAVAILABLE, CHAT_LOAD_FAILED }
 
 internal fun remoteConnectionFailure(failure: Exception): RemoteConnectionFailure = when (failure) {
@@ -152,6 +154,20 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
         return if (available.any { it.id == provider && it.config.modelIds?.contains(model) == true }) provider to model
             else "" to "" // Never silently replace an unavailable saved model with a different model.
     }
+    private fun publishRunSnapshot(state: RemoteWorkspaceState, snapshot: ServerSnapshot): RemoteWorkspaceState {
+        val conversation = snapshot.ui()
+        val row = ConversationListItem(
+            conversation.id, conversation.title, conversation.createdAt, conversation.updatedAt,
+            conversation.tokenCount, conversation.providerId, conversation.modelId, conversation.profileId,
+            conversation.reasoningEffort, conversation.messages.isNotEmpty(), conversation.summary != null
+        )
+        return state.copy(
+            snapshot = snapshot, conversation = conversation,
+            items = (listOf(row) + state.items.filterNot { it.id == row.id }).sortedByDescending { it.updatedAt },
+            revisions = state.revisions + (row.id to snapshot.revision)
+        )
+    }
+
     private fun setSnapshot(state: RemoteWorkspaceState, snapshot: ServerSnapshot): RemoteWorkspaceState {
         val (provider, model) = selectionFor(snapshot, state.providers)
         // A rotated/expired key cannot be inferred from the transcript.
@@ -404,6 +420,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 val snap = api.open(id, current.snapshot)
                 val startingCursor = snap.eventSeq ?: eventCursors[id] ?: 0L
                 if (epoch != generation) return@launch
+                mutable.update { publishRunSnapshot(it, snap) }
                 if (runtime != null) {
                     if (current.providerId !in mutable.value.localProviderIds) {
                         mutable.update { it.copy(busy = false, actionFailure = RemoteActionFailure.OPERATION_FAILED) }
@@ -413,12 +430,11 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 } else api.configure(id, current.providerId, current.modelId, current.keyId)
                 if (epoch != generation) return@launch
                 lastSession[current.connectionId!!] = id
-                saveLastSession(current.connectionId, id)
+                cacheOrNull { saveLastSession(current.connectionId, id) }
                 if (epoch != generation) return@launch
-                mutable.update { it.copy(snapshot = snap, conversation = snap.ui(), running = true, busy = false) }
+                mutable.update { it.copy(running = true, busy = false) }
                 // A failed run acknowledgement is ambiguous and is never replayed.
                 api.run(id, request, text)
-                var delta = ""
                 api.events(id, startingCursor).collect { event ->
                     if (epoch != generation) return@collect
                     // Advance on every event, including those from another request. The
@@ -426,7 +442,12 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                     eventCursors[id] = event.seq
                     if (event.requestId != request) return@collect
                     when (event.kind) {
-                        "delta" -> { delta += event.data?.jsonObject?.get("text")?.jsonPrimitive?.content.orEmpty(); val base = mutable.value.snapshot; if (base != null) mutable.update { it.copy(conversation = base.ui(delta)) } }
+                        "delta", "reasoning_delta", "tool_activity" -> {
+                            val data = event.data as? JsonObject ?: return@collect
+                            mutable.update { state ->
+                                state.copy(conversation = state.conversation?.applyRunEvent(event.kind, data))
+                            }
+                        }
                         "conversation" -> {
                             val data = event.data?.jsonObject ?: return@collect
                             val revision = data.getValue("revision").jsonPrimitive.long
@@ -436,16 +457,25 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                             }
                             if (revision > (mutable.value.snapshot?.revision ?: 0)) {
                                 val update = ServerSnapshot(id, revision, conversation)
-                                delta = ""; mutable.update { it.copy(snapshot = update, conversation = update.ui()) }
+                                mutable.update { publishRunSnapshot(it, update) }
                             }
                         }
                         "completed", "error" -> {
                             val updated = api.get(id, mutable.value.snapshot?.takeIf { it.sessionId == id })
-                            val list = api.list().filter { it.deletedAt == null }
+                            val list = cacheOrNull { api.list().filter { it.deletedAt == null } }
                             if (epoch == generation) {
-                                mutable.update { it.copy(snapshot = updated, conversation = updated.ui(), items = list.map { row -> row.ui() }, revisions = list.associate { row -> row.id to row.revision }, running = false, error = false, actionFailure = if (event.kind == "error") RemoteActionFailure.GENERATION_FAILED else null) }
+                                mutable.update { current ->
+                                    val refreshed = if (list == null) current else current.copy(
+                                        items = list.map { row -> row.ui() },
+                                        revisions = list.associate { row -> row.id to row.revision }
+                                    )
+                                    publishRunSnapshot(refreshed, updated).copy(
+                                        running = false, error = false,
+                                        actionFailure = RemoteActionFailure.GENERATION_FAILED.takeIf { event.kind == "error" }
+                                    )
+                                }
                                 store(updated, activeCacheScope)
-                                storeList(list, activeCacheScope)
+                                if (list != null && list.any { it.id == id }) storeList(list, activeCacheScope)
                             }
                             throw FinishedStream()
                         }
@@ -455,9 +485,12 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             catch (e: CancellationException) { throw e }
             catch (_: Exception) {
                 // Reload once for authoritative state, without resending the prompt.
-                val recovered = runCatching { api.get(id, mutable.value.snapshot?.takeIf { it.sessionId == id }) }.getOrNull()
+                val recovered = cacheOrNull { api.get(id, mutable.value.snapshot?.takeIf { it.sessionId == id }) }
                 if (epoch == generation) {
-                    mutable.update { it.copy(snapshot = recovered ?: it.snapshot, conversation = recovered?.ui() ?: it.conversation, busy = false, running = false, error = true) }
+                    mutable.update {
+                        val refreshed = if (recovered == null) it else publishRunSnapshot(it, recovered)
+                        refreshed.copy(busy = false, running = false, error = true, actionFailure = RemoteActionFailure.GENERATION_FAILED)
+                    }
                     if (recovered != null) store(recovered, activeCacheScope)
                 }
             } finally { if (epoch == generation) requestId = null }
@@ -562,15 +595,31 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
 }
 
 private fun SessionListItem.ui() = ConversationListItem(id, title, createdAt, updatedAt, tokenCount?.toInt(), providerId, modelId, profileId, reasoningEffort, hasMessages, hasSummary)
-private fun ServerSnapshot.ui(delta: String = ""): Conversation {
-    val conversation = GenerativeServerCodec.json.decodeFromString<Conversation>(conversation.toString())
-    if (delta.isEmpty() || conversation.messages.isEmpty()) return conversation.copy(structuralRevision = revision)
-    val index = conversation.messages.indexOfLast { it.role == org.starfall.generative.shared.model.ChatRole.MODEL }
-    if (index < 0) return conversation
-    val messages = conversation.messages.toMutableList(); val message = messages[index]
-    val versions = message.versions.toMutableList(); if (versions.isEmpty()) return conversation
-    val active = message.activeVersionIndex.coerceIn(0, versions.lastIndex)
-    versions[active] = versions[active].copy(content = versions[active].content + delta)
-    messages[index] = message.copy(versions = versions)
-    return conversation.copy(messages = messages, structuralRevision = revision)
+private fun ServerSnapshot.ui(): Conversation =
+    GenerativeServerCodec.json.decodeFromString<Conversation>(conversation.toString())
+        .copy(structuralRevision = revision)
+
+private fun Conversation.applyRunEvent(kind: String, data: JsonObject): Conversation {
+    val message = messages.lastOrNull()?.takeIf { it.role == ChatRole.MODEL } ?: return this
+    val index = message.activeVersionIndex
+    val version = message.versions.getOrNull(index) ?: return this
+    val updated = version.withRunEvent(kind, data)
+    val versions = message.versions.toMutableList().apply { this[index] = updated }
+    return copy(messages = messages.dropLast(1) + message.copy(versions = versions))
+}
+
+private fun MessageVersion.withRunEvent(kind: String, data: JsonObject): MessageVersion = when (kind) {
+    "delta" -> copy(content = content + data.getValue("text").jsonPrimitive.content)
+    "reasoning_delta" -> copy(
+        reasoningContent = reasoningContent.orEmpty() + data.getValue("text").jsonPrimitive.content,
+        reasoningContentOffset = data["content_offset"]?.jsonPrimitive?.intOrNull ?: reasoningContentOffset
+    )
+    "tool_activity" -> {
+        val activity = GenerativeServerCodec.json.decodeFromString<ToolActivity>(data.toString())
+        val index = toolActivity.indexOfFirst { it.id == activity.id }
+        copy(toolActivity = if (index < 0) toolActivity + activity else toolActivity.toMutableList().apply {
+            this[index] = activity
+        })
+    }
+    else -> this
 }

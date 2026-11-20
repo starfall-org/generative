@@ -775,6 +775,8 @@ internal fun AppNavigation(
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
+                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.CONVERSATION_CREATE_FAILED ->
+                                stringResource(R.string.server_remote_conversation_create_failed)
                             org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.CONVERSATION_LOAD_FAILED -> stringResource(R.string.server_remote_conversation_load_failed)
                             null -> null
                         }
