@@ -7,8 +7,8 @@ import org.starfall.generative.database.room.entities.ServerConnectionEntity
 import org.starfall.generative.integrations.security.SecretCipher
 import org.starfall.generative.integrations.opencode.OpenCodeAuthentication
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
-import org.starfall.generative.integrations.serverside.PairedIdentity
-import org.starfall.generative.integrations.serverside.validateServerSideHttpConnection
+import org.starfall.generative.integrations.generativeserver.PairedIdentity
+import org.starfall.generative.integrations.generativeserver.validateGenerativeServerHttpConnection
 import org.starfall.generative.shared.state.ImmediateState
 import org.starfall.generative.shared.state.upsert
 
@@ -31,7 +31,7 @@ class ServerConnectionRepository(private val db: AppDatabase) {
         require(id.isNotBlank() && name.isNotBlank())
         // Only HTTP uses a separate SPKI pin; SSH trust is owned by Remote Machines.
         when (transport) {
-            "http" -> { require(sshMachineId.isEmpty()); validateServerSideHttpConnection(endpoint, pin) }
+            "http" -> { require(sshMachineId.isEmpty()); validateGenerativeServerHttpConnection(endpoint, pin) }
             "ssh" -> { require(sshMachineId.isNotBlank() && pin.isEmpty()) }
             else -> throw IllegalArgumentException("Unsupported server transport")
         }

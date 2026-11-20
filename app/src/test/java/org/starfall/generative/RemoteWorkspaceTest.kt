@@ -16,10 +16,10 @@ import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
 import org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure
 import org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure
 import org.starfall.generative.features.home.chat.logic.remote.remoteConnectionFailure
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
 class RemoteWorkspaceTest {
-    private class Wire(private val owner: String, private val fail: Boolean = false) : ServerSideWire {
+    private class Wire(private val owner: String, private val fail: Boolean = false) : GenerativeServerWire {
         val operations = java.util.concurrent.CopyOnWriteArrayList<String>()
         var runRequest = ""
         var configureSource = ""
@@ -37,16 +37,16 @@ class RemoteWorkspaceTest {
         private val runsPerSession = java.util.concurrent.ConcurrentHashMap<String, Int>()
         fun restartServerSessions() { runsPerSession.clear() }
         override fun authenticate(identity: PairedIdentity): AccessToken {
-            if (fail) throw ServerSideHttpException(401)
+            if (fail) throw GenerativeServerHttpException(401)
             return AccessToken("bearer", 900)
         }
         override fun events(token: AccessToken, sessionId: String, after: Long): List<SessionEvent> {
             polledCursors += sessionId to after
-            if (gap) throw ServerSideRpcException(RpcError("event_gap", "gap"))
+            if (gap) throw GenerativeServerRpcException(RpcError("event_gap", "gap"))
             if (evictPriorRunEvents) {
                 val run = runsPerSession[sessionId] ?: 0
                 val start = (run - 1L) * 2
-                if (run > 1 && after < start) throw ServerSideRpcException(RpcError("event_gap", "old events evicted"))
+                if (run > 1 && after < start) throw GenerativeServerRpcException(RpcError("event_gap", "old events evicted"))
                 return if (run > 0 && after == start) listOf(
                     SessionEvent(sessionId, start + 1, runRequest, "delta", Json.parseToJsonElement("""{"text":"hello"}""")),
                     SessionEvent(sessionId, start + 2, runRequest, "completed"),
@@ -86,15 +86,15 @@ class RemoteWorkspaceTest {
     }
     @Test fun distinguishesRemoteAuthenticationTlsAndCapabilityFailures() {
         val classify = ::remoteConnectionFailure
-        assertEquals(RemoteConnectionFailure.UNAUTHORIZED, classify(ServerSideHttpException(401)))
+        assertEquals(RemoteConnectionFailure.UNAUTHORIZED, classify(GenerativeServerHttpException(401)))
         assertEquals(RemoteConnectionFailure.CERTIFICATE, classify(javax.net.ssl.SSLException("pin mismatch")))
-        assertEquals(RemoteConnectionFailure.INCOMPATIBLE, classify(ServerSideProtocolException("missing capability")))
+        assertEquals(RemoteConnectionFailure.INCOMPATIBLE, classify(GenerativeServerProtocolException("missing capability")))
         assertEquals(RemoteConnectionFailure.UNAVAILABLE, classify(java.io.IOException("offline")))
     }
 
     @Test fun switchingServersClearsPreviousHistoryAndDisableRestoresLocalMode() = runBlocking {
         val a = Wire("a"); val b = Wire("b")
-        val workspace = RemoteWorkspace({ id -> ServerSideSessions(ServerSideClient(if (id == "a") a else b, PairedIdentity("device", "secret", id))) }, this)
+        val workspace = RemoteWorkspace({ id -> GenerativeServerSessions(GenerativeServerClient(if (id == "a") a else b, PairedIdentity("device", "secret", id))) }, this)
         suspend fun ready() = withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.enable("a"); ready(); assertEquals("a-chat", workspace.state.value.items.single().id)
         workspace.select("a-chat"); ready(); assertEquals("a-chat", workspace.state.value.conversation?.id)
@@ -109,7 +109,7 @@ class RemoteWorkspaceTest {
             auth = Authorization(AuthMethod.NONE),
             config = ProviderConfiguration(modelIds = listOf("m")))
         val workspace = RemoteWorkspace(
-            { ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) },
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) },
             this, resolveLocalProvider = { provider })
         workspace.enable("server")
         withTimeout(5000) { while (workspace.state.value.busy) yield() }
@@ -132,7 +132,7 @@ class RemoteWorkspaceTest {
 
     @Test fun offlineRemainsRemoteAndNeverSends() = runBlocking {
         val wire = Wire("offline", true)
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.state.value.enabled); assertTrue(workspace.state.value.error)
         assertFalse(workspace.send("hello", emptyList())); assertTrue(wire.operations.isEmpty())
@@ -140,7 +140,7 @@ class RemoteWorkspaceTest {
 
     @Test fun sendsOnlyToSelectedRemoteAndReconcilesCompletion() = runBlocking {
         val wire = Wire("remote")
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("hello", emptyList()))
         withTimeout(5000) { while ("session.get" !in wire.operations || workspace.state.value.running) yield() }
@@ -153,7 +153,7 @@ class RemoteWorkspaceTest {
 
     @Test fun subsequentRunContinuesFromLastEventCursorAfterServerEvictsOldEvents() = runBlocking {
         val wire = Wire("remote").apply { evictPriorRunEvents = true }
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("first", emptyList()))
@@ -168,7 +168,7 @@ class RemoteWorkspaceTest {
 
     @Test fun aNewAndroidWorkspaceUsesCurrentLiveServerCursorAfterOldEventsWereEvicted() = runBlocking {
         val wire = Wire("remote").apply { evictPriorRunEvents = true }
-        fun workspace() = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        fun workspace() = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         val first = workspace()
         first.enable("server"); withTimeout(5000) { while (first.state.value.busy) yield() }
         first.select("remote-chat"); withTimeout(5000) { while (first.state.value.busy) yield() }
@@ -189,7 +189,7 @@ class RemoteWorkspaceTest {
 
     @Test fun eventCursorIsScopedToSessionAndClearedOnReconnect() = runBlocking {
         val wire = Wire("remote").apply { evictPriorRunEvents = true }
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("first", emptyList()))
@@ -215,7 +215,7 @@ class RemoteWorkspaceTest {
 
     @Test fun eventGapReloadsAuthoritativeSnapshotWithoutReplayingSend() = runBlocking {
         val wire = Wire("remote"); wire.gap = true
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("hello", emptyList()))
         withTimeout(5000) { while (!workspace.state.value.error) yield() }
@@ -227,7 +227,7 @@ class RemoteWorkspaceTest {
 
     @Test fun foreignConversationEventReloadsWithoutDisplayingItOrReplaying() = runBlocking {
         val wire = Wire("remote"); wire.foreignSnapshot = true
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("hello", emptyList()))
         withTimeout(5000) { while (!workspace.state.value.error) yield() }
@@ -239,7 +239,7 @@ class RemoteWorkspaceTest {
 
     @Test fun editingUsesVisibleRevisionAndPreservesUnknownFields() = runBlocking {
         val wire = Wire("remote"); wire.withMessage = true
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.editMessage("msg", "new", emptyList()))
@@ -251,7 +251,7 @@ class RemoteWorkspaceTest {
 
     @Test fun openingChatRestoresServerModelAndRejectsUnavailableModel() = runBlocking {
         val wire = Wire("remote")
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertEquals("p", workspace.state.value.providerId)
@@ -265,7 +265,7 @@ class RemoteWorkspaceTest {
 
     @Test fun revisionConflictDoesNotDisableRemoteChat() = runBlocking {
         val wire = Wire("remote").apply { conflictOnSave = true }
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.select("remote-chat"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         workspace.rename("remote-chat", "Edited")
@@ -279,7 +279,7 @@ class RemoteWorkspaceTest {
 
     @Test fun lastSessionRestoresForSameServerWithoutCrossServerReuse() = runBlocking {
         val memory = mutableMapOf<String, String?>()
-        val factory: suspend (String) -> ServerSideSessions = { id -> ServerSideSessions(ServerSideClient(Wire(id), PairedIdentity("device", "secret", id))) }
+        val factory: suspend (String) -> GenerativeServerSessions = { id -> GenerativeServerSessions(GenerativeServerClient(Wire(id), PairedIdentity("device", "secret", id))) }
         fun workspace() = RemoteWorkspace(factory, this, { id -> memory[id] }, { id, session -> memory[id] = session })
         val first = workspace(); first.enable("a"); withTimeout(5000) { while (first.state.value.busy) yield() }
         first.select("a-chat"); withTimeout(5000) { while (first.state.value.busy) yield() }
@@ -293,7 +293,7 @@ class RemoteWorkspaceTest {
     @Test fun activationRestoresWithoutExposingLocalAndExplicitDisableWins() = runBlocking {
         val gate = CompletableDeferred<String?>()
         var persisted: String? = "server"
-        val workspace = RemoteWorkspace({ id -> ServerSideSessions(ServerSideClient(Wire(id), PairedIdentity("device", "secret", id))) }, this,
+        val workspace = RemoteWorkspace({ id -> GenerativeServerSessions(GenerativeServerClient(Wire(id), PairedIdentity("device", "secret", id))) }, this,
             loadActivation = { gate.await() }, saveActivation = { persisted = it })
         assertTrue(workspace.state.value.restoring)
         workspace.disable(); gate.complete("server")
@@ -302,7 +302,7 @@ class RemoteWorkspaceTest {
     }
     @Test fun savedActivationRestoresRemoteSession() = runBlocking {
         var persisted: String? = "a"
-        val workspace = RemoteWorkspace({ id -> ServerSideSessions(ServerSideClient(Wire(id), PairedIdentity("device", "secret", id))) }, this,
+        val workspace = RemoteWorkspace({ id -> GenerativeServerSessions(GenerativeServerClient(Wire(id), PairedIdentity("device", "secret", id))) }, this,
             loadLastSession = { "a-chat" }, loadActivation = { persisted }, saveActivation = { persisted = it })
         withTimeout(5000) { while (workspace.state.value.restoring || workspace.state.value.busy) yield() }
         assertTrue(workspace.state.value.enabled); assertEquals("a-chat", workspace.state.value.conversation?.id)
@@ -311,7 +311,7 @@ class RemoteWorkspaceTest {
 
     @Test fun failedActivationPersistenceDoesNotSendOrFallBack() = runBlocking {
         val wire = Wire("a")
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "server"))) }, this,
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this,
             saveActivation = { throw java.io.IOException("storage unavailable") })
         workspace.enable("a"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.state.value.enabled); assertTrue(workspace.state.value.error)
@@ -320,7 +320,7 @@ class RemoteWorkspaceTest {
 
     @Test fun inaccessibleLastConversationKeepsWorkspaceConnected() = runBlocking {
         val wire = Wire("a").apply { unavailableConversation = true }
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a"))) }, this,
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "a"))) }, this,
             loadLastSession = { "a-chat" })
         workspace.enable("a")
         withTimeout(5000) { while (workspace.state.value.busy) yield() }
@@ -338,7 +338,7 @@ class RemoteWorkspaceTest {
 
     @Test fun catalogFailureAfterHandshakeIsReportedAsChatLoadFailure() = runBlocking {
         val wire = Wire("a").apply { unavailableCatalog = true }
-        val workspace = RemoteWorkspace({ ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a"))) }, this)
+        val workspace = RemoteWorkspace({ GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "a"))) }, this)
         workspace.enable("a")
         withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertEquals(RemoteConnectionFailure.CHAT_LOAD_FAILED, workspace.state.value.connectionFailure)
@@ -350,7 +350,7 @@ class RemoteWorkspaceTest {
         val wire = Wire("a")
         val workspace = RemoteWorkspace({
             opening.await()
-            ServerSideSessions(ServerSideClient(wire, PairedIdentity("device", "secret", "a")))
+            GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "a")))
         }, this)
         workspace.enable("a")
         workspace.newChat()

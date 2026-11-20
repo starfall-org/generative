@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import java.io.IOException
 import javax.net.ssl.SSLException
@@ -12,7 +12,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** An authenticated wire exposes 401 only when the transport rejected the token before dispatch. */
-interface ServerSideWire {
+interface GenerativeServerWire {
     fun close() = Unit
     fun authenticate(identity: PairedIdentity): AccessToken
     fun rpc(token: AccessToken, request: RpcRequest): RpcReply
@@ -28,7 +28,7 @@ interface ServerSideWire {
 }
 
 /** Credentials and bearer live only in memory; durable storage is owned by the caller. */
-class ServerSideClient(private val wire: ServerSideWire, private val identity: PairedIdentity,
+class GenerativeServerClient(private val wire: GenerativeServerWire, private val identity: PairedIdentity,
     private val clockMillis: () -> Long = { System.nanoTime() / 1_000_000 }) {
     private val mutex = Mutex()
     private var cached: AccessToken? = null
@@ -49,7 +49,7 @@ class ServerSideClient(private val wire: ServerSideWire, private val identity: P
     private suspend fun <T> authenticated(block: suspend (AccessToken) -> T): T {
         val first = token()
         try { return block(first) }
-        catch (e: ServerSideHttpException) {
+        catch (e: GenerativeServerHttpException) {
             if (e.status != 401) throw e
             val replacement = token(first)
             return block(replacement)
@@ -80,14 +80,14 @@ class ServerSideClient(private val wire: ServerSideWire, private val identity: P
             catch (e: CancellationException) { throw e }
             catch (e: SSLException) { throw e }
             catch (e: IOException) { delay(retryDelay); retryDelay = (retryDelay * 2).coerceAtMost(15_000); continue }
-            catch (e: ServerSideRpcException) {
-                if (e.rpcError.code == "event_gap") throw ServerSideEventGapException()
+            catch (e: GenerativeServerRpcException) {
+                if (e.rpcError.code == "event_gap") throw GenerativeServerEventGapException()
                 throw e
             }
             retryDelay = 500
             for (event in batch) {
                 if (event.sessionId != sessionId || event.seq != cursor + 1 || event.kind == "event_gap") {
-                    throw ServerSideEventGapException()
+                    throw GenerativeServerEventGapException()
                 }
                 emit(event)
                 cursor = event.seq
@@ -96,10 +96,10 @@ class ServerSideClient(private val wire: ServerSideWire, private val identity: P
     }
 }
 
-class ServerSideEventGapException : Exception("Event history is incomplete; reload the session")
+class GenerativeServerEventGapException : Exception("Event history is incomplete; reload the session")
 
 /** Reject stale or duplicate snapshots; never replace a newer durable revision. */
-class ServerSideRevision(initial: Long = 0) {
+class GenerativeServerRevision(initial: Long = 0) {
     var value: Long = initial
         private set
     fun accept(revision: Long): Boolean {

@@ -7,10 +7,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
-class ServerSideChunkTest {
-    private class Wire(var bytes: ByteArray) : ServerSideWire {
+class GenerativeServerChunkTest {
+    private class Wire(var bytes: ByteArray) : GenerativeServerWire {
         private var received = ByteArrayOutputStream()
         var writes = 0
         var shortRead = false
@@ -37,7 +37,7 @@ class ServerSideChunkTest {
     @Test fun largeReadAndWriteRoundTripInBoundedChunks() = runBlocking {
         val initial = buildJsonObject { put("id", "c"); put("title", "title"); put("created_at", 1); put("updated_at", 1); put("messages", JsonArray(emptyList())); put("future", "é".repeat(1_600_000)) }
         val wire = Wire(initial.toString().toByteArray())
-        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("id", "secret", "server")))
+        val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("id", "secret", "server")))
         val opened = sessions.open("c"); assertEquals(initial, opened.conversation)
         val updated = JsonObject(opened.conversation + ("title" to JsonPrimitive("changed")))
         val saved = sessions.save("c", 1, "op", updated)
@@ -48,7 +48,7 @@ class ServerSideChunkTest {
     @Test fun rejectsTruncatedChunk() = runBlocking {
         val initial = buildJsonObject { put("id", "c"); put("future", "é".repeat(1_600_000)) }
         val wire = Wire(initial.toString().toByteArray()); wire.shortRead = true
-        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("id", "secret", "server")))
-        try { sessions.open("c"); fail("accepted truncated chunk") } catch (_: ServerSideProtocolException) { }
+        val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("id", "secret", "server")))
+        try { sessions.open("c"); fail("accepted truncated chunk") } catch (_: GenerativeServerProtocolException) { }
     }
 }

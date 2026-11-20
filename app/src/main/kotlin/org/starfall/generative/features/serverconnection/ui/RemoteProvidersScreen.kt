@@ -13,7 +13,7 @@ import org.starfall.generative.shared.ui.providers.providerCardCell
 
 data class ProviderCatalogEntry(val id: String, val name: String, val detail: String, val integrationId: String? = null)
 
-/** ServerSide and OpenCode use this screen. Local provider organization is not part of it. */
+/** Generative Server and OpenCode use this screen. Local provider organization is not part of it. */
 @Composable
 fun RemoteProvidersScreen(catalog: List<ProviderCatalogEntry>, onBack: () -> Unit,
     header: (@Composable () -> Unit)? = null, onConnect: ((String) -> Unit)? = null,

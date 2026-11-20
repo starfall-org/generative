@@ -67,30 +67,39 @@ private fun RemoteInventoryContent(
     var connecting by remember { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
     var importItems by remember { mutableStateOf<List<org.starfall.generative.features.serverconnection.logic.LocalImportItem>>(emptyList()) }
-    var importSupported by remember { mutableStateOf<Boolean?>(null) }
+    var canImport by remember { mutableStateOf(false) }
+    var importLoading by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
     val profiles by service.profiles.collectAsState(initial = emptyList())
     val insecure = profiles.firstOrNull { it.id == connectionId }?.endpoint?.startsWith("http://", true) == true
 
+    LaunchedEffect(projectLoaded, projectError, reload) {
+        if (!projectLoaded || projectError || canImport) return@LaunchedEffect
+        try {
+            canImport = service.importSupported(connectionId, providers)
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { canImport = false }
+    }
+
     LaunchedEffect(importing) {
         if (!importing) return@LaunchedEffect
         importItems = emptyList()
-        importSupported = null
+        importLoading = true
         importError = null
         try {
             importItems = service.localImportItems(providers)
-            importSupported = service.importSupported(connectionId, providers)
         } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { importError = R.string.server_inventory_failed; importSupported = false }
+        catch (_: Exception) { importError = R.string.server_inventory_failed }
+        finally { importLoading = false }
     }
 
     if (importing) LocalCatalogImportSheet(
-        providers = providers, items = importItems, supported = importSupported,
+        providers = providers, items = importItems, loading = importLoading,
         busy = busy, error = importError, runtimeOnly = projects != null,
         onDismiss = { importing = false },
         onImport = { localId ->
-            if (!busy && importSupported == true) {
+            if (!busy && !importLoading && canImport) {
                 busy = true
                 importError = null
                 operationFailed = false
@@ -211,12 +220,11 @@ private fun RemoteInventoryContent(
             Text(stringResource(R.string.server_inventory_failed))
             TextButton(onClick = { reload++ }) { Text(stringResource(R.string.common_retry)) }
         })
-        items == null -> ({ Text(stringResource(R.string.server_inventory_unsupported)) })
         else -> null
     }
     val ready = status == null
-    val openImport: (() -> Unit)? = if (projectLoaded && !projectError) ({
-        importSupported = null
+    val openImport: (() -> Unit)? = if (projectLoaded && !projectError && canImport) ({
+        importLoading = true
         importItems = emptyList()
         importError = null
         importing = true

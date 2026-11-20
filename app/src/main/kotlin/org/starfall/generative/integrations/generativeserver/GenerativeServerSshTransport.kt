@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -44,10 +44,10 @@ private suspend fun <T> cancellableSshIO(connection: RemoteExecStream, operation
         }
 
 /** SSH identities are scoped to v5 TCP/stdio and cannot be reused for HTTPS. */
-class ServerSideSshTransport internal constructor(
+class GenerativeServerSshTransport internal constructor(
     private val openStream: suspend (String) -> RemoteExecStream,
     private val identity: PairedIdentity
-) : ServerSideWire {
+) : GenerativeServerWire {
     constructor(remote: RemoteMachineService, machineId: String, identity: PairedIdentity) :
         this({ command -> remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command) }, identity)
     private val lock = Mutex()
@@ -71,9 +71,9 @@ class ServerSideSshTransport internal constructor(
 
     override suspend fun revokeAsync(token: AccessToken) {
         val reply = rpcAsync(token, RpcRequest(UUID.randomUUID().toString(), "identity.revoke"))
-        val data = ServerSideCodec.requireSuccess(reply)?.jsonObject
+        val data = GenerativeServerCodec.requireSuccess(reply)?.jsonObject
         if (data?.get("revoked")?.jsonPrimitive?.boolean != true) {
-            throw ServerSideProtocolException("Server did not confirm SSH identity revocation")
+            throw GenerativeServerProtocolException("Server did not confirm SSH identity revocation")
         }
         close()
     }
@@ -86,14 +86,14 @@ class ServerSideSshTransport internal constructor(
                 if (channel !== connection) {
                     val opened = connection
                     try {
-                        writeFrame(opened.output, ServerSideCodec.json.encodeToString(
+                        writeFrame(opened.output, GenerativeServerCodec.json.encodeToString(
                             FramedAuth(type = "auth", protocol = 5, clientId = identity.clientId, secret = identity.secret)))
                         val reply = readFrame(opened.input)
-                        val parsed = ServerSideCodec.json.parseToJsonElement(reply) as? JsonObject
+                        val parsed = GenerativeServerCodec.json.parseToJsonElement(reply) as? JsonObject
                         if (parsed?.get("type")?.jsonPrimitive?.content != "paired" ||
                             parsed["protocol"]?.jsonPrimitive?.content != "5" ||
                             parsed["client_id"]?.jsonPrimitive?.content != identity.clientId) {
-                            throw ServerSideProtocolException("SSH ServerSide authentication rejected")
+                            throw GenerativeServerProtocolException("SSH Generative Server authentication rejected")
                         }
                         if (closed) throw IOException("SSH connection closed")
                         channel = opened
@@ -102,18 +102,18 @@ class ServerSideSshTransport internal constructor(
                         throw failure
                     }
                 }
-                writeFrame(connection.output, ServerSideCodec.encode(request))
+                writeFrame(connection.output, GenerativeServerCodec.encode(request))
                 repeat(MAX_UNSOLICITED_FRAMES) {
                     val raw = readFrame(connection.input)
-                    val obj = ServerSideCodec.json.parseToJsonElement(raw) as? JsonObject
-                        ?: throw ServerSideProtocolException("Invalid SSH RPC frame")
-                    if (obj.containsKey("id")) return@cancellableSshIO ServerSideCodec.decodeReply(raw, request.id)
+                    val obj = GenerativeServerCodec.json.parseToJsonElement(raw) as? JsonObject
+                        ?: throw GenerativeServerProtocolException("Invalid SSH RPC frame")
+                    if (obj.containsKey("id")) return@cancellableSshIO GenerativeServerCodec.decodeReply(raw, request.id)
                     // After session.open the daemon may push events on the same pipe.
                     // We read the owner-authorized session.events RPC with an explicit
                     // cursor instead, so these unsolicited frames never replace that cursor.
-                    if (!obj.containsKey("kind")) throw ServerSideProtocolException("Unexpected SSH RPC frame")
+                    if (!obj.containsKey("kind")) throw GenerativeServerProtocolException("Unexpected SSH RPC frame")
                 }
-                throw ServerSideProtocolException("SSH event flood interrupted RPC reply")
+                throw GenerativeServerProtocolException("SSH event flood interrupted RPC reply")
             }
         } catch (failure: Throwable) {
             if (channel === connection) channel = null
@@ -126,9 +126,9 @@ class ServerSideSshTransport internal constructor(
         require(sessionId.isNotBlank() && after >= 0)
         val reply = rpcAsync(token, RpcRequest(UUID.randomUUID().toString(), "session.events", sessionId,
             buildJsonObject { put("after", after) }))
-        val data = ServerSideCodec.requireSuccess(reply) ?: throw ServerSideProtocolException("Missing events")
-        val events = try { ServerSideCodec.json.decodeFromString<List<SessionEvent>>(data.toString()) }
-            catch (_: Exception) { throw ServerSideProtocolException("Invalid SSH events") }
+        val data = GenerativeServerCodec.requireSuccess(reply) ?: throw GenerativeServerProtocolException("Missing events")
+        val events = try { GenerativeServerCodec.json.decodeFromString<List<SessionEvent>>(data.toString()) }
+            catch (_: Exception) { throw GenerativeServerProtocolException("Invalid SSH events") }
         // The framed API is cursor polling, not HTTP long-poll. Do not busy-spin.
         if (events.isEmpty()) delay(500)
         return events
@@ -138,9 +138,9 @@ class ServerSideSshTransport internal constructor(
         // Start the installed service with its existing configuration. Still try
         // the command when a manually started daemon or an older CLI is in use.
         // Service output must never enter the JSON or binary stdout stream.
-        private const val START_SERVICE = "serverside service start </dev/null >/dev/null 2>&1 || :"
-        private const val STREAM_COMMAND = "$START_SERVICE; exec serverside stream --stdio"
-        private const val PAIR_COMMAND = "$START_SERVICE; exec serverside pair --stdio --transport tcp"
+        private const val START_SERVICE = "generative service start </dev/null >/dev/null 2>&1 || :"
+        private const val STREAM_COMMAND = "$START_SERVICE; exec generative stream --stdio"
+        private const val PAIR_COMMAND = "$START_SERVICE; exec generative pair --stdio --transport tcp"
         private const val MAX_FRAME_BYTES = 4 * 1024 * 1024
         private const val MAX_UNSOLICITED_FRAMES = 4096
 
@@ -150,11 +150,11 @@ class ServerSideSshTransport internal constructor(
         internal suspend fun pairUsing(openStream: suspend (String) -> RemoteExecStream): SshPairing {
             return openStream(PAIR_COMMAND).use { command ->
                     val bytes = cancellableSshIO(command) { readLimited(command.input, 16 * 1024) }
-                    val response = try { ServerSideCodec.json.decodeFromString<FramedPairing>(bytes.toString(Charsets.UTF_8)) }
-                        catch (_: Exception) { throw ServerSideProtocolException("Invalid SSH pairing response") }
+                    val response = try { GenerativeServerCodec.json.decodeFromString<FramedPairing>(bytes.toString(Charsets.UTF_8)) }
+                        catch (_: Exception) { throw GenerativeServerProtocolException("Invalid SSH pairing response") }
                     if (response.protocol != 5 || response.transport != "tcp" || response.clientId.isBlank() ||
                         response.secret.isBlank() || response.fingerprint.isBlank()) {
-                        throw ServerSideProtocolException("Incompatible SSH pairing response")
+                        throw GenerativeServerProtocolException("Incompatible SSH pairing response")
                     }
                     SshPairing(PairedIdentity(response.clientId, response.secret, response.fingerprint), response.endpoint)
             }
@@ -177,7 +177,7 @@ class ServerSideSshTransport internal constructor(
             while (true) {
                 val count = input.read(buffer)
                 if (count < 0) break
-                if (out.size() + count > limit) throw ServerSideProtocolException("SSH pairing response too large")
+                if (out.size() + count > limit) throw GenerativeServerProtocolException("SSH pairing response too large")
                 out.write(buffer, 0, count)
             }
             return out.toByteArray()

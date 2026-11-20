@@ -153,10 +153,11 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     }
 
     /** An accepted prompt is never automatically retried: the server may already have executed it. */
-    suspend fun prompt(sessionId: String, text: String) {
+    suspend fun prompt(sessionId: String, text: String): String {
         require(text.isNotBlank())
-        request("POST", listOf("api", "session", validId(sessionId), "prompt"),
-            body = buildJsonObject { put("text", text) })
+        val response = obj(request("POST", listOf("api", "session", validId(sessionId), "prompt"),
+            body = buildJsonObject { put("text", text) }))
+        return validId(string(obj(response.required("data")), "id"))
     }
 
     suspend fun rename(sessionId: String, title: String) {
@@ -223,7 +224,7 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
         val cursors = mutableSetOf<String>()
         var cursor: String? = null
         do {
-            val parameters = query + (cursor?.let { mapOf("cursor" to it) } ?: emptyMap()) + ("limit" to "100")
+            val parameters = (cursor?.let { query - "order" + ("cursor" to it) } ?: query) + ("limit" to "100")
             val page = obj(request("GET", path, parameters))
             val items = array(page.required("data")).map(::obj)
             if (items.size > 100 || output.size + items.size > 100_000) throw OpenCodeProtocolException("Invalid page size")

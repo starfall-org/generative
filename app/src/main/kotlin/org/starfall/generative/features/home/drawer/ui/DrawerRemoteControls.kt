@@ -64,8 +64,7 @@ internal fun DrawerRemoteControls(
     val selectedMachine = selectedRemoteMachine(controls.settings, machines)
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     var serverPickerOpen by rememberSaveable { mutableStateOf(false) }
-    val availableServers = serverProfiles.filter { it.transport != "opencode" }
-    val selectedServer = availableServers.firstOrNull { remoteEnabled && it.id == remoteConnectionId }
+    val selectedServer = serverProfiles.firstOrNull { remoteEnabled && it.id == remoteConnectionId }
     var machineMenu by remember { mutableStateOf(false) }
     var toolsMachine by remember { mutableStateOf<RemoteMachine?>(null) }
 
@@ -245,12 +244,19 @@ internal fun DrawerRemoteControls(
                     icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
                     content = { Text(stringResource(R.string.drawer_runtime_local)) }
                 )
-            ) + availableServers.map { profile ->
+            ) + serverProfiles.map { profile ->
                 ItemListSheetItem<String?>(
                     key = "server:${profile.id}", value = profile.id, selected = selectedServer?.id == profile.id,
                     onClick = { serverPickerOpen = false; onSelectRuntime(profile.id) },
                     modifier = Modifier.testTag("drawer_runtime_picker_server_${profile.id}"),
                     icon = { SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(40.dp)) },
+                    actions = {
+                        if (profile.transport == "opencode") {
+                            Text(stringResource(R.string.drawer_runtime_opencode),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                    },
                     content = {
                         Column {
                             Text(profile.name)

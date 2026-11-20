@@ -14,10 +14,10 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.starfall.generative.integrations.serverside.RemoteCacheScope
-import org.starfall.generative.integrations.serverside.RemoteConversationCache
+import org.starfall.generative.integrations.generativeserver.RemoteCacheScope
+import org.starfall.generative.integrations.generativeserver.RemoteConversationCache
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
@@ -70,13 +70,13 @@ class RemoteConversationCacheTest {
         assertEquals(listOf(item("keep")), c.list(owner))
     }
 
-    private class Wire : ServerSideWire {
+    private class Wire : GenerativeServerWire {
         var revision = 1L
         var offline = false
         val fullLoads = AtomicInteger(0)
         val conditionalLoads = AtomicInteger(0)
         override fun authenticate(identity: PairedIdentity): AccessToken {
-            if (offline) throw ServerSideHttpException(401)
+            if (offline) throw GenerativeServerHttpException(401)
             return AccessToken("bearer", 900)
         }
         override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
@@ -105,7 +105,7 @@ class RemoteConversationCacheTest {
         val c = cache()
         val wire = Wire()
         fun workspace() = RemoteWorkspace(
-            { ServerSideSessions(ServerSideClient(wire, PairedIdentity("device-a", "secret", "server"))) }, this,
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device-a", "secret", "server"))) }, this,
             loadLastSession = { "chat" }, cache = c, cacheScope = { owner })
         suspend fun ready(workspace: RemoteWorkspace) = withTimeout(5000) { while (workspace.state.value.busy) yield() }
         val first = workspace(); first.enable("profile"); ready(first)

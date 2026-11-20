@@ -22,7 +22,7 @@ import org.starfall.generative.shared.ui.sheets.ItemListSheetItem
 internal fun LocalCatalogImportSheet(
     providers: Boolean,
     items: List<LocalImportItem>,
-    supported: Boolean?,
+    loading: Boolean,
     busy: Boolean,
     error: Int?,
     runtimeOnly: Boolean,
@@ -31,11 +31,6 @@ internal fun LocalCatalogImportSheet(
 ) {
     var query by remember { mutableStateOf("") }
     val filtered = items.filter { it.name.contains(query.trim(), ignoreCase = true) }
-    val message = when {
-        error != null -> stringResource(error)
-        supported == false -> stringResource(R.string.server_import_unavailable)
-        else -> null
-    }
     ItemListSheet(
         title = stringResource(R.string.server_import_local),
         onDismissRequest = { if (!busy) onDismiss() },
@@ -44,7 +39,7 @@ internal fun LocalCatalogImportSheet(
         items = filtered.map { item ->
             ItemListSheetItem(
                 key = item.id, value = item.id,
-                onClick = if (supported == true && !busy) ({ onImport(item.id) }) else null,
+                onClick = if (!loading && !busy) ({ onImport(item.id) }) else null,
                 icon = { EntityIcon(item.icon, text = providerInitials(item.name),
                     fallback = if (providers) Icons.Outlined.Hub else Icons.Outlined.Mcp, matchName = item.name) },
                 content = {
@@ -56,11 +51,11 @@ internal fun LocalCatalogImportSheet(
                 }
             )
         },
-        loading = supported == null && error == null || busy,
-        error = message,
+        loading = loading || busy,
+        error = error?.let { stringResource(it) },
         emptyMessage = stringResource(R.string.shared_no_items),
         footer = {
-            if (supported == true) Text(
+            if (!loading) Text(
                 stringResource(if (runtimeOnly) R.string.server_import_runtime_credentials else R.string.server_import_credentials),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodySmall,

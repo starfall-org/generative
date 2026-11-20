@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
-import org.starfall.generative.integrations.serverside.ServerSideInvitation
+import org.starfall.generative.integrations.generativeserver.GenerativeServerInvitation
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -128,7 +128,7 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
                                         leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
                                     )
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; result = null; editorPage = ConnectionEditorPage(profile, repairing = true) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
-                                    if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_select)) }, onClick = { menu = false; launchOperation { service.select(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Check, null) })
+                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_select)) }, onClick = { menu = false; launchOperation { service.select(profile.id) } }, leadingIcon = { SharedIcon(Icons.Outlined.Check, null) })
                                     if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) }, onClick = { menu = false; deleting = profile }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
                                 }
@@ -175,7 +175,7 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
     busy: Boolean, repairing: Boolean, onBack: () -> Unit,
     onSave: (String, String, String, String, String, String, String, String, Boolean) -> Unit, error: Int?) {
     var name by remember(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
-    var program by remember(profile?.id) { mutableStateOf(if (profile?.transport == "opencode") "opencode" else "serverside") }
+    var program by remember(profile?.id) { mutableStateOf(if (profile?.transport == "opencode") "opencode" else "generative") }
     var transport by remember(profile?.id) { mutableStateOf(profile?.transport?.takeIf { it == "ssh" } ?: "http") }
     var allowLocalProviders by remember(profile?.id) { mutableStateOf(profile?.allowLocalProviders ?: false) }
     val selectedTransport = if (program == "opencode") "opencode" else transport
@@ -209,10 +209,10 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
             if (error != null) Text(stringResource(error), color = MaterialTheme.colorScheme.error)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.server_connection_name)) }, singleLine = true)
             SelectionDropdown(label = stringResource(R.string.server_connection_program),
-                options = listOf("serverside" to "ServerSide", "opencode" to "OpenCode"),
+                options = listOf("generative" to stringResource(R.string.generative_server_name), "opencode" to "OpenCode"),
                 selected = program, onSelect = { program = it },
                 modifier = Modifier.fillMaxWidth(), enabled = !busy && profile == null)
-            if (program == "serverside") {
+            if (program == "generative") {
                 SelectionDropdown(label = stringResource(R.string.server_connection_transport),
                     options = listOf("http" to "HTTP", "ssh" to "SSH"), selected = transport,
                     onSelect = { transport = it }, modifier = Modifier.fillMaxWidth(), enabled = !busy)
@@ -240,7 +240,7 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
                                 GmsBarcodeScanning.getClient(context, options).startScan()
                                     .addOnSuccessListener { code ->
                                         val url = code.rawValue.orEmpty()
-                                        if (runCatching { ServerSideInvitation.parse(url) }.isSuccess) {
+                                        if (runCatching { GenerativeServerInvitation.parse(url) }.isSuccess) {
                                             invitation = url; scanError = false
                                         } else scanError = true
                                     }
@@ -281,7 +281,6 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
                             autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
                         visualTransformation = PasswordVisualTransformation())
                 }
-                Text(stringResource(R.string.server_connection_opencode_chat_pending), style = MaterialTheme.typography.bodySmall)
             } else {
                 SelectionDropdown(label = stringResource(R.string.server_connection_ssh_machine),
                     options = machines.map { it.id to it.name }, selected = sshMachineId,

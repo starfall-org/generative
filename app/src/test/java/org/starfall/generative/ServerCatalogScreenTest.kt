@@ -114,17 +114,31 @@ class ServerCatalogScreenTest {
         assertEquals(listOf("add", "delete:remote-id"), calls)
     }
 
-    @Test fun unavailableInventoryUsesFeatureScreenWithoutUnsupportedActions() {
+    @Test fun loadingInventoryHidesCatalogActions() {
         compose.setScreenContent {
             MaterialTheme {
                 RemoteMcpScreen(catalog = emptyList(), busy = false, onBack = {},
-                    onAdd = { error("Unavailable inventory cannot add") }, status = { Text("Unavailable") })
+                    onAdd = { error("Loading inventory cannot add") }, status = { Text("Loading") })
             }
         }
-        compose.onNodeWithText("Unavailable").assertExists()
+        compose.onNodeWithText("Loading").assertExists()
         compose.onNodeWithContentDescription("Add").assertDoesNotExist()
         compose.onNodeWithTag("list-screen-view-toggle").assertDoesNotExist()
         compose.onNodeWithTag("list-screen-search-button").assertDoesNotExist()
+    }
+
+    @Test fun emptyInventoryKeepsSharedCatalogControlsAndProjectHeader() {
+        compose.setScreenContent {
+            MaterialTheme {
+                RemoteMcpScreen(catalog = emptyList(), busy = false, onBack = {},
+                    header = { Text("Selected project") })
+            }
+        }
+        compose.onNodeWithText("Selected project").assertExists()
+        compose.onNodeWithTag("list-screen-view-toggle").assertExists()
+        compose.onNodeWithTag("list-screen-search-button").assertExists()
+        compose.onNodeWithContentDescription("Add").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Import from local").assertDoesNotExist()
     }
 
     @Test fun runtimeEditorUsesSharedMcpConnectionFormAndSavesServerConfig() {

@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import java.util.UUID
 import java.util.Base64
@@ -36,10 +36,10 @@ data class ServerChatCapabilities(
 )
 
 /** Session RPCs preserve the complete server snapshot, including unrecognised fields. */
-class ServerSideSessions(private val client: ServerSideClient) {
+class GenerativeServerSessions(private val client: GenerativeServerClient) {
     private suspend fun request(op: String, sessionId: String? = null, data: JsonObject? = null): JsonElement {
         val reply = client.rpc(RpcRequest(UUID.randomUUID().toString(), op, sessionId, data))
-        return ServerSideCodec.requireSuccess(reply) ?: throw ServerSideProtocolException("Missing RPC data")
+        return GenerativeServerCodec.requireSuccess(reply) ?: throw GenerativeServerProtocolException("Missing RPC data")
     }
 
     fun close() = client.close()
@@ -52,13 +52,13 @@ class ServerSideSessions(private val client: ServerSideClient) {
             !operations.containsAll(setOf("session.list", "session.open", "session.get", "session.configure", "session.run", "session.cancel", "session.events", "session.save", "session.delete", "provider.catalog")) ||
             features?.get("version")?.jsonPrimitive?.intOrNull != 1 || features["text_generation"]?.jsonPrimitive?.booleanOrNull != true ||
             features["streaming"]?.jsonPrimitive?.booleanOrNull != true) {
-            throw ServerSideProtocolException("Incompatible server capabilities")
+            throw GenerativeServerProtocolException("Incompatible server capabilities")
         }
         fun bounded(value: kotlinx.serialization.json.JsonElement?, fallback: Int, maximum: Int): Int {
             if (value == null) return fallback // Compatible with earlier v5 servers.
             val parsed = value.jsonPrimitive.intOrNull
-                ?: throw ServerSideProtocolException("Invalid server capability limit")
-            if (parsed !in 1..maximum) throw ServerSideProtocolException("Invalid server capability limit")
+                ?: throw GenerativeServerProtocolException("Invalid server capability limit")
+            if (parsed !in 1..maximum) throw GenerativeServerProtocolException("Invalid server capability limit")
             return parsed
         }
         val generation = features["negotiation"]?.jsonObject?.get("generation")?.jsonObject
@@ -81,14 +81,14 @@ class ServerSideSessions(private val client: ServerSideClient) {
         val cursors = mutableSetOf<String>()
         do {
             val data = buildJsonObject { put("pagination", "snapshot"); put("limit", 100); if (cursor.isNotEmpty()) put("cursor", cursor) }
-            val page = ServerSideCodec.json.decodeFromString<SessionListPage>(request("session.list", data = data).toString())
+            val page = GenerativeServerCodec.json.decodeFromString<SessionListPage>(request("session.list", data = data).toString())
             if (page.version != 1 || page.items.any { !seen.add(it.id) } ||
                 (page.items.isEmpty() && page.nextCursor.isNotEmpty()) || page.items.size > 100 || result.size + page.items.size > 100_000) {
-                throw ServerSideProtocolException("Invalid session list")
+                throw GenerativeServerProtocolException("Invalid session list")
             }
             result.addAll(page.items)
             val next = page.nextCursor
-            if (next.isNotEmpty() && !cursors.add(next)) throw ServerSideProtocolException("Invalid session cursor")
+            if (next.isNotEmpty() && !cursors.add(next)) throw GenerativeServerProtocolException("Invalid session cursor")
             cursor = next
         } while (cursor.isNotEmpty())
         return result
@@ -104,13 +104,13 @@ class ServerSideSessions(private val client: ServerSideClient) {
         if (obj["unchanged"]?.jsonPrimitive?.booleanOrNull == true) {
             if (hint == null || obj["session_id"]?.jsonPrimitive?.content != id ||
                 obj["revision"]?.jsonPrimitive?.long != hint.revision) {
-                throw ServerSideProtocolException("Unverified cached session")
+                throw GenerativeServerProtocolException("Unverified cached session")
             }
             val cursor = obj["event_seq"]?.jsonPrimitive?.long
-            if (cursor != null && cursor < 0) throw ServerSideProtocolException("Invalid cached session cursor")
+            if (cursor != null && cursor < 0) throw GenerativeServerProtocolException("Invalid cached session cursor")
             hint.copy(eventSeq = cursor)
         } else snapshot(data, id)
-    } catch (e: ServerSideRpcException) {
+    } catch (e: GenerativeServerRpcException) {
         if (e.rpcError.code != "resource_exhausted") throw e
         readChunked(id)
     }
@@ -119,22 +119,22 @@ class ServerSideSessions(private val client: ServerSideClient) {
         val revision = info.getValue("revision").jsonPrimitive.long
         val cursor = info["event_seq"]?.jsonPrimitive?.long
         val size = info.getValue("size").jsonPrimitive.int
-        if (info.getValue("version").jsonPrimitive.int != 1 || info.getValue("session_id").jsonPrimitive.content != id || revision <= 0 || (cursor != null && cursor < 0) || size !in 1..MAX_CONVERSATION) throw ServerSideProtocolException("Invalid chunk metadata")
+        if (info.getValue("version").jsonPrimitive.int != 1 || info.getValue("session_id").jsonPrimitive.content != id || revision <= 0 || (cursor != null && cursor < 0) || size !in 1..MAX_CONVERSATION) throw GenerativeServerProtocolException("Invalid chunk metadata")
         val output = ByteArrayOutputStream(size)
         while (output.size() < size) {
             val offset = output.size()
             val part = request("session.read_chunk", id, buildJsonObject { put("revision", revision); put("offset", offset); put("limit", CHUNK_SIZE) }).jsonObject
-            if (part.getValue("revision").jsonPrimitive.long != revision || part.getValue("offset").jsonPrimitive.int != offset) throw ServerSideProtocolException("Invalid chunk position")
-            val bytes = try { Base64.getDecoder().decode(part.getValue("data").jsonPrimitive.content) } catch (_: Exception) { throw ServerSideProtocolException("Invalid chunk data") }
-            if (bytes.size != minOf(CHUNK_SIZE, size - offset)) throw ServerSideProtocolException("Invalid chunk length")
+            if (part.getValue("revision").jsonPrimitive.long != revision || part.getValue("offset").jsonPrimitive.int != offset) throw GenerativeServerProtocolException("Invalid chunk position")
+            val bytes = try { Base64.getDecoder().decode(part.getValue("data").jsonPrimitive.content) } catch (_: Exception) { throw GenerativeServerProtocolException("Invalid chunk data") }
+            if (bytes.size != minOf(CHUNK_SIZE, size - offset)) throw GenerativeServerProtocolException("Invalid chunk length")
             output.write(bytes)
-            if (part.getValue("done").jsonPrimitive.boolean != (output.size() == size)) throw ServerSideProtocolException("Invalid chunk termination")
+            if (part.getValue("done").jsonPrimitive.boolean != (output.size() == size)) throw GenerativeServerProtocolException("Invalid chunk termination")
         }
         val conversation = withContext(Dispatchers.Default) {
-            val text = try { Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString() } catch (_: Exception) { throw ServerSideProtocolException("Invalid chunk UTF-8") }
-            try { ServerSideCodec.json.parseToJsonElement(text).jsonObject } catch (_: Exception) { throw ServerSideProtocolException("Invalid chunked conversation") }
+            val text = try { Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString() } catch (_: Exception) { throw GenerativeServerProtocolException("Invalid chunk UTF-8") }
+            try { GenerativeServerCodec.json.parseToJsonElement(text).jsonObject } catch (_: Exception) { throw GenerativeServerProtocolException("Invalid chunked conversation") }
         }
-        if (conversation["id"]?.jsonPrimitive?.content != id) throw ServerSideProtocolException("Invalid conversation identity")
+        if (conversation["id"]?.jsonPrimitive?.content != id) throw GenerativeServerProtocolException("Invalid conversation identity")
         return ServerSnapshot(id, revision, conversation, cursor)
     }
     suspend fun configure(id: String, providerId: String, modelId: String, keyId: String? = null) {
@@ -155,23 +155,23 @@ class ServerSideSessions(private val client: ServerSideClient) {
     suspend fun save(id: String, revision: Long, operationId: String, conversation: JsonObject): ServerSnapshot {
         val bytes = withContext(Dispatchers.Default) { conversation.toString().toByteArray(Charsets.UTF_8) }
         if (bytes.size <= WHOLE_LIMIT) return snapshot(request("session.save", id, buildJsonObject { put("expected_revision", revision); put("idempotency_key", operationId); put("conversation", conversation) }), id)
-        if (bytes.size > MAX_CONVERSATION) throw ServerSideProtocolException("Conversation too large")
+        if (bytes.size > MAX_CONVERSATION) throw GenerativeServerProtocolException("Conversation too large")
         val digest = withContext(Dispatchers.Default) { MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) } }
         val begin = request("session.upload.begin", id, buildJsonObject { put("expected_revision", revision); put("idempotency_key", operationId); put("size", bytes.size); put("sha256", digest) }).jsonObject
-        if (begin.getValue("version").jsonPrimitive.int != 1 || begin.getValue("chunk_max_bytes").jsonPrimitive.int != CHUNK_SIZE) throw ServerSideProtocolException("Invalid upload metadata")
+        if (begin.getValue("version").jsonPrimitive.int != 1 || begin.getValue("chunk_max_bytes").jsonPrimitive.int != CHUNK_SIZE) throw GenerativeServerProtocolException("Invalid upload metadata")
         val token = begin.getValue("upload_id").jsonPrimitive.content
-        if (token.isBlank()) throw ServerSideProtocolException("Invalid upload identifier")
+        if (token.isBlank()) throw GenerativeServerProtocolException("Invalid upload identifier")
         var offset = 0
         while (offset < bytes.size) {
             val end = minOf(offset + CHUNK_SIZE, bytes.size)
             val encoded = Base64.getEncoder().encodeToString(bytes.copyOfRange(offset, end))
             val part = request("session.upload.chunk", id, buildJsonObject { put("upload_id", token); put("offset", offset); put("data", encoded) }).jsonObject
-            if (part.getValue("next_offset").jsonPrimitive.int != end) throw ServerSideProtocolException("Invalid upload offset")
+            if (part.getValue("next_offset").jsonPrimitive.int != end) throw GenerativeServerProtocolException("Invalid upload offset")
             offset = end
         }
         val result = request("session.upload.commit", id, buildJsonObject { put("upload_id", token) }).jsonObject
         val nextRevision = result.getValue("revision").jsonPrimitive.long
-        if (result.getValue("session_id").jsonPrimitive.content != id || nextRevision != revision + 1 || result.getValue("size").jsonPrimitive.int != bytes.size) throw ServerSideProtocolException("Invalid upload commit")
+        if (result.getValue("session_id").jsonPrimitive.content != id || nextRevision != revision + 1 || result.getValue("size").jsonPrimitive.int != bytes.size) throw GenerativeServerProtocolException("Invalid upload commit")
         return ServerSnapshot(id, nextRevision, conversation)
     }
     suspend fun delete(id: String, revision: Long, operationId: String) {
@@ -184,32 +184,32 @@ class ServerSideSessions(private val client: ServerSideClient) {
     }
 
     suspend fun importProvider(provider: org.starfall.generative.shared.model.provider.ModelProvider) {
-        val payload = ServerSideCodec.json.encodeToJsonElement(
+        val payload = GenerativeServerCodec.json.encodeToJsonElement(
             org.starfall.generative.shared.model.provider.ModelProvider.serializer(), provider).jsonObject
         confirmImport("provider.import", payload)
     }
 
     suspend fun importMcp(server: org.starfall.generative.shared.model.McpInfo) {
-        val payload = ServerSideCodec.json.encodeToJsonElement(
+        val payload = GenerativeServerCodec.json.encodeToJsonElement(
             org.starfall.generative.shared.model.McpInfo.serializer(), server).jsonObject
         confirmImport("mcp.import", payload)
     }
 
     private suspend fun confirmImport(operation: String, payload: JsonObject) {
         if (request(operation, data = payload).jsonObject["imported"]?.jsonPrimitive?.booleanOrNull != true) {
-            throw ServerSideProtocolException("Server did not confirm import")
+            throw GenerativeServerProtocolException("Server did not confirm import")
         }
     }
 
     suspend fun mcpCatalog(): List<JsonObject>? = try {
         request("mcp.catalog").jsonArray.map { it.jsonObject }
-    } catch (e: ServerSideRpcException) {
+    } catch (e: GenerativeServerRpcException) {
         if (e.rpcError.code == "unsupported_feature") null else throw e
     }
 
     suspend fun catalog(): ProviderCatalog {
-        val catalog = ServerSideCodec.json.decodeFromString<ProviderCatalog>(request("provider.catalog").toString())
-        if (catalog.version != 1) throw ServerSideProtocolException("Incompatible provider catalog")
+        val catalog = GenerativeServerCodec.json.decodeFromString<ProviderCatalog>(request("provider.catalog").toString())
+        if (catalog.version != 1) throw GenerativeServerProtocolException("Incompatible provider catalog")
         return catalog
     }
     fun events(id: String, after: Long = 0): Flow<SessionEvent> = client.events(id, after)
@@ -222,7 +222,7 @@ class ServerSideSessions(private val client: ServerSideClient) {
         val conversation = obj.getValue("conversation").jsonObject
         require(id == expectedId && revision > 0 && (cursor == null || cursor >= 0) && conversation["id"]?.jsonPrimitive?.content == expectedId)
         ServerSnapshot(id, revision, conversation, cursor)
-    } catch (_: Exception) { throw ServerSideProtocolException("Invalid session snapshot") }
+    } catch (_: Exception) { throw GenerativeServerProtocolException("Invalid session snapshot") }
 }
 
 private const val WHOLE_LIMIT = 3 shl 20

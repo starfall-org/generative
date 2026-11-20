@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -71,10 +71,10 @@ data class SessionEvent(
     val data: JsonElement? = null,
 )
 
-class ServerSideRpcException(val rpcError: RpcError) : Exception(rpcError.message)
-class ServerSideProtocolException(message: String) : Exception(message)
+class GenerativeServerRpcException(val rpcError: RpcError) : Exception(rpcError.message)
+class GenerativeServerProtocolException(message: String) : Exception(message)
 
-object ServerSideCodec {
+object GenerativeServerCodec {
     val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
     fun encode(request: RpcRequest): String {
         require(request.id.isNotBlank() && request.op.isNotBlank())
@@ -82,15 +82,15 @@ object ServerSideCodec {
     }
     fun decodeReply(payload: String, expectedId: String): RpcReply {
         val reply = try { json.decodeFromString<RpcReply>(payload) } catch (e: Exception) {
-            throw ServerSideProtocolException("Invalid RPC reply")
+            throw GenerativeServerProtocolException("Invalid RPC reply")
         }
         if (reply.id != expectedId || (reply.ok && reply.error != null) || (!reply.ok && reply.error == null)) {
-            throw ServerSideProtocolException("Inconsistent RPC reply")
+            throw GenerativeServerProtocolException("Inconsistent RPC reply")
         }
         return reply
     }
     fun requireSuccess(reply: RpcReply): JsonElement? {
-        if (!reply.ok) throw ServerSideRpcException(reply.error ?: throw ServerSideProtocolException("Missing RPC error"))
+        if (!reply.ok) throw GenerativeServerRpcException(reply.error ?: throw GenerativeServerProtocolException("Missing RPC error"))
         return reply.data
     }
 }

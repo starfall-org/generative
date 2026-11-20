@@ -30,7 +30,7 @@ import org.starfall.generative.shared.model.isWebSearchProvider
 import org.starfall.generative.shared.model.mcpServerEnabled
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.lists.EntityGrid
-import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.EntityCollectionViewport
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.lists.moved
@@ -86,48 +86,47 @@ fun ServerListScreen(
             }) { SharedIcon(Icons.Default.Add, stringResource(R.string.common_add)) }
         }
     ) { padding ->
-            Box(Modifier.fillMaxSize()) {
-                if (matchingServers.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(padding)) {
-                        McpEmptyState(hasSearchQuery = mcpServers.isNotEmpty())
-                    }
-                } else FadeGridListContent(isGrid = isGridView, modifier = Modifier.fillMaxSize()) { gridMode ->
-                    val gridState = rememberLazyGridState()
-                    val dndState = Launcher.rememberState<String>()
-                    var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
-                    Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
-                        orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
-                            card(server, gridMode, Modifier.testTag("dragged_mcp"), true)
-                        }
-                    }) {
-                    EntityGrid(state = gridState, isGrid = gridMode, spacing = 12.dp, contentPadding = padding,
-                        modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState).testTag("mcp_list")) {
-                        items(matchingServers, key = { it.id }) { server ->
-                            card(server, gridMode, Modifier.animateItem()
-                                        .dragSource(dndState, server.id, server.id,
-                                            onDragStart = { dragSnapshot = orderedServers },
-                                            onDragEnd = { outcome ->
-                                                if (outcome.accepted) onReorderMcpServers(orderedServers.map { it.id })
-                                                else dragSnapshot?.let { orderedServers = it }
-                                                dragSnapshot = null
-                                            })
-                                        .dropTarget(dndState, "slot:${server.id}",
-                                            accepts = { it.key != server.id },
-                                            onDragEnter = { dragged ->
-                                                val from = orderedServers.indexOfFirst { it.id == dragged.item.data }
-                                                val to = orderedServers.indexOfFirst { it.id == server.id }
-                                                if (from >= 0 && to >= 0 && from != to)
-                                                    orderedServers = orderedServers.moved(from, to)
-                                            }, onDrop = { true })
-                                        .dropTarget(dndState, "self:${server.id}",
-                                            priority = 5,
-                                            accepts = { it.key == server.id },
-                                            onDrop = { dragSnapshot != orderedServers }), false)
-                        }
-                    }
+        EntityCollectionViewport(
+            isGrid = isGridView,
+            isEmpty = matchingServers.isEmpty(),
+            contentPadding = padding,
+            emptyContent = { McpEmptyState(hasSearchQuery = mcpServers.isNotEmpty()) }
+        ) { gridMode ->
+            val gridState = rememberLazyGridState()
+            val dndState = Launcher.rememberState<String>()
+            var dragSnapshot by remember { mutableStateOf<List<McpInfo>?>(null) }
+            Launcher.Host(state = dndState, modifier = Modifier.fillMaxSize(), preview = { drag ->
+                orderedServers.firstOrNull { it.id == drag.item.data }?.let { server ->
+                    card(server, gridMode, Modifier.testTag("dragged_mcp"), true)
+                }
+            }) {
+                EntityGrid(state = gridState, isGrid = gridMode, spacing = 12.dp, contentPadding = padding,
+                    modifier = Modifier.fillMaxSize().autoScroll(dndState, gridState).testTag("mcp_list")) {
+                    items(matchingServers, key = { it.id }) { server ->
+                        card(server, gridMode, Modifier.animateItem()
+                                    .dragSource(dndState, server.id, server.id,
+                                        onDragStart = { dragSnapshot = orderedServers },
+                                        onDragEnd = { outcome ->
+                                            if (outcome.accepted) onReorderMcpServers(orderedServers.map { it.id })
+                                            else dragSnapshot?.let { orderedServers = it }
+                                            dragSnapshot = null
+                                        })
+                                    .dropTarget(dndState, "slot:${server.id}",
+                                        accepts = { it.key != server.id },
+                                        onDragEnter = { dragged ->
+                                            val from = orderedServers.indexOfFirst { it.id == dragged.item.data }
+                                            val to = orderedServers.indexOfFirst { it.id == server.id }
+                                            if (from >= 0 && to >= 0 && from != to)
+                                                orderedServers = orderedServers.moved(from, to)
+                                        }, onDrop = { true })
+                                    .dropTarget(dndState, "self:${server.id}",
+                                        priority = 5,
+                                        accepts = { it.key == server.id },
+                                        onDrop = { dragSnapshot != orderedServers }), false)
                     }
                 }
             }
+        }
     }
 
     if (deletingServerId != null) AlertDialog(onDismissRequest = { deletingServerId = null },

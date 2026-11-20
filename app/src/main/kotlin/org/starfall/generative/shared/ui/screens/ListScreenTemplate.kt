@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -45,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -105,6 +109,7 @@ fun ListScreenTemplate(
     isEmpty: Boolean = false,
     loadingContent: @Composable BoxScope.() -> Unit = {},
     emptyContent: @Composable BoxScope.() -> Unit = {},
+    header: (@Composable () -> Unit)? = null,
     content: @Composable BoxScope.(PaddingValues) -> Unit
 ) {
     var searchValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -272,7 +277,20 @@ fun ListScreenTemplate(
             when {
                 isLoading -> loadingContent()
                 isEmpty -> emptyContent()
-                else -> content(padding)
+                header == null -> content(padding)
+                else -> {
+                    val direction = LocalLayoutDirection.current
+                    Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.fillMaxWidth().padding(top = padding.calculateTopPadding())) { header() }
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            content(PaddingValues(
+                                start = padding.calculateStartPadding(direction),
+                                end = padding.calculateEndPadding(direction),
+                                bottom = padding.calculateBottomPadding()
+                            ))
+                        }
+                    }
+                }
             }
         }
     }

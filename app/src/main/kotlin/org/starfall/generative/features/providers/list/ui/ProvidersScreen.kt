@@ -46,7 +46,7 @@ import org.starfall.generative.shared.ui.screens.LocalScreenTransitionActive
 import org.starfall.generative.shared.ui.lists.EntityGrid
 import org.starfall.generative.shared.ui.providers.ProviderEmptyState
 import org.starfall.generative.shared.ui.providers.providerCardCell
-import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.EntityCollectionViewport
 import org.starfall.generative.shared.ui.lists.moved
 
 internal fun newProviderId(): String = "custom_${UUID.randomUUID()}"
@@ -441,172 +441,170 @@ fun ProvidersScreen(
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (visibleRootItems.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(padding)) { ProviderEmptyState(hasSearchQuery = query.isNotEmpty(), backdropBlur = 0.dp) }
-                } else {
-                    FadeGridListContent(
-                        isGrid = isGridView,
-                        modifier = Modifier.fillMaxSize()
-                    ) { gridMode ->
-                        val gridState = rememberLazyGridState()
-                        val activeDrag = dndState.session
-                        // Near the top, the first card lives below the Scaffold header,
-                        // outside the narrow auto-scroll edge. Let it yield once the
-                        // viewport reaches its start, even without another finger move.
-                        LaunchedEffect(
-                            gridState, activeDrag?.identity, activeDrag?.pointer,
-                            gridState.canScrollBackward, rootGridWindowBounds, gridMode
-                        ) {
-                            val drag = activeDrag ?: return@LaunchedEffect
-                            val pointer = drag.pointer
-                            val bounds = rootGridWindowBounds
-                            if (gridMode != isGridView || gridState.canScrollBackward ||
-                                !bounds.contains(pointer) ||
-                                pointer.y > bounds.top + rootScrollEdgePx ||
-                                pointer.y >= drag.startPointer.y
-                            ) return@LaunchedEffect
-                            val key = if (drag.item.data.isGroup) "group_${drag.item.data.id}"
-                                else "provider_${drag.item.data.id}"
-                            if (rootItems.any { it.cellKey() == key }) {
-                                rootItems.firstOrNull()?.cellKey()
-                                    ?.takeIf { it != key }?.let { firstKey ->
-                                        // This top-edge fallback bypasses Launcher target-enter
-                                        // callbacks. Preserve the viewport by index here too:
-                                        // LazyGrid otherwise follows the old first key down
-                                        // when the dragged item is inserted at index zero.
-                                        gridState.requestScrollToItem(
-                                            gridState.firstVisibleItemIndex,
-                                            gridState.firstVisibleItemScrollOffset
-                                        )
-                                        moveRootItem(key, firstKey)
-                                    }
-                            }
-                        }
-                        EntityGrid(
-                            state = gridState,
-                            isGrid = gridMode,
-                            contentPadding = padding,
-                            modifier = Modifier.fillMaxSize()
-                                .dropTarget(
-                                    state = dndState, key = "root-end", priority = -10,
-                                    enabled = !searching && query.isBlank() && openGroupId == null,
-                                    onDrop = { drag ->
-                                        val dragged = drag.item.data
-                                        val key = if (dragged.isGroup) "group_${dragged.id}"
-                                            else "provider_${dragged.id}"
-                                        if (rootItems.any { it.cellKey() == key }) {
-                                            // The background spans the entire viewport. A
-                                            // drop in the top header/gutter must not be
-                                            // mistaken for an append-to-end gesture.
-                                            val lastVisibleBottom = gridState.layoutInfo.visibleItemsInfo
-                                                .maxOfOrNull { it.offset.y + it.size.height }
-                                            val isAfterLastRow = !gridState.canScrollForward &&
-                                                rootGridWindowBounds.contains(drag.pointer) &&
-                                                lastVisibleBottom != null &&
-                                                drag.pointer.y > rootGridWindowBounds.top + lastVisibleBottom
-                                            if (isAfterLastRow) {
-                                                rootItems.lastOrNull()?.cellKey()
-                                                    ?.takeIf { it != key }?.let { moveRootItem(key, it) }
-                                            }
-                                            liveOrderChanged
-                                        } else if (!dragged.isGroup) {
-                                            applyProviderPreview(dragged.id, null)
-                                            true
-                                        } else false
-                                    }
-                                )
-                                .autoScroll(dndState, gridState, enabled = openGroupId == null)
-                                .onGloballyPositioned {
-                                    if (gridMode == isGridView) rootGridWindowBounds = it.boundsInWindow()
+                EntityCollectionViewport(
+                    isGrid = isGridView,
+                    isEmpty = visibleRootItems.isEmpty(),
+                    contentPadding = padding,
+                    emptyContent = { ProviderEmptyState(hasSearchQuery = query.isNotEmpty(), backdropBlur = 0.dp) }
+                ) { gridMode ->
+                    val gridState = rememberLazyGridState()
+                    val activeDrag = dndState.session
+                    // Near the top, the first card lives below the Scaffold header,
+                    // outside the narrow auto-scroll edge. Let it yield once the
+                    // viewport reaches its start, even without another finger move.
+                    LaunchedEffect(
+                        gridState, activeDrag?.identity, activeDrag?.pointer,
+                        gridState.canScrollBackward, rootGridWindowBounds, gridMode
+                    ) {
+                        val drag = activeDrag ?: return@LaunchedEffect
+                        val pointer = drag.pointer
+                        val bounds = rootGridWindowBounds
+                        if (gridMode != isGridView || gridState.canScrollBackward ||
+                            !bounds.contains(pointer) ||
+                            pointer.y > bounds.top + rootScrollEdgePx ||
+                            pointer.y >= drag.startPointer.y
+                        ) return@LaunchedEffect
+                        val key = if (drag.item.data.isGroup) "group_${drag.item.data.id}"
+                            else "provider_${drag.item.data.id}"
+                        if (rootItems.any { it.cellKey() == key }) {
+                            rootItems.firstOrNull()?.cellKey()
+                                ?.takeIf { it != key }?.let { firstKey ->
+                                    // This top-edge fallback bypasses Launcher target-enter
+                                    // callbacks. Preserve the viewport by index here too:
+                                    // LazyGrid otherwise follows the old first key down
+                                    // when the dragged item is inserted at index zero.
+                                    gridState.requestScrollToItem(
+                                        gridState.firstVisibleItemIndex,
+                                        gridState.firstVisibleItemScrollOffset
+                                    )
+                                    moveRootItem(key, firstKey)
                                 }
-                                .testTag("provider_list")
-                        ) {
-                            items(visibleRootItems, key = { it.cellKey() }) { item ->
-                                val key = item.cellKey()
-                                Box(
-                                    Modifier
-                                        .animateItem()
-                                        .providerCardCell(gridMode)
-                                        .dragSource(
-                                            state = dndState, key = key, data = item.toOrderItem(),
-                                            enabled = !searching && query.isBlank() && openGroupId == null,
-                                            onDragStart = { beginDrag(key) },
-                                            onDragEnd = { outcome -> finishDnd(key, outcome) }
-                                        )
-                                        .itemDropTarget(
-                                            state = dndState, key = key, priority = 11,
-                                            enabled = !searching && query.isBlank() && openGroupId == null,
-                                            policy = Launcher.DropPolicy(
-                                                reorderHitTest = Launcher.Collision.Pointer,
-                                                joinHitTest = if (item is ProviderRootItem.GroupItem)
-                                                    Launcher.Collision.Pointer else null
-                                            ),
-                                            // Folder-to-folder and folder-to-provider both reorder.
-                                            // Provider-to-folder remains a join, never a reorder.
-                                            acceptsReorder = { drag ->
-                                                drag.key != key &&
-                                                    (item is ProviderRootItem.ProviderItem || drag.data.isGroup)
-                                            },
-                                            acceptsJoin = { dragged -> !dragged.data.isGroup },
-                                            joinKey = "folder-drop_${item.id}",
-                                            joinLandingBounds = { folderCardBounds[item.id] },
-                                            onJoinDrop = if (item is ProviderRootItem.GroupItem) ({ drag ->
-                                                val layout = currentLayout()
-                                                val next = moveProviderDrag(layout, drag.item.data.id, item.toOrderItem())
-                                                if (next != layout) applyLayout(next)
-                                                true
-                                            }) else null,
-                                            onReorderEnter = { drag ->
-                                                val dragged = drag.item.data
-                                                val from = if (dragged.isGroup) "group_${dragged.id}"
-                                                    else "provider_${dragged.id}"
-                                                if (rootItems.any { it.cellKey() == from })
-                                                    moveRootItem(from, key)
-                                                else if (!dragged.isGroup)
-                                                    applyProviderPreview(dragged.id, item.toOrderItem())
-                                            },
-                                            onReorderDrop = { true }
-                                        )
-                                        // The source's own slot must win over the grid-wide
-                                        // fallback, otherwise a long-press near the first
-                                        // visible row reorders it before any real movement.
-                                        .dropTarget(
-                                            state = dndState, key = "source-slot:$key",
-                                            priority = 12,
-                                            enabled = !searching && query.isBlank() && openGroupId == null,
-                                            accepts = { it.key == key },
-                                            onDrop = {
-                                                dragRootSnapshot != rootItems || liveOrderChanged
-                                            }
-                                        )
-                                        .onGloballyPositioned { coordinates ->
-                                            if (item is ProviderRootItem.GroupItem && gridMode == isGridView) {
-                                                folderCardBounds[item.id] = coordinates.boundsInRoot()
-                                            }
+                        }
+                    }
+                    EntityGrid(
+                        state = gridState,
+                        isGrid = gridMode,
+                        contentPadding = padding,
+                        modifier = Modifier.fillMaxSize()
+                            .dropTarget(
+                                state = dndState, key = "root-end", priority = -10,
+                                enabled = !searching && query.isBlank() && openGroupId == null,
+                                onDrop = { drag ->
+                                    val dragged = drag.item.data
+                                    val key = if (dragged.isGroup) "group_${dragged.id}"
+                                        else "provider_${dragged.id}"
+                                    if (rootItems.any { it.cellKey() == key }) {
+                                        // The background spans the entire viewport. A
+                                        // drop in the top header/gutter must not be
+                                        // mistaken for an append-to-end gesture.
+                                        val lastVisibleBottom = gridState.layoutInfo.visibleItemsInfo
+                                            .maxOfOrNull { it.offset.y + it.size.height }
+                                        val isAfterLastRow = !gridState.canScrollForward &&
+                                            rootGridWindowBounds.contains(drag.pointer) &&
+                                            lastVisibleBottom != null &&
+                                            drag.pointer.y > rootGridWindowBounds.top + lastVisibleBottom
+                                        if (isAfterLastRow) {
+                                            rootItems.lastOrNull()?.cellKey()
+                                                ?.takeIf { it != key }?.let { moveRootItem(key, it) }
                                         }
-                                ) {
-                                    ProviderRootCard(
-                                        item = item,
-                                        members = (item as? ProviderRootItem.GroupItem)
-                                            ?.let { g -> orderedProviders.filter { it.groupId == g.id } }.orEmpty(),
-                                        isGrid = gridMode,
-                                        isDropTarget = item is ProviderRootItem.GroupItem &&
-                                            (dndState.hoveredTargetKey == key ||
-                                                dndState.hoveredTargetKey == "folder-drop_${item.id}") &&
-                                            dndState.session?.item?.data?.isGroup == false,
-                                        onEditProvider = { onOpenProviderEditor(it, false) },
-                                        onMoveProvider = { dialogs.movingProvider = it },
-                                        onDeleteProvider = { dialogs.deletingProviderId = it },
-                                        onSetProviderHidden = onSetProviderHidden,
-                                        onOpenGroup = { id ->
-                                            folderCardBounds[id]?.let { folderOriginBounds[id] = it }
-                                            sortedGroups.firstOrNull { it.id == id }?.let {
-                                                renderedFolderGroups[id] = it
-                                                openGroupId = id
-                                            }
+                                        liveOrderChanged
+                                    } else if (!dragged.isGroup) {
+                                        applyProviderPreview(dragged.id, null)
+                                        true
+                                    } else false
+                                }
+                            )
+                            .autoScroll(dndState, gridState, enabled = openGroupId == null)
+                            .onGloballyPositioned {
+                                if (gridMode == isGridView) rootGridWindowBounds = it.boundsInWindow()
+                            }
+                            .testTag("provider_list")
+                    ) {
+                        items(visibleRootItems, key = { it.cellKey() }) { item ->
+                            val key = item.cellKey()
+                            Box(
+                                Modifier
+                                    .animateItem()
+                                    .providerCardCell(gridMode)
+                                    .dragSource(
+                                        state = dndState, key = key, data = item.toOrderItem(),
+                                        enabled = !searching && query.isBlank() && openGroupId == null,
+                                        onDragStart = { beginDrag(key) },
+                                        onDragEnd = { outcome -> finishDnd(key, outcome) }
+                                    )
+                                    .itemDropTarget(
+                                        state = dndState, key = key, priority = 11,
+                                        enabled = !searching && query.isBlank() && openGroupId == null,
+                                        policy = Launcher.DropPolicy(
+                                            reorderHitTest = Launcher.Collision.Pointer,
+                                            joinHitTest = if (item is ProviderRootItem.GroupItem)
+                                                Launcher.Collision.Pointer else null
+                                        ),
+                                        // Folder-to-folder and folder-to-provider both reorder.
+                                        // Provider-to-folder remains a join, never a reorder.
+                                        acceptsReorder = { drag ->
+                                            drag.key != key &&
+                                                (item is ProviderRootItem.ProviderItem || drag.data.isGroup)
+                                        },
+                                        acceptsJoin = { dragged -> !dragged.data.isGroup },
+                                        joinKey = "folder-drop_${item.id}",
+                                        joinLandingBounds = { folderCardBounds[item.id] },
+                                        onJoinDrop = if (item is ProviderRootItem.GroupItem) ({ drag ->
+                                            val layout = currentLayout()
+                                            val next = moveProviderDrag(layout, drag.item.data.id, item.toOrderItem())
+                                            if (next != layout) applyLayout(next)
+                                            true
+                                        }) else null,
+                                        onReorderEnter = { drag ->
+                                            val dragged = drag.item.data
+                                            val from = if (dragged.isGroup) "group_${dragged.id}"
+                                                else "provider_${dragged.id}"
+                                            if (rootItems.any { it.cellKey() == from })
+                                                moveRootItem(from, key)
+                                            else if (!dragged.isGroup)
+                                                applyProviderPreview(dragged.id, item.toOrderItem())
+                                        },
+                                        onReorderDrop = { true }
+                                    )
+                                    // The source's own slot must win over the grid-wide
+                                    // fallback, otherwise a long-press near the first
+                                    // visible row reorders it before any real movement.
+                                    .dropTarget(
+                                        state = dndState, key = "source-slot:$key",
+                                        priority = 12,
+                                        enabled = !searching && query.isBlank() && openGroupId == null,
+                                        accepts = { it.key == key },
+                                        onDrop = {
+                                            dragRootSnapshot != rootItems || liveOrderChanged
                                         }
                                     )
-                                }
+                                    .onGloballyPositioned { coordinates ->
+                                        if (item is ProviderRootItem.GroupItem && gridMode == isGridView) {
+                                            folderCardBounds[item.id] = coordinates.boundsInRoot()
+                                        }
+                                    }
+                            ) {
+                                ProviderRootCard(
+                                    item = item,
+                                    members = (item as? ProviderRootItem.GroupItem)
+                                        ?.let { g -> orderedProviders.filter { it.groupId == g.id } }.orEmpty(),
+                                    isGrid = gridMode,
+                                    isDropTarget = item is ProviderRootItem.GroupItem &&
+                                        (dndState.hoveredTargetKey == key ||
+                                            dndState.hoveredTargetKey == "folder-drop_${item.id}") &&
+                                        dndState.session?.item?.data?.isGroup == false,
+                                    onEditProvider = { onOpenProviderEditor(it, false) },
+                                    onMoveProvider = { dialogs.movingProvider = it },
+                                    onDeleteProvider = { dialogs.deletingProviderId = it },
+                                    onSetProviderHidden = onSetProviderHidden,
+                                    onOpenGroup = { id ->
+                                        folderCardBounds[id]?.let { folderOriginBounds[id] = it }
+                                        sortedGroups.firstOrNull { it.id == id }?.let {
+                                            renderedFolderGroups[id] = it
+                                            openGroupId = id
+                                        }
+                                    }
+                                )
                             }
                         }
                     }

@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
@@ -42,11 +44,14 @@ import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.inputs.OutlinedTextField
+import org.starfall.generative.shared.ui.layout.fadingScrollEdges
 import org.starfall.generative.shared.ui.layout.windowHeightIn
 import org.starfall.generative.features.home.drawer.logic.lastModelIcon
 import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 import org.starfall.generative.shared.ui.layout.modalContainerColor
+
+private val DrawerEdgeOverlap = 24.dp
 
 @Composable
 private fun SidebarLabel(text: String) { Text(text, Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -207,66 +212,70 @@ fun ConversationSideDrawer(
                                 }
                             }
                         )
+                    },
+                // Keep the scroll fades inside the pinned header and footer.
+                verticalArrangement = Arrangement.spacedBy(-DrawerEdgeOverlap)
+            ) {
+            Column(Modifier.zIndex(1f)) {
+                ConversationDrawerAppBar(
+                    remoteExpanded = remoteExpanded,
+                    onToggleRemote = { remoteExpanded = !remoteExpanded },
+                    searchExpanded = searchExpanded,
+                    onOpenSearch = { searchExpanded = true },
+                    onCloseSearch = ::unfocusSearch,
+                    query = search,
+                    onQueryChange = { search = it },
+                    searchModifier = Modifier.focusRequester(searchFocusRequester).onFocusChanged {
+                        if (!it.isFocused && searchFocused && searchExpanded) unfocusSearch()
+                        searchFocused = it.isFocused
                     }
-            ) {
-            ConversationDrawerAppBar(
-                remoteExpanded = remoteExpanded,
-                onToggleRemote = { remoteExpanded = !remoteExpanded },
-                searchExpanded = searchExpanded,
-                onOpenSearch = { searchExpanded = true },
-                onCloseSearch = ::unfocusSearch,
-                query = search,
-                onQueryChange = { search = it },
-                searchModifier = Modifier.focusRequester(searchFocusRequester).onFocusChanged {
-                    if (!it.isFocused && searchFocused && searchExpanded) unfocusSearch()
-                    searchFocused = it.isFocused
-                }
-            ) {
-                DrawerRemoteControls(
-                    onOpenRemoteMachines = onOpenRemoteMachines,
-                    serverProfiles = serverProfiles,
-                    remoteEnabled = remoteEnabled,
-                    remoteError = remoteError,
-                    remoteConnectionId = remoteConnectionId,
-                    runtimeSelecting = runtimeSelecting,
-                    onReconnectServer = onReconnectServer,
-                    onSelectRuntime = onSelectRuntime,
-                    onOpenServerConnections = onOpenServerConnections,
-                    onOpenTerminal = onOpenTerminal,
-                    onPortForward = onPortForward,
-                    onSaveMachineTools = onSaveMachineTools
-                )
-            }
-            if (selecting) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                        .testTag("conversation_drawer_selection_bar"),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = ::stopSelecting) { SharedIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
-                    Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
-                    Checkbox(
-                        checked = allSelected,
-                        onCheckedChange = { checked ->
-                            selected = if (checked) selected + matchingIds else selected - matchingIds
-                        },
-                        enabled = matchingIds.isNotEmpty()
+                    DrawerRemoteControls(
+                        onOpenRemoteMachines = onOpenRemoteMachines,
+                        serverProfiles = serverProfiles,
+                        remoteEnabled = remoteEnabled,
+                        remoteError = remoteError,
+                        remoteConnectionId = remoteConnectionId,
+                        runtimeSelecting = runtimeSelecting,
+                        onReconnectServer = onReconnectServer,
+                        onSelectRuntime = onSelectRuntime,
+                        onOpenServerConnections = onOpenServerConnections,
+                        onOpenTerminal = onOpenTerminal,
+                        onPortForward = onPortForward,
+                        onSaveMachineTools = onSaveMachineTools
                     )
-                    IconButton(enabled = onOpenProject == null || selected.isEmpty(), onClick = {
-                        folderName = ""
-                        if (onOpenProject != null) {
-                            stopSelecting()
-                            onOpenProject()
-                        } else if (selected.isEmpty()) creatingFolder = true else grouping = true
-                    }) {
-                        SharedIcon(
-                            if (onOpenProject != null) Icons.Outlined.FolderOpen else Icons.Outlined.CreateNewFolder,
-                            stringResource(if (onOpenProject != null) R.string.sidebar_open_project
-                                else if (selected.isEmpty()) R.string.sidebar_create_folder else R.string.sidebar_move_selected_to_folder)
+                }
+                if (selecting) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                            .testTag("conversation_drawer_selection_bar"),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = ::stopSelecting) { SharedIcon(Icons.Default.Close, stringResource(R.string.sidebar_exit_selection)) }
+                        Text("${selected.size}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        val allSelected = matchingIds.isNotEmpty() && selected.containsAll(matchingIds)
+                        Checkbox(
+                            checked = allSelected,
+                            onCheckedChange = { checked ->
+                                selected = if (checked) selected + matchingIds else selected - matchingIds
+                            },
+                            enabled = matchingIds.isNotEmpty()
                         )
+                        IconButton(enabled = onOpenProject == null || selected.isEmpty(), onClick = {
+                            folderName = ""
+                            if (onOpenProject != null) {
+                                stopSelecting()
+                                onOpenProject()
+                            } else if (selected.isEmpty()) creatingFolder = true else grouping = true
+                        }) {
+                            SharedIcon(
+                                if (onOpenProject != null) Icons.Outlined.FolderOpen else Icons.Outlined.CreateNewFolder,
+                                stringResource(if (onOpenProject != null) R.string.sidebar_open_project
+                                    else if (selected.isEmpty()) R.string.sidebar_create_folder else R.string.sidebar_move_selected_to_folder)
+                            )
+                        }
+                        IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                     }
-                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = selected }) { SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error) }
                 }
             }
             with(Launcher) {
@@ -282,11 +291,16 @@ fun ConversationSideDrawer(
                         }
                     }
                 }) {
-                    FadingLazyColumn(
+                    LazyColumn(
                         state = folderListState,
                         modifier = Modifier.fillMaxSize().autoScroll(folderDrag, folderListState)
-                            .testTag("conversation_drawer_list"),
-                        contentPadding = PaddingValues(12.dp),
+                            .testTag("conversation_drawer_list")
+                            .fadingScrollEdges(folderListState, depth = DrawerEdgeOverlap),
+                        // Keep the first and last items clear of the controls at rest.
+                        contentPadding = PaddingValues(
+                            horizontal = 12.dp,
+                            vertical = 12.dp + DrawerEdgeOverlap
+                        ),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                 item(key = "quick-shortcuts") {
@@ -416,12 +430,14 @@ fun ConversationSideDrawer(
                     }
                 }
             }
-            ConversationDrawerFooter(
-                featuresLogoImage = featuresLogoImage,
-                onOpenMenu = onNavigateToSettings,
-                onNewChat = { stopSelecting(); onNewChat(); onCloseDrawer() }
-            )
-        }
+            Box(Modifier.zIndex(1f)) {
+                ConversationDrawerFooter(
+                    featuresLogoImage = featuresLogoImage,
+                    onOpenMenu = onNavigateToSettings,
+                    onNewChat = { stopSelecting(); onNewChat(); onCloseDrawer() }
+                )
+            }
+            }
         }
     }
     if (creatingFolder) AlertDialog(

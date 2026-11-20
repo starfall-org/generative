@@ -1,19 +1,19 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import java.net.URI
 import java.net.URLDecoder
 import java.util.Base64
 
 /** A pairing code is held in memory and must never be logged or persisted. */
-class ServerSideInvitation private constructor(
+class GenerativeServerInvitation private constructor(
     val endpoint: URI,
     val pin: String,
     internal val code: String,
 ) {
-    override fun toString(): String = "ServerSideInvitation(endpoint=$endpoint, pin=$pin, code=[redacted])"
+    override fun toString(): String = "GenerativeServerInvitation(endpoint=$endpoint, pin=$pin, code=[redacted])"
 
     companion object {
-        fun parse(value: String): ServerSideInvitation {
+        fun parse(value: String): GenerativeServerInvitation {
             val uri = try { URI(value) } catch (_: Exception) { throw IllegalArgumentException("Invalid invitation") }
             require(uri.scheme.equals("https", ignoreCase = true) && uri.host != null &&
                 uri.rawUserInfo == null && uri.rawQuery == null && uri.rawPath == "/connect" && uri.port != 0) {
@@ -38,7 +38,7 @@ class ServerSideInvitation private constructor(
             val digest = try { Base64.getDecoder().decode(pin.removePrefix("sha256/")) } catch (_: Exception) { throw IllegalArgumentException("Invalid invitation pin") }
             require(digest.size == 32) { "Invalid invitation pin" }
             val endpoint = URI("https", null, uri.host, uri.port, null, null, null)
-            return ServerSideInvitation(endpoint, pin, code)
+            return GenerativeServerInvitation(endpoint, pin, code)
         }
     }
 }

@@ -16,7 +16,7 @@ import org.starfall.generative.features.serverconnection.ui.ServerConnectionEdit
 class ServerConnectionProgramUiTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun transportChoiceAppearsOnlyForServerSide() {
+    @Test fun transportChoiceAppearsOnlyForGenerativeServer() {
         compose.setContent {
             MaterialTheme {
                 ServerConnectionEditor(
@@ -27,13 +27,13 @@ class ServerConnectionProgramUiTest {
         }
         compose.onNodeWithText("Connection protocol").assertExists()
         compose.onNodeWithText("Model provider source").assertExists()
-        compose.onNodeWithText("ServerSide").performClick()
+        compose.onNodeWithText("Generative Server").performClick()
         compose.onNodeWithText("OpenCode").performClick()
         compose.onNodeWithText("Connection protocol").assertDoesNotExist()
         compose.onNodeWithText("Model provider source").assertDoesNotExist()
         compose.onNodeWithText("Authentication").assertExists()
         compose.onNodeWithText("OpenCode").performClick()
-        compose.onNodeWithText("ServerSide").performClick()
+        compose.onNodeWithText("Generative Server").performClick()
         compose.onNodeWithText("Connection protocol").assertExists()
         compose.onNodeWithText("Model provider source").assertExists()
     }

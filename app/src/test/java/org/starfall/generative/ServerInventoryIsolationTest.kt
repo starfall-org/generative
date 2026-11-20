@@ -19,16 +19,16 @@ import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.database.room.entities.ServerConnectionEntity
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
 class ServerInventoryIsolationTest {
-    @Test fun serversideMcpIsExplicitlyUnsupportedWithoutUsingLocalData() = runBlocking {
+    @Test fun generativeServerMcpIsExplicitlyUnsupportedWithoutUsingLocalData() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
         try {
             db.serverConnectionDao().put(ServerConnectionEntity("server", "Server", "https://example.com", "pin", "client", "server", "secret", false))
-            val wire = object : ServerSideWire {
+            val wire = object : GenerativeServerWire {
                 override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
                 override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
                 override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
@@ -37,7 +37,7 @@ class ServerInventoryIsolationTest {
                 }
             }
             val service = ServerConnections(ServerConnectionRepository(db), clientFactory = {
-                ServerSideClient(wire, PairedIdentity("c", "secret", "s"))
+                GenerativeServerClient(wire, PairedIdentity("c", "secret", "s"))
             })
             assertNull(service.projects("server"))
             assertNull(service.mcpServers("server"))
@@ -55,7 +55,7 @@ class ServerInventoryIsolationTest {
                 repository.saveOpenCode("first", "First", first.url("/").toString(), OpenCodeCredentials("first", "first-secret"))
                 repository.saveOpenCode("second", "Second", second.url("/").toString(), OpenCodeCredentials("second", "second-secret"))
                 repository.select("first")
-                val service = ServerConnections(repository, clientFactory = { error("ServerSide must not be used") })
+                val service = ServerConnections(repository, clientFactory = { error("Generative Server must not be used") })
                 second.enqueue(MockResponse().setBody("""{"data":[{"id":"p","name":"Remote","package":"pkg"}]}"""))
                 second.enqueue(MockResponse().setBody("""{"data":[{"name":"tool","status":{"status":"disabled"}}]}"""))
                 second.enqueue(MockResponse().setResponseCode(204))

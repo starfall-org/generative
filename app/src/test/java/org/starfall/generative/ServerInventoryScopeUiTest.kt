@@ -49,7 +49,7 @@ class ServerInventoryScopeUiTest {
                     repository.saveOpenCode("second", "Second", second.url("/").toString(), OpenCodeCredentials("second", "secret"))
                     repository.select("first")
                 }
-                val service = ServerConnections(repository, clientFactory = { error("Unexpected ServerSide request") })
+                val service = ServerConnections(repository, clientFactory = { error("Unexpected Generative Server request") })
                 var connectionId by mutableStateOf("first")
                 compose.setScreenContent {
                     MaterialTheme {
@@ -110,7 +110,7 @@ class ServerInventoryScopeUiTest {
                     repository.saveOpenCode("server", "Server", server.url("/").toString(),
                         OpenCodeCredentials("opencode", "secret"))
                 }
-                val service = ServerConnections(repository, clientFactory = { error("Unexpected ServerSide request") })
+                val service = ServerConnections(repository, clientFactory = { error("Unexpected Generative Server request") })
                 var providers by mutableStateOf(true)
                 compose.setScreenContent {
                     MaterialTheme {

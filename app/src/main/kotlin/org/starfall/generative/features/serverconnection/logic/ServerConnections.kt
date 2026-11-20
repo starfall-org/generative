@@ -12,12 +12,12 @@ import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.McpAuthMethod
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.database.repositories.ServerConnectionRepository
-import org.starfall.generative.integrations.serverside.RemoteConversationCache
-import org.starfall.generative.integrations.serverside.ServerSideClient
-import org.starfall.generative.integrations.serverside.ServerSideHttpTransport
-import org.starfall.generative.integrations.serverside.ServerSideInvitation
-import org.starfall.generative.integrations.serverside.ServerSideSessions
-import org.starfall.generative.integrations.serverside.ServerSideSshTransport
+import org.starfall.generative.integrations.generativeserver.RemoteConversationCache
+import org.starfall.generative.integrations.generativeserver.GenerativeServerClient
+import org.starfall.generative.integrations.generativeserver.GenerativeServerHttpTransport
+import org.starfall.generative.integrations.generativeserver.GenerativeServerInvitation
+import org.starfall.generative.integrations.generativeserver.GenerativeServerSessions
+import org.starfall.generative.integrations.generativeserver.GenerativeServerSshTransport
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.opencode.OpenCodeAuthentication
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
@@ -29,7 +29,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.shared.model.RemoteMachineType
 
-class ServerConnections(val repository: ServerConnectionRepository, private val clientFactory: suspend (String) -> ServerSideClient,
+class ServerConnections(val repository: ServerConnectionRepository, private val clientFactory: suspend (String) -> GenerativeServerClient,
     private val cache: RemoteConversationCache? = null,
     private val remote: RemoteMachineService? = null,
     private val localModels: ModelRepository? = null,
@@ -74,7 +74,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
                     provider["integrationID"]?.jsonPrimitive?.content)
             }
         }
-        val sessions = ServerSideSessions(clientFactory(id))
+        val sessions = GenerativeServerSessions(clientFactory(id))
         return try {
             sessions.catalog().providers.map { ServerInventoryItem(it.id, it.name, it.type) }
         } finally { sessions.close() }
@@ -92,7 +92,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     suspend fun importSupported(id: String, providers: Boolean): Boolean {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport == "opencode") return !providers && profile.endpoint.startsWith("https://", true)
-        val sessions = ServerSideSessions(clientFactory(id))
+        val sessions = GenerativeServerSessions(clientFactory(id))
         return try { sessions.supportsCatalogImport(providers) } finally { sessions.close() }
     }
 
@@ -109,7 +109,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             api.addMcp(metadata.name, openCodeMcpImportConfig(source.resolveServer(metadata)), directory)
             return
         }
-        val sessions = ServerSideSessions(clientFactory(id))
+        val sessions = GenerativeServerSessions(clientFactory(id))
         try {
             require(sessions.supportsCatalogImport(providers))
             if (providers) {
@@ -138,7 +138,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     suspend fun mcpServers(id: String, directory: String? = null): List<ServerInventoryItem>? {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport != "opencode") {
-            val sessions = ServerSideSessions(clientFactory(id))
+            val sessions = GenerativeServerSessions(clientFactory(id))
             return try {
                 sessions.mcpCatalog()?.map { server ->
                     ServerInventoryItem(server.getValue("id").jsonPrimitive.content,
@@ -186,13 +186,13 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             val machine = requireNotNull(remote).store.also { it.awaitInitialized() }.state.value.machines
                 .firstOrNull { it.id == sshMachineId && it.type == RemoteMachineType.SSH }
                 ?: error("Select a saved SSH machine")
-            val identity = ServerSideSshTransport.pair(remote, machine.id)
+            val identity = GenerativeServerSshTransport.pair(remote, machine.id)
             repository.save(id, name, "ssh://${machine.username}@${machine.host}:${machine.port}",
                 "", identity.identity, "ssh", machine.id, allowLocalProviders)
         } else {
             require(transport == "http")
-            val invitation = ServerSideInvitation.parse(url)
-            val identity = ServerSideHttpTransport(invitation).pairAsync()
+            val invitation = GenerativeServerInvitation.parse(url)
+            val identity = GenerativeServerHttpTransport(invitation).pairAsync()
             repository.save(id, name, invitation.endpoint.toString(), invitation.pin, identity, allowLocalProviders = allowLocalProviders)
         }
     }
@@ -204,20 +204,20 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             val machine = requireNotNull(remote).store.also { it.awaitInitialized() }.state.value.machines
                 .firstOrNull { it.id == sshMachineId && it.type == RemoteMachineType.SSH }
                 ?: error("Selected SSH machine is no longer available")
-            val paired = ServerSideSshTransport.pair(remote, machine.id)
-            require(paired.identity.serverId == profile.serverId) { "Different ServerSide server; create a new connection" }
+            val paired = GenerativeServerSshTransport.pair(remote, machine.id)
+            require(paired.identity.serverId == profile.serverId) { "Different Generative Server; create a new connection" }
             repository.save(profile.id, name, "ssh://${machine.username}@${machine.host}:${machine.port}",
                 "", paired.identity, "ssh", machine.id, allowLocalProviders)
         } else {
             require(transport == "http")
-            val invitation = ServerSideInvitation.parse(url)
-            val identity = ServerSideHttpTransport(invitation).pairAsync()
+            val invitation = GenerativeServerInvitation.parse(url)
+            val identity = GenerativeServerHttpTransport(invitation).pairAsync()
             require(identity.serverId == profile.serverId) { "Invitation belongs to another server; add a separate connection" }
             repository.save(profile.id, name, invitation.endpoint.toString(), invitation.pin, identity, allowLocalProviders = allowLocalProviders)
         }
         try { cache?.removeProfile(profile.id) } catch (_: Exception) { /* A cache miss cannot undo pairing. */ }
     }
-    /** OpenCode uses its own HTTP API; no ServerSide command is invoked. */
+    /** OpenCode uses its own HTTP API; no Generative Server command is invoked. */
     suspend fun saveOpenCode(profile: ServerConnectionProfile?, name: String, endpoint: String,
         username: String, password: String, pairingUrl: String) {
         require(name.isNotBlank())
@@ -253,7 +253,7 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             OpenCodeAuthentication(profile.endpoint).verify(repository.openCodeCredentials(id))
             return
         }
-        val sessions = ServerSideSessions(clientFactory(id))
+        val sessions = GenerativeServerSessions(clientFactory(id))
         try {
             sessions.verifyCapabilities()
             sessions.catalog()

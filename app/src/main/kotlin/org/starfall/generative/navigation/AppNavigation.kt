@@ -649,7 +649,7 @@ internal fun AppNavigation(
                                     ConversationSideDrawer(
                                         conversations = if (remoteActive) remote.items.takeIf { remoteIdentityReady }.orEmpty() else conversations,
                                         providers = if (remoteActive) remote.providers.takeIf { remoteIdentityReady }.orEmpty() else providers,
-                                        currentConversationId = if (remoteActive) remote.snapshot?.sessionId.takeIf { remoteIdentityReady } else currentConvId,
+                                        currentConversationId = if (remoteActive) remote.conversation?.id.takeIf { remoteIdentityReady } else currentConvId,
                                         isOpen = visibleDrawer.isOpen,
                                         generatingConversationIds = if (remoteActive) emptySet() else generatingConversationIds,
                                         organization = if (remoteActive) org.starfall.generative.shared.model.SidebarOrganization() else appPrefs.chatRelations.sidebar,
@@ -790,7 +790,7 @@ internal fun AppNavigation(
                         ChatBackend(
                             restoreRemoteViewport = true,
                             isGenerating = remote.running && remoteIdentityReady && active,
-                            generatingConversationId = remote.snapshot?.sessionId.takeIf { remoteIdentityReady },
+                            generatingConversationId = remote.conversation?.id.takeIf { remoteIdentityReady },
                             chatError = remoteError,
                             providers = if (sourceGroups.isEmpty()) visible else visible.map { it.copy(
                                 groupId = if (it.id in localIds) localGroup else serverGroup) },
@@ -815,7 +815,7 @@ internal fun AppNavigation(
                             onEditMessage = { id, content, files ->
                                 (remoteIdentityReady && remoteWorkspace.editMessage(id, content, files)).also { if (!it) unsupportedRemote() }
                             },
-                            onDeleteMessage = { id -> if (remoteIdentityReady) remoteWorkspace.deleteMessage(id) else unsupportedRemote() },
+                            onDeleteMessage = { id -> if (remoteIdentityReady && !remote.openCode) remoteWorkspace.deleteMessage(id) else unsupportedRemote() },
                             onDeleteAssistantBlock = { _, _ -> unsupportedRemote() },
                             onDeleteMessageVersion = { unsupportedRemote() },
                             onEditQueuedMessage = { _, _, _ -> unsupportedRemote(); false },

@@ -73,18 +73,25 @@ class AppContainer(context: Context) {
         }
     })
     val serverConnections = org.starfall.generative.database.repositories.ServerConnectionRepository(database)
-    private val remoteChatCache = org.starfall.generative.integrations.serverside.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
+    private val remoteChatCache = org.starfall.generative.integrations.generativeserver.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
     private val serverClientFactory = ServerConnectionClientFactory(serverConnections, remoteMachineService)
     val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, serverClientFactory::create, remoteChatCache, remoteMachineService, providers, mcp)
     private val remoteWorkspacePreferences = org.starfall.generative.database.preferences.RemoteWorkspacePreferences(appContext)
     val remoteWorkspace = org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace(
-        { id -> org.starfall.generative.integrations.serverside.ServerSideSessions(serverClientFactory.create(id)) },
+        { id -> org.starfall.generative.integrations.generativeserver.GenerativeServerSessions(serverClientFactory.create(id)) },
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
         remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache,
         { id -> serverConnections.profile(id)?.let {
-            org.starfall.generative.integrations.serverside.RemoteCacheScope(it.id, it.clientId, it.serverId, it.pin)
-        } }, resolveLocalProvider = providers::resolveProvider)
+            org.starfall.generative.integrations.generativeserver.RemoteCacheScope(it.id, it.clientId, it.serverId, it.pin)
+        } }, resolveLocalProvider = providers::resolveProvider,
+        openCodeFactory = { id ->
+            serverConnections.profile(id)?.takeIf { it.transport == "opencode" }?.let {
+                org.starfall.generative.integrations.opencode.OpenCodeApi(
+                    it.endpoint, serverConnections.openCodeCredentials(id)
+                )
+            }
+        })
     private val speech = SpeechRepository(database)
     val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)

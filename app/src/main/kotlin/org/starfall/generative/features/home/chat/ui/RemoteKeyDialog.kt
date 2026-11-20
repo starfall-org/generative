@@ -9,7 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import org.starfall.generative.R
-import org.starfall.generative.integrations.serverside.ServerProviderKey
+import org.starfall.generative.integrations.generativeserver.ServerProviderKey
 import org.starfall.generative.shared.ui.dialogs.AlertDialog
 import org.starfall.generative.shared.ui.inputs.SelectionDropdown
 

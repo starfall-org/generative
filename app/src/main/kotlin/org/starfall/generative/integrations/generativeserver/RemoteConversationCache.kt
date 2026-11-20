@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import android.util.AtomicFile
 import java.io.File
@@ -14,9 +14,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.integrations.security.SecretCipher
-import org.starfall.generative.integrations.serverside.ServerSideCodec
-import org.starfall.generative.integrations.serverside.ServerSnapshot
-import org.starfall.generative.integrations.serverside.SessionListItem
+import org.starfall.generative.integrations.generativeserver.GenerativeServerCodec
+import org.starfall.generative.integrations.generativeserver.ServerSnapshot
+import org.starfall.generative.integrations.generativeserver.SessionListItem
 
 /** Never use an Android chat ID alone: each pairing is an independent server owner. */
 data class RemoteCacheScope(val profileId: String, val clientId: String, val serverId: String, val pin: String)
@@ -76,13 +76,13 @@ class RemoteConversationCache(
         mutex.withLock {
             val file = record(scope, id)
             try {
-                val value = ServerSideCodec.json.decodeFromString<CachedSnapshot>(read(file) ?: return@withLock null)
+                val value = GenerativeServerCodec.json.decodeFromString<CachedSnapshot>(read(file) ?: return@withLock null)
                 if (value.version != 1 || value.sessionId != id || value.revision <= 0 ||
                     value.conversation["id"]?.jsonPrimitive?.content != id) {
                     file.delete(); null
                 } else {
                     // A cache produced by an older app must not make the chat unavailable.
-                    ServerSideCodec.json.decodeFromString<Conversation>(value.conversation.toString())
+                    GenerativeServerCodec.json.decodeFromString<Conversation>(value.conversation.toString())
                     ServerSnapshot(id, value.revision, value.conversation)
                 }
             } catch (_: Exception) { file.delete(); null }
@@ -92,23 +92,23 @@ class RemoteConversationCache(
         mutex.withLock {
             val file = record(scope, value.sessionId)
             // An earlier async stream checkpoint may arrive after a later one.
-            val previous = try { ServerSideCodec.json.decodeFromString<CachedSnapshot>(read(file).orEmpty()) } catch (_: Exception) { null }
+            val previous = try { GenerativeServerCodec.json.decodeFromString<CachedSnapshot>(read(file).orEmpty()) } catch (_: Exception) { null }
             if (value.revision > 0 && value.conversation["id"]?.jsonPrimitive?.content == value.sessionId &&
                 (previous == null || previous.revision <= value.revision)) {
-                write(file, ServerSideCodec.json.encodeToString(CachedSnapshot(1, value.sessionId, value.revision, value.conversation)))
+                write(file, GenerativeServerCodec.json.encodeToString(CachedSnapshot(1, value.sessionId, value.revision, value.conversation)))
             }
         }
     }
     suspend fun list(scope: RemoteCacheScope): List<SessionListItem>? = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
-                val cached = ServerSideCodec.json.decodeFromString<CachedList>(read(record(scope, LIST_KEY)) ?: return@withLock null)
+                val cached = GenerativeServerCodec.json.decodeFromString<CachedList>(read(record(scope, LIST_KEY)) ?: return@withLock null)
                 cached.items.takeIf { cached.version == 1 }
             } catch (_: Exception) { record(scope, LIST_KEY).delete(); null }
         }
     }
     suspend fun saveList(scope: RemoteCacheScope, items: List<SessionListItem>) = withContext(Dispatchers.IO) {
-        mutex.withLock { write(record(scope, LIST_KEY), ServerSideCodec.json.encodeToString(CachedList(1, items))) }
+        mutex.withLock { write(record(scope, LIST_KEY), GenerativeServerCodec.json.encodeToString(CachedList(1, items))) }
     }
     suspend fun remove(scope: RemoteCacheScope, id: String) = withContext(Dispatchers.IO) {
         mutex.withLock { record(scope, id).delete() }

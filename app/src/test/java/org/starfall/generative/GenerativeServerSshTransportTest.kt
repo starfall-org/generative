@@ -13,31 +13,31 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import org.starfall.generative.integrations.serverside.ServerSideClient
-import org.starfall.generative.integrations.serverside.ServerSideCodec
-import org.starfall.generative.integrations.serverside.PairedIdentity
-import org.starfall.generative.integrations.serverside.RpcRequest
+import org.starfall.generative.integrations.generativeserver.GenerativeServerClient
+import org.starfall.generative.integrations.generativeserver.GenerativeServerCodec
+import org.starfall.generative.integrations.generativeserver.PairedIdentity
+import org.starfall.generative.integrations.generativeserver.RpcRequest
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.integrations.remote.RemoteExecStream
-import org.starfall.generative.integrations.serverside.ServerSideSshTransport
+import org.starfall.generative.integrations.generativeserver.GenerativeServerSshTransport
 
-class ServerSideSshTransportTest {
+class GenerativeServerSshTransportTest {
     @Test fun frameRoundTripAndSizeValidation() {
         val payload = """{"id":"request","op":"session.list","data":{"limit":1}}"""
         val buffer = ByteArrayOutputStream()
-        ServerSideSshTransport.writeFrame(buffer, payload)
-        assertEquals(payload, ServerSideSshTransport.readFrame(ByteArrayInputStream(buffer.toByteArray())))
+        GenerativeServerSshTransport.writeFrame(buffer, payload)
+        assertEquals(payload, GenerativeServerSshTransport.readFrame(ByteArrayInputStream(buffer.toByteArray())))
         val invalid = ByteArrayInputStream(byteArrayOf(0, 64, 0, 1))
-        assertThrows(java.io.IOException::class.java) { ServerSideSshTransport.readFrame(invalid) }
+        assertThrows(java.io.IOException::class.java) { GenerativeServerSshTransport.readFrame(invalid) }
     }
 
     @Test fun sshStdioPairingParsesTheExistingServerContract() = runBlocking {
         var released = 0
         val payload = """{"protocol":5,"client_id":"owner","secret":"secret","fingerprint":"server","endpoint":"tcp://server","transport":"tcp"}"""
-        val paired = ServerSideSshTransport.pairUsing { command ->
+        val paired = GenerativeServerSshTransport.pairUsing { command ->
             assertEquals(
-                "serverside service start </dev/null >/dev/null 2>&1 || :; exec serverside pair --stdio --transport tcp",
+                "generative service start </dev/null >/dev/null 2>&1 || :; exec generative pair --stdio --transport tcp",
                 command
             )
             RemoteExecStream(ByteArrayInputStream(payload.toByteArray()), ByteArrayOutputStream()) { released++ }
@@ -57,23 +57,23 @@ class ServerSideSshTransportTest {
             releases++; clientIn.close(); clientOut.close(); serverOut.close(); serverIn.close()
         }
         val daemon = async(Dispatchers.IO) {
-            val auth = ServerSideCodec.json.parseToJsonElement(ServerSideSshTransport.readFrame(serverIn)).jsonObject
+            val auth = GenerativeServerCodec.json.parseToJsonElement(GenerativeServerSshTransport.readFrame(serverIn)).jsonObject
             assertEquals("auth", auth.getValue("type").jsonPrimitive.content)
             assertEquals("owner", auth.getValue("client_id").jsonPrimitive.content)
-            ServerSideSshTransport.writeFrame(serverOut, """{"type":"paired","protocol":5,"client_id":"owner"}""")
-            val rpc = ServerSideCodec.json.parseToJsonElement(ServerSideSshTransport.readFrame(serverIn)).jsonObject
+            GenerativeServerSshTransport.writeFrame(serverOut, """{"type":"paired","protocol":5,"client_id":"owner"}""")
+            val rpc = GenerativeServerCodec.json.parseToJsonElement(GenerativeServerSshTransport.readFrame(serverIn)).jsonObject
             assertEquals("capabilities.get", rpc.getValue("op").jsonPrimitive.content)
-            ServerSideSshTransport.writeFrame(serverOut, """{"session_id":"chat","seq":1,"request_id":"old","kind":"delta","data":{"text":"old"}}""")
-            ServerSideSshTransport.writeFrame(serverOut, """{"id":"check","ok":true,"data":{"version":1}}""")
-            val revoke = ServerSideCodec.json.parseToJsonElement(ServerSideSshTransport.readFrame(serverIn)).jsonObject
+            GenerativeServerSshTransport.writeFrame(serverOut, """{"session_id":"chat","seq":1,"request_id":"old","kind":"delta","data":{"text":"old"}}""")
+            GenerativeServerSshTransport.writeFrame(serverOut, """{"id":"check","ok":true,"data":{"version":1}}""")
+            val revoke = GenerativeServerCodec.json.parseToJsonElement(GenerativeServerSshTransport.readFrame(serverIn)).jsonObject
             assertEquals("identity.revoke", revoke.getValue("op").jsonPrimitive.content)
             val id = revoke.getValue("id").jsonPrimitive.content
-            ServerSideSshTransport.writeFrame(serverOut, """{"id":"$id","ok":true,"data":{"revoked":true}}""")
+            GenerativeServerSshTransport.writeFrame(serverOut, """{"id":"$id","ok":true,"data":{"revoked":true}}""")
         }
         val identity = PairedIdentity("owner", "secret", "server")
-        val client = ServerSideClient(ServerSideSshTransport({ command ->
+        val client = GenerativeServerClient(GenerativeServerSshTransport({ command ->
             assertEquals(
-                "serverside service start </dev/null >/dev/null 2>&1 || :; exec serverside stream --stdio",
+                "generative service start </dev/null >/dev/null 2>&1 || :; exec generative stream --stdio",
                 command
             )
             stream
@@ -97,13 +97,13 @@ class ServerSideSshTransportTest {
         }
         val observed = CompletableDeferred<Unit>()
         val daemon = async(Dispatchers.IO) {
-            ServerSideSshTransport.readFrame(serverIn)
-            ServerSideSshTransport.writeFrame(serverOut, """{"type":"paired","protocol":5,"client_id":"owner"}""")
-            ServerSideSshTransport.readFrame(serverIn)
+            GenerativeServerSshTransport.readFrame(serverIn)
+            GenerativeServerSshTransport.writeFrame(serverOut, """{"type":"paired","protocol":5,"client_id":"owner"}""")
+            GenerativeServerSshTransport.readFrame(serverIn)
             observed.complete(Unit)
         }
         val identity = PairedIdentity("owner", "secret", "server")
-        val client = ServerSideClient(ServerSideSshTransport({ stream }, identity), identity)
+        val client = GenerativeServerClient(GenerativeServerSshTransport({ stream }, identity), identity)
         val waiting = launch { client.rpc(RpcRequest("blocked", "session.get")) }
         withTimeout(5000) { observed.await(); waiting.cancelAndJoin() }
         assertEquals(1, releases)

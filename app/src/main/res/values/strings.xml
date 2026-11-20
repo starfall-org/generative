@@ -1388,8 +1388,8 @@
     <string name="server_connection_transport">Connection protocol</string>
     <string name="server_connection_ssh_machine">Remote SSH server</string>
     <string name="server_connection_no_ssh_machine">Add an SSH server in Remote SSH first.</string>
-    <string name="server_connection_ssh_hint">Uses the selected Remote SSH machine and its existing connection settings. The ServerSide service must be installed and running on that machine.</string>
-    <string name="server_connection_ssh_repair_hint">Saving will pair a new SSH identity. Its previous ServerSide chat history will not transfer.</string>
+    <string name="server_connection_ssh_hint">Uses the selected Remote SSH machine and its existing connection settings. The Generative Server service must be installed and running on that machine.</string>
+    <string name="server_connection_ssh_repair_hint">Saving will pair a new SSH identity. Its previous Generative Server chat history will not transfer.</string>
     <string name="server_connection_ssh_rename_hint">Keep the selected SSH machine unchanged to rename without pairing again.</string>
     <string name="server_connection_empty">No server connections</string>
     <string name="server_connection_name">Connection name</string>
@@ -1438,21 +1438,20 @@
     <string name="server_connection_opencode_username">Username</string>
     <string name="server_connection_opencode_password">Password</string>
     <string name="server_connection_opencode_auth_url">OpenCode pairing URL</string>
-    <string name="server_connection_opencode_chat_pending">This connection can be saved and tested. OpenCode chat is not available yet.</string>
+    <string name="drawer_runtime_opencode" translatable="false">opencode</string>
     <string name="server_connection_opencode_failed">Could not connect to OpenCode. Check the server URL, credentials or pairing URL, and server status.</string>
     <string name="server_connection_provider_source">Model provider source</string>
     <string name="server_connection_providers_server">Server only</string>
     <string name="server_connection_providers_local">Local</string>
     <string name="server_connection_providers_both">Server and local</string>
+    <string name="generative_server_name" translatable="false">Generative Server</string>
     <string name="server_connection_program">Server Program</string>
     <string name="server_import_local">Import from local</string>
-    <string name="server_import_unavailable">This server or connection does not support importing this configuration.</string>
     <string name="server_import_credentials">The selected configuration and its credentials will be copied to this server.</string>
     <string name="server_import_runtime_credentials">The selected connection and credentials will be copied to OpenCode until it restarts.</string>
     <string name="server_import_failed">Import could not be confirmed. The server may not support this configuration or an entry may already exist.</string>
-    <string name="server_inventory_stored_hint">Configurations imported here are stored on ServerSide.</string>
+    <string name="server_inventory_stored_hint">Configurations imported here are stored on Generative Server.</string>
     <string name="server_inventory_read_only">Server inventory is read-only here.</string>
-    <string name="server_inventory_unsupported">This server protocol does not provide an MCP inventory.</string>
     <string name="server_inventory_failed">Could not load data from this server.</string>
     <string name="server_inventory_empty">No entries found on this server.</string>
     <string name="server_inventory_projects_failed">Could not load the project list.</string>

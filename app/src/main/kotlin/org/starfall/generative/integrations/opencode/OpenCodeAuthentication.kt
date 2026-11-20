@@ -45,7 +45,7 @@ class OpenCodePairingLink private constructor(internal val url: HttpUrl, val end
     }
 }
 
-/** OpenCode v2 API authentication, independent of the app's ServerSide RPC protocol. */
+/** OpenCode v2 API authentication, independent of the app's Generative Server RPC protocol. */
 class OpenCodeAuthentication(
     endpoint: String,
     client: OkHttpClient = OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build(),

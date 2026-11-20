@@ -1070,8 +1070,8 @@
     <string name="server_connection_transport">Giao thức kết nối</string>
     <string name="server_connection_ssh_machine">Máy chủ Remote SSH</string>
     <string name="server_connection_no_ssh_machine">Trước tiên hãy thêm máy chủ SSH trong Remote SSH.</string>
-    <string name="server_connection_ssh_hint">Dùng máy Remote SSH đã chọn cùng cấu hình kết nối hiện có. Máy đó cần cài và chạy dịch vụ ServerSide.</string>
-    <string name="server_connection_ssh_repair_hint">Lưu sẽ ghép nối một danh tính SSH mới. Lịch sử trò chuyện của danh tính cũ trên ServerSide sẽ không được chuyển sang.</string>
+    <string name="server_connection_ssh_hint">Dùng máy Remote SSH đã chọn cùng cấu hình kết nối hiện có. Máy đó cần cài và chạy dịch vụ Generative Server.</string>
+    <string name="server_connection_ssh_repair_hint">Lưu sẽ ghép nối một danh tính SSH mới. Lịch sử trò chuyện của danh tính cũ trên Generative Server sẽ không được chuyển sang.</string>
     <string name="server_connection_ssh_rename_hint">Giữ nguyên máy SSH đã chọn để đổi tên mà không cần ghép nối lại.</string>
     <string name="server_connection_empty">Chưa có kết nối máy chủ</string>
     <string name="server_connection_name">Tên kết nối</string>
@@ -1118,7 +1118,6 @@
     <string name="server_connection_opencode_username">Tên người dùng</string>
     <string name="server_connection_opencode_password">Mật khẩu</string>
     <string name="server_connection_opencode_auth_url">URL ghép nối OpenCode</string>
-    <string name="server_connection_opencode_chat_pending">Có thể lưu và kiểm tra kết nối. Chat OpenCode chưa khả dụng.</string>
     <string name="server_connection_opencode_failed">Không thể kết nối OpenCode. Hãy kiểm tra URL máy chủ, thông tin xác thực hoặc URL ghép nối và trạng thái máy chủ.</string>
     <string name="server_connection_provider_source">Nguồn Model Providers</string>
     <string name="server_connection_providers_server">Chỉ máy chủ</string>
@@ -1126,13 +1125,11 @@
     <string name="server_connection_providers_both">Máy chủ và cục bộ</string>
     <string name="server_connection_program">Chương trình máy chủ</string>
     <string name="server_import_local">Nhập từ cục bộ</string>
-    <string name="server_import_unavailable">Máy chủ hoặc kết nối này không hỗ trợ nhập cấu hình này.</string>
     <string name="server_import_credentials">Cấu hình đã chọn và thông tin xác thực sẽ được sao chép lên máy chủ này.</string>
     <string name="server_import_runtime_credentials">Kết nối và thông tin xác thực đã chọn sẽ được sao chép lên OpenCode cho đến khi máy chủ khởi động lại.</string>
     <string name="server_import_failed">Không thể xác nhận nhập cấu hình. Máy chủ có thể không hỗ trợ cấu hình này hoặc mục đó đã tồn tại.</string>
-    <string name="server_inventory_stored_hint">Cấu hình nhập tại đây được lưu trên ServerSide.</string>
+    <string name="server_inventory_stored_hint">Cấu hình nhập tại đây được lưu trên Generative Server.</string>
     <string name="server_inventory_read_only">Danh sách từ máy chủ chỉ có thể xem tại đây.</string>
-    <string name="server_inventory_unsupported">Giao thức máy chủ này không cung cấp danh sách MCP.</string>
     <string name="server_inventory_failed">Không thể tải dữ liệu từ máy chủ này.</string>
     <string name="server_inventory_empty">Không có mục nào trên máy chủ này.</string>
     <string name="server_inventory_projects_failed">Không thể tải danh sách dự án.</string>

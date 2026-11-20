@@ -1,4 +1,4 @@
-package org.starfall.generative.integrations.serverside
+package org.starfall.generative.integrations.generativeserver
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -9,7 +9,7 @@ import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.provider.ModelProvider
 
-/** Only adapters supported by ServerSide's mobile_ephemeral runtime are selectable. */
+/** Only adapters supported by Generative Server's mobile_ephemeral runtime are selectable. */
 internal fun ModelProvider.remoteTextCatalog(): ModelProvider? {
     if (isHidden || type !in setOf(ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES,
             ModelApiType.ANTHROPIC, ModelApiType.GOOGLE) || !config.supportStream) return null
@@ -27,11 +27,11 @@ internal fun mobileProviderRuntime(provider: ModelProvider, runtimeId: String, m
     val settings = provider.config
     val model = settings.modelConfigs[modelId] ?: ModelConfiguration()
     require(settings.httpProxy.isEmpty() && settings.socksProxy.isEmpty() && settings.headers.isEmpty() &&
-        settings.customEndpoints.isEmpty()) { "ServerSide does not support this provider's connection overrides" }
-    require(provider.auth.method != AuthMethod.OAUTH) { "ServerSide cannot resolve local OAuth accounts" }
+        settings.customEndpoints.isEmpty()) { "Generative Server does not support this provider's connection overrides" }
+    require(provider.auth.method != AuthMethod.OAUTH) { "Generative Server cannot resolve local OAuth accounts" }
     require(model.reasoningEffort == null && model.thinkingLevel == null && model.thinkingPassback == null &&
         model.legacySendThinkingContent == null && model.enabledModelTools.isEmpty() && model.modelJson.isEmpty()) {
-        "ServerSide does not support this model's runtime configuration"
+        "Generative Server does not support this model's runtime configuration"
     }
     put("source", "mobile_ephemeral")
     put("provider", buildJsonObject {
@@ -41,7 +41,7 @@ internal fun mobileProviderRuntime(provider: ModelProvider, runtimeId: String, m
             ModelApiType.OPENAI_RESPONSES -> "openai_responses"
             ModelApiType.ANTHROPIC -> "anthropic"
             ModelApiType.GOOGLE -> "google"
-            else -> error("Unsupported ServerSide provider")
+            else -> error("Unsupported Generative Server provider")
         })
         put("baseUrl", provider.baseUrl)
         put("modelId", modelId)

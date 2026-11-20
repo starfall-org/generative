@@ -206,16 +206,19 @@ class DrawerRemoteMachineContextMenuTest {
         val local = compose.onNodeWithTag("drawer_runtime_picker_local").fetchSemanticsNode().boundsInRoot
         val first = compose.onNodeWithTag("drawer_runtime_picker_server_server").fetchSemanticsNode().boundsInRoot
         assertTrue(local.bottom <= first.top)
-        compose.onNodeWithText("OpenCode server").assertDoesNotExist()
+        compose.onNodeWithText("opencode").assertIsDisplayed()
         compose.onNodeWithTag("drawer_runtime_picker_server_server").performClick()
         compose.onNodeWithText("Chat server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_runtime_picker_server_other").performClick()
         compose.onNodeWithText("Other server").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_runtime_picker_server_opencode").performClick()
+        compose.onNodeWithText("OpenCode server").assertIsDisplayed()
+        compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_runtime_picker_local").performClick()
         compose.onNodeWithText("Local").assertIsDisplayed()
-        compose.runOnIdle { assertEquals(listOf("server", "other", null), selections) }
+        compose.runOnIdle { assertEquals(listOf("server", "other", "opencode", null), selections) }
     }
 
     @Test fun runtimePickerOffersLocalEvenWithoutServers() {

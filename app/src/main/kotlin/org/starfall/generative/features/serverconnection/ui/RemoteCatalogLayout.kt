@@ -6,7 +6,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -15,7 +14,7 @@ import org.starfall.generative.R
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.lists.EntityGrid
-import org.starfall.generative.shared.ui.lists.FadeGridListContent
+import org.starfall.generative.shared.ui.lists.EntityCollectionViewport
 import org.starfall.generative.shared.ui.screens.ListScreenTemplate
 
 /** Catalog presentation; the owner supplies the already filtered rows and all state/actions. */
@@ -33,7 +32,7 @@ internal fun <T> RemoteCatalogLayout(
     ListScreenTemplate(
         title = title, onBack = onBack, searchQuery = searchQuery.takeIf { status == null },
         onSearchQueryChange = onSearchChange, searchPlaceholder = searchPlaceholder,
-        isGrid = isGrid.takeIf { status == null }, onGridChange = onGridChange, bottomPadding = 8.dp,
+        isGrid = isGrid.takeIf { status == null }, onGridChange = onGridChange, bottomPadding = 8.dp, header = header,
         primaryActions = {
             if (onAdd != null && status == null) IconButton(onClick = onAdd, enabled = actionsEnabled) {
                 SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
@@ -43,24 +42,27 @@ internal fun <T> RemoteCatalogLayout(
             }
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize()) {
-            if (header != null) Box(Modifier.fillMaxWidth().padding(top = padding.calculateTopPadding())) { header() }
-            val direction = LocalLayoutDirection.current
-            val listPadding = if (header == null) padding else PaddingValues(
-                start = padding.calculateStartPadding(direction), end = padding.calculateEndPadding(direction),
-                bottom = padding.calculateBottomPadding()
+        if (status != null) {
+            Column(
+                Modifier.fillMaxSize().padding(padding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                content = status
             )
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (status != null) {
-                    Column(Modifier.fillMaxSize().padding(listPadding), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center, content = status)
-                } else if (items.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(listPadding)) { emptyContent() }
-                } else FadeGridListContent(isGrid = isGrid, modifier = Modifier.fillMaxSize()) { gridMode ->
-                    EntityGrid(isGrid = gridMode, spacing = spacing, contentPadding = listPadding,
-                        modifier = Modifier.fillMaxSize().testTag(listTag)) {
-                        items(items, key = itemKey) { item -> card(item, gridMode, Modifier.animateItem()) }
-                    }
+        } else {
+            EntityCollectionViewport(
+                isGrid = isGrid,
+                isEmpty = items.isEmpty(),
+                contentPadding = padding,
+                emptyContent = emptyContent
+            ) { gridMode ->
+                EntityGrid(
+                    isGrid = gridMode,
+                    spacing = spacing,
+                    contentPadding = padding,
+                    modifier = Modifier.fillMaxSize().testTag(listTag)
+                ) {
+                    items(items, key = itemKey) { item -> card(item, gridMode, Modifier.animateItem()) }
                 }
             }
         }

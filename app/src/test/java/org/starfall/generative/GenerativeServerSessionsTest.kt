@@ -6,10 +6,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
-class ServerSideSessionsTest {
-    private class Wire : ServerSideWire {
+class GenerativeServerSessionsTest {
+    private class Wire : GenerativeServerWire {
         val requests = mutableListOf<RpcRequest>()
         override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
         override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
@@ -25,7 +25,7 @@ class ServerSideSessionsTest {
     }
     @Test fun importSendsFullSelectedConfigurationAndCredentials() = runBlocking {
         val wire = Wire()
-        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         val provider = Json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(
             """{"id":"provider","name":"Provider","type":"openai","baseUrl":"https://example.invalid/v1","auth":{"method":"bearer_token","value":"dummy-key"},"config":{"modelIds":["a","b"],"maxTokens":8192}}"""
         )
@@ -35,12 +35,12 @@ class ServerSideSessionsTest {
         sessions.importProvider(provider)
         sessions.importMcp(mcp)
         assertEquals(listOf("provider.import", "mcp.import"), wire.requests.map { it.op })
-        assertEquals(provider, ServerSideCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(wire.requests[0].data.toString()))
-        assertEquals(mcp, ServerSideCodec.json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(wire.requests[1].data.toString()))
+        assertEquals(provider, GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(wire.requests[0].data.toString()))
+        assertEquals(mcp, GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(wire.requests[1].data.toString()))
     }
 
     @Test fun configureAndCasPreserveUnknownFields() = runBlocking {
-        val wire = Wire(); val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val wire = Wire(); val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         sessions.configure("chat", "provider", "model", "key")
         val runtime = wire.requests.last().data!!.getValue("runtime").jsonObject
         assertEquals("stored", runtime.getValue("source").jsonPrimitive.content)
@@ -61,32 +61,32 @@ class ServerSideSessionsTest {
             """{"session_id":"chat","revision":1,"conversation":{"id":"other"}}""",
             """{"session_id":"chat","revision":0,"conversation":{"id":"chat"}}"""
         )) {
-            val wire = object : ServerSideWire {
+            val wire = object : GenerativeServerWire {
                 override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
                 override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
                 override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true, Json.parseToJsonElement(payload))
             }
-            val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+            val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
             try { sessions.open("chat"); fail("Accepted invalid snapshot") }
-            catch (_: ServerSideProtocolException) { }
+            catch (_: GenerativeServerProtocolException) { }
         }
     }
 
     @Test fun snapshotsExposeServerLiveEventCursorAndRejectInvalidCursor() = runBlocking {
         var raw = """{"session_id":"chat","revision":7,"event_seq":4096,"conversation":{"id":"chat"}}"""
-        val wire = object : ServerSideWire {
+        val wire = object : GenerativeServerWire {
             override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
             override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
             override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true, Json.parseToJsonElement(raw))
         }
-        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         assertEquals(4096L, sessions.open("chat").eventSeq)
         assertEquals(4096L, sessions.get("chat").eventSeq)
         raw = """{"session_id":"chat","revision":7,"conversation":{"id":"chat"}}"""
         assertNull(sessions.open("chat").eventSeq) // Older v5 servers omit the optional field.
         raw = """{"session_id":"chat","revision":7,"event_seq":-1,"conversation":{"id":"chat"}}"""
         try { sessions.open("chat"); fail("Accepted invalid cursor") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
     }
 
     @Test fun conditionalOpenReusesOnlyVerifiedSameSessionRevision() = runBlocking {
@@ -94,7 +94,7 @@ class ServerSideSessionsTest {
         val cached = ServerSnapshot("chat", 7, conversation)
         var reply = """{"session_id":"chat","revision":7,"event_seq":123,"unchanged":true}"""
         val requests = mutableListOf<RpcRequest>()
-        val wire = object : ServerSideWire {
+        val wire = object : GenerativeServerWire {
             override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
             override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
             override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
@@ -102,7 +102,7 @@ class ServerSideSessionsTest {
                 return RpcReply(request.id, true, Json.parseToJsonElement(reply))
             }
         }
-        val api = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val api = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         val accepted = api.open("chat", cached)
         assertEquals(7L, accepted.revision)
         assertEquals(123L, accepted.eventSeq)
@@ -111,12 +111,12 @@ class ServerSideSessionsTest {
 
         // Server-provided 'unchanged' without an eligible cache entry is untrusted.
         try { api.open("chat"); fail("Accepted omitted conversation without cache") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
         try { api.open("another", cached); fail("Accepted wrong-session cache") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
         reply = """{"session_id":"chat","revision":8,"event_seq":125,"unchanged":true}"""
         try { api.open("chat", cached); fail("Accepted changed revision as unchanged") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
         reply = """{"session_id":"chat","revision":8,"event_seq":125,"conversation":{"id":"chat","title":"Updated","future":{"new":true}}}"""
         val updated = api.open("chat", cached)
         assertEquals(8L, updated.revision)
@@ -129,30 +129,30 @@ class ServerSideSessionsTest {
 
     @Test fun readsServerGenerationLimitsAndRejectsImpossibleBounds() = runBlocking {
         var runLimit = 64 * 1024
-        val wire = object : ServerSideWire {
+        val wire = object : GenerativeServerWire {
             override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
             override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
             override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true, Json.parseToJsonElement(
                 """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"conversation_max_bytes":3145728,"attachments":false,"negotiation":{"generation":{"max_run_content_bytes":$runLimit,"max_history_messages":256}}}}"""))
         }
-        val api = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val api = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         assertEquals(64 * 1024, api.verifyCapabilities().maxRunContentBytes)
         assertEquals(3 * 1024 * 1024, api.verifyCapabilities().maxConversationBytes)
         assertFalse(api.verifyCapabilities().attachments)
         runLimit = -1
         try { api.verifyCapabilities(); fail("Accepted an invalid size") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
     }
 
     @Test fun rejectsCapabilitiesWithoutConfigurationOrEvents() = runBlocking {
-        val wire = object : ServerSideWire {
+        val wire = object : GenerativeServerWire {
             override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
             override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
             override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true, Json.parseToJsonElement(
                 """{"protocol":5,"operations":["session.list","session.open","session.get","session.run","session.cancel","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true}}"""))
         }
-        val sessions = ServerSideSessions(ServerSideClient(wire, PairedIdentity("c", "secret", "s")))
+        val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         try { sessions.verifyCapabilities(); fail("Accepted incomplete capabilities") }
-        catch (_: ServerSideProtocolException) { }
+        catch (_: GenerativeServerProtocolException) { }
     }
 }

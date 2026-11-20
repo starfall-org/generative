@@ -14,10 +14,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.generativeserver.*
 
-class ServerSideClientTest {
-    private class Fake : ServerSideWire {
+class GenerativeServerClientTest {
+    private class Fake : GenerativeServerWire {
         var auth = 0
         var calls = 0
         var eventCalls = 0
@@ -31,20 +31,20 @@ class ServerSideClientTest {
             revocations++
             if (failRevocation) throw IOException("revocation receipt lost")
         }
-        override fun authenticate(identity: PairedIdentity): AccessToken { auth++; if (badAuth) throw ServerSideHttpException(401); return AccessToken("token$auth", 900) }
+        override fun authenticate(identity: PairedIdentity): AccessToken { auth++; if (badAuth) throw GenerativeServerHttpException(401); return AccessToken("token$auth", 900) }
         override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
             calls++
-            if (rejectToken && calls == 1) throw ServerSideHttpException(401)
+            if (rejectToken && calls == 1) throw GenerativeServerHttpException(401)
             if (failNetwork) throw IOException("uncertain delivery")
             return RpcReply(request.id, true)
         }
         override fun events(token: AccessToken, sessionId: String, after: Long): List<SessionEvent> {
             eventCalls++
-            if (gap) throw ServerSideRpcException(RpcError("event_gap", "gap"))
+            if (gap) throw GenerativeServerRpcException(RpcError("event_gap", "gap"))
             return listOf(SessionEvent(sessionId, after + 1, kind = "delta"))
         }
     }
-    private fun client(fake: Fake) = ServerSideClient(fake, PairedIdentity("client", "secret", "server"))
+    private fun client(fake: Fake) = GenerativeServerClient(fake, PairedIdentity("client", "secret", "server"))
     @Test fun renewsOnlyRejectedBearerAndDoesNotReplayUncertainWrite() = runBlocking {
         val fake = Fake(); fake.rejectToken = true
         assertTrue(client(fake).rpc(RpcRequest("id", "session.run")).ok)
@@ -75,20 +75,20 @@ class ServerSideClientTest {
     @Test fun eventCursorAndGapRequireSnapshot() = runBlocking {
         val fake = Fake(); assertEquals(8, client(fake).events("session", 7).first().seq)
         fake.gap = true
-        try { client(fake).events("session", 7).first(); fail() } catch (_: ServerSideEventGapException) { }
+        try { client(fake).events("session", 7).first(); fail() } catch (_: GenerativeServerEventGapException) { }
     }
     @Test fun rejectsStaleRevisions() {
-        val rev = ServerSideRevision(3); assertFalse(rev.accept(2)); assertFalse(rev.accept(3)); assertTrue(rev.accept(4))
+        val rev = GenerativeServerRevision(3); assertFalse(rev.accept(2)); assertFalse(rev.accept(3)); assertTrue(rev.accept(4))
     }
     @Test fun invalidCredentialsDoNotSendRpc() = runBlocking {
         val fake = Fake(); fake.badAuth = true
-        try { client(fake).rpc(RpcRequest("id", "session.run")); fail() } catch (_: ServerSideHttpException) { }
+        try { client(fake).rpc(RpcRequest("id", "session.run")); fail() } catch (_: GenerativeServerHttpException) { }
         assertEquals(0, fake.calls); assertEquals(1, fake.auth)
     }
     @Test fun cancellingEventObservationCancelsTheUnderlyingAsyncTransport() = runBlocking {
         val started = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()
-        val wire = object : ServerSideWire {
+        val wire = object : GenerativeServerWire {
             override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
             override fun rpc(token: AccessToken, request: RpcRequest) = RpcReply(request.id, true)
             override fun events(token: AccessToken, sessionId: String, after: Long) = error("Blocking transport should not be used")
@@ -98,7 +98,7 @@ class ServerSideClientTest {
                     continuation.invokeOnCancellation { cancelled.complete(Unit) }
                 }
         }
-        val stream = launch { ServerSideClient(wire, PairedIdentity("client", "secret", "server")).events("chat", 0).first() }
+        val stream = launch { GenerativeServerClient(wire, PairedIdentity("client", "secret", "server")).events("chat", 0).first() }
         withTimeout(5000) { started.await() }
         stream.cancelAndJoin()
         withTimeout(5000) { cancelled.await() }
@@ -108,7 +108,7 @@ class ServerSideClientTest {
         val trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
         trust.init(null as KeyStore?)
         val cert = (trust.trustManagers.filterIsInstance<X509TrustManager>().first()).acceptedIssuers.first()
-        val transport = ServerSideHttpTransport("https://example.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+        val transport = GenerativeServerHttpTransport("https://example.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
         try { transport.certificatePinner.check("example.com", listOf(cert)); fail("accepted wrong pin") }
         catch (_: SSLPeerUnverifiedException) { }
     }

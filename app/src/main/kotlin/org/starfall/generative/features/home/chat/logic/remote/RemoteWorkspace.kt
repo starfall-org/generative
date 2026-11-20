@@ -21,9 +21,12 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import org.starfall.generative.integrations.serverside.RemoteCacheScope
-import org.starfall.generative.integrations.serverside.RemoteConversationCache
-import org.starfall.generative.integrations.serverside.*
+import org.starfall.generative.integrations.opencode.OpenCodeApi
+import org.starfall.generative.integrations.opencode.OpenCodeHttpException
+import org.starfall.generative.integrations.opencode.OpenCodeProtocolException
+import org.starfall.generative.integrations.generativeserver.RemoteCacheScope
+import org.starfall.generative.integrations.generativeserver.RemoteConversationCache
+import org.starfall.generative.integrations.generativeserver.*
 import org.starfall.generative.shared.model.Conversation
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.ConversationListItem
@@ -38,20 +41,23 @@ enum class RemoteConnectionFailure { UNAUTHORIZED, CERTIFICATE, INCOMPATIBLE, UN
 
 internal fun remoteConnectionFailure(failure: Exception): RemoteConnectionFailure = when (failure) {
     is SSLException -> RemoteConnectionFailure.CERTIFICATE
-    is ServerSideHttpException -> if (failure.status == 401 || failure.status == 403) RemoteConnectionFailure.UNAUTHORIZED
+    is OpenCodeHttpException -> if (failure.status == 401 || failure.status == 403) RemoteConnectionFailure.UNAUTHORIZED
         else RemoteConnectionFailure.UNAVAILABLE
-    is ServerSideRpcException -> when (failure.rpcError.code) {
+    is OpenCodeProtocolException -> RemoteConnectionFailure.INCOMPATIBLE
+    is GenerativeServerHttpException -> if (failure.status == 401 || failure.status == 403) RemoteConnectionFailure.UNAUTHORIZED
+        else RemoteConnectionFailure.UNAVAILABLE
+    is GenerativeServerRpcException -> when (failure.rpcError.code) {
         "unauthorized", "auth_required" -> RemoteConnectionFailure.UNAUTHORIZED
         "unsupported_feature" -> RemoteConnectionFailure.INCOMPATIBLE
         else -> RemoteConnectionFailure.UNAVAILABLE
     }
-    is ServerSideProtocolException -> RemoteConnectionFailure.INCOMPATIBLE
+    is GenerativeServerProtocolException -> RemoteConnectionFailure.INCOMPATIBLE
     else -> RemoteConnectionFailure.UNAVAILABLE
 }
 
 private fun isConversationLoadFailure(failure: Exception): Boolean = when (failure) {
-    is ServerSideRpcException -> remoteConnectionFailure(failure) == RemoteConnectionFailure.UNAVAILABLE
-    is ServerSideProtocolException, is IllegalArgumentException -> true
+    is GenerativeServerRpcException -> remoteConnectionFailure(failure) == RemoteConnectionFailure.UNAVAILABLE
+    is GenerativeServerProtocolException, is IllegalArgumentException -> true
     else -> false
 }
 
@@ -67,21 +73,25 @@ data class RemoteWorkspaceState(
     val connectionFailure: RemoteConnectionFailure? = null,
     val capabilities: ServerChatCapabilities = ServerChatCapabilities(),
     val localProviderIds: Set<String> = emptySet(),
+    val openCode: Boolean = false,
 )
 
-class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSideSessions, private val scope: CoroutineScope,
+class RemoteWorkspace(private val sessionFactory: suspend (String) -> GenerativeServerSessions, private val scope: CoroutineScope,
     private val loadLastSession: suspend (String) -> String? = { null },
     private val saveLastSession: suspend (String, String?) -> Unit = { _, _ -> },
     private val loadActivation: (suspend () -> String?)? = null,
     private val saveActivation: suspend (String?) -> Unit = {},
     private val cache: RemoteConversationCache? = null,
     private val cacheScope: suspend (String) -> RemoteCacheScope? = { null },
-    private val resolveLocalProvider: suspend (ModelProvider) -> ModelProvider = { it }) {
+    private val resolveLocalProvider: suspend (ModelProvider) -> ModelProvider = { it },
+    private val openCodeFactory: suspend (String) -> OpenCodeApi? = { null }) {
     private val mutable = MutableStateFlow(RemoteWorkspaceState(restoring = loadActivation != null))
     val state: StateFlow<RemoteWorkspaceState> = mutable.asStateFlow()
     private var generation = 0L
-    private var sessions: ServerSideSessions? = null
+    private var sessions: GenerativeServerSessions? = null
     private var stream: Job? = null
+    private var openingConnection: Job? = null
+    private var openCode: OpenCodeWorkspace? = null
     private var requestId: String? = null
     private var serverProviders = emptyList<ModelProvider>()
     private var localProviders = emptyList<ModelProvider>()
@@ -121,7 +131,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
 
     /** Local metadata is scoped to the active connection and never includes resolved credentials. */
     fun setLocalProviders(connectionId: String, providers: List<ModelProvider>) {
-        if (mutable.value.connectionId != connectionId) return
+        if (mutable.value.connectionId != connectionId || mutable.value.openCode) return
         localProviders = providers
         mutable.update { state ->
             val (combined, localIds) = combinedProviders(state.capabilities)
@@ -167,27 +177,45 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
     }
 
     fun disable() {
+        openingConnection?.cancel()
+        openCode?.close()
+        openCode = null
         generation++; stream?.cancel(); stream = null; sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
         mutable.value = RemoteWorkspaceState()
         persistActivation(null, generation)
     }
     fun profileRemoved() {
+        openingConnection?.cancel()
+        openCode?.close()
+        openCode = null
         generation++; stream?.cancel(); sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
         mutable.value = RemoteWorkspaceState(enabled = true, error = true)
     }
     fun enable(id: String) {
+        openingConnection?.cancel()
+        openCode?.close()
+        openCode = null
         generation++; val epoch = generation
         stream?.cancel(); sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
         activationError = false
         mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, busy = true)
         val activation = persistActivation(id, epoch)
-        scope.launch {
-            var opening: ServerSideSessions? = null
+        openingConnection = scope.launch {
+            var opening: GenerativeServerSessions? = null
             var verified = false
             try {
                 activation.join()
                 if (epoch != generation) return@launch
                 if (activationError) { mutable.update { it.copy(busy = false, error = true) }; return@launch }
+                val openCodeApi = openCodeFactory(id)
+                if (epoch != generation) return@launch
+                if (openCodeApi != null) {
+                    val workspace = OpenCodeWorkspace(id, scope, mutable, loadLastSession, saveLastSession)
+                    openCode = workspace
+                    mutable.update { it.copy(openCode = true) }
+                    workspace.connect(openCodeApi)
+                    return@launch
+                }
                 // Private, encrypted cache provides an immediate read-only view while
                 // the server is checked; the server list/revision is authoritative.
                 val owner = cacheOrNull { cacheScope(id) }
@@ -260,6 +288,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         }
     }
     fun selectModel(provider: String, model: String) {
+        openCode?.let { return it.selectModel(provider, model) }
         val current = mutable.value
         if (current.busy || current.running || !current.providers.any { it.id == provider && it.config.modelIds?.contains(model) == true }) return
         val keys = providerKeys[provider]
@@ -285,6 +314,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
     }
     fun dismissKeySelection() { pendingSelection = null; mutable.update { it.copy(pendingKeys = emptyList()) } }
     fun select(id: String) {
+        openCode?.let { return it.select(id) }
         if (sessions == null && mutable.value.busy) return
         val connection = mutable.value.connectionId ?: return
         val owner = activeCacheScope
@@ -321,6 +351,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         } }
     }
     fun newChat() {
+        openCode?.let { return it.newChat() }
         if (sessions == null && mutable.value.busy) return
         generation++
         stream?.cancel(); requestId = null
@@ -336,6 +367,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         mutable.update { it.copy(snapshot = null, conversation = null, running = false, busy = false, error = false, actionFailure = null) }
     }
     fun send(text: String, files: List<String>): Boolean {
+        openCode?.let { return it.send(text, files) }
         val current = mutable.value; val api = sessions ?: return false
         if (!current.enabled || current.busy || current.running || current.error || text.isBlank() || files.isNotEmpty() || current.modelId.isEmpty() ||
             current.providers.none { it.id == current.providerId && it.config.modelIds?.contains(current.modelId) == true }) return false
@@ -400,7 +432,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                             val revision = data.getValue("revision").jsonPrimitive.long
                             val conversation = data.getValue("conversation").jsonObject
                             if (revision <= 0 || conversation["id"]?.jsonPrimitive?.content != id) {
-                                throw ServerSideProtocolException("Invalid conversation event")
+                                throw GenerativeServerProtocolException("Invalid conversation event")
                             }
                             if (revision > (mutable.value.snapshot?.revision ?: 0)) {
                                 val update = ServerSnapshot(id, revision, conversation)
@@ -432,10 +464,15 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         }
         return true
     }
-    fun stop() { val api = sessions ?: return; val id = mutable.value.snapshot?.sessionId ?: return; val request = requestId ?: return
+    fun stop() {
+        openCode?.let { return it.stop() }
+        val api = sessions ?: return; val id = mutable.value.snapshot?.sessionId ?: return; val request = requestId ?: return
         scope.launch { runCatching { api.cancel(id, request) } }
     }
-    fun rename(id: String, title: String) = change(id) { snap -> JsonObject(snap.conversation + ("title" to JsonPrimitive(title))) }
+    fun rename(id: String, title: String) {
+        openCode?.let { return it.rename(id, title) }
+        change(id) { snap -> JsonObject(snap.conversation + ("title" to JsonPrimitive(title))) }
+    }
     fun editMessage(id: String, content: String, files: List<String>): Boolean {
         val snapshot = mutable.value.snapshot ?: return false
         if (files.isNotEmpty() || mutable.value.running || mutable.value.busy) return false
@@ -480,7 +517,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         scope.launch {
             try {
                 val snap = api.open(id, cached(id, owner))
-                if (snap.revision != expected) throw ServerSideRpcException(RpcError("revision_conflict", "Conversation changed on the server"))
+                if (snap.revision != expected) throw GenerativeServerRpcException(RpcError("revision_conflict", "Conversation changed on the server"))
                 val edited = transform(snap)
                 val previous = snap.conversation["updated_at"]?.jsonPrimitive?.long ?: 0
                 val changed = JsonObject(edited + ("updated_at" to JsonPrimitive(maxOf(previous, System.currentTimeMillis()))))
@@ -499,7 +536,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
                 val refreshed = runCatching { api.get(id) }.getOrNull()
                 if (epoch == generation) {
                     mutable.update { state ->
-                        val next = state.copy(busy = false, actionFailure = if (failure is ServerSideRpcException && failure.rpcError.code == "revision_conflict")
+                        val next = state.copy(busy = false, actionFailure = if (failure is GenerativeServerRpcException && failure.rpcError.code == "revision_conflict")
                             RemoteActionFailure.REVISION_CONFLICT else RemoteActionFailure.OPERATION_FAILED)
                         if (refreshed != null && state.snapshot?.sessionId == id) setSnapshot(next, refreshed) else next
                     }
@@ -509,6 +546,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
         }
     }
     fun delete(id: String) {
+        openCode?.let { return it.delete(id) }
         val api = sessions ?: return; val epoch = generation; val expected = expectedRevision(id) ?: return
         val owner = activeCacheScope
         scope.launch { try { api.delete(id, expected, UUID.randomUUID().toString()); val list = api.list().filter { it.deletedAt == null }
@@ -525,7 +563,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> ServerSide
 
 private fun SessionListItem.ui() = ConversationListItem(id, title, createdAt, updatedAt, tokenCount?.toInt(), providerId, modelId, profileId, reasoningEffort, hasMessages, hasSummary)
 private fun ServerSnapshot.ui(delta: String = ""): Conversation {
-    val conversation = ServerSideCodec.json.decodeFromString<Conversation>(conversation.toString())
+    val conversation = GenerativeServerCodec.json.decodeFromString<Conversation>(conversation.toString())
     if (delta.isEmpty() || conversation.messages.isEmpty()) return conversation.copy(structuralRevision = revision)
     val index = conversation.messages.indexOfLast { it.role == org.starfall.generative.shared.model.ChatRole.MODEL }
     if (index < 0) return conversation
