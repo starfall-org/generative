@@ -1344,7 +1344,7 @@ internal fun AppNavigation(
                     composable("server_inventory/{connectionId}/{kind}") { entry ->
                         val connectionId = entry.arguments?.getString("connectionId").orEmpty()
                         val kind = entry.arguments?.getString("kind").orEmpty()
-                        org.starfall.generative.features.serverconnection.ui.ServerInventoryScreen(
+                        ServerCatalogDestination(
                             service = serverConnections, connectionId = connectionId,
                             providers = kind == "providers", onBack = { navController.popBackStack() })
                     }

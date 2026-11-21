@@ -54,9 +54,13 @@ internal class RemoteMachineConnectionManager(
      * host-key policy, proxies, keepalives and reference-counted lifecycle. No extra SSH login
      * is created if the machine is already connected. This never starts port forwards or a PTY.
      */
-    suspend fun openExecStream(machine: RemoteMachine, command: String): RemoteExecStream {
+    suspend fun openExecStream(
+        machine: RemoteMachine, command: String, disconnectWhenIdle: Boolean
+    ): RemoteExecStream {
         require(command.isNotBlank())
-        val shared = acquireShared(machine.id, create = machine)
+        val shared = acquireShared(
+            machine.id, create = machine, disconnectOnCancelledAcquisition = disconnectWhenIdle
+        )
             ?: error("Could not open an SSH connection.")
         var channel: ChannelExec? = null
         return try {
@@ -71,13 +75,13 @@ internal class RemoteMachineConnectionManager(
                 exec.connect(machine.connectTimeoutSeconds * 1_000)
                 currentCoroutineContext().ensureActive()
                 RemoteExecStream(input, output) {
-                    exec.disconnect()
-                    shared.release()
+                    try { exec.disconnect() }
+                    finally { shared.release(disconnectWhenIdle) }
                 }
             }
         } catch (error: Throwable) {
-            channel?.disconnect()
-            shared.release()
+            try { channel?.disconnect() }
+            finally { shared.release(disconnectWhenIdle) }
             if (!shared.session.isConnected) {
                 withContext(NonCancellable + Dispatchers.IO) { dropConnection(shared) }
             }
@@ -264,6 +268,8 @@ internal class RemoteMachineConnectionManager(
         val pinned: Boolean get() = forwards != null
         private var users = 0
         private var closeOnRelease = false
+        // Hold the runtime's idle-close request across any other leases on this session.
+        private var runtimeClosePending = false
         private var idleJob: Job? = null
         private var monitorJob: Job? = null
 
@@ -295,11 +301,12 @@ internal class RemoteMachineConnectionManager(
 
         /** Every acquire() needs exactly one release(); the idle countdown starts at the last one. */
         @Synchronized
-        fun release() {
+        fun release(disconnectWhenIdle: Boolean = false) {
+            runtimeClosePending = runtimeClosePending || disconnectWhenIdle
             if (users > 0) users--
             if (users == 0) {
-                if (pinned && !closeOnRelease) return
-                val wait = if (closeOnRelease) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
+                if (pinned) return
+                val wait = if (closeOnRelease || runtimeClosePending) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
                 idleJob?.cancel()
                 idleJob = ioScope.launch {
                     delay(wait)
@@ -375,27 +382,37 @@ internal class RemoteMachineConnectionManager(
         machineId: String,
         create: RemoteMachine?,
         passwordOverride: String? = null,
-        askSecret: RemoteSecretPrompt? = null
-    ): SharedConnection? =
-        withContext(Dispatchers.IO) {
-            machineLocks.getOrPut(machineId) { Mutex() }.withLock {
-                var connection = connections[machineId]
-                if (connection != null && !connection.session.isConnected) {
-                    closeConnection(connection)
-                    connection = null
+        askSecret: RemoteSecretPrompt? = null,
+        disconnectOnCancelledAcquisition: Boolean = false
+    ): SharedConnection? {
+        var acquired: SharedConnection? = null
+        try {
+            return withContext(Dispatchers.IO) {
+                machineLocks.getOrPut(machineId) { Mutex() }.withLock {
+                    var connection = connections[machineId]
+                    if (connection != null && !connection.session.isConnected) {
+                        closeConnection(connection)
+                        connection = null
+                    }
+                    if (connection == null) {
+                        if (create == null) return@withLock null
+                        val session = openSession(create, passwordOverride, askSecret)
+                        connection = SharedConnection(machineId, session)
+                        connections[machineId] = connection
+                        connection.startMonitor()
+                        publishConnected()
+                    }
+                    connection.acquire()
+                    acquired = connection
+                    connection
                 }
-                if (connection == null) {
-                    if (create == null) return@withLock null
-                    val session = openSession(create, passwordOverride, askSecret)
-                    connection = SharedConnection(machineId, session)
-                    connections[machineId] = connection
-                    connection.startMonitor()
-                    publishConnected()
-                }
-                connection.acquire()
-                connection
             }
+        } catch (error: Throwable) {
+            // Dispatch back to the caller can be cancelled after the lease was acquired.
+            acquired?.release(disconnectOnCancelledAcquisition)
+            throw error
         }
+    }
 
     private suspend fun openShellChannel(
         session: Session,

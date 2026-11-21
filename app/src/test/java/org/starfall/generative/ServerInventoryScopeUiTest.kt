@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.database.repositories.ServerConnectionRepository
 import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
-import org.starfall.generative.features.serverconnection.ui.ServerInventoryScreen
+import org.starfall.generative.navigation.ServerCatalogDestination
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -53,12 +53,13 @@ class ServerInventoryScopeUiTest {
                 var connectionId by mutableStateOf("first")
                 compose.setScreenContent {
                     MaterialTheme {
-                        ServerInventoryScreen(service, connectionId, providers = true, onBack = {})
+                        ServerCatalogDestination(service, connectionId, providers = true, onBack = {})
                     }
                 }
                 awaitText("First default")
                 compose.onNodeWithText("Server default").assertDoesNotExist()
-                compose.onNodeWithContentDescription("Add").assertExists()
+                compose.onNodeWithTag("add_provider").assertExists()
+                compose.onNodeWithTag("add_provider_group").assertExists()
                 compose.onNodeWithContentDescription("Switch to Grid View").performClick()
                 compose.onNodeWithContentDescription("Search providers").performClick()
                 compose.onNodeWithTag("provider_search").performTextInput("First")
@@ -94,6 +95,14 @@ class ServerInventoryScopeUiTest {
                             "/api/mcp" -> MockResponse().setBody(
                                 """{"data":[{"name":"Remote MCP","status":{"status":"connected"}}]}"""
                             )
+                            "/api/experimental/mcp/new-runtime", "/api/location/reload" -> MockResponse().setResponseCode(204)
+                            "/api/config" -> MockResponse().setBody(
+                                """[{"type":"directory","path":"/config"},{"type":"document","path":"/config/opencode.jsonc","info":{"mcp":{"servers":{"Remote MCP":{}}}}}]"""
+                            )
+                            "/api/fs/read/opencode.jsonc" -> MockResponse().setBody(
+                                """{"mcp":{"servers":{"Remote MCP":{"type":"remote","url":"https://old.example/mcp","pool":true}}}}"""
+                            )
+                            "/api/experimental/fs/write" -> MockResponse().setBody("""{"data":{"path":"/config/opencode.jsonc"}}""")
                             else -> MockResponse().setResponseCode(404)
                         }
                     }
@@ -107,18 +116,47 @@ class ServerInventoryScopeUiTest {
                 var providers by mutableStateOf(true)
                 compose.setScreenContent {
                     MaterialTheme {
-                        ServerInventoryScreen(service, "server", providers = providers, onBack = {})
+                        ServerCatalogDestination(service, "server", providers = providers, onBack = {})
                     }
                 }
                 awaitText("Remote provider")
-                compose.onNodeWithContentDescription("Add").assertExists()
+                compose.onNodeWithTag("add_provider").assertExists()
+                compose.onNodeWithTag("add_provider_group").assertExists()
                 compose.onNodeWithText("Server default").assertDoesNotExist()
                 compose.runOnIdle { providers = false }
                 awaitText("Remote MCP")
-                compose.onNodeWithContentDescription("Add").assertExists()
+                compose.onNodeWithContentDescription("Add").performClick()
+                compose.onNodeWithTag("mcp-connection-settings").assertExists()
+                compose.onNodeWithTag("mcp_name").performTextInput("new-runtime")
+                compose.onNodeWithTag("mcp_url").performTextInput("https://example.com/mcp")
+                compose.onNodeWithText("Save").performClick()
+                compose.waitUntil(10_000) {
+                    requests.any { it.method == "PUT" && it.requestUrl?.encodedPath == "/api/experimental/mcp/new-runtime" }
+                }
+                val save = requests.single { it.method == "PUT" }
+                val body = save.body.readUtf8()
+                assertTrue(body.contains("https://example.com/mcp") && body.contains("\"type\":\"remote\""))
                 compose.onNodeWithText("Server default").assertDoesNotExist()
                 assertTrue(requests.none { it.requestUrl?.encodedPath == "/api/project" })
                 assertTrue(requests.all { it.requestUrl?.queryParameter("location[directory]") == null })
+
+                compose.waitUntil(10_000) {
+                    compose.onAllNodesWithTag("mcp-connection-settings").fetchSemanticsNodes().isEmpty()
+                }
+                compose.onNodeWithText("Remote MCP").performClick()
+                compose.waitUntil(10_000) {
+                    compose.onAllNodesWithTag("mcp_url").fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.onNodeWithTag("mcp_url").assertTextContains("https://old.example/mcp")
+                    .performTextReplacement("https://new.example/mcp")
+                compose.onNodeWithText("Save").performClick()
+                compose.waitUntil(10_000) {
+                    requests.any { it.requestUrl?.encodedPath == "/api/location/reload" }
+                }
+                val edit = requests.single { it.requestUrl?.encodedPath == "/api/experimental/fs/write" }
+                assertTrue(edit.requestUrl?.queryParameter("path") == "/config/opencode.jsonc")
+                val written = edit.body.readUtf8()
+                assertTrue(written.contains("https://new.example/mcp") && written.contains("\"pool\":true"))
             }
         } finally { db.close() }
     }

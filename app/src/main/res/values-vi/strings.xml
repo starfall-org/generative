@@ -103,7 +103,7 @@
     <string name="chat_temporary_title">Chat tạm thời</string>
     <string name="chat_temporary_description">Đây là một chat tạm thời. Nó không hiện trên thanh bên và không được lưu vào lịch sử chat. Khi chuyển sang chat khác, phiên này kết thúc, các yêu cầu của nó bị hủy và các tệp tạm thời bị xóa.</string>
     <string name="sidebar_search">Tìm kiếm</string>
-    <string name="sidebar_menu">Menu ứng dụng</string>
+    <string name="sidebar_menu">Menu</string>
     <string name="sidebar_clear_search">Xóa tìm kiếm</string>
     <string name="sidebar_exit_selection">Thoát chế độ chọn</string>
     <string name="sidebar_move_selected_to_folder">Chuyển các chat đã chọn vào thư mục</string>
@@ -1125,6 +1125,7 @@
     <string name="server_connection_providers_local">Cục bộ</string>
     <string name="server_connection_providers_both">Máy chủ và cục bộ</string>
     <string name="server_connection_program">Chương trình máy chủ</string>
+    <string name="server_connection_open_catalog">Mở %1$s</string>
     <string name="server_import_local">Nhập từ cục bộ</string>
     <string name="server_import_credentials">Cấu hình đã chọn và thông tin xác thực sẽ được sao chép lên máy chủ này.</string>
     <string name="server_import_runtime_credentials">Kết nối và thông tin xác thực đã chọn sẽ được sao chép lên OpenCode cho đến khi máy chủ khởi động lại.</string>

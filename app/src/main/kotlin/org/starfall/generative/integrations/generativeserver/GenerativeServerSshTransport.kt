@@ -48,16 +48,24 @@ class GenerativeServerSshTransport internal constructor(
     private val openStream: suspend (String) -> RemoteExecStream,
     private val identity: PairedIdentity
 ) : GenerativeServerWire {
-    constructor(remote: RemoteMachineService, machineId: String, identity: PairedIdentity) :
-        this({ command -> remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command) }, identity)
+    constructor(
+        remote: RemoteMachineService, machineId: String, identity: PairedIdentity,
+        disconnectWhenIdle: Boolean = false
+    ) : this({ command ->
+        remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command, disconnectWhenIdle)
+    }, identity)
+
     private val lock = Mutex()
+    private val lifecycle = Any()
     @Volatile private var channel: RemoteExecStream? = null
     @Volatile private var closed = false
 
     override fun close() {
-        closed = true
-        channel?.close()
-        channel = null
+        val connection = synchronized(lifecycle) {
+            closed = true
+            channel.also { channel = null }
+        }
+        connection?.close()
     }
 
     /** A local token marker only: the framed stream authenticates with the paired secret. */
@@ -80,26 +88,24 @@ class GenerativeServerSshTransport internal constructor(
 
     override suspend fun rpcAsync(token: AccessToken, request: RpcRequest): RpcReply = lock.withLock {
         if (closed) throw IOException("SSH connection closed")
-        val connection = channel ?: openStream(STREAM_COMMAND)
+        val existing = channel
+        val connection = existing ?: openStream(STREAM_COMMAND)
         try {
+            if (existing == null) synchronized(lifecycle) {
+                if (closed) throw IOException("SSH connection closed")
+                // Publish before authentication so leaving the runtime can stop a blocked read.
+                channel = connection
+            }
             cancellableSshIO(connection) {
-                if (channel !== connection) {
-                    val opened = connection
-                    try {
-                        writeFrame(opened.output, GenerativeServerCodec.json.encodeToString(
-                            FramedAuth(type = "auth", protocol = 5, clientId = identity.clientId, secret = identity.secret)))
-                        val reply = readFrame(opened.input)
-                        val parsed = GenerativeServerCodec.json.parseToJsonElement(reply) as? JsonObject
-                        if (parsed?.get("type")?.jsonPrimitive?.content != "paired" ||
-                            parsed["protocol"]?.jsonPrimitive?.content != "5" ||
-                            parsed["client_id"]?.jsonPrimitive?.content != identity.clientId) {
-                            throw GenerativeServerProtocolException("SSH Generative Server authentication rejected")
-                        }
-                        if (closed) throw IOException("SSH connection closed")
-                        channel = opened
-                    } catch (failure: Throwable) {
-                        opened.close()
-                        throw failure
+                if (existing == null) {
+                    writeFrame(connection.output, GenerativeServerCodec.json.encodeToString(
+                        FramedAuth(type = "auth", protocol = 5, clientId = identity.clientId, secret = identity.secret)))
+                    val reply = readFrame(connection.input)
+                    val parsed = GenerativeServerCodec.json.parseToJsonElement(reply) as? JsonObject
+                    if (parsed?.get("type")?.jsonPrimitive?.content != "paired" ||
+                        parsed["protocol"]?.jsonPrimitive?.content != "5" ||
+                        parsed["client_id"]?.jsonPrimitive?.content != identity.clientId) {
+                        throw GenerativeServerProtocolException("SSH Generative Server authentication rejected")
                     }
                 }
                 writeFrame(connection.output, GenerativeServerCodec.encode(request))
@@ -116,7 +122,9 @@ class GenerativeServerSshTransport internal constructor(
                 throw GenerativeServerProtocolException("SSH event flood interrupted RPC reply")
             }
         } catch (failure: Throwable) {
-            if (channel === connection) channel = null
+            synchronized(lifecycle) {
+                if (channel === connection) channel = null
+            }
             connection.close()
             throw failure // Never retry a mutation or generation after uncertain delivery.
         }

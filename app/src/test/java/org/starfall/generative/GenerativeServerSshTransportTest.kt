@@ -111,6 +111,31 @@ class GenerativeServerSshTransportTest {
         Unit
     }
 
+    @Test fun closingWhileWaitingForAuthenticationReleasesTheExecChannel() = runBlocking {
+        val clientIn = PipedInputStream(8192)
+        val serverOut = PipedOutputStream(clientIn)
+        val serverIn = PipedInputStream(8192)
+        val clientOut = PipedOutputStream(serverIn)
+        val released = CompletableDeferred<Unit>()
+        val stream = RemoteExecStream(clientIn, clientOut) {
+            serverOut.close()
+            clientIn.close()
+            clientOut.close()
+            serverIn.close()
+            released.complete(Unit)
+        }
+        val identity = PairedIdentity("owner", "secret", "server")
+        val client = GenerativeServerClient(GenerativeServerSshTransport({ stream }, identity), identity)
+        val rpc = async { runCatching { client.rpc(RpcRequest("blocked", "capabilities.get")) } }
+        withTimeout(5000) {
+            val auth = async(Dispatchers.IO) { GenerativeServerSshTransport.readFrame(serverIn) }
+            assertEquals("auth", GenerativeServerCodec.json.parseToJsonElement(auth.await()).jsonObject.getValue("type").jsonPrimitive.content)
+            client.close()
+            released.await()
+            assertTrue(rpc.await().isFailure)
+        }
+    }
+
     @Test fun execChannelCloseReleasesTheSharedSshLeaseOnlyOnce() {
         var releases = 0
         val stream = RemoteExecStream(ByteArrayInputStream(byteArrayOf()), ByteArrayOutputStream()) {

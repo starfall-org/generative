@@ -135,4 +135,79 @@ class OpenCodeProviderConfigTest {
             assertEquals(5, server.requestCount)
         }
     }
+    @Test fun providerEditAndDeletePreserveOtherEntriesAndRawSecretReferences() {
+        val raw = """
+            {
+              "providers": {
+                "first": {"name":"First"},
+                // preserve this note
+                "gateway": {"name":"Gateway","settings":{"apiKey":"{env:KEY}","timeout":300},"models":{"model-a":{"limit":{"output":8192}}}},
+                "last": {"name":"Last"},
+              },
+              "mcp": {"servers": {}},
+            }
+        """.trimIndent()
+        val path = listOf("providers", "gateway")
+        val entry = OpenCodeCatalogEntry(OpenCodeProviderConfigFile("/config/opencode.jsonc", true), path,
+            requireNotNull(openCodeConfigObject(raw, path)))
+        val initial = entry.toProvider(org.starfall.generative.shared.model.provider.ModelProvider(
+            "gateway", "Gateway", ModelApiType.OPENAI, baseUrl = "https://gateway.example/v1"))
+        val updated = entry.withProvider(initial, initial.copy(name = "Updated"))
+        assertEquals("{env:KEY}", updated.getValue("settings").jsonObject.getValue("apiKey").jsonPrimitive.content)
+        assertEquals(entry.value["models"], updated["models"])
+        val edited = replaceOpenCodeConfigEntry(raw, entry, updated)
+        assertEquals(raw.replace(entry.value.toString(), updated.toString()), edited)
+        val deleted = replaceOpenCodeConfigEntry(edited, entry.copy(value = updated), null)
+        assertTrue(deleted.contains("// preserve this note"))
+        assertEquals(setOf("first", "last"), obj(deleted).getValue("providers").jsonObject.keys)
+        assertEquals(obj(raw)["mcp"], obj(deleted)["mcp"])
+        assertTrue(runCatching { replaceOpenCodeConfigEntry(edited, entry, null) }.isFailure)
+    }
+
+    @Test fun mcpRenameAndEditPreserveServerOptionsAndUnrelatedServices() {
+        val raw = """{"mcp":{"servers":{"tool":{"type":"remote","url":"https://old.example/mcp","pool":true,"oauth":{"scope":"tools"}},"keep":{"type":"local","command":["keep"]}}}}"""
+        val path = listOf("mcp", "servers", "tool")
+        val entry = OpenCodeCatalogEntry(OpenCodeProviderConfigFile("/config/opencode.jsonc", true), path,
+            requireNotNull(openCodeConfigObject(raw, path)))
+        val initial = entry.toMcp()
+        val replacement = entry.withMcp(initial, initial.copy(name = "renamed", url = "https://new.example/mcp"))
+        val changed = replaceOpenCodeConfigEntry(raw, entry, replacement, newKey = "renamed")
+        assertEquals("""{"type":"remote","url":"https://new.example/mcp","pool":true,"oauth":{"scope":"tools"}}""", replacement.toString())
+        assertEquals(replacement, openCodeConfigObject(changed, listOf("mcp", "servers", "renamed")))
+        assertEquals(openCodeConfigObject(raw, listOf("mcp", "servers", "keep")),
+            openCodeConfigObject(changed, listOf("mcp", "servers", "keep")))
+        assertNull(openCodeConfigObject(changed, path))
+        assertTrue(runCatching { replaceOpenCodeConfigEntry(raw, entry, replacement, newKey = "keep") }.isFailure)
+    }
+
+    @Test fun writeRejectsExternalChangesAndOnlyWritesToTheOpenedConfigSource() = runBlocking {
+        MockWebServer().use { server ->
+            val path = listOf("providers", "gateway")
+            val sources = """[{"type":"directory","path":"/config"},{"type":"document","path":"/config/opencode.jsonc","info":{"providers":{"gateway":{}}}}]"""
+            val raw = """{"providers":{"gateway":{}}}"""
+            server.enqueue(MockResponse().setBody(sources))
+            server.enqueue(MockResponse().setBody(raw))
+            val api = OpenCodeApi(server.url("/").toString(), OpenCodeCredentials("opencode", "test"))
+            val entry = api.catalogConfigEntry(path, null)
+
+            server.enqueue(MockResponse().setBody(sources))
+            server.enqueue(MockResponse().setBody(raw))
+            server.enqueue(MockResponse().setBody("""{"providers":{"gateway":{}},"model":"someone/else"}"""))
+            assertTrue(runCatching { api.changeCatalogConfigEntry(entry, provider, null) }.isFailure)
+            repeat(5) { assertEquals("GET", server.takeRequest().method) }
+
+            server.enqueue(MockResponse().setBody(sources))
+            server.enqueue(MockResponse().setBody(raw))
+            server.enqueue(MockResponse().setBody(raw))
+            server.enqueue(MockResponse().setBody("""{"data":{"path":"/config/opencode.jsonc"}}"""))
+            server.enqueue(MockResponse().setResponseCode(204))
+            assertTrue(api.changeCatalogConfigEntry(entry, null, null))
+            repeat(3) { assertEquals("GET", server.takeRequest().method) }
+            val write = server.takeRequest()
+            assertEquals("/config/opencode.jsonc", write.requestUrl?.queryParameter("path"))
+            assertEquals("""{"providers":{}}""", write.body.readUtf8())
+            assertEquals("/api/location/reload", server.takeRequest().requestUrl?.encodedPath)
+        }
+    }
+
 }

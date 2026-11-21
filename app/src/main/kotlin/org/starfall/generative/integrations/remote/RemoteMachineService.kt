@@ -402,12 +402,14 @@ class RemoteMachineService(
     suspend fun disconnectMachineNow(machineId: String): Boolean = connectionManager.disconnectMachineNow(machineId)
 
     /** Open a binary exec channel through Remote SSH's existing shared connection and settings. */
-    suspend fun openExecStream(machineId: String, command: String): RemoteExecStream {
+    suspend fun openExecStream(
+        machineId: String, command: String, disconnectWhenIdle: Boolean = false
+    ): RemoteExecStream {
         store.awaitInitialized()
         val machine = requireNotNull(state.value.machines.firstOrNull {
             it.id == machineId && it.type == RemoteMachineType.SSH
         }) { "Saved SSH machine is unavailable" }
-        return connectionManager.openExecStream(machine, command)
+        return connectionManager.openExecStream(machine, command, disconnectWhenIdle)
     }
 
     private suspend fun openSession(

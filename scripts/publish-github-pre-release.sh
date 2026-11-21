@@ -8,7 +8,7 @@ repo="${GITHUB_RELEASE_REPO:-starfall-org/generative}"
 cd "${CM_BUILD_DIR:-${AC_REPOSITORY_DIR:-$(git rev-parse --show-toplevel)}}"
 command -v gh >/dev/null || { echo 'GitHub CLI (gh) is required.' >&2; exit 1; }
 
-# Build one signed APK; main uses the unstable suffix, while other branches keep their full branch suffix.
+# Build one signed APK with the same version naming as a stable build.
 "$PWD/scripts/build-unstable-apk.sh"
 
 # Keep the GitHub prerelease tag in sync with both the APK version and branch.
@@ -33,7 +33,7 @@ if [[ ! "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(.*)$ ]]; then
 fi
 base_version="${BASH_REMATCH[1]}"
 if [[ -z "$branch" || "$branch" == main || "$branch" == HEAD ]]; then
-  expected_version="$base_version-unstable"
+  expected_version="$base_version"
 else
   expected_version="$base_version-$branch"
 fi
@@ -47,6 +47,11 @@ tag="${GITHUB_RELEASE_TAG:-$expected_tag}"
 [[ "$tag" == "$expected_tag" ]] || { echo "Configured GitHub prerelease tag $tag does not match expected tag $expected_tag." >&2; exit 1; }
 if [[ -n "${CM_TAG:-}" && "$CM_TAG" != "$tag" ]]; then
   echo "Build tag $CM_TAG does not match configured prerelease tag $tag." >&2
+  exit 1
+fi
+# A stable release and a pre-release now share the same tag for a commit.
+if [[ "$(gh release view "$tag" --repo "$repo" --json isPrerelease,isDraft --jq '(.isPrerelease == false and .isDraft == false)' 2>/dev/null || true)" == true ]]; then
+  echo "Release $tag is already stable; refusing to replace it with a pre-release." >&2
   exit 1
 fi
 echo "Publishing pre-release ($tag)."

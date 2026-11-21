@@ -7,6 +7,7 @@ import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.database.repositories.ModelRepository
 import org.starfall.generative.database.repositories.McpRepository
 import org.starfall.generative.integrations.opencode.openCodeMcpImportConfig
+import org.starfall.generative.integrations.opencode.openCodeProviderType
 import org.starfall.generative.shared.model.isContentApiPreset
 import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.McpAuthMethod
@@ -24,9 +25,15 @@ import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 import org.starfall.generative.integrations.opencode.OpenCodePairingLink
 import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeProviderConfigFile
+import org.starfall.generative.integrations.opencode.OpenCodeCatalogEntry
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import org.starfall.generative.shared.model.api.ModelApiType
+import org.starfall.generative.shared.model.McpInfo
+import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.RemoteMachineType
 
 class ServerConnections(val repository: ServerConnectionRepository, private val clientFactory: suspend (String) -> GenerativeServerClient,
@@ -50,6 +57,18 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         config: JsonObject, directory: String?): Boolean =
         providerConfigWrites.withLock { openCode(id).addConfiguredProvider(file, providerId, config, directory) }
 
+    internal suspend fun providerConfigEntry(id: String, provider: String): OpenCodeCatalogEntry =
+        openCode(id).catalogConfigEntry(listOf("providers", provider), directory = null)
+
+    internal suspend fun mcpConfigEntry(id: String, name: String): OpenCodeCatalogEntry =
+        openCode(id).catalogConfigEntry(listOf("mcp", "servers", name), directory = null)
+
+    internal suspend fun changeCatalogConfigEntry(
+        id: String, entry: OpenCodeCatalogEntry, replacement: JsonObject?, newKey: String? = null
+    ): Boolean = providerConfigWrites.withLock {
+        openCode(id).changeCatalogConfigEntry(entry, replacement, directory = null, newKey = newKey)
+    }
+
     suspend fun integration(id: String, integrationId: String, directory: String?) = openCode(id).integration(integrationId, directory)
     suspend fun connectIntegrationKey(id: String, integrationId: String, key: String, answer: JsonObject?, directory: String?) =
         openCode(id).connectIntegrationKey(integrationId, key, answer, directory)
@@ -71,12 +90,32 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
                 ServerInventoryItem(provider.getValue("id").jsonPrimitive.content,
                     provider.getValue("name").jsonPrimitive.content,
                     provider.getValue("package").jsonPrimitive.content,
-                    provider["integrationID"]?.jsonPrimitive?.content)
+                    provider["integrationID"]?.jsonPrimitive?.content,
+                    providerType = openCodeProviderType(provider.getValue("package").jsonPrimitive.content),
+                    url = ((provider["settings"] as? JsonObject)?.get("baseURL") as? JsonPrimitive)?.contentOrNull)
             }
         }
         val sessions = GenerativeServerSessions(clientFactory(id))
         return try {
-            sessions.catalog().providers.map { ServerInventoryItem(it.id, it.name, it.type) }
+            sessions.catalog().providers.map { ServerInventoryItem(it.id, it.name, it.type,
+                providerType = ModelApiType.entries.firstOrNull { type -> type.name.equals(it.type, true) }
+                    ?: ModelApiType.OPENAI) }
+        } finally { sessions.close() }
+    }
+
+    internal suspend fun saveImportedProvider(id: String, provider: ModelProvider) {
+        val sessions = GenerativeServerSessions(clientFactory(id))
+        try {
+            require(sessions.supportsCatalogImport(true))
+            sessions.importProvider(provider)
+        } finally { sessions.close() }
+    }
+
+    internal suspend fun saveImportedMcp(id: String, server: McpInfo) {
+        val sessions = GenerativeServerSessions(clientFactory(id))
+        try {
+            require(sessions.supportsCatalogImport(false))
+            sessions.importMcp(server)
         } finally { sessions.close() }
     }
 
@@ -142,7 +181,8 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             return try {
                 sessions.mcpCatalog()?.map { server ->
                     ServerInventoryItem(server.getValue("id").jsonPrimitive.content,
-                        server.getValue("name").jsonPrimitive.content, "unknown")
+                        server.getValue("name").jsonPrimitive.content, "unknown",
+                        url = (server["url"] as? JsonPrimitive)?.contentOrNull)
                 }
             } finally { sessions.close() }
         }
@@ -150,7 +190,8 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         return api.mcpServers(directory).map { server ->
             val name = server.getValue("name").jsonPrimitive.content
             ServerInventoryItem(name, server["title"]?.jsonPrimitive?.content ?: name,
-                server.getValue("status").jsonObject.getValue("status").jsonPrimitive.content)
+                server.getValue("status").jsonObject.getValue("status").jsonPrimitive.content,
+                url = (server["url"] as? JsonPrimitive)?.contentOrNull)
         }
     }
 
@@ -263,7 +304,10 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     }
 }
 
-data class ServerInventoryItem(val id: String, val name: String, val detail: String, val integrationId: String? = null)
+data class ServerInventoryItem(
+    val id: String, val name: String, val detail: String, val integrationId: String? = null,
+    val providerType: ModelApiType = ModelApiType.OPENAI, val url: String? = null
+)
 data class ServerProject(val name: String, val directory: String)
 
 internal data class LocalImportItem(val id: String, val name: String, val detail: String, val icon: String?)

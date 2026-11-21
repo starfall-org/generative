@@ -73,14 +73,14 @@ if ! keytool -list -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" -storepass:env
   exit 1
 fi
 
-echo "Building signed unstable APK (one Gradle invocation)..."
-"$ROOT_DIR/gradlew" --no-daemon -PunstableVersion=true :app:assembleRelease
+echo "Building signed pre-release APK (one Gradle invocation)..."
+"$ROOT_DIR/gradlew" --no-daemon :app:assembleRelease
 
 APK_DIR="$ROOT_DIR/app/build/outputs/apk/release"
 shopt -s nullglob
 APKS=("$APK_DIR"/*.apk)
 if (( ${#APKS[@]} != 1 )); then
-  echo "ERROR: Expected exactly one APK after the unstable build, found ${#APKS[@]} in $APK_DIR" >&2
+  echo "ERROR: Expected exactly one APK after the pre-release build, found ${#APKS[@]} in $APK_DIR" >&2
   exit 1
 fi
 
@@ -100,4 +100,4 @@ for apk in "${APKS[@]}"; do
   fi
 done
 
-echo "Signed unstable APK build finished."
+echo "Signed pre-release APK build finished."

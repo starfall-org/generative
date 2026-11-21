@@ -24,9 +24,16 @@ import org.starfall.generative.shared.model.language.normalizedForTemplate
 internal fun rememberedModelName(modelId: String): String =
     modelId.trim().substringAfterLast('/').trim().lowercase(Locale.ROOT)
 
+/** Optional storage boundary supplied by a host that presents an editor for another catalog. */
+interface ModelConfigurationMemoryScope {
+    val modelConfigurationNamespace: String
+}
+
 /** Portable model behavior, independent of provider prefixes and entity-specific icons. */
 class ModelConfigurationMemory(context: Context) {
-    private val preferences = context.applicationPreferences().stringPreferences("model-configuration-memory")
+    private val preferences = context.applicationPreferences().stringPreferences(
+        (context as? ModelConfigurationMemoryScope)?.modelConfigurationNamespace ?: "model-configuration-memory"
+    )
     private companion object {
         // Editor callbacks must not synchronously await DataStore during a click.
         val backgroundWrites = CoroutineScope(SupervisorJob() + Dispatchers.IO + LocalWriteErrors.handler)

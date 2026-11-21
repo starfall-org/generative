@@ -87,7 +87,22 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
                     } else service.rename(current, name, allowLocalProviders)
                     if (editorPage === page) editorPage = null
                 }
-            }, error = result?.takeIf { it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed })
+            },
+            error = result?.takeIf { it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed },
+            catalogContent = {
+                page.profile?.let { profile ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(enabled = !busy, onClick = { onProviders(profile.id) }) {
+                            Text(stringResource(R.string.server_connection_open_catalog, stringResource(R.string.model_providers)))
+                        }
+                        TextButton(enabled = !busy, onClick = { onMcp(profile.id) }) {
+                            Text(stringResource(R.string.server_connection_open_catalog, stringResource(R.string.mcp)))
+                        }
+                    }
+                    ServerConnectionCatalogImport(service, profile, busy, onBusyChange = { busy = it })
+                }
+            }
+        )
     }
     var search by rememberSaveable { mutableStateOf("") }
     var grid by rememberSaveable { mutableStateOf(false) }
@@ -172,7 +187,9 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
 @Composable
 internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines: List<RemoteMachine>,
     busy: Boolean, repairing: Boolean, onBack: () -> Unit,
-    onSave: (String, String, String, String, String, String, String, String, Boolean) -> Unit, error: Int?) {
+    onSave: (String, String, String, String, String, String, String, String, Boolean) -> Unit, error: Int?,
+    catalogContent: @Composable () -> Unit = {}
+) {
     var name by remember(profile?.id) { mutableStateOf(profile?.name.orEmpty()) }
     var program by remember(profile?.id) { mutableStateOf(if (profile?.transport == "opencode") "opencode" else "generative") }
     var transport by remember(profile?.id) { mutableStateOf(profile?.transport?.takeIf { it == "ssh" } ?: "http") }
@@ -222,6 +239,7 @@ internal fun ServerConnectionEditor(profile: ServerConnectionProfile?, machines:
                     modifier = Modifier.fillMaxWidth(), enabled = !busy)
             }
             if (profile != null) Text(profile.endpoint, style = MaterialTheme.typography.bodySmall)
+            if (profile != null && !repairing && !needsPairing) catalogContent()
             if (selectedTransport == "http") {
                 Text(stringResource(if (profile == null || profile.transport != "http")
                     R.string.server_connection_pair_hint else R.string.server_connection_repair_hint))

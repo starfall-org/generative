@@ -98,24 +98,56 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
         request("DELETE", listOf("api", "experimental", "mcp", validId(name)), locationQuery(directory))
     }
 
+    private suspend fun configDocuments(directory: String?): List<JsonObject> =
+        array(request("GET", listOf("api", "config"), locationQuery(directory))).map(::obj)
+
     suspend fun providerConfigFile(directory: String?): OpenCodeProviderConfigFile =
-        selectOpenCodeProviderConfig(array(request("GET", listOf("api", "config"), locationQuery(directory))).map(::obj), directory)
+        selectOpenCodeProviderConfig(configDocuments(directory), directory)
+
+    internal suspend fun catalogConfigEntry(path: List<String>, directory: String?): OpenCodeCatalogEntry {
+        val file = selectOpenCodeProviderConfig(configDocuments(directory), directory, path)
+        val value = requireNotNull(openCodeConfigObject(readConfig(file), path))
+        return OpenCodeCatalogEntry(file, path, value)
+    }
 
     suspend fun addConfiguredProvider(file: OpenCodeProviderConfigFile, id: String, config: JsonObject,
         directory: String?): Boolean {
-        // Resolve the same file again after editing; never redirect a pending save to a different scope.
         require(providerConfigFile(directory) == file)
         require(providers(directory).none { it["id"]?.jsonPrimitive?.content == id })
-        val query = locationQuery(file.parent)
-        val raw = try {
-            rawRequest("GET", listOf("api", "fs", "read", file.name), query)
+        val raw = readConfig(file)
+        return writeConfig(file, insertOpenCodeProvider(raw, id, config))
+    }
+
+    internal suspend fun changeCatalogConfigEntry(
+        entry: OpenCodeCatalogEntry, replacement: JsonObject?, directory: String?, newKey: String? = null
+    ): Boolean {
+        val documents = configDocuments(directory)
+        val file = selectOpenCodeProviderConfig(documents, directory, entry.path)
+        if (newKey != null) {
+            validId(newKey)
+            val newPath = entry.path.dropLast(1) + newKey
+            require(documents.none { (it["info"] as? JsonObject)?.configObject(newPath) != null }) { "Name already exists" }
+        }
+        require(file == entry.file) { "Configuration source changed" }
+        val raw = readConfig(file)
+        val updated = replaceOpenCodeConfigEntry(raw, entry, replacement, newKey)
+        if (updated == raw) return true
+        // The endpoint has no conditional write. Detect a change observed just before the write.
+        require(readConfig(file) == raw) { "Configuration file changed before saving" }
+        return writeConfig(file, updated)
+    }
+
+    private suspend fun readConfig(file: OpenCodeProviderConfigFile): String =
+        try {
+            rawRequest("GET", listOf("api", "fs", "read", file.name), locationQuery(file.parent))
         } catch (e: OpenCodeHttpException) {
             if (e.status != 404 || file.exists) throw e
             "{}"
         }
-        val updated = insertOpenCodeProvider(raw, id, config)
+
+    private suspend fun writeConfig(file: OpenCodeProviderConfigFile, raw: String): Boolean {
         val written = rawRequest("POST", listOf("api", "experimental", "fs", "write"),
-            query + ("path" to file.path), updated.toRequestBody("application/octet-stream".toMediaType()))
+            locationQuery(file.parent) + ("path" to file.path), raw.toRequestBody("application/octet-stream".toMediaType()))
         val confirmedPath = string(obj(obj(Json.parseToJsonElement(written)).required("data")), "path")
         require(confirmedPath == file.path) { "Unexpected written config path" }
         // Reload may fail independently of the write. Do not retry the mutation.

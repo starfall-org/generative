@@ -127,7 +127,7 @@
     <string name="chat_temporary_title">Temporary Chat</string>
     <string name="chat_temporary_description">This is a temporary chat. It won’t appear in your sidebar or be saved to chat history. Switching chats ends this session, cancels its requests, and removes its temporary files.</string>
     <string name="sidebar_search">Search</string>
-    <string name="sidebar_menu">App Menu</string>
+    <string name="sidebar_menu">Menu</string>
     <string name="sidebar_clear_search">Clear search</string>
     <string name="sidebar_exit_selection">Exit selection</string>
     <string name="sidebar_move_selected_to_folder">Move selected chats to folder</string>
@@ -1447,6 +1447,7 @@
     <string name="server_connection_providers_both">Server and local</string>
     <string name="generative_server_name" translatable="false">Generative Server</string>
     <string name="server_connection_program">Server Program</string>
+    <string name="server_connection_open_catalog">Open %1$s</string>
     <string name="server_import_local">Import from local</string>
     <string name="server_import_credentials">The selected configuration and its credentials will be copied to this server.</string>
     <string name="server_import_runtime_credentials">The selected connection and credentials will be copied to OpenCode until it restarts.</string>

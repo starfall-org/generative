@@ -78,7 +78,7 @@ class AppContainer(context: Context) {
     val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, serverClientFactory::create, remoteChatCache, remoteMachineService, providers, mcp)
     private val remoteWorkspacePreferences = org.starfall.generative.database.preferences.RemoteWorkspacePreferences(appContext)
     val remoteWorkspace = org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace(
-        { id -> org.starfall.generative.integrations.generativeserver.GenerativeServerSessions(serverClientFactory.create(id)) },
+        { id -> org.starfall.generative.integrations.generativeserver.GenerativeServerSessions(serverClientFactory.createForRuntime(id)) },
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
         remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache,

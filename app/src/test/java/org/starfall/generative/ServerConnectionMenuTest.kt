@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.room.Room
@@ -44,11 +46,27 @@ class ServerConnectionMenuTest {
             }
             compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("More options").fetchSemanticsNodes().size == 2 }
             compose.onAllNodesWithContentDescription("More options")[1].performClick()
+            compose.onNodeWithText("Import from local").assertDoesNotExist()
             compose.onNodeWithText("Model Providers").performClick()
             assertEquals(listOf("providers:two"), opened)
             compose.onAllNodesWithContentDescription("More options")[1].performClick()
             compose.onNodeWithText("MCP").performClick()
             assertEquals(listOf("providers:two", "mcp:two"), opened)
+
+            compose.onNodeWithText("Second").performClick()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Import from local").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Model Providers").assertDoesNotExist()
+            compose.onNodeWithText("Open Model Providers").performScrollTo().performClick()
+            compose.onNodeWithText("Open MCP").performScrollTo().performClick()
+            compose.onNodeWithText("MCP").performScrollTo().performClick()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("No items").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("The selected connection and credentials will be copied to OpenCode until it restarts.")
+                .assertExists()
+            assertEquals(listOf("providers:two", "mcp:two", "providers:two", "mcp:two"), opened)
         } finally { db.close() }
     }
 }
