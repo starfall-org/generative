@@ -76,6 +76,7 @@ data class RemoteWorkspaceState(
     val capabilities: ServerChatCapabilities = ServerChatCapabilities(),
     val localProviderIds: Set<String> = emptySet(),
     val openCode: Boolean = false,
+    val openCodeDirectory: String? = null,
 )
 
 class RemoteWorkspace(private val sessionFactory: suspend (String) -> GenerativeServerSessions, private val scope: CoroutineScope,

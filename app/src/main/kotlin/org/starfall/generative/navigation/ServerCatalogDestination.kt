@@ -7,9 +7,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.R
 import org.starfall.generative.features.mcp.editor.ui.ServerEditor
 import org.starfall.generative.features.mcp.list.ui.ServerListScreen
@@ -17,7 +20,7 @@ import org.starfall.generative.features.providers.editor.ui.ProviderEditor
 import org.starfall.generative.features.providers.list.ui.ProvidersScreen
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
 import org.starfall.generative.features.serverconnection.logic.ServerInventoryItem
-import org.starfall.generative.features.serverconnection.ui.ProviderIntegrationScreen
+import org.starfall.generative.features.serverconnection.logic.OpenCodeProviderAuthorization
 import org.starfall.generative.integrations.opencode.OpenCodeCatalogEntry
 import org.starfall.generative.integrations.opencode.openCodeMcpImportConfig
 import org.starfall.generative.integrations.opencode.toMcp
@@ -39,20 +42,21 @@ internal fun ServerCatalogDestination(
     service: ServerConnections,
     connectionId: String,
     providers: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    directory: String? = null,
 ) {
     val profiles by service.profiles.collectAsState(initial = emptyList())
     val profile = profiles.firstOrNull { it.id == connectionId }
-    key(connectionId, providers, profile?.endpoint, profile?.transport, profile?.clientId, profile?.pin) {
+    key(connectionId, providers, directory, profile?.endpoint, profile?.transport, profile?.clientId, profile?.pin) {
         ServerCatalog(
-            service, connectionId, providers, profile?.transport == "opencode", onBack
+            service, connectionId, providers, profile?.transport == "opencode", onBack, directory
         )
     }
 }
 
 @Composable
 private fun ServerCatalog(
-    service: ServerConnections, connectionId: String, providers: Boolean, openCode: Boolean, onBack: () -> Unit
+    service: ServerConnections, connectionId: String, providers: Boolean, openCode: Boolean, onBack: () -> Unit, directory: String?
 ) {
     var items by remember { mutableStateOf(emptyList<ServerInventoryItem>()) }
     var grid by rememberSaveable { mutableStateOf(false) }
@@ -62,13 +66,14 @@ private fun ServerCatalog(
     var mcpPage by remember { mutableStateOf<Pair<McpInfo, Boolean>?>(null) }
     var providerEntry by remember { mutableStateOf<OpenCodeCatalogEntry?>(null) }
     var mcpEntry by remember { mutableStateOf<OpenCodeCatalogEntry?>(null) }
-    var integrationId by remember { mutableStateOf<String?>(null) }
+    var providerAuthorization by remember { mutableStateOf<OpenCodeProviderAuthorization?>(null) }
     var providerOrder by remember { mutableStateOf(emptyList<String>()) }
     var mcpOrder by remember { mutableStateOf(emptyList<String>()) }
     val providerDrafts = remember { mutableStateMapOf<String, ModelProvider>() }
     val mcpDrafts = remember { mutableStateMapOf<String, McpInfo>() }
     val context = LocalContext.current
     val resources = LocalResources.current
+    val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val editorContext = remember(context, connectionId) { ServerCatalogEditorContext(context, connectionId) }
 
@@ -86,13 +91,30 @@ private fun ServerCatalog(
 
     LaunchedEffect(reload) {
         try {
-            items = if (providers) service.providers(connectionId) else service.mcpServers(connectionId).orEmpty()
+            items = if (providers) service.providers(connectionId) else service.mcpServers(connectionId, directory).orEmpty()
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) { message(R.string.server_inventory_failed) }
     }
 
+    fun deleteProvider(id: String) {
+        if (!openCode) return
+        val selectedEntry = providerEntry?.takeIf { providerPage?.first?.id == id && it.path.last() == id }
+        mutate(R.string.server_provider_config_failed, refresh = false) {
+            val reloaded = service.deleteCatalogProvider(connectionId, id, selectedEntry) ?: return@mutate
+            if (!reloaded) message(R.string.server_provider_reload_failed)
+            reload++
+            providerDrafts.remove(id)
+            if (providerPage?.first?.id == id) providerPage = null
+        }
+    }
+
     fun saveProvider(provider: ModelProvider, isNew: Boolean) {
         mutate(R.string.server_provider_config_failed) {
+            val authorization = providerAuthorization.takeIf { providerPage?.first?.id == provider.id }
+            if (authorization != null) {
+                if (provider.auth.method != AuthMethod.OAUTH) authorization.connectKey(provider)
+                return@mutate
+            }
             if (openCode && !isNew) {
                 val entry = requireNotNull(providerEntry)
                 val initial = entry.toProvider(requireNotNull(providerPage).first)
@@ -126,32 +148,47 @@ private fun ServerCatalog(
         ScreenDestination(providerPage, onClosed = { providerPage = null }) { page ->
             if (page != null) {
                 val (provider, isNew) = page
+                val authorization = providerAuthorization
+                var authorizationJob by remember(authorization) { mutableStateOf<Job?>(null) }
+                var dismissAfterDelete by remember(page) { mutableStateOf(false) }
                 ProviderEditor(
                     initialProvider = provider, isNew = isNew,
-                    onDismiss = { if (!busy) providerPage = null },
+                    onDismiss = {
+                        if (dismissAfterDelete) dismissAfterDelete = false
+                        else if (!busy) providerPage = null
+                    },
                     onSave = { saveProvider(it, isNew) },
                     onSaveIcon = { providerDrafts[it.id] = it },
                     onSaveModels = { id, models ->
+                        if (authorization != null) return@ProviderEditor
                         val current = providerDrafts[id] ?: provider
                         saveProvider(current.copy(config = current.config.copy(
                             modelIds = models.keys.toList(), modelConfigs = models
                         )), isNew)
                     },
                     onReorderModels = { id, order ->
+                        if (authorization != null) return@ProviderEditor
                         val current = providerDrafts[id] ?: provider
                         saveProvider(current.copy(config = current.config.copy(modelIds = order)), isNew)
                     },
-                    onDelete = if (openCode && !isNew) ({ id ->
-                        val entry = providerEntry
-                        if (entry != null && entry.path.last() == id) {
-                            mutate(R.string.server_provider_config_failed) {
-                                if (!service.changeCatalogConfigEntry(connectionId, entry, null)) {
-                                    message(R.string.server_provider_reload_failed)
-                                }
-                                providerDrafts.remove(id)
-                            }
+                    onAuthorizeProvider = authorization?.takeIf { it.canAuthorize }?.let { connector ->
+                        { draft ->
+                            authorizationJob = currentCoroutineContext().job
+                            try {
+                                Result.success(connector.authorize(draft, uriHandler::openUri)).also { reload++ }
+                            } catch (e: CancellationException) { throw e }
+                            catch (e: Exception) { Result.failure(e) }
+                            finally { authorizationJob = null }
                         }
-                    }) else null
+                    },
+                    onCancelProviderAuthorization = authorization?.takeIf { it.canAuthorize }?.let {
+                        { _ -> authorizationJob?.cancel() }
+                    },
+                    onDelete = if (isNew) null else { id ->
+                        // The shared editor dismisses after confirmation. Here the result decides.
+                        dismissAfterDelete = true
+                        deleteProvider(id)
+                    }
                 )
             }
         }
@@ -175,17 +212,17 @@ private fun ServerCatalog(
                             val entry = mcpEntry
                             if (entry != null && !isNew) {
                                 val newKey = edited.name.takeUnless { it == server.id }
-                                if (newKey != null) require(service.mcpServers(connectionId).orEmpty().none { it.id == newKey })
-                                if (!service.changeCatalogConfigEntry(connectionId, entry, entry.withMcp(server, edited), newKey)) {
+                                if (newKey != null) require(service.mcpServers(connectionId, directory).orEmpty().none { it.id == newKey })
+                                if (!service.changeCatalogConfigEntry(connectionId, entry, entry.withMcp(server, edited), newKey, directory)) {
                                     message(R.string.server_provider_reload_failed)
                                 }
                                 mcpDrafts.remove(server.id)
                                 mcpPage = null
                                 return@mutate
                             }
-                            if (isNew) require(service.mcpServers(connectionId).orEmpty().none { it.id == edited.name })
+                            if (isNew) require(service.mcpServers(connectionId, directory).orEmpty().none { it.id == edited.name })
                             else require(edited.name == server.id && mcpDrafts.containsKey(server.id))
-                            service.addMcp(connectionId, edited.name, openCodeMcpImportConfig(edited), directory = null)
+                            service.addMcp(connectionId, edited.name, openCodeMcpImportConfig(edited), directory = directory)
                         } else service.saveImportedMcp(connectionId, edited)
                         val id = if (openCode) edited.name else edited.id
                         mcpDrafts[id] = edited.copy(id = id)
@@ -193,27 +230,6 @@ private fun ServerCatalog(
                     }
                 }
             )
-        }
-    }
-
-    ScreenDestination(integrationId, onClosed = { integrationId = null; reload++ }) { id ->
-        if (id != null) {
-            var integration by remember(id) { mutableStateOf<JsonObject?>(null) }
-            LaunchedEffect(id) {
-                try { integration = service.integration(connectionId, id, directory = null) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { message(R.string.server_inventory_failed); integrationId = null }
-            }
-            integration?.let { info ->
-                ProviderIntegrationScreen(
-                    info, onBack = { integrationId = null; reload++ },
-                    connectKey = { key, answer -> service.connectIntegrationKey(connectionId, id, key, answer, directory = null) },
-                    beginOAuth = { method, answer -> service.beginIntegrationOAuth(connectionId, id, method, answer, directory = null) },
-                    oauthStatus = { attempt -> service.integrationOAuthStatus(connectionId, id, attempt, directory = null) },
-                    completeOAuth = { attempt, code -> service.completeIntegrationOAuth(connectionId, id, attempt, code, directory = null) },
-                    cancelOAuth = { attempt -> service.cancelIntegrationOAuth(connectionId, id, attempt, directory = null) }
-                )
-            }
         }
     }
 
@@ -225,34 +241,33 @@ private fun ServerCatalog(
             providers = rows, isGridView = grid, onToggleGridView = { grid = it },
             onOpenProviderEditor = { provider, isNew ->
                 val id = if (openCode && !isNew) items.firstOrNull { it.id == provider.id }?.integrationId else null
-                if (id != null) integrationId = id
-                else if (openCode && !isNew) mutate(R.string.server_inventory_failed, refresh = false) {
+                if (id != null) mutate(R.string.server_inventory_failed, refresh = false) {
+                    val authorization = OpenCodeProviderAuthorization.load(service, connectionId, id)
+                    val editable = authorization.initialProvider(provider)
+                    providerEntry = null
+                    providerAuthorization = authorization
+                    providerPage = editable to false
+                } else if (openCode && !isNew) mutate(R.string.server_inventory_failed, refresh = false) {
                     val entry = service.providerConfigEntry(connectionId, provider.id)
                     val editable = entry.toProvider(provider)
                     providerEntry = entry
+                    providerAuthorization = null
                     providerDrafts[provider.id] = editable
                     providerPage = editable to false
                 } else {
                     providerEntry = null
+                    providerAuthorization = null
                     providerPage = provider to isNew
                 }
             },
-            onDeleteProvider = { id ->
-                mutate(R.string.server_provider_config_failed) {
-                    require(openCode)
-                    val entry = service.providerConfigEntry(connectionId, id)
-                    if (!service.changeCatalogConfigEntry(connectionId, entry, null)) {
-                        message(R.string.server_provider_reload_failed)
-                    }
-                    providerDrafts.remove(id)
-                }
-            },
+            onDeleteProvider = ::deleteProvider,
             onReorderProviders = { providerOrder = it },
             onReorderRootItems = { providerOrder = it.map { item -> item.id } },
             onBack = onBack
         )
     } else {
         ServerListScreen(
+            canManageServers = openCode,
             mcpServers = items.inCatalogOrder(mcpOrder).map { item ->
                 mcpDrafts[item.id] ?: McpInfo(item.id, item.name, url = item.url)
             },
@@ -261,19 +276,19 @@ private fun ServerCatalog(
             onSetToolEnabled = { _, _, _ -> },
             onSetMcpEnabled = { id, enabled ->
                 mutate(R.string.server_mcp_operation_failed) {
-                    service.setMcpConnected(connectionId, id, enabled, directory = null)
+                    service.setMcpConnected(connectionId, id, enabled, directory)
                 }
             },
             onDeleteMcpServer = { id ->
                 mutate(R.string.server_mcp_operation_failed) {
-                    service.removeMcp(connectionId, id, directory = null)
+                    service.removeMcp(connectionId, id, directory)
                     mcpDrafts.remove(id)
                 }
             },
             onReorderMcpServers = { mcpOrder = it },
             onOpenEditor = { server, isNew ->
                 if (openCode && !isNew && server.id !in mcpDrafts) mutate(R.string.server_inventory_failed, refresh = false) {
-                    val entry = service.mcpConfigEntry(connectionId, server.id)
+                    val entry = service.mcpConfigEntry(connectionId, server.id, directory)
                     val editable = entry.toMcp()
                     mcpEntry = entry
                     mcpPage = editable to false

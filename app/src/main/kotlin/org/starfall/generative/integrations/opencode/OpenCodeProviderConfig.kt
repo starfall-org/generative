@@ -80,8 +80,10 @@ internal fun selectOpenCodeProviderConfig(
             if (entry.text("type") != "document" ||
                 (entry["info"] as? JsonObject)?.configObject(entryPath) == null) null else entry.text("path")
         }.distinct()
-        val path = requireNotNull(declaring.singleOrNull()) { "Configuration entry has no unique source" }
-        require(scoped.any { norm(it.second) == norm(path) }) { "Configuration source is outside this scope" }
+        val path = declaring.singleOrNull()
+        if (path == null || scoped.none { norm(it.second) == norm(path) }) {
+            throw OpenCodeConfigEntryNotWritable()
+        }
         return OpenCodeProviderConfigFile(path, true)
     }
     val selected = scoped.lastOrNull { (it.first["info"] as? JsonObject)?.containsKey("providers") == true }
@@ -137,6 +139,9 @@ internal fun insertOpenCodeProvider(raw: String, id: String, config: JsonObject)
     require(configJson.parseToJsonElement(result) == expected)
     return result
 }
+
+internal class OpenCodeConfigEntryNotWritable :
+    IllegalArgumentException("Configuration entry has no unique writable source in this scope")
 
 internal data class OpenCodeCatalogEntry(
     val file: OpenCodeProviderConfigFile,

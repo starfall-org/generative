@@ -23,6 +23,7 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.database.repositories.ServerConnectionRepository
 import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
+import org.starfall.generative.navigation.RuntimeMcpConnectors
 import org.starfall.generative.navigation.ServerCatalogDestination
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -157,6 +158,50 @@ class ServerInventoryScopeUiTest {
                 assertTrue(edit.requestUrl?.queryParameter("path") == "/config/opencode.jsonc")
                 val written = edit.body.readUtf8()
                 assertTrue(written.contains("https://new.example/mcp") && written.contains("\"pool\":true"))
+            }
+        } finally { db.close() }
+    }
+
+    @Test fun runtimeMcpToggleAndRefreshUseTheChatDirectory() {
+        installTestAndroidKeyStore()
+        val db = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java
+        ).build()
+        try {
+            MockWebServer().use { server ->
+                val requests = ConcurrentLinkedQueue<RecordedRequest>()
+                server.dispatcher = object : Dispatcher() {
+                    override fun dispatch(request: RecordedRequest): MockResponse {
+                        requests.add(request)
+                        return when (request.requestUrl?.encodedPath) {
+                            "/api/mcp" -> {
+                                val status = if (requests.any { it.method == "POST" }) "connected" else "disabled"
+                                MockResponse().setBody(
+                                    """{"data":[{"name":"remote","title":"Remote MCP","status":{"status":"$status"}}]}"""
+                                )
+                            }
+                            "/api/experimental/mcp/remote/connect" -> MockResponse().setResponseCode(204)
+                            else -> MockResponse().setResponseCode(404)
+                        }
+                    }
+                }
+                val repository = ServerConnectionRepository(db)
+                runBlocking {
+                    repository.saveOpenCode("server", "Server", server.url("/").toString(),
+                        OpenCodeCredentials("opencode", "secret"))
+                }
+                val service = ServerConnections(repository, clientFactory = { error("Unexpected Generative Server request") })
+                compose.setScreenContent {
+                    MaterialTheme {
+                        RuntimeMcpConnectors(service, "server", "/workspace chat", onBack = {}, onOpenSettings = {})
+                    }
+                }
+                awaitText("Disabled")
+                compose.onNodeWithContentDescription("Remote MCP").assertIsOff().performClick()
+                awaitText("Connected")
+                compose.onNodeWithContentDescription("Remote MCP").assertIsOn()
+                assertTrue(requests.any { it.method == "POST" && it.requestUrl?.encodedPath == "/api/experimental/mcp/remote/connect" })
+                assertTrue(requests.all { it.requestUrl?.queryParameter("location[directory]") == "/workspace chat" })
             }
         } finally { db.close() }
     }

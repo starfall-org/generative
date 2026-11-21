@@ -100,6 +100,7 @@ import org.starfall.generative.features.home.chat.ui.input.agentSkillMenuQuery
 import org.starfall.generative.features.home.chat.ui.ContextWindowBar
 import org.starfall.generative.features.home.chat.ui.ContextWindowRing
 import org.starfall.generative.features.home.BottomSheetsLink
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
 import org.starfall.generative.shared.model.ConversationSummaryRequest
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.chat.ui.LocalChatForeground
@@ -170,7 +171,8 @@ internal fun UserInputArea(
     val textFieldState = rememberTextFieldState()
     // Picker provenance controls activation; the composer shows only /skill-name.
     var selectedSkillId by remember { mutableStateOf<String?>(null) }
-    val selectedSkill = agentSkills.firstOrNull { it.id == selectedSkillId }
+    val localSkillsAvailable = LocalRemoteQuickActions.current == null
+    val selectedSkill = agentSkills.takeIf { localSkillsAvailable }?.firstOrNull { it.id == selectedSkillId }
     // The field may only take focus after the user touches it. Returning from another page (for example the
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
     // move it into the only focusable item here and pop the keyboard up.
@@ -313,11 +315,11 @@ internal fun UserInputArea(
     }
     var skillsMenuOpen by remember(foreground) { mutableStateOf(false) }
     var inputBoxWidthPx by remember { mutableIntStateOf(0) }
-    LaunchedEffect(textState) {
+    LaunchedEffect(textState, localSkillsAvailable) {
         if (selectedSkill != null && !textState.hasSelectedSkillInvocation(selectedSkill.id)) {
             selectedSkillId = null
         }
-        skillsMenuOpen = textState.startsWith("/") &&
+        skillsMenuOpen = localSkillsAvailable && textState.startsWith("/") &&
             (selectedSkill == null || !textState.hasSelectedSkillInvocation(selectedSkill.id))
     }
     LaunchedEffect(Unit) {
@@ -672,7 +674,7 @@ internal fun UserInputArea(
                 }
             }
         }
-        if (foreground && skillsMenuOpen) {
+        if (foreground && localSkillsAvailable && skillsMenuOpen) {
             Popup(
                 popupPositionProvider = AgentSkillsMenuPositionProvider(
                     verticalGapPx = with(density) { 4.dp.roundToPx() }

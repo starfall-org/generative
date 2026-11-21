@@ -1,6 +1,7 @@
 package org.starfall.generative.features.home
 
 import org.starfall.generative.features.home.shared.ui.CustomHttpToolsSheetContent
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import android.content.Intent
 import kotlinx.coroutines.CancellationException
@@ -155,6 +156,7 @@ internal fun BottomSheetsLink(
     onAttachmentImportingChange: (Boolean) -> Unit = {}
 ) {
     val customHttpControls = LocalToolControls.current
+    val remoteQuickActions = LocalRemoteQuickActions.current
     val context = LocalContext.current
     val files = remember(context) { ToolFiles(context) }
     val scope = rememberCoroutineScope()
@@ -223,6 +225,15 @@ internal fun BottomSheetsLink(
         }
     }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
+    val remoteMcpAvailable = remoteQuickActions?.mcpContent != null
+    LaunchedEffect(sheets.quickActionsPage, remoteQuickActions != null, remoteMcpAvailable) {
+        if (remoteQuickActions != null && when (sheets.quickActionsPage) {
+                QuickActionsPage.FEATURE_TOOLS, QuickActionsPage.CUSTOM_HTTP_TOOLS -> true
+                QuickActionsPage.MCP_CONNECTORS -> !remoteMcpAvailable
+                else -> false
+            }
+        ) sheets.backToQuickActions()
+    }
     LaunchedEffect(sheets.showSelectedModelOverview) {
         if (!sheets.showSelectedModelOverview) selectedModelScreenBurst.hide()
     }
@@ -240,6 +251,9 @@ internal fun BottomSheetsLink(
                 val pageActive = LocalScreenTransitionActive.current
                 when (page) {
                     null, QuickActionsPage.ROOT -> QuickActionsSheetContent(
+                        showLocalActions = remoteQuickActions == null,
+                        showMcpConnectors = remoteQuickActions == null || remoteMcpAvailable,
+                        unavailableMessage = remoteQuickActions?.unavailableMessage ?: R.string.server_remote_unsupported,
                         onPickImage = {
                             if (!pageActive) return@QuickActionsSheetContent
                             launchedPickerSessionKey = attachmentSessionKey
@@ -312,7 +326,7 @@ internal fun BottomSheetsLink(
                             if (pageActive) sheets.dismissAddMenu()
                         }
                     )
-                    QuickActionsPage.FEATURE_TOOLS -> FeatureToolsSheetContent(
+                    QuickActionsPage.FEATURE_TOOLS -> if (remoteQuickActions == null) FeatureToolsSheetContent(
                         onBack = { if (pageActive) sheets.backToQuickActions() },
                         onOpenSettings = {
                             if (pageActive) {
@@ -321,7 +335,7 @@ internal fun BottomSheetsLink(
                             }
                         }
                     )
-                    QuickActionsPage.CUSTOM_HTTP_TOOLS -> CustomHttpToolsSheetContent(
+                    QuickActionsPage.CUSTOM_HTTP_TOOLS -> if (remoteQuickActions == null) CustomHttpToolsSheetContent(
                         onBack = { if (pageActive) sheets.backToQuickActions() },
                         onOpenSettings = {
                             if (pageActive) {
@@ -330,15 +344,23 @@ internal fun BottomSheetsLink(
                             }
                         }
                     )
-                    QuickActionsPage.MCP_CONNECTORS -> McpConnectorsSheetContent(
-                        onBack = { if (pageActive) sheets.backToQuickActions() },
-                        onOpenSettings = {
-                            if (pageActive) {
-                                sheets.dismissAddMenu()
-                                onOpenMcpConnectorsSettings()
-                            }
+                    QuickActionsPage.MCP_CONNECTORS -> {
+                        val onBack = { if (pageActive) sheets.backToQuickActions() }
+                        val onDismiss = { if (pageActive) sheets.dismissAddMenu() }
+                        if (remoteQuickActions == null) {
+                            McpConnectorsSheetContent(
+                                onBack = onBack,
+                                onOpenSettings = {
+                                    if (pageActive) {
+                                        onDismiss()
+                                        onOpenMcpConnectorsSettings()
+                                    }
+                                }
+                            )
+                        } else {
+                            remoteQuickActions.mcpContent?.invoke(onBack, onDismiss)
                         }
-                    )
+                    }
                 }
             }
         }

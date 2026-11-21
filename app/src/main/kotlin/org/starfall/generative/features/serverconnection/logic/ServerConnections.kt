@@ -26,6 +26,7 @@ import org.starfall.generative.integrations.opencode.OpenCodePairingLink
 import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeProviderConfigFile
 import org.starfall.generative.integrations.opencode.OpenCodeCatalogEntry
+import org.starfall.generative.integrations.opencode.OpenCodeConfigEntryNotWritable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonObject
@@ -60,13 +61,28 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     internal suspend fun providerConfigEntry(id: String, provider: String): OpenCodeCatalogEntry =
         openCode(id).catalogConfigEntry(listOf("providers", provider), directory = null)
 
-    internal suspend fun mcpConfigEntry(id: String, name: String): OpenCodeCatalogEntry =
-        openCode(id).catalogConfigEntry(listOf("mcp", "servers", name), directory = null)
+    internal suspend fun mcpConfigEntry(id: String, name: String, directory: String? = null): OpenCodeCatalogEntry =
+        openCode(id).catalogConfigEntry(listOf("mcp", "servers", name), directory)
 
     internal suspend fun changeCatalogConfigEntry(
-        id: String, entry: OpenCodeCatalogEntry, replacement: JsonObject?, newKey: String? = null
+        id: String, entry: OpenCodeCatalogEntry, replacement: JsonObject?, newKey: String? = null, directory: String? = null
     ): Boolean = providerConfigWrites.withLock {
-        openCode(id).changeCatalogConfigEntry(entry, replacement, directory = null, newKey = newKey)
+        openCode(id).changeCatalogConfigEntry(entry, replacement, directory, newKey)
+    }
+
+    /** Null means no writable record, false means deletion succeeded but reload failed. */
+    internal suspend fun deleteCatalogProvider(
+        id: String, providerId: String, openedEntry: OpenCodeCatalogEntry? = null
+    ): Boolean? = providerConfigWrites.withLock {
+        val api = openCode(id)
+        val path = listOf("providers", providerId)
+        val entry = openedEntry ?: try {
+            api.catalogConfigEntry(path, directory = null)
+        } catch (_: OpenCodeConfigEntryNotWritable) {
+            return@withLock null
+        }
+        require(entry.path == path)
+        api.changeCatalogConfigEntry(entry, replacement = null, directory = null)
     }
 
     suspend fun integration(id: String, integrationId: String, directory: String?) = openCode(id).integration(integrationId, directory)

@@ -13,6 +13,7 @@ import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -36,6 +37,8 @@ import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
+import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
 
@@ -252,6 +255,23 @@ class QuickActionsSheetTransitionTest {
         assertEquals(nodeId, compose.onNodeWithTag("bottom-sheet-window").fetchSemanticsNode().id)
         compose.onNodeWithText("Photos").assertIsDisplayed()
     }
+    @Test
+    fun remoteQuickActionsOpenTheRuntimePageWithoutLocalActions() {
+        val runtime = RemoteQuickActions(mcpContent = { _, _ -> Text("Runtime connector") })
+        compose.setContent {
+            CompositionLocalProvider(LocalRemoteQuickActions provides runtime) {
+                LinkedQuickActionsHost(ToolControls(servers = listOf(McpInfo("local", "Local connector"))))
+            }
+        }
+        compose.onNodeWithText("Photos").assertDoesNotExist()
+        compose.onNodeWithText("Skills").assertDoesNotExist()
+        compose.onNodeWithText("Feature Tools").assertDoesNotExist()
+        compose.onNodeWithText("Custom Tools").assertDoesNotExist()
+        compose.onNodeWithText("MCP Connectors").performClick()
+        compose.onNodeWithText("Runtime connector").assertIsDisplayed()
+        compose.onNodeWithText("Local connector").assertDoesNotExist()
+    }
+
     @Test
     fun customHttpToolsFollowMcpAndToggleInsideTheSameSheet() {
         val tool = org.starfall.generative.shared.model.CustomHttpTool(name = "weather", url = "https://example.test")

@@ -100,6 +100,8 @@ import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
+import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
 import org.starfall.generative.shared.ui.screens.ScreenDestination
@@ -898,23 +900,54 @@ internal fun AppNavigation(
                             ),
                         )
                     }
-                    ChatScreen(
-                        backend = backend,
-                        conversation = chatPage,
-                        backgroundImage = appPrefs.userProfile.chatBackground,
-                        backgroundTransparency = appPrefs.userProfile.chatTransparency,
-                        isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
-                        agentSkills = appPrefs.agentSkills.skills,
-                        onOpenSkillsSettings = { openSkillsSettings() },
-                        featuresLogoImage = appPrefs.featuresLogoImage,
-                        autoScroll = appPrefs.autoScroll,
-                        onOpenDrawer = { coroutineScope.launch { drawerState.open() } },
-                        onNewChat = { startNewChat() },
-                        onOpenTemporaryChat = { startTemporaryChat() },
-                        onOpenSettings = { navigate(AppDestination.FEATURES) },
-                        onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
-                        onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) },
-                    )
+                    val remoteQuickActions = if (remotePage) {
+                        val server = selectedServer?.takeIf {
+                            remoteIdentityReady && !runtimeSelecting && it.id == remote.connectionId
+                        }
+                        val directory = remote.openCodeDirectory
+                        val mcpContent: (@Composable (() -> Unit, () -> Unit) -> Unit)? =
+                            if (server != null && (server.transport != "opencode" || directory != null)) {
+                                { onBack, onDismiss ->
+                                    key(server.endpoint, server.transport, server.clientId, server.pin) {
+                                        RuntimeMcpConnectors(
+                                            service = serverConnections,
+                                            connectionId = server.id,
+                                            directory = directory,
+                                            onBack = onBack,
+                                            onOpenSettings = {
+                                                onDismiss()
+                                                val route = "server_inventory/${Uri.encode(server.id)}/mcp"
+                                                navController.navigate(if (directory == null) route else
+                                                    "$route?directory=${Uri.encode(directory)}") { launchSingleTop = true }
+                                            }
+                                        )
+                                    }
+                                }
+                            } else null
+                        RemoteQuickActions(
+                            mcpContent = mcpContent,
+                            unavailableMessage = if (remote.error) R.string.server_remote_offline else R.string.server_remote_loading,
+                        )
+                    } else null
+                    CompositionLocalProvider(LocalRemoteQuickActions provides remoteQuickActions) {
+                        ChatScreen(
+                            backend = backend,
+                            conversation = chatPage,
+                            backgroundImage = appPrefs.userProfile.chatBackground,
+                            backgroundTransparency = appPrefs.userProfile.chatTransparency,
+                            isDrawerOpening = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen,
+                            agentSkills = if (remotePage) emptyList() else appPrefs.agentSkills.skills,
+                            onOpenSkillsSettings = if (remotePage) null else ::openSkillsSettings,
+                            featuresLogoImage = appPrefs.featuresLogoImage,
+                            autoScroll = appPrefs.autoScroll,
+                            onOpenDrawer = { coroutineScope.launch { drawerState.open() } },
+                            onNewChat = { startNewChat() },
+                            onOpenTemporaryChat = { startTemporaryChat() },
+                            onOpenSettings = { navigate(AppDestination.FEATURES) },
+                            onOpenFeatureToolsSettings = { openConfiguration(AppDestination.TOOLS_EDITOR) },
+                            onOpenMcpConnectorsSettings = { openConfiguration(AppDestination.MCP) },
+                        )
+                    }
                         }
                         }
                         }
@@ -1341,12 +1374,22 @@ internal fun AppNavigation(
                             onMcp = { navController.navigate("server_inventory/${Uri.encode(it)}/mcp") },
                             onBack = { navController.popBackStack() })
                     }
-                    composable("server_inventory/{connectionId}/{kind}") { entry ->
+                    composable(
+                        "server_inventory/{connectionId}/{kind}?directory={directory}",
+                        arguments = listOf(navArgument("directory") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { entry ->
                         val connectionId = entry.arguments?.getString("connectionId").orEmpty()
                         val kind = entry.arguments?.getString("kind").orEmpty()
                         ServerCatalogDestination(
                             service = serverConnections, connectionId = connectionId,
-                            providers = kind == "providers", onBack = { navController.popBackStack() })
+                            providers = kind == "providers",
+                            onBack = { navController.popBackStack() },
+                            directory = entry.arguments?.getString("directory").takeIf { kind == "mcp" },
+                        )
                     }
                     composable(AppDestination.REMOTE_MACHINES.route) {
                         // Sub-pages are transient: never restore an editor/settings page on re-entry.

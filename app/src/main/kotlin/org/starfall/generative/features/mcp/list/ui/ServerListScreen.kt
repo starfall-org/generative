@@ -43,7 +43,8 @@ fun ServerListScreen(
     toolSettings: ToolSettings, onSetToolEnabled: (String, String, Boolean) -> Unit,
     onSetMcpEnabled: (String, Boolean) -> Unit,
     onDeleteMcpServer: (String) -> Unit, onReorderMcpServers: (List<String>) -> Unit,
-    onOpenEditor: (McpInfo, Boolean) -> Unit, onBack: () -> Unit
+    onOpenEditor: (McpInfo, Boolean) -> Unit, onBack: () -> Unit,
+    canManageServers: Boolean = true,
 ) = with(Launcher) {
     var deletingServerId by remember { mutableStateOf<String?>(null) }
     var selectedToolError by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -58,12 +59,13 @@ fun ServerListScreen(
     val localizedResources = LocalResources.current
     val card: @Composable (McpInfo, Boolean, Modifier, Boolean) -> Unit = { server, gridMode, modifier, preview ->
         val enabled = mcpServerEnabled(toolSettings, server.id)
-        val canToggle = !isWebSearchProvider(toolSettings, server.id)
+        val canToggle = canManageServers && !isWebSearchProvider(toolSettings, server.id)
         McpUnifiedCard(name = server.name, detail = server.url ?: stringResource(R.string.mcp_no_endpoint),
             icon = server.icon, isGrid = gridMode, modifier = modifier,
             toolCount = (toolsCache[server.id] ?: server.cachedTools)?.size, toolError = toolErrors[server.id],
             loading = server.id in toolsLoading, onToolErrorClick = { selectedToolError = server.name to it },
-            onEdit = { onOpenEditor(server, false) }, onDelete = { deletingServerId = server.id },
+            onEdit = if (canManageServers) ({ onOpenEditor(server, false) }) else null,
+            onDelete = if (canManageServers) ({ deletingServerId = server.id }) else null,
             firstActionText = if (canToggle) stringResource(if (enabled) R.string.mcp_enabled else R.string.mcp_enable) else null,
             firstActionIcon = if (canToggle) (if (enabled) R.drawable.ic_checkbox_checked else R.drawable.ic_checkbox_unchecked) else null,
             onFirstAction = if (canToggle) ({ onSetMcpEnabled(server.id, !enabled) }) else null, actionsEnabled = !preview)

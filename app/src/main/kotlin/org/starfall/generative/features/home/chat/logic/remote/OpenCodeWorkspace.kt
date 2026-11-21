@@ -45,11 +45,12 @@ internal class OpenCodeWorkspace(
     }
 
     suspend fun connect(api: OpenCodeApi) {
-        chat = OpenCodeChat(api, api.defaultDirectory())
+        val directory = api.defaultDirectory()
+        chat = OpenCodeChat(api, directory)
         val providers = chat.providers()
         val items = chat.list()
         val remembered = loadLastSession(id)?.takeIf { previous -> items.any { it.id == previous } }
-        state.update { it.copy(items = items, providers = providers,
+        state.update { it.copy(items = items, providers = providers, openCodeDirectory = directory,
             providerId = providers.firstOrNull()?.id.orEmpty(),
             modelId = providers.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty(),
             busy = remembered != null) }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -23,6 +24,13 @@ import org.starfall.generative.shared.ui.layout.prominentContainerBorder
 import org.starfall.generative.shared.ui.layout.prominentContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class)
+internal class RemoteQuickActions(
+    val mcpContent: (@Composable (onBack: () -> Unit, onDismiss: () -> Unit) -> Unit)? = null,
+    val unavailableMessage: Int = R.string.server_remote_unsupported,
+)
+
+internal val LocalRemoteQuickActions = staticCompositionLocalOf<RemoteQuickActions?> { null }
+
 @Composable
 fun QuickActionsSheet(
     onPickImage: () -> Unit,
@@ -66,7 +74,10 @@ internal fun QuickActionsSheetContent(
     onOpenMcpConnectors: () -> Unit,
     onDismiss: () -> Unit,
     onOpenSkills: () -> Unit = {},
-    onOpenCustomHttpTools: () -> Unit = {}
+    onOpenCustomHttpTools: () -> Unit = {},
+    showLocalActions: Boolean = true,
+    showMcpConnectors: Boolean = true,
+    unavailableMessage: Int = R.string.server_remote_unsupported,
 ) {
     val scrollState = rememberScrollState()
     Column(
@@ -77,79 +88,88 @@ internal fun QuickActionsSheetContent(
             .padding(horizontal = 16.dp)
             .padding(bottom = 28.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AddActionTile(
-                icon = FluentUi.Regular.ImageAdd,
-                label = stringResource(R.string.quick_action_photos),
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    onPickImage()
-                    onDismiss()
-                }
+        if (!showLocalActions && !showMcpConnectors) {
+            Text(stringResource(unavailableMessage), Modifier.padding(vertical = 16.dp))
+        }
+        if (showLocalActions) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AddActionTile(
+                    icon = FluentUi.Regular.ImageAdd,
+                    label = stringResource(R.string.quick_action_photos),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        onPickImage()
+                        onDismiss()
+                    }
+                )
+                AddActionTile(
+                    icon = Icons.Outlined.CameraAlt,
+                    label = stringResource(R.string.quick_action_camera),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        onTakePhoto()
+                        onDismiss()
+                    }
+                )
+                AddActionTile(
+                    icon = FluentUi.Regular.Attach,
+                    label = stringResource(R.string.common_files),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        onPickDocument()
+                        onDismiss()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().testTag("quick-actions-generation-row"),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AddGenerationCard(
+                    icon = FluentUi.Regular.ImageSparkle,
+                    label = stringResource(R.string.common_image),
+                    modifier = Modifier.weight(1f).testTag("quick-actions-create-image"),
+                    onClick = { onCreateImage(); onDismiss() }
+                )
+                AddGenerationCard(
+                    icon = Icons.Outlined.Videocam,
+                    label = stringResource(R.string.common_video),
+                    modifier = Modifier.weight(1f).testTag("quick-actions-create-video"),
+                    onClick = { onCreateVideo(); onDismiss() }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            AddActionRow(
+                icon = Icons.Outlined.Lightbulb,
+                title = stringResource(R.string.common_skills),
+                onClick = { onOpenSkills(); onDismiss() }
             )
-            AddActionTile(
-                icon = Icons.Outlined.CameraAlt,
-                label = stringResource(R.string.quick_action_camera),
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    onTakePhoto()
-                    onDismiss()
-                }
-            )
-            AddActionTile(
-                icon = FluentUi.Regular.Attach,
-                label = stringResource(R.string.common_files),
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    onPickDocument()
-                    onDismiss()
-                }
+            AddActionRow(
+                icon = Icons.Outlined.Build,
+                title = stringResource(R.string.common_feature_tools),
+                onClick = onOpenFeatureTools
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().testTag("quick-actions-generation-row"),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AddGenerationCard(
-                icon = FluentUi.Regular.ImageSparkle,
-                label = stringResource(R.string.common_image),
-                modifier = Modifier.weight(1f).testTag("quick-actions-create-image"),
-                onClick = { onCreateImage(); onDismiss() }
-            )
-            AddGenerationCard(
-                icon = Icons.Outlined.Videocam,
-                label = stringResource(R.string.common_video),
-                modifier = Modifier.weight(1f).testTag("quick-actions-create-video"),
-                onClick = { onCreateVideo(); onDismiss() }
+        if (showMcpConnectors) {
+            AddActionRow(
+                icon = Icons.Outlined.Mcp,
+                title = stringResource(R.string.common_mcp_connectors),
+                onClick = onOpenMcpConnectors
             )
         }
-        Spacer(Modifier.height(8.dp))
-        AddActionRow(
-            icon = Icons.Outlined.Lightbulb,
-            title = stringResource(R.string.common_skills),
-            onClick = { onOpenSkills(); onDismiss() }
-        )
-        AddActionRow(
-            icon = Icons.Outlined.Build,
-            title = stringResource(R.string.common_feature_tools),
-            onClick = onOpenFeatureTools
-        )
-        AddActionRow(
-            icon = Icons.Outlined.Mcp,
-            title = stringResource(R.string.common_mcp_connectors),
-            onClick = onOpenMcpConnectors
-        )
-        AddActionRow(
-            icon = Icons.Outlined.Build,
-            title = stringResource(R.string.custom_http_tools),
-            onClick = onOpenCustomHttpTools
-        )
+        if (showLocalActions) {
+            AddActionRow(
+                icon = Icons.Outlined.Build,
+                title = stringResource(R.string.custom_http_tools),
+                onClick = onOpenCustomHttpTools
+            )
+        }
     }
 }
 
