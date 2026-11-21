@@ -41,7 +41,7 @@ internal fun ConversationDrawerFooter(
         ) {
             FeaturesLogo(featuresLogoImage, Modifier.size(28.dp).clip(CircleShape))
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.sidebar_menu), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.app_name), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(8.dp))
         val border = appearanceContainerBorder()

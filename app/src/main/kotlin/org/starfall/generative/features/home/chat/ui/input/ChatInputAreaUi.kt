@@ -3,6 +3,7 @@
 package org.starfall.generative.features.home.chat.ui.input
 
 import androidx.compose.ui.window.Popup
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -164,14 +165,15 @@ internal fun UserInputArea(
     clipboardSessionKey: String? = null,
     modifier: Modifier = Modifier,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
-    onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
+    onSendMessageWithSkill: suspend (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
     onOpenSkillsSettings: (() -> Unit)? = null,
     onModelSheetOpen: () -> Unit = {}
 ) {
     val textFieldState = rememberTextFieldState()
     // Picker provenance controls activation; the composer shows only /skill-name.
     var selectedSkillId by remember { mutableStateOf<String?>(null) }
-    val localSkillsAvailable = LocalRemoteQuickActions.current == null
+    val remoteChat = LocalRemoteQuickActions.current != null
+    val localSkillsAvailable = !remoteChat
     val selectedSkill = agentSkills.takeIf { localSkillsAvailable }?.firstOrNull { it.id == selectedSkillId }
     // The field may only take focus after the user touches it. Returning from another page (for example the
     // terminal, whose Android view held the window focus) hands the focus back to Compose, which would otherwise
@@ -196,6 +198,7 @@ internal fun UserInputArea(
     val latestOnSubmissionFailed by rememberUpdatedState(onSubmissionFailed)
     val latestTemporaryChatId by rememberUpdatedState(temporaryChatId)
     val latestClipboardSessionKey by rememberUpdatedState(clipboardSessionKey)
+    val latestAttachments by rememberUpdatedState(attachments)
     val clipboardContentListener = remember(context, toolFiles, coroutineScope) {
         ReceiveContentListener { content ->
             val clip = content.clipEntry.clipData
@@ -341,7 +344,8 @@ internal fun UserInputArea(
         if (mediaKind != null) selectedSkillId = null
     }
     var attachmentImporting by remember(clipboardSessionKey) { mutableStateOf(false) }
-    val canSend = !attachmentImporting && canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
+    var submitting by remember(clipboardSessionKey) { mutableStateOf(false) }
+    val canSend = !attachmentImporting && !submitting && canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
     val showStop = isGenerating && editDraft == null && (mediaKind != null || !hasContent)
     val mediaHint = directMediaHint(textState, attachments, mediaKind, mediaModel, mediaModelId, mediaLabel)
 
@@ -548,24 +552,36 @@ internal fun UserInputArea(
                                 onClick = {
                                     if (showStop) {
                                         onStopGenerating()
-                                    } else if (canSend) {
-                                        val submitted = editDraft?.let { draft ->
-                                            onEditMessage(draft.messageId, textState, attachments)
-                                        } ?: mediaKind?.let { kind ->
-                                            onSendMedia(DirectMediaRequest(textState, kind, mediaProviderId, mediaModelId, attachments))
-                                        } ?: onSendMessageWithSkill(
-                                            textState, attachments,
-                                            selectedSkill?.id == DEFAULT_AGENT_SKILL_ID,
-                                            selectedSkill?.name?.takeUnless { it == DEFAULT_AGENT_SKILL_ID }
-                                        )
-                                        if (submitted) {
-                                            focusManager.clearFocus(force = true)
-                                            textFieldState.clearText()
-                                            selectedSkillId = null
-                                            onAttachmentsChange(emptyList())
-                                            if (editDraft != null) onCancelEdit()
-                                        } else {
-                                            onSubmissionFailed(localizedResources.getString(R.string.chat_submit_failed))
+                                    } else if (canSend && !submitting) {
+                                        submitting = true
+                                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                            try {
+                                                val submitted = editDraft?.let { draft ->
+                                                    onEditMessage(draft.messageId, textState, attachments)
+                                                } ?: mediaKind?.let { kind ->
+                                                    onSendMedia(DirectMediaRequest(textState, kind, mediaProviderId, mediaModelId, attachments))
+                                                } ?: onSendMessageWithSkill(
+                                                    textState, attachments,
+                                                    selectedSkill?.id == DEFAULT_AGENT_SKILL_ID,
+                                                    selectedSkill?.name?.takeUnless { it == DEFAULT_AGENT_SKILL_ID }
+                                                )
+                                                if (latestClipboardSessionKey != clipboardSessionKey) return@launch
+                                                if (submitted) {
+                                                    if (textFieldState.text.toString() == textState) {
+                                                        focusManager.clearFocus(force = true)
+                                                        textFieldState.clearText()
+                                                        selectedSkillId = null
+                                                    }
+                                                    if (attachments.isNotEmpty()) {
+                                                        onAttachmentsChange(latestAttachments - attachments.toSet())
+                                                    }
+                                                    if (editDraft != null) onCancelEdit()
+                                                } else if (!remoteChat || editDraft != null || mediaKind != null) {
+                                                    onSubmissionFailed(localizedResources.getString(R.string.chat_submit_failed))
+                                                }
+                                            } finally {
+                                                submitting = false
+                                            }
                                         }
                                     }
                                 }

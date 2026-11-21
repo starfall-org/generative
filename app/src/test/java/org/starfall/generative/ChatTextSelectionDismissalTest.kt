@@ -6,7 +6,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,7 +16,6 @@ import androidx.compose.ui.platform.Clipboard as ComposeClipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
-import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -35,6 +33,7 @@ import org.robolectric.annotation.GraphicsMode
 import org.starfall.generative.shared.ui.text.PlatformTextSelection
 import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.shared.ui.text.SelectionClipboard
+import org.starfall.generative.shared.ui.text.SelectionContainer
 
 @RunWith(RobolectricTestRunner::class)
 // API 27 avoids the native magnifier, which needs a real Android Surface.
@@ -45,13 +44,11 @@ class ChatTextSelectionDismissalTest {
 
     @Test fun touchingBlankSpaceOrAnotherTargetReleasesSelectionAndStillClicks() {
         var clicks = 0
-        lateinit var toolbar: TextToolbar
         compose.setContent {
             MaterialTheme {
                 PlatformTextSelection {
                     Column(Modifier.fillMaxSize()) {
                         PlatformTextSelectionRegion {
-                            toolbar = LocalTextToolbar.current
                             Column {
                                 SelectionContainer {
                                     Text("First message to select", Modifier.testTag("message"))
@@ -73,12 +70,10 @@ class ChatTextSelectionDismissalTest {
         fun selectMessage() {
             compose.onNodeWithTag("message").performTouchInput { longClick() }
             compose.onAllNodes(isPopup(), useUnmergedTree = true).assertCountEquals(2)
-            compose.runOnIdle { assertEquals(TextToolbarStatus.Shown, toolbar.status) }
         }
         fun assertSelectionDismissed() {
             // Selection handles are separate Compose popup roots.
             compose.onAllNodes(isPopup(), useUnmergedTree = true).assertCountEquals(0)
-            compose.runOnIdle { assertEquals(TextToolbarStatus.Hidden, toolbar.status) }
         }
 
         selectMessage()

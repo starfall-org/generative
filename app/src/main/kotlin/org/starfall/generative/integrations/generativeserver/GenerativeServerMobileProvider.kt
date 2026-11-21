@@ -7,6 +7,8 @@ import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.auth.requestHeaders
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.language.ModelType
+import org.starfall.generative.shared.model.language.ThinkingPassback
+import org.starfall.generative.shared.model.language.passbackMode
 import org.starfall.generative.shared.model.provider.ModelProvider
 
 /** Only adapters supported by Generative Server's mobile_ephemeral runtime are selectable. */
@@ -21,17 +23,34 @@ internal fun ModelProvider.remoteTextCatalog(): ModelProvider? {
     return copy(config = config.copy(modelIds = models))
 }
 
+internal enum class MobileProviderFailure { OAUTH, CONNECTION_OPTIONS, MODEL_OPTIONS, CREDENTIALS }
+
+internal class MobileProviderConfigurationException(val reason: MobileProviderFailure) : IllegalArgumentException()
+
 /** Encode the selected model and credential only, never the complete provider catalog. */
 internal fun mobileProviderRuntime(provider: ModelProvider, runtimeId: String, modelId: String) = buildJsonObject {
-    require(provider.remoteTextCatalog()?.config?.modelIds?.contains(modelId) == true)
     val settings = provider.config
     val model = settings.modelConfigs[modelId] ?: ModelConfiguration()
-    require(settings.httpProxy.isEmpty() && settings.socksProxy.isEmpty() && settings.headers.isEmpty() &&
-        settings.customEndpoints.isEmpty()) { "Generative Server does not support this provider's connection overrides" }
-    require(provider.auth.method != AuthMethod.OAUTH) { "Generative Server cannot resolve local OAuth accounts" }
-    require(model.reasoningEffort == null && model.thinkingLevel == null && model.thinkingPassback == null &&
-        model.legacySendThinkingContent == null && model.enabledModelTools.isEmpty() && model.modelJson.isEmpty()) {
-        "Generative Server does not support this model's runtime configuration"
+    if (provider.auth.method == AuthMethod.OAUTH) {
+        throw MobileProviderConfigurationException(MobileProviderFailure.OAUTH)
+    }
+    if (settings.httpProxy.isNotEmpty() || settings.socksProxy.isNotEmpty() || settings.headers.isNotEmpty() ||
+        settings.customEndpoints.isNotEmpty() ||
+        (settings.responsesApi && provider.type !in setOf(ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES))
+    ) {
+        throw MobileProviderConfigurationException(MobileProviderFailure.CONNECTION_OPTIONS)
+    }
+    val unsupportedSampling = when (provider.type) {
+        ModelApiType.OPENAI, ModelApiType.OPENAI_RESPONSES -> model.topK != null
+        ModelApiType.ANTHROPIC -> model.temperature != null || model.topP != null || model.topK != null
+        else -> false
+    }
+    if (provider.remoteTextCatalog()?.config?.modelIds?.contains(modelId) != true ||
+        model.reasoningEffort != null || model.passbackMode == ThinkingPassback.ON ||
+        model.enabledModelTools.isNotEmpty() ||
+        model.modelJson.isNotEmpty() || unsupportedSampling || settings.maxTokens !in 0..131072
+    ) {
+        throw MobileProviderConfigurationException(MobileProviderFailure.MODEL_OPTIONS)
     }
     put("source", "mobile_ephemeral")
     put("provider", buildJsonObject {
@@ -47,7 +66,9 @@ internal fun mobileProviderRuntime(provider: ModelProvider, runtimeId: String, m
         put("modelId", modelId)
         put("auth", buildJsonObject {
             if (provider.auth.method == AuthMethod.QUERY_PARAM) {
-                require(!provider.auth.key.isNullOrBlank() && provider.auth.token.isNotBlank())
+                if (provider.auth.key.isNullOrBlank() || provider.auth.token.isBlank()) {
+                    throw MobileProviderConfigurationException(MobileProviderFailure.CREDENTIALS)
+                }
                 put("method", "query_param")
                 put("key", provider.auth.key)
                 put("value", provider.auth.token)

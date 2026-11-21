@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 /** An authenticated wire exposes 401 only when the transport rejected the token before dispatch. */
 interface GenerativeServerWire {
     fun close() = Unit
+    suspend fun <T> withConnection(block: suspend () -> T): T = block()
     fun authenticate(identity: PairedIdentity): AccessToken
     fun rpc(token: AccessToken, request: RpcRequest): RpcReply
     fun events(token: AccessToken, sessionId: String, after: Long): List<SessionEvent>
@@ -60,6 +61,8 @@ class GenerativeServerClient(private val wire: GenerativeServerWire, private val
     suspend fun rpc(request: RpcRequest): RpcReply = authenticated { wire.rpcAsync(it, request) }
 
     fun close() = wire.close()
+
+    internal suspend fun <T> withConnection(block: suspend () -> T): T = wire.withConnection(block)
 
     /** Destructive, non-replayable identity revocation; only a confirmed reply is success. */
     suspend fun revoke() {

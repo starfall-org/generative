@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -29,8 +30,9 @@ import org.starfall.generative.R
 
 private val LocalSelectionClipboardCapture = staticCompositionLocalOf<SelectionClipboard?> { null }
 private val LocalPlatformSelectionToolbar = staticCompositionLocalOf<PlatformSelectionToolbar?> { null }
+internal val LocalReadOnlySelectionStates = staticCompositionLocalOf<MutableSet<SelectionState>?> { null }
 
-/** Keep read-only text selection in Compose while letting Android render its floating toolbar. */
+/** Dismiss read-only selection on outside touches while Android hosts the floating toolbar. */
 @Composable
 fun PlatformTextSelection(content: @Composable () -> Unit) {
     val view = LocalView.current
@@ -39,16 +41,19 @@ fun PlatformTextSelection(content: @Composable () -> Unit) {
     val clipboard = LocalClipboard.current
     val selectionClipboard = remember(clipboard) { SelectionClipboard(clipboard) }
     val toolbar = remember(view, selectionClipboard) { PlatformSelectionToolbar(view, selectionClipboard) }
+    val selectionStates = remember(toolbar) { mutableSetOf<SelectionState>() }
     val focusManager = LocalFocusManager.current
     DisposableEffect(toolbar) { onDispose { toolbar.hide() } }
     CompositionLocalProvider(
         LocalSelectionClipboardCapture provides selectionClipboard,
-        LocalPlatformSelectionToolbar provides toolbar
+        LocalPlatformSelectionToolbar provides toolbar,
+        LocalReadOnlySelectionStates provides selectionStates,
     ) {
-        Box(Modifier.fillMaxSize().pointerInput(toolbar, focusManager) {
+        Box(Modifier.fillMaxSize().pointerInput(toolbar, focusManager, selectionStates) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                if (toolbar.hasReadOnlySelection) {
+                // The newer Compose toolbar does not call LocalTextToolbar.showMenu.
+                if (toolbar.hasReadOnlySelection || selectionStates.any { it.selectedTexts.isNotEmpty() }) {
                     // SelectionContainer releases its highlight and handles focus loss.
                     // Observe before children so this same touch still activates its target.
                     // Handles and Android's floating toolbar use separate popup windows.

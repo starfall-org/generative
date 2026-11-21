@@ -13,6 +13,7 @@ import org.starfall.generative.shared.model.auth.AuthMethod
 import org.starfall.generative.shared.model.McpAuthMethod
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.database.repositories.ServerConnectionRepository
+import org.starfall.generative.features.serverconnection.model.ServerConnectionDraft
 import org.starfall.generative.integrations.generativeserver.RemoteConversationCache
 import org.starfall.generative.integrations.generativeserver.GenerativeServerClient
 import org.starfall.generative.integrations.generativeserver.GenerativeServerHttpTransport
@@ -46,10 +47,9 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     val profiles = repository.profiles
     private val providerConfigWrites = Mutex()
 
-    private suspend fun openCode(id: String): OpenCodeApi {
-        val profile = requireNotNull(repository.profile(id))
-        require(profile.transport == "opencode")
-        return OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id))
+    internal suspend fun openCode(id: String): OpenCodeApi {
+        val connection = requireNotNull(repository.openCodeConnection(id))
+        return OpenCodeApi(connection.profile.endpoint, connection.credentials)
     }
 
     suspend fun providerConfigFile(id: String, directory: String?) = openCode(id).providerConfigFile(directory)
@@ -85,23 +85,14 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         api.changeCatalogConfigEntry(entry, replacement = null, directory = null)
     }
 
-    suspend fun integration(id: String, integrationId: String, directory: String?) = openCode(id).integration(integrationId, directory)
     suspend fun connectIntegrationKey(id: String, integrationId: String, key: String, answer: JsonObject?, directory: String?) =
         openCode(id).connectIntegrationKey(integrationId, key, answer, directory)
-    suspend fun beginIntegrationOAuth(id: String, integrationId: String, methodId: String, answer: JsonObject?, directory: String?) =
-        openCode(id).beginIntegrationOAuth(integrationId, methodId, answer, directory)
-    suspend fun integrationOAuthStatus(id: String, integrationId: String, attemptId: String, directory: String?) =
-        openCode(id).integrationOAuthStatus(integrationId, attemptId, directory)
-    suspend fun completeIntegrationOAuth(id: String, integrationId: String, attemptId: String, code: String?, directory: String?) =
-        openCode(id).completeIntegrationOAuth(integrationId, attemptId, code, directory)
-    suspend fun cancelIntegrationOAuth(id: String, integrationId: String, attemptId: String, directory: String?) =
-        openCode(id).cancelIntegrationOAuth(integrationId, attemptId, directory)
 
     /** Read from the requested connection, independently of the active chat connection. */
     suspend fun providers(id: String, directory: String? = null): List<ServerInventoryItem> {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport == "opencode") {
-            val api = OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id))
+            val api = openCode(id)
             return api.providers(directory).map { provider ->
                 ServerInventoryItem(provider.getValue("id").jsonPrimitive.content,
                     provider.getValue("name").jsonPrimitive.content,
@@ -111,28 +102,25 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
                     url = ((provider["settings"] as? JsonObject)?.get("baseURL") as? JsonPrimitive)?.contentOrNull)
             }
         }
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        return try {
-            sessions.catalog().providers.map { ServerInventoryItem(it.id, it.name, it.type,
+        return withServerSession(id) {
+            catalog().providers.map { ServerInventoryItem(it.id, it.name, it.type,
                 providerType = ModelApiType.entries.firstOrNull { type -> type.name.equals(it.type, true) }
                     ?: ModelApiType.OPENAI) }
-        } finally { sessions.close() }
+        }
     }
 
     internal suspend fun saveImportedProvider(id: String, provider: ModelProvider) {
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        try {
-            require(sessions.supportsCatalogImport(true))
-            sessions.importProvider(provider)
-        } finally { sessions.close() }
+        withServerSession(id) {
+            require(supportsCatalogImport(true))
+            importProvider(provider)
+        }
     }
 
     internal suspend fun saveImportedMcp(id: String, server: McpInfo) {
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        try {
-            require(sessions.supportsCatalogImport(false))
-            sessions.importMcp(server)
-        } finally { sessions.close() }
+        withServerSession(id) {
+            require(supportsCatalogImport(false))
+            importMcp(server)
+        }
     }
 
     /** The picker reads public metadata only. Resolve a single credential after selection. */
@@ -144,11 +132,12 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         }
 
     /** Check server support before reading any local credentials. */
-    suspend fun importSupported(id: String, providers: Boolean): Boolean {
+    internal suspend fun localImportKinds(id: String): List<Boolean> {
         val profile = requireNotNull(repository.profile(id))
-        if (profile.transport == "opencode") return !providers && profile.endpoint.startsWith("https://", true)
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        return try { sessions.supportsCatalogImport(providers) } finally { sessions.close() }
+        if (profile.transport == "opencode") {
+            return if (profile.endpoint.startsWith("https://", true)) listOf(false) else emptyList()
+        }
+        return withServerSession(id) { catalogImportKinds() }
     }
 
     suspend fun importLocal(id: String, localId: String, providers: Boolean, directory: String?) {
@@ -164,9 +153,8 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
             api.addMcp(metadata.name, openCodeMcpImportConfig(source.resolveServer(metadata)), directory)
             return
         }
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        try {
-            require(sessions.supportsCatalogImport(providers))
+        withServerSession(id) {
+            require(supportsCatalogImport(providers))
             if (providers) {
                 val source = requireNotNull(localModels)
                 val metadata = requireNotNull(source.allProviders.first().firstOrNull { it.id == localId })
@@ -177,32 +165,31 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
                 val copy = if (provider.config.modelIds == null) provider.copy(config = provider.config.copy(
                     modelIds = (source.fetchProviderModels(provider) + provider.config.modelConfigs.keys).distinct()))
                     else provider
-                sessions.importProvider(copy)
+                importProvider(copy)
             } else {
                 val source = requireNotNull(localMcp)
                 val metadata = requireNotNull(source.allServers.first().firstOrNull { it.id == localId })
                 require(!metadata.isContentApiPreset())
                 val server = source.resolveServer(metadata)
                 require(server.auth.method != McpAuthMethod.OAUTH2)
-                sessions.importMcp(server)
+                importMcp(server)
             }
-        } finally { sessions.close() }
+        }
     }
 
     /** A null result means the server protocol has no MCP inventory operation. */
     suspend fun mcpServers(id: String, directory: String? = null): List<ServerInventoryItem>? {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport != "opencode") {
-            val sessions = GenerativeServerSessions(clientFactory(id))
-            return try {
-                sessions.mcpCatalog()?.map { server ->
+            return withServerSession(id) {
+                mcpCatalog()?.map { server ->
                     ServerInventoryItem(server.getValue("id").jsonPrimitive.content,
                         server.getValue("name").jsonPrimitive.content, "unknown",
                         url = (server["url"] as? JsonPrimitive)?.contentOrNull)
                 }
-            } finally { sessions.close() }
+            }
         }
-        val api = OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id))
+        val api = openCode(id)
         return api.mcpServers(directory).map { server ->
             val name = server.getValue("name").jsonPrimitive.content
             ServerInventoryItem(name, server["title"]?.jsonPrimitive?.content ?: name,
@@ -215,27 +202,36 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     suspend fun projects(id: String): List<ServerProject>? {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport != "opencode") return null
-        return OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id)).projects()
+        return openCode(id).projects()
             .map { ServerProject(it.name, it.directory) }.distinctBy { it.directory }
     }
 
     suspend fun setMcpConnected(id: String, name: String, connected: Boolean, directory: String?) {
-        val profile = requireNotNull(repository.profile(id))
-        require(profile.transport == "opencode")
-        OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id)).setMcpConnected(name, connected, directory)
+        openCode(id).setMcpConnected(name, connected, directory)
     }
 
     suspend fun addMcp(id: String, name: String, config: JsonObject, directory: String?) {
-        val profile = requireNotNull(repository.profile(id))
-        require(profile.transport == "opencode")
-        OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id)).addMcp(name, config, directory)
+        openCode(id).addMcp(name, config, directory)
     }
 
     suspend fun removeMcp(id: String, name: String, directory: String?) {
-        val profile = requireNotNull(repository.profile(id))
-        require(profile.transport == "opencode")
-        OpenCodeApi(profile.endpoint, repository.openCodeCredentials(id)).removeMcp(name, directory)
+        openCode(id).removeMcp(name, directory)
     }
+
+    internal suspend fun saveConnection(draft: ServerConnectionDraft, profile: ServerConnectionProfile?, repairing: Boolean) {
+        val current = profile?.let { requireNotNull(repository.profile(it.id)) }
+        val needsCredentials = draft.needsServerCredentials(current, repairing)
+        when {
+            draft.transport == "opencode" && needsCredentials ->
+                saveOpenCode(current, draft.name, draft.endpoint, draft.username, draft.password, draft.authUrl)
+            current == null ->
+                pair(draft.name, draft.invitation, draft.transport, draft.sshMachineId, draft.allowLocalProviders)
+            needsCredentials ->
+                rePair(current, draft.name, draft.invitation, draft.transport, draft.sshMachineId, draft.allowLocalProviders)
+            else -> rename(current, draft.name, draft.allowLocalProviders)
+        }
+    }
+
     suspend fun pair(name: String, url: String, transport: String = "http", sshMachineId: String = "", allowLocalProviders: Boolean = false) {
         require(name.isNotBlank())
         val id = UUID.randomUUID().toString()
@@ -307,16 +303,35 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     suspend fun test(id: String) {
         val profile = requireNotNull(repository.profile(id))
         if (profile.transport == "opencode") {
-            OpenCodeAuthentication(profile.endpoint).verify(repository.openCodeCredentials(id))
+            val connection = requireNotNull(repository.openCodeConnection(id))
+            OpenCodeAuthentication(connection.profile.endpoint).verify(connection.credentials)
             return
         }
-        val sessions = GenerativeServerSessions(clientFactory(id))
-        try {
-            sessions.verifyCapabilities()
-            sessions.catalog()
-            sessions.list()
+        withServerSession(id) {
+            verifyCapabilities()
+            catalog()
+            list()
         }
-        finally { sessions.close() }
+    }
+
+    private suspend fun <T> withServerSession(id: String, block: suspend GenerativeServerSessions.() -> T): T {
+        val sessions = GenerativeServerSessions(clientFactory(id))
+        return try {
+            sessions.withConnection { sessions.block() }
+        } finally {
+            sessions.close()
+        }
+    }
+}
+
+internal fun ServerConnectionDraft.needsServerCredentials(profile: ServerConnectionProfile?, repairing: Boolean): Boolean {
+    if (profile == null || transport != profile.transport) return true
+    return when (transport) {
+        "http" -> invitation.isNotBlank()
+        "ssh" -> repairing || sshMachineId != profile.sshMachineId
+        "opencode" -> repairing || password.isNotEmpty() || authUrl.isNotBlank() ||
+            username != profile.clientId || endpoint != profile.endpoint
+        else -> false
     }
 }
 

@@ -99,7 +99,7 @@ class ConversationDrawerFocusTest {
             }
         }
 
-        compose.onNodeWithTag("conversation_drawer_menu_button").performClick()
+        compose.onNodeWithTag("conversation_drawer_menu_button").assertTextContains("Generative").performClick()
         compose.runOnIdle {
             org.junit.Assert.assertTrue(navigated)
             org.junit.Assert.assertFalse(closed)

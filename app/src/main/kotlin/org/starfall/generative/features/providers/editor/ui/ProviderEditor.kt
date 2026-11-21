@@ -122,7 +122,10 @@ fun ProviderEditor(
     onSaveIcon: (ModelProvider) -> Unit = {},
     onSaveModelIcon: (String, String, String?) -> Unit = { _, _, _ -> },
     onUpdateAuxiliary: (String, ProviderAuxiliaryChange) -> Unit = { _, _ -> },
-    onAutoCreateProvider: (ModelProvider) -> Unit = onSave
+    onAutoCreateProvider: (ModelProvider) -> Unit = onSave,
+    authorizationReady: (AuthMethod) -> Boolean = { true },
+    connectionDetails: @Composable (AuthMethod, Boolean) -> Unit = { _, _ -> },
+    pendingAuthorizationContent: @Composable () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
@@ -421,7 +424,7 @@ fun ProviderEditor(
                                 SharedIcon(Icons.Outlined.Delete, stringResource(R.string.common_delete))
                             }
                         }
-                        Button(enabled = valid && !oauthAuthorizing && !iconImporting,
+                        Button(enabled = valid && authorizationReady(authMethod) && !oauthAuthorizing && !iconImporting,
                             onClick = { onSave(draft()); providerPersisted = true },
                             modifier = Modifier.padding(end = 8.dp)) {
                             Text(stringResource(R.string.common_save))
@@ -500,6 +503,7 @@ fun ProviderEditor(
                 if (!type.isAccountProvider || authMethod != AuthMethod.OAUTH) ProviderAuthField(authMethod, apiKey, !type.isAccountProvider,
                     onMethodChange = { authMethod = it; authName = if (it == AuthMethod.QUERY_PARAM) "key" else "Authorization"; oauthAuthError = null },
                     onValueChange = { apiKey = it }, onFocusLost = { if (authMethod == AuthMethod.BEARER_TOKEN) apiKey = bearerHeaderValue(authName.trim().ifBlank { "Authorization" }, apiKey) })
+                connectionDetails(authMethod, authorization().token.isNotBlank())
                 if (authMethod !in listOf(AuthMethod.OAUTH, AuthMethod.NONE, AuthMethod.OTHER)) {
                     Row(
                         Modifier
@@ -520,14 +524,18 @@ fun ProviderEditor(
                     }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.provider_manage_api_keys)) }
                 }
                 if (authMethod == AuthMethod.OAUTH) OAuthAccountCard(signedIn = oauthAuthorized, identity = oauthIdentity,
-                    signingIn = oauthAuthorizing && !oauthClearing, signingOut = oauthClearing, canSignIn = onAuthorizeProvider != null,
+                    signingIn = oauthAuthorizing && !oauthClearing, signingOut = oauthClearing,
+                    canSignIn = onAuthorizeProvider != null && authorizationReady(authMethod),
                     canSignOut = onClearOAuthCredentials != null, canCancelSignIn = onCancelProviderAuthorization != null, error = oauthAuthError,
                     onSignIn = rememberOAuthStart { scope.launch {
                         try { authorizeOAuth() } catch (_: CancellationException) { }
                     } }, onCancelSignIn = {
                         activeOAuthRequest?.let { onCancelProviderAuthorization?.invoke(it) }
                     }, onSignOut = { scope.launch { removeOAuthAccount(oauthAccountId ?: initialProvider.id) } },
-                    pendingContent = { DeviceCodeChallengeText(type) })
+                    pendingContent = {
+                        DeviceCodeChallengeText(type)
+                        pendingAuthorizationContent()
+                    })
                 if (type == ModelApiType.ANTIGRAVITY && authMethod == AuthMethod.OAUTH && oauthAuthorized) {
                     val projectAccountId = oauthAccountId?.takeIf(String::isNotBlank) ?: initialProvider.id
                     AntigravityProjectIdField(antigravityProjectIds[projectAccountId].orEmpty()) { value ->

@@ -1,5 +1,7 @@
 package org.starfall.generative.features.home.chat.logic.remote
 
+import org.starfall.generative.features.home.chat.model.RemoteActionFailure
+import org.starfall.generative.features.home.chat.model.RemoteWorkspaceState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

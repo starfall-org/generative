@@ -9,10 +9,15 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.starfall.generative.shared.subfeatures.media.logic.TemporaryChatFiles
 import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.shared.model.Conversation
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], application = LibraryTestApplication::class)
 class TemporaryChatIsolationTest {
     @Test fun temporarySessionIsNeverSerialized() {
         val conversation = Conversation("temporary", "Temporary Chat", 1, 1, isTemporary = true)

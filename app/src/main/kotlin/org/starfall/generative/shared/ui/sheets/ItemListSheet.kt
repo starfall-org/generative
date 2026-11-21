@@ -58,8 +58,7 @@ class ItemListSheetSection<T>(
 )
 
 /**
- * Headerless sheet for collections of [ItemCard] entries. An optional title is inline content,
- * rather than a [BottomSheet] header, so titleless callers do not reserve header space.
+ * Sheet for collections of [ItemCard] entries, with an optional fixed header above the list.
  *
  * Search and filter controls live inside the sheet, while filtering and feature actions remain
  * owned by the caller. Stable keys are required so list updates retain scroll and item identity.
@@ -84,7 +83,8 @@ fun <T> ItemListSheet(
     fixedHeightFraction: Float? = null,
     listModifier: Modifier = Modifier,
     listMaxHeight: Dp? = null,
-    expandOnOpen: Boolean = false
+    expandOnOpen: Boolean = false,
+    headerActions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -101,12 +101,17 @@ fun <T> ItemListSheet(
             Modifier.fillMaxWidth().imePadding()
                 .then(if (contentBehindNavigationBar) Modifier.navigationBarsPadding() else Modifier)
         ) {
-            title?.let {
-                Text(
-                    text = it,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.titleLarge
-                )
+            if (title != null || headerActions != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = if (headerActions == null) 16.dp else 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    if (title != null) {
+                        Text(title, Modifier.weight(1f).padding(vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+                    }
+                    headerActions?.invoke(this)
+                }
             }
             if (onSearchQueryChange != null || filterContent != null) {
                 Row(

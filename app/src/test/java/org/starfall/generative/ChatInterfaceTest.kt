@@ -1,10 +1,12 @@
 package org.starfall.generative
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.onAllNodesWithText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +26,8 @@ import org.starfall.generative.features.home.chat.model.ActiveChatStreamState
 import org.starfall.generative.features.home.chat.ui.ChatInterface
 import org.starfall.generative.features.home.chat.ui.ChatBackend
 import org.starfall.generative.features.home.chat.ui.ChatScreen
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
+import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.shared.model.ChatRole
 import org.starfall.generative.shared.model.MessageVersion
 import org.starfall.generative.shared.model.StoredMessage
@@ -95,6 +100,35 @@ class ChatInterfaceTest {
         compose.onNodeWithTag("processing-dropdown-toggle", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Check the input", substring = true, useUnmergedTree = true).assertExists()
         compose.onNodeWithText("lookup", useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun remotePreparationFailureKeepsTheComposerDraft() {
+        val accepted = CompletableDeferred<Boolean>()
+        val draft = "Draft for the remote model"
+        val failure = "Check provider authentication"
+        var workspaceNotice by mutableStateOf<String?>(null)
+        compose.setContent {
+            MaterialTheme {
+                CompositionLocalProvider(LocalRemoteQuickActions provides RemoteQuickActions()) {
+                    ChatInterface(
+                        conversationId = "remote",
+                        conversationMessages = emptyList(),
+                        workspaceNotice = workspaceNotice,
+                        onSendMessageWithSkill = { _, _, _, _ ->
+                            accepted.await().also { if (!it) workspaceNotice = failure }
+                        },
+                    )
+                }
+            }
+        }
+
+        compose.onNode(hasSetTextAction()).performTextInput(draft)
+        compose.onNodeWithContentDescription("Send message").performClick()
+        compose.onNodeWithContentDescription("Send message").assertIsNotEnabled()
+        compose.onNodeWithText(draft).assertExists()
+        compose.runOnIdle { accepted.complete(false) }
+        compose.onNodeWithText(failure).assertExists()
+        compose.onNodeWithText(draft).assertExists()
     }
 
     @Test fun screenSendsThroughTheSelectedBackend() {

@@ -10,7 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure
+import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
 import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials

@@ -65,6 +65,7 @@ import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIc
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsPersonVoice as PersonVoiceFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsPin as PinFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsPlay as PlayFluentVector
+import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsPlugConnected as PlugConnectedFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsPuzzlePiece as PuzzlePieceFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsQuestionCircle as QuestionCircleFluentVector
 import org.starfall.generative.shared.ui.icons.fluentui.regular.FluentuiSystemIconsSave as SaveFluentVector
@@ -153,6 +154,7 @@ object FluentUi {
         val PersonVoice: ImageVector get() = PersonVoiceFluentVector
         val Pin: ImageVector get() = PinFluentVector
         val Play: ImageVector get() = PlayFluentVector
+        val PlugConnected: ImageVector get() = PlugConnectedFluentVector
         val PuzzlePiece: ImageVector get() = PuzzlePieceFluentVector
         val QuestionCircle: ImageVector get() = QuestionCircleFluentVector
         val Save: ImageVector get() = SaveFluentVector

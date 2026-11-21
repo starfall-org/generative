@@ -2,7 +2,7 @@ package org.starfall.generative.features.serverconnection.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
@@ -31,19 +31,17 @@ internal fun ServerConnectionCatalogImport(
     onBusyChange: (Boolean) -> Unit
 ) {
     val kinds by produceState(emptyList<Boolean>(), service, profile.id, profile.endpoint, profile.transport) {
-        value = listOf(true, false).filter { providers ->
-            try { service.importSupported(profile.id, providers) }
-            catch (e: CancellationException) { throw e }
-            catch (_: Exception) { false }
-        }
+        value = try { service.localImportKinds(profile.id) }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { emptyList() }
     }
     var importing by remember(profile.id, profile.endpoint, profile.transport) { mutableStateOf<Boolean?>(null) }
     var sending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     if (kinds.isNotEmpty()) {
         HorizontalDivider()
-        Text(stringResource(R.string.server_import_local), style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.server_import_local), style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             kinds.forEach { providers ->
                 OutlinedButton(onClick = { importing = providers }, enabled = !busy) {
                     Text(stringResource(if (providers) R.string.model_providers else R.string.mcp))

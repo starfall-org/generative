@@ -274,11 +274,13 @@ private fun SmoothStreamingMarkdownMessage(
 /** A composition-scoped handoff, not a second copy of the persisted message. */
 private class LiveTailMemory {
     private var lastObserved: ActiveChatStreamState? = null
-    val hasObservedStream: Boolean get() = lastObserved != null
+    var hasRenderedStreamTail: Boolean = false
+        private set
     val lastStream: ActiveChatStreamState? get() = lastObserved
 
-    fun observe(stream: ActiveChatStreamState) {
-        lastObserved = stream
+    fun observe(stream: ActiveChatStreamState?) {
+        hasRenderedStreamTail = true
+        if (stream != null) lastObserved = stream
     }
 }
 
@@ -300,7 +302,7 @@ private fun StreamingAssistantText(
         }
     } else null
     // Write only after a successful composition, not to a mutable array during composition.
-    SideEffect { currentStream?.let(liveTailMemory::observe) }
+    SideEffect { liveTailMemory.observe(currentStream) }
     val stream = currentStream ?: liveTailMemory.lastStream
     // The final stored version always wins. When it exactly extends the observed stream,
     // supply its missing suffix to the SAME incremental renderer and preserve stable nodes.
@@ -383,8 +385,8 @@ private fun CompletedAssistantContent(
         }
     }
 
-    // Keep the same content slot through completion; only the source handed to it changes.
-    val useIncrementalText = (isStreaming && streamStateFlow != null) || liveTailMemory.hasObservedStream
+    // Keep the same content slot through completion, including when only the stored snapshot rendered.
+    val useIncrementalText = (isStreaming && streamStateFlow != null) || liveTailMemory.hasRenderedStreamTail
     GatedSelectionContainer {
         Column {
             if (numberedBlocks.isEmpty() && useIncrementalText) {

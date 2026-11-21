@@ -9,16 +9,32 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.starfall.generative.integrations.generativeserver.GenerativeServerSshTransport
 import org.starfall.generative.integrations.remote.ActivePortForwards
 import org.starfall.generative.integrations.remote.RemoteMachineConnectionManager
 import org.starfall.generative.shared.model.RemoteMachine
 
 class RuntimeSshLeaseTest {
+    @Test fun pairingClosesTheSshSessionAfterReadingTheResponse() = runBlocking {
+        val response = """{"protocol":5,"client_id":"owner","secret":"test","fingerprint":"server","transport":"tcp"}"""
+        val session = TestSession(response.toByteArray())
+        val manager = manager(session)
+        val machine = RemoteMachine("pairing", "Pairing")
+
+        val paired = GenerativeServerSshTransport.pairUsing { command ->
+            manager.openExecStream(machine, command)
+        }
+
+        assertEquals("owner", paired.identity.clientId)
+        withTimeout(5000) { session.disconnected.await() }
+        assertFalse(manager.isConnected(machine.id))
+    }
+
     @Test fun closingRuntimeDisconnectsWhenTheLastTaskReleasesTheSharedSshSession() = runBlocking {
         val session = TestSession()
         val manager = manager(session)
         val machine = RemoteMachine("shared", "Shared")
-        val runtime = manager.openExecStream(machine, "runtime", disconnectWhenIdle = true)
+        val runtime = manager.openExecStream(machine, "runtime")
         val task = manager.openExecStream(machine, "task", disconnectWhenIdle = false)
         runtime.close()
         val nextTask = manager.openExecStream(machine, "next task", disconnectWhenIdle = false)
@@ -35,7 +51,7 @@ class RuntimeSshLeaseTest {
         val session = TestSession()
         val manager = manager(session)
         val machine = RemoteMachine("forwarded", "Forwarded")
-        val runtime = manager.openExecStream(machine, "runtime", disconnectWhenIdle = true)
+        val runtime = manager.openExecStream(machine, "runtime")
         manager.startPortForward(machine)
         runtime.close()
 
@@ -51,7 +67,7 @@ class RuntimeSshLeaseTest {
         startForwards = { _, _ -> ActivePortForwards(listOf("forward"), emptyList()) }
     )
 
-    private class TestSession : Session(JSch(), "test", "localhost", 22) {
+    private class TestSession(private val response: ByteArray = byteArrayOf()) : Session(JSch(), "test", "localhost", 22) {
         val disconnected = CompletableDeferred<Unit>()
         var channels = 0
             private set
@@ -68,7 +84,7 @@ class RuntimeSshLeaseTest {
             return object : ChannelExec() {
                 override fun connect(timeout: Int) = Unit
                 override fun disconnect() = Unit
-                override fun getInputStream() = ByteArrayInputStream(byteArrayOf())
+                override fun getInputStream() = ByteArrayInputStream(response)
                 override fun getOutputStream() = ByteArrayOutputStream()
             }
         }

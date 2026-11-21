@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -37,6 +38,7 @@ import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
+import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
@@ -125,9 +127,11 @@ class QuickActionsSheetTransitionTest {
         var attachments = listOf("content://existing/image")
         val context = ApplicationProvider.getApplicationContext<Context>()
         val temporaryChatId = "camera-test".takeIf { temporary }
-        val photoDirectory = if (temporary) {
-            java.io.File(context.cacheDir, "temporary_chat_media/$temporaryChatId").apply { mkdirs() }
-        } else org.starfall.generative.shared.subfeatures.media.logic.ToolFiles.appStorageDirectory(context)
+        val files = ToolFiles(context)
+        val photoDirectory = if (temporaryChatId != null) {
+            files.openTemporarySession(temporaryChatId)
+            java.io.File(context.cacheDir, "temporary_chat_media/$temporaryChatId")
+        } else ToolFiles.uploadStorageDirectory(context)
         compose.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
                 LinkedQuickActionsHost(ToolControls(settings = ToolSettings()), attachments, temporaryChatId) { attachments = it }
@@ -157,6 +161,10 @@ class QuickActionsSheetTransitionTest {
         } else {
             assertEquals(listOf("content://existing/image"), attachments)
             assertEquals(0, resolver.delete(uri, null, null))
+        }
+        if (temporaryChatId != null) {
+            runBlocking { files.closeTemporarySession(temporaryChatId) }
+            assertTrue("Closing a temporary chat must remove its capture directory", !photoDirectory.exists())
         }
     }
 

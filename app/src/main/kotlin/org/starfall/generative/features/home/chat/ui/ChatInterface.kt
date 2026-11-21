@@ -1,13 +1,8 @@
 package org.starfall.generative.features.home.chat.ui
 
-import org.starfall.generative.shared.ui.layout.fadingBarSurface
 import org.starfall.generative.R
 import org.starfall.generative.features.home.BottomSheetsLinkState
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
@@ -25,12 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
@@ -46,16 +38,15 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderGroup
 import org.starfall.generative.shared.ui.layout.rememberInputAreaBackdrop
 import org.starfall.generative.shared.ui.layout.inputAreaBackdropSource
+import org.starfall.generative.shared.ui.layout.inputAreaFooterSurface
 import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
-import org.starfall.generative.shared.ui.text.PlatformTextSelectionRegion
 import org.starfall.generative.features.home.chat.logic.input.ChatInputEditDraft
 import org.starfall.generative.features.home.chat.logic.input.DirectMediaRequest
 import org.starfall.generative.shared.model.language.ModelType
 import org.starfall.generative.shared.model.defaultAgentSkills
-import org.starfall.generative.features.home.chat.logic.unansweredUserMessageIds
 import org.starfall.generative.features.home.chat.ui.input.UserInputArea
 import org.starfall.generative.features.home.shared.ui.ConversationSummarySheet
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
@@ -130,14 +121,13 @@ fun ChatInterface(
     modifier: Modifier = Modifier,
     activeStream: StateFlow<ActiveChatStreamState?>? = null,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
-    onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
+    onSendMessageWithSkill: suspend (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false,
     restoreViewport: Boolean = false,
     workspaceNotice: String? = null,
 ) {
     SideEffect { ChatRenderMetrics.recordChatScreenRecomposition() }
-    val density = LocalDensity.current
     var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     var inputAreaBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
 
@@ -185,9 +175,6 @@ fun ChatInterface(
     // This event survives the null -> newly created conversation transition.
     var firstSendAwaitingAnchor by remember { mutableStateOf(false) }
     fun resumeFollowing() = viewport.resume()
-    val copyLabel = stringResource(R.string.common_copy)
-    val copiedLabel = stringResource(R.string.common_copied_to_clipboard)
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
@@ -221,40 +208,26 @@ fun ChatInterface(
     val chatModeRequest = selection.requestId
     val toggleChatImage: (String) -> Unit = remember(selection) { selection::toggle }
 
-    // Dialog state for deleting a message
-    var deletingMessageId by remember(conversationKey, foreground) { mutableStateOf<String?>(null) }
-
-    var regeneratingMessageId by remember(conversationKey, foreground) { mutableStateOf<String?>(null) }
     var showContextSummarySheet by remember(conversationKey, foreground) { mutableStateOf(false) }
-    var showSummaryDialog by remember(conversationKey, foreground) { mutableStateOf(false) }
     // Persistence errors belong to the chat history; composer submission errors stay by InputArea.
     var saveConversationError by remember(conversationId) { mutableStateOf<String?>(null) }
     var inlineChatError by remember(conversationId) { mutableStateOf<String?>(null) }
     var noticeDismissed by remember(workspaceNotice) { mutableStateOf(false) }
-    fun submitMessage(action: () -> Boolean): Boolean {
+    fun clearSubmissionErrors() {
         saveConversationError = null
         inlineChatError = null
-        return action().also { accepted ->
-            if (accepted) {
-                if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
-                if (!isGenerating) resumeFollowing()
-            }
-        }
+        noticeDismissed = false
     }
-    val lastMessage = conversationMessages.lastOrNull()
-    val streamingMessage = if (streamingHere) conversationMessages.lastOrNull { it.role == ChatRole.MODEL } else null
-    val lastResponseState = conversationMessages.lastOrNull()?.activeVersion
-    val unansweredMessages = remember(
-        conversationKey,
-        structuralRevision,
-        unversionedMessages,
-        lastResponseState?.generationError,
-        lastResponseState?.generationInterrupted,
-        lastResponseState?.processingFinishedAt
-    ) { unansweredUserMessageIds(conversationMessages) }
-    val historyLoading = loadingConversationId != null
-    fun whenIdle(action: () -> Unit) {
-        if (!isGenerating) action()
+    fun onSubmissionResult(accepted: Boolean): Boolean {
+        if (accepted) {
+            if (conversationMessages.isEmpty()) firstSendAwaitingAnchor = true
+            if (!isGenerating) resumeFollowing()
+        }
+        return accepted
+    }
+    fun submitMessage(action: () -> Boolean): Boolean {
+        clearSubmissionErrors()
+        return onSubmissionResult(action())
     }
     LaunchedEffect(saveError) {
         saveError?.let { saveConversationError = it }
@@ -268,7 +241,7 @@ fun ChatInterface(
     }
 
     val inputBackdrop = rememberInputAreaBackdrop()
-    val blurInputBackdrop = LocalInputAreaAppearance.current.blurRadius > 0f && android.os.Build.VERSION.SDK_INT >= 31
+    val blurInputBackdrop = LocalInputAreaAppearance.current.hasBackdropBlur
     PlatformTextSelection {
     Box(
         modifier = modifier
@@ -344,13 +317,7 @@ fun ChatInterface(
                     modifier = Modifier
                         .testTag("chat-bottom-panel")
                         .fillMaxWidth()
-                        .fadingBarSurface(
-                            MaterialTheme.colorScheme.background.copy(
-                                alpha = LocalInputAreaAppearance.current.alpha * 0.6f
-                            ),
-                            footer = true,
-                            depth = androidx.compose.ui.unit.Dp.Unspecified
-                        )
+                        .inputAreaFooterSurface()
                         .navigationBarsPadding()
                 ) {
                     (inlineChatError ?: workspaceNotice.takeUnless { noticeDismissed })?.let { error ->
@@ -404,7 +371,8 @@ fun ChatInterface(
                         onSendMedia = { request -> submitMessage { onSendMedia(request) } },
                         onSendMessage = { text, files -> submitMessage { onSendMessage(text, files) } },
                         onSendMessageWithSkill = { text, files, requested, skillName ->
-                            submitMessage { onSendMessageWithSkill(text, files, requested, skillName) }
+                            clearSubmissionErrors()
+                            onSubmissionResult(onSendMessageWithSkill(text, files, requested, skillName))
                         },
                         onEditMessage = { id, text, files ->
                             val isQueued = editDraft?.isQueued == true
@@ -452,237 +420,65 @@ fun ChatInterface(
 
             }
         ) { insets ->
-        // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
-        // content readable initially, while later scrolls visibly pass behind the translucent app bar.
-        BoxWithConstraints(
-            Modifier.fillMaxSize().clipToBounds()
-                .inputAreaBackdropSource(inputBackdrop, blurInputBackdrop)
-                .background(MaterialTheme.colorScheme.background)
-                .minimapEdgeSwipe(minimapState, enabled = foreground && messages.isNotEmpty() && !isDrawerOpening)
-        ) {
-        org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
-        val appBarHeight = insets.calculateTopPadding()
-        val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
-        if (messages.isEmpty() && saveConversationError == null) {
-            ChatOpeningVeil(
-                active = historyLoading,
-                modifier = Modifier.fillMaxSize().padding(top = appBarHeight + 8.dp, bottom = bottomClearance)
+            // Let the list occupy the whole edge-to-edge surface. Its top padding keeps the newest
+            // content readable initially, while later scrolls visibly pass behind the translucent app bar.
+            BoxWithConstraints(
+                Modifier.fillMaxSize().clipToBounds()
+                    .inputAreaBackdropSource(inputBackdrop, blurInputBackdrop)
+                    .background(MaterialTheme.colorScheme.background)
+                    .minimapEdgeSwipe(minimapState, enabled = foreground && messages.isNotEmpty() && !isDrawerOpening)
             ) {
-                ChatWelcome(
-                    isTemporary = isTemporary,
+                org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
+                val appBarHeight = insets.calculateTopPadding()
+                val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
+                ChatTranscript(
+                    conversationId = conversationId,
+                    conversationKey = conversationKey,
                     foreground = foreground,
-                    modifier = Modifier.fillMaxSize()
+                    conversationMessages = conversationMessages,
+                    messages = messages,
+                    structuralRevision = structuralRevision,
+                    isTemporary = isTemporary,
+                    isGenerating = isGenerating,
+                    streamingHere = streamingHere,
+                    activeStream = activeStream,
+                    autoScroll = autoScroll,
+                    historyLoading = loadingConversationId != null,
+                    viewport = viewport,
+                    minimapState = minimapState,
+                    appBarHeight = appBarHeight,
+                    bottomClearance = bottomClearance,
+                    minimapBottomObscured = insets.calculateBottomPadding() + 8.dp,
+                    fallbackModelName = fallbackModelName,
+                    speakingMessageId = speakingMessageId,
+                    inputAttachments = inputAttachments,
+                    toggleChatImage = toggleChatImage,
+                    resendEnabled = !isGenerating && summaryProgress == null && selectedModelName.isNotBlank() &&
+                        providers.any { it.id == selectedProviderId },
+                    saveConversationError = saveConversationError,
+                    onDismissSaveError = { saveConversationError = null },
+                    summary = summary,
+                    summaryProgress = summaryProgress,
+                    onCancelConversationSummary = onCancelConversationSummary,
+                    onSummaryRoleChange = onSummaryRoleChange,
+                    onDeleteSummary = onDeleteSummary,
+                    onEditDraft = { editDraft = it },
+                    onResendUserMessage = onResendUserMessage,
+                    onDeleteQueuedMessage = onDeleteQueuedMessage,
+                    onSwitchVersion = onSwitchVersion,
+                    onRegenerate = onRegenerate,
+                    onRetryFromError = onRetryFromError,
+                    onDeleteAssistantBlock = onDeleteAssistantBlock,
+                    onReadMessage = onReadMessage,
+                    onDeleteMessageVersion = onDeleteMessageVersion,
+                    onDeleteMessage = onDeleteMessage,
                 )
-                if (isGenerating && !streamingHere) {
-                    Text(
-                        stringResource(R.string.chat_error_other_conversation),
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 8.dp, start = 12.dp, end = 12.dp),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        } else {
-            PlatformTextSelectionRegion {
-            ChatMessageList(
-                state = viewport,
-                messages = messages,
-                streaming = streamingHere,
-                autoScroll = autoScroll,
-                historyLoading = historyLoading,
-                activeStream = activeStream,
-                appBarHeight = appBarHeight + 8.dp,
-                bottomClearance = bottomClearance,
-                modifier = Modifier.fillMaxSize(),
-                footer = if ((isGenerating && !streamingHere) || saveConversationError != null) {
-                    {
-                        if (isGenerating && !streamingHere) {
-                            Text(stringResource(R.string.chat_error_other_conversation),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                        saveConversationError?.let { error ->
-                            ErrorContainer(
-                                message = error,
-                                onDismiss = { saveConversationError = null },
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-                                    .testTag("chat-save-error")
-                            )
-                        }
-                    }
-                } else null
-            ) { msg ->
-                    val isLast = msg.id == lastMessage?.id
-                    if (msg.role == ChatRole.USER) {
-                        UserMessageCard(
-                            message = msg,
-                            conversationId = conversationId,
-                            cacheEnabled = !isTemporary,
-                            selectedImageAttachments = inputAttachments,
-                            onToggleChatImage = toggleChatImage,
-                            onResend = if (msg.id in unansweredMessages) rememberChatAction {
-                                if (onResendUserMessage(msg.id)) resumeFollowing()
-                            } else null,
-                            onResendFromMenu = if (!msg.isQueued) rememberChatAction {
-                                if (onResendUserMessage(msg.id)) resumeFollowing()
-                            } else null,
-                            resendEnabled = !isGenerating && summaryProgress == null &&
-                                selectedModelName.isNotBlank() && providers.any { it.id == selectedProviderId },
-                            onEdit = rememberChatValueAction<String> {
-                                if (msg.isQueued) {
-                                    editDraft = ChatInputEditDraft(
-                                        messageId = msg.id,
-                                        text = msg.content,
-                                        attachments = msg.files,
-                                        isQueued = true,
-                                        revision = System.nanoTime()
-                                    )
-                                } else {
-                                    editDraft = ChatInputEditDraft(
-                                        messageId = msg.id,
-                                        text = msg.content,
-                                        attachments = msg.files,
-                                        revision = System.nanoTime()
-                                    )
-                                }
-                            },
-                            onDelete = rememberChatValueAction<String> {
-                                if (msg.isQueued) {
-                                    onDeleteQueuedMessage(msg.id)
-                                } else {
-                                    deletingMessageId = msg.id
-                                }
-                            },
-                            onSwitchVersion = rememberChatValueAction { newIdx: Int ->
-                                if (!msg.isQueued) {
-                                    whenIdle { onSwitchVersion(msg.id, newIdx) }
-                                }
-                            },
-                            modifier = if (msg.isQueued) Modifier.alpha(0.5f) else Modifier
-                        )
-                    } else {
-                        AssistantMessageCard(
-                            message = msg,
-                            isReading = speakingMessageId == msg.id,
-                            fallbackModelName = fallbackModelName,
-                            selectedImageAttachments = inputAttachments,
-                            onToggleChatImage = toggleChatImage,
-                            isStreaming = streamingHere && msg.id == streamingMessage?.id,
-                            conversationId = conversationId,
-                            cacheEnabled = !isTemporary,
-                            streamStateFlow = activeStream,
-                            onCopy = rememberChatAction {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText(copyLabel, assistantCopyText(msg)))
-                                Toast.makeText(context, copiedLabel, Toast.LENGTH_SHORT).show()
-                            },
-                            onRegenerate = rememberChatAction {
-                                whenIdle {
-                                    if (!isLast) regeneratingMessageId = msg.id
-                                    else onRegenerate(msg.id)
-                                }
-                            },
-                            onRetryError = if (isLast) {
-                                rememberChatAction { whenIdle { onRetryFromError(msg.id) } }
-                            } else null,
-                            onEdit = rememberChatAction {
-                                editDraft = ChatInputEditDraft(
-                                    messageId = msg.id,
-                                    text = assistantCopyText(msg),
-                                    attachments = msg.files,
-                                    revision = System.nanoTime()
-                                )
-                            },
-                            onDeleteBlock = rememberChatValueAction<Int> { block ->
-                                whenIdle { onDeleteAssistantBlock(msg.id, block) }
-                            },
-                            onDelete = rememberChatAction {
-                                deletingMessageId = msg.id
-                            },
-                            onRead = rememberChatAction {
-                                onReadMessage(msg.id, msg.content.ifBlank { msg.reasoningContent.orEmpty() })
-                            },
-                            onSwitchVersion = rememberChatValueAction { newIdx: Int ->
-                                whenIdle { onSwitchVersion(msg.id, newIdx) }
-                            }
-                        )
-                    }
-
-                    val progressHere = summaryProgress?.takeIf {
-                        it.conversationId == conversationId && it.throughMessageId == msg.id
-                    }
-                    val summaryHere = summary?.takeIf {
-                        it.throughMessageId == msg.id && progressHere == null
-                    }
-                    if (progressHere != null || summaryHere != null) {
-                        ConversationSummaryDivider(
-                            summary = summaryHere,
-                            progress = progressHere,
-                            onOpenSummary = { showSummaryDialog = true },
-                            onCancelSummary = onCancelConversationSummary,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-            }
             }
         }
-
-        ConversationMinimapSideBar(
-            conversationKey = conversationKey,
-            messages = messages,
-            listState = listState,
-            topObscuredPx = with(density) { appBarHeight.roundToPx() },
-            bottomObscuredPx = with(density) { (insets.calculateBottomPadding() + 8.dp).roundToPx() },
-            // Dragging the thumb is manual scrolling: it stops following and resumes at the end.
-            onScrub = { towardsEnd -> viewport.manualScroll(towardsEnd) },
-            state = minimapState
-        )
-        }
-        }
-
     }
     }
 
     if (foreground && showContextSummarySheet) {
         ConversationSummarySheet(onStart = onStartConversationSummary, onDismiss = { showContextSummarySheet = false })
-    }
-
-    if (foreground && showSummaryDialog) {
-        summary?.let { summary ->
-            ConversationSummaryDialog(
-                summary = summary,
-                onRoleChange = onSummaryRoleChange,
-                onDelete = onDeleteSummary,
-                onDismiss = { showSummaryDialog = false }
-            )
-        } ?: run { showSummaryDialog = false }
-    }
-
-    if (foreground && regeneratingMessageId != null) {
-        RegenerateResponseDialog(
-            onConfirm = {
-                regeneratingMessageId?.let(onRegenerate)
-                regeneratingMessageId = null
-            },
-            onDismiss = { regeneratingMessageId = null }
-        )
-    }
-
-    // Delete message/version confirmation dialog
-    val deletingMessage = deletingMessageId?.let { id -> messages.firstOrNull { it.id == id } }
-    if (foreground && deletingMessage != null) {
-        DeleteMessageDialog(
-            message = deletingMessage,
-            onDeleteVersion = {
-                onDeleteMessageVersion(deletingMessage.id)
-                deletingMessageId = null
-            },
-            onDeleteAll = {
-                onDeleteMessage(deletingMessage.id)
-                deletingMessageId = null
-            },
-            onDismiss = { deletingMessageId = null }
-        )
     }
 }

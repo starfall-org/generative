@@ -10,12 +10,14 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -50,15 +52,28 @@ class GenerativeServerSshTransport internal constructor(
 ) : GenerativeServerWire {
     constructor(
         remote: RemoteMachineService, machineId: String, identity: PairedIdentity,
-        disconnectWhenIdle: Boolean = false
     ) : this({ command ->
-        remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command, disconnectWhenIdle)
+        remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command)
     }, identity)
 
     private val lock = Mutex()
     private val lifecycle = Any()
     @Volatile private var channel: RemoteExecStream? = null
     @Volatile private var closed = false
+    private var connectionUsers = 0
+
+    override suspend fun <T> withConnection(block: suspend () -> T): T {
+        synchronized(lifecycle) { connectionUsers++ }
+        return try {
+            block()
+        } finally {
+            val idleChannel = synchronized(lifecycle) {
+                connectionUsers--
+                if (connectionUsers == 0) channel.also { channel = null } else null
+            }
+            if (idleChannel != null) withContext(NonCancellable + Dispatchers.IO) { idleChannel.close() }
+        }
+    }
 
     override fun close() {
         val connection = synchronized(lifecycle) {
@@ -86,11 +101,15 @@ class GenerativeServerSshTransport internal constructor(
         close()
     }
 
-    override suspend fun rpcAsync(token: AccessToken, request: RpcRequest): RpcReply = lock.withLock {
+    override suspend fun rpcAsync(token: AccessToken, request: RpcRequest): RpcReply = withConnection {
+        lock.withLock { exchange(request) }
+    }
+
+    private suspend fun exchange(request: RpcRequest): RpcReply {
         if (closed) throw IOException("SSH connection closed")
         val existing = channel
         val connection = existing ?: openStream(STREAM_COMMAND)
-        try {
+        return try {
             if (existing == null) synchronized(lifecycle) {
                 if (closed) throw IOException("SSH connection closed")
                 // Publish before authentication so leaving the runtime can stop a blocked read.

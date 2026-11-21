@@ -100,6 +100,7 @@ import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
@@ -198,8 +199,8 @@ internal fun AppNavigation(
     var runtimeSelecting by remember { mutableStateOf(false) }
     // Re-pairing a selected server replaces its device identity under the same profile ID.
     // A live remote session must reconnect as that new identity, not keep the old bearer.
-    var boundRemoteIdentity by remember { mutableStateOf<Triple<String, String, String>?>(null) }
-    val selectedIdentity = selectedServer?.let { Triple(it.id, it.clientId, it.pin) }
+    var boundRemoteIdentity by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    val selectedIdentity = selectedServer?.let { it.id to it.credentialRevision }
     LaunchedEffect(remote.enabled, selectedIdentity, profilesLoaded, runtimeSelecting) {
         if (runtimeSelecting) return@LaunchedEffect
         if (remote.enabled && profilesLoaded && !(remote.error && remote.connectionId == null)) {
@@ -221,11 +222,16 @@ internal fun AppNavigation(
     val remoteIdentityReady = !remote.enabled ||
         (selectedIdentity != null && boundRemoteIdentity == selectedIdentity && remote.connectionId == selectedIdentity.first)
     fun unsupportedRemote() { Toast.makeText(context, R.string.server_remote_unsupported, Toast.LENGTH_SHORT).show() }
-    fun sendRemote(text: String, files: List<String>): Boolean {
+    suspend fun sendRemote(text: String, files: List<String>): Boolean {
         val current = remoteWorkspace.state.value
         val permitted = current.providerId !in current.localProviderIds || selectedServer?.allowLocalProviders == true
         val sent = remoteIdentityReady && permitted && remoteWorkspace.send(text, files)
-        if (!sent && remoteWorkspace.state.value.pendingKeys.isEmpty()) unsupportedRemote()
+        val result = remoteWorkspace.state.value
+        if (!sent && result.pendingKeys.isEmpty() && result.actionFailure !in setOf(
+                RemoteActionFailure.LOCAL_PROVIDER_OAUTH, RemoteActionFailure.LOCAL_PROVIDER_CONNECTION_OPTIONS,
+                RemoteActionFailure.LOCAL_PROVIDER_MODEL_OPTIONS, RemoteActionFailure.LOCAL_PROVIDER_CREDENTIALS,
+            )
+        ) unsupportedRemote()
         return sent
     }
 
@@ -767,19 +773,23 @@ internal fun AppNavigation(
                     val active = pageActive && visible
                     val backend = if (remotePage) {
                         val remoteError = if (remote.error) when (remote.connectionFailure) {
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.UNAUTHORIZED -> stringResource(R.string.server_remote_auth_failed)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.CERTIFICATE -> stringResource(R.string.server_remote_tls_failed)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.INCOMPATIBLE -> stringResource(R.string.server_remote_incompatible)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteConnectionFailure.CHAT_LOAD_FAILED -> stringResource(R.string.server_remote_chat_load_failed)
+                            org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.UNAUTHORIZED -> stringResource(R.string.server_remote_auth_failed)
+                            org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.CERTIFICATE -> stringResource(R.string.server_remote_tls_failed)
+                            org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.INCOMPATIBLE -> stringResource(R.string.server_remote_incompatible)
+                            org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.CHAT_LOAD_FAILED -> stringResource(R.string.server_remote_chat_load_failed)
                             else -> stringResource(R.string.server_remote_offline)
                         } else if (!remoteIdentityReady || remote.restoring) stringResource(R.string.server_remote_loading)
                         else when (remote.actionFailure) {
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.CONVERSATION_CREATE_FAILED ->
+                            RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
+                            RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
+                            RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
+                            RemoteActionFailure.CONVERSATION_CREATE_FAILED ->
                                 stringResource(R.string.server_remote_conversation_create_failed)
-                            org.starfall.generative.features.home.chat.logic.remote.RemoteActionFailure.CONVERSATION_LOAD_FAILED -> stringResource(R.string.server_remote_conversation_load_failed)
+                            RemoteActionFailure.CONVERSATION_LOAD_FAILED -> stringResource(R.string.server_remote_conversation_load_failed)
+                            RemoteActionFailure.LOCAL_PROVIDER_OAUTH -> stringResource(R.string.server_remote_local_provider_oauth)
+                            RemoteActionFailure.LOCAL_PROVIDER_CONNECTION_OPTIONS -> stringResource(R.string.server_remote_local_provider_connection_options)
+                            RemoteActionFailure.LOCAL_PROVIDER_MODEL_OPTIONS -> stringResource(R.string.server_remote_local_provider_model_options)
+                            RemoteActionFailure.LOCAL_PROVIDER_CREDENTIALS -> stringResource(R.string.server_remote_local_provider_credentials)
                             null -> null
                         }
                         val serverGroup = "serverside:server"
@@ -805,7 +815,6 @@ internal fun AppNavigation(
                             selectedProviderId = remote.providerId.takeIf { remoteIdentityReady }.orEmpty(),
                             selectedModelName = remote.modelId.takeIf { remoteIdentityReady }.orEmpty(),
                             workspaceLabel = stringResource(R.string.server_remote_label) + " · " + (selectedServer?.name ?: ""),
-                            onSendMessage = ::sendRemote,
                             onSendMessageWithSkill = { text, files, requested, skillName ->
                                 if (requested || skillName != null || !remoteIdentityReady) { unsupportedRemote(); false }
                                 else sendRemote(text, files)

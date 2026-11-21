@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Generative</string>
+    <string name="app_name" translatable="false">Generative</string>
     <string name="message_text_size">Message text size</string>
     <string name="message_text_size_hint">%1$d sp</string>
     <string name="message_text_size_reset">Reset text size to default</string>
@@ -127,7 +127,6 @@
     <string name="chat_temporary_title">Temporary Chat</string>
     <string name="chat_temporary_description">This is a temporary chat. It won’t appear in your sidebar or be saved to chat history. Switching chats ends this session, cancels its requests, and removes its temporary files.</string>
     <string name="sidebar_search">Search</string>
-    <string name="sidebar_menu">Menu</string>
     <string name="sidebar_clear_search">Clear search</string>
     <string name="sidebar_exit_selection">Exit selection</string>
     <string name="sidebar_move_selected_to_folder">Move selected chats to folder</string>
@@ -1384,7 +1383,12 @@
     <string name="attachment_prepare_unsupported">The selected model or API does not support attachment: %1$s</string>
     <string name="attachment_prepare_too_large">Attachment exceeds the selected API\'s transfer limit: %1$s</string>
     <string name="attachment_prepare_processing_failed">The server could not finish processing attachment: %1$s</string>
-    <string name="server_connection">Server Connection</string>
+    <string name="server_connection" translatable="false">Runtime</string>
+    <string name="server_connection_add_title">Add server connection</string>
+    <string name="server_connection_edit_title">Edit server connection</string>
+    <string name="server_connection_manage">Manage server connections</string>
+    <string name="server_connection_access_section">Server access</string>
+    <string name="server_connection_resources_section">Server resources</string>
     <string name="server_connection_transport">Connection protocol</string>
     <string name="server_connection_ssh_machine">Remote SSH server</string>
     <string name="server_connection_no_ssh_machine">Add an SSH server in Remote SSH first.</string>
@@ -1413,7 +1417,7 @@
     <string name="server_connection_delete_confirm">Remove %1$s from this device? Its server history will remain on the server.</string>
     <string name="server_remote_label">Remote Server</string>
     <string name="drawer_runtime" translatable="false">Runtime</string>
-    <string name="drawer_runtime_local" translatable="false">Local</string>
+    <string name="drawer_runtime_local">Local</string>
     <string name="server_remote_select">Select remote chat server</string>
     <string name="server_remote_offline">Remote server unavailable. Reconnect before sending.</string>
     <string name="server_remote_unsupported">This action is not available in remote chat.</string>
@@ -1422,12 +1426,16 @@
     <string name="server_remote_key">Credential</string>
     <string name="server_remote_conflict">The conversation changed on the server. Its latest version was loaded; retry your edit.</string>
     <string name="server_remote_action_failed">Server could not complete this change. Your conversation is still available.</string>
+    <string name="server_remote_local_provider_oauth">Generative Server cannot use this local OAuth account. Choose a provider that uses an API key.</string>
+    <string name="server_remote_local_provider_connection_options">Generative Server cannot use this provider’s connection options. Check its proxy, extra headers, endpoints, and API mode in Model Providers.</string>
+    <string name="server_remote_local_provider_model_options">Generative Server cannot use this model’s settings. Review its reasoning, sampling, token limit, and tool settings in Model Providers, or choose another model.</string>
+    <string name="server_remote_local_provider_credentials">Could not prepare the local provider credentials. Check the authentication settings in Model Providers and try again.</string>
     <string name="server_remote_generation_failed">Server generation failed. Review the saved response before trying again.</string>
     <string name="server_connection_scan_qr">Scan invitation QR</string>
     <string name="server_connection_scan_failed">Could not scan a valid invitation. Paste the HTTPS invitation instead.</string>
     <string name="server_remote_auth_failed">Server authentication failed. Re-pair or check access to this server.</string>
     <string name="server_remote_tls_failed">The server TLS certificate failed verification. Check the server and its invitation.</string>
-    <string name="server_remote_incompatible">This server does not support the required Server Connection protocol.</string>
+    <string name="server_remote_incompatible">This server does not support the required connection protocol.</string>
     <string name="server_remote_chat_load_failed">The server responded, but its chat data could not be loaded.</string>
     <string name="server_remote_conversation_create_failed">OpenCode could not create a chat. Check the connection and selected model, then try again.</string>
     <string name="server_remote_conversation_load_failed">This conversation could not be opened. You can still open another conversation or start a new one.</string>
@@ -1435,11 +1443,11 @@
     <string name="server_connection_auth_method">Authentication</string>
     <string name="server_connection_auth_password">Username and password</string>
     <string name="server_connection_auth_link">Pairing URL</string>
-    <string name="server_connection_opencode_url">Server URL</string>
     <string name="server_connection_opencode_username">Username</string>
     <string name="server_connection_opencode_password">Password</string>
     <string name="server_connection_opencode_auth_url">OpenCode pairing URL</string>
     <string name="drawer_runtime_opencode" translatable="false">opencode</string>
+    <string name="opencode_name" translatable="false">OpenCode</string>
     <string name="server_connection_opencode_failed">Could not connect to OpenCode. Check the server URL, credentials or pairing URL, and server status.</string>
     <string name="server_connection_provider_source">Model provider source</string>
     <string name="server_connection_providers_server">Server only</string>
@@ -1456,6 +1464,7 @@
     <string name="server_inventory_failed">Could not load data from this server.</string>
     <string name="server_inventory_empty">No entries found on this server.</string>
     <string name="server_mcp_operation_failed">Could not confirm the change. The server status will be refreshed.</string>
+    <string name="server_mcp_reload_failed">Saved the MCP configuration. Reload OpenCode to apply it.</string>
     <string name="server_mcp_connect">Connect</string>
     <string name="server_mcp_disconnect">Disconnect</string>
     <string name="server_mcp_connected">Connected</string>

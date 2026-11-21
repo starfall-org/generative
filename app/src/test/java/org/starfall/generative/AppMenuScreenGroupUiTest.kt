@@ -144,7 +144,7 @@ class AppMenuScreenGroupUiTest {
         compose.waitForIdle()
         val remote = compose.onNodeWithTag("app-menu-remote").fetchSemanticsNode().boundsInRoot
         tapAt(Offset(remote.left + 4f, remote.top + 4f))
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Server Connection"))
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Runtime"))
         compose.waitForIdle()
         val server = compose.onNodeWithTag("app-menu-server-connection").fetchSemanticsNode().boundsInRoot
         assertTrue(server.top > remote.top)

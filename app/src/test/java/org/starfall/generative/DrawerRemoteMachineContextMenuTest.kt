@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -222,14 +223,23 @@ class DrawerRemoteMachineContextMenuTest {
     }
 
     @Test fun runtimePickerOffersLocalEvenWithoutServers() {
+        var settingsOpened = false
         compose.setContent {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
-                DrawerRemoteControls(onOpenRemoteMachines = {}, onSaveMachineTools = {})
+                DrawerRemoteControls(
+                    onOpenRemoteMachines = {}, onSaveMachineTools = {},
+                    onOpenServerConnections = { settingsOpened = true },
+                )
             }
         }
 
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_runtime_picker_local").assertIsDisplayed()
+        val settings = compose.onNodeWithContentDescription("Manage server connections")
+        val local = compose.onNodeWithTag("drawer_runtime_picker_local")
+        assertTrue(settings.fetchSemanticsNode().boundsInRoot.bottom <= local.fetchSemanticsNode().boundsInRoot.top)
+        settings.performClick()
+        compose.runOnIdle { assertTrue(settingsOpened) }
     }
 
     @Test fun offlineRuntimeOffersReconnectWithoutChangingSshOrSelection() {

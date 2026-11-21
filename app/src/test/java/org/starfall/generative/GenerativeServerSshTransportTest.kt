@@ -79,8 +79,10 @@ class GenerativeServerSshTransportTest {
             stream
         }, identity), identity)
         withTimeout(5000) {
-            assertTrue(client.rpc(RpcRequest("check", "capabilities.get")).ok)
-            client.revoke()
+            client.withConnection {
+                assertTrue(client.rpc(RpcRequest("check", "capabilities.get")).ok)
+                client.revoke()
+            }
             daemon.await()
         }
         assertEquals(1, releases)

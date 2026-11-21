@@ -165,7 +165,7 @@ fun ChatScreen(
     modifier: Modifier = Modifier,
     activeStream: StateFlow<ActiveChatStreamState?>? = null,
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
-    onSendMessageWithSkill: (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
+    onSendMessageWithSkill: suspend (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false,
     restoreRemoteViewport: Boolean = false,

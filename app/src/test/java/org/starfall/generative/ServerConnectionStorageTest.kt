@@ -3,6 +3,9 @@ package org.starfall.generative
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -72,6 +75,40 @@ class ServerConnectionStorageTest {
             assertFalse(row.encryptedSecret.contains("private-token"))
             assertEquals("private-token", repository.openCodeCredentials("id").password)
             assertFalse(repository.snapshot().single().toString().contains("private-token"))
+
+            val revision = repository.snapshot().single().credentialRevision
+            repository.select("id")
+            repository.rename("id", "Renamed")
+            assertEquals(revision, repository.snapshot().single().credentialRevision)
+            repository.saveOpenCode("id", "Renamed", row.endpoint, OpenCodeCredentials("opencode", "replacement"))
+            val updated = requireNotNull(repository.openCodeConnection("id"))
+            assertTrue(updated.profile.selected)
+            assertTrue(updated.profile.credentialRevision > revision)
+            assertEquals("replacement", updated.credentials.password)
+        } finally { db.close() }
+    }
+
+    @Test fun pointLookupsAndConcurrentEditsUseTheSameMemoryCatalog() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
+        try {
+            val dao = db.serverConnectionDao()
+            val first = ServerConnectionEntity("one", "First", "https://one.example", "pin", "client", "server", "cipher", true)
+            dao.put(first)
+            dao.put(first.copy(id = "two", name = "Second", selected = false))
+            val repository = ServerConnectionRepository(db)
+            assertEquals("First", repository.snapshot().first().name)
+
+            dao.put(first.copy(name = "External write"))
+            assertEquals("First", repository.profile("one")?.name)
+
+            listOf(
+                async(Dispatchers.Default) { repository.select("two") },
+                async(Dispatchers.Default) { repository.rename("one", "Renamed") },
+            ).awaitAll()
+            assertEquals(listOf("two"), repository.snapshot().filter { it.selected }.map { it.id })
+            assertEquals(listOf("two"), dao.all().filter { it.selected }.map { it.id })
+            assertEquals("Renamed", repository.profile("one")?.name)
+            assertEquals("Renamed", dao.get("one")?.name)
         } finally { db.close() }
     }
 

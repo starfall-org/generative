@@ -2,6 +2,7 @@ package org.starfall.generative.shared.ui.layout
 
 import android.os.Build
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
@@ -17,15 +18,24 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.Dp
 
 /** Composer appearance is independent of component and background-photo transparency. */
 data class InputAreaAppearance(val transparency: Float = 0.1f, val blur: Float = 2f) {
     val alpha: Float get() = 1f - transparency.coerceIn(0f, 1f)
     val blurRadius: Float get() = blur.coerceIn(0f, 32f)
+    val hasBackdropBlur: Boolean get() = blurRadius > 0f && Build.VERSION.SDK_INT >= 31
     fun surfaceColor(color: Color): Color = color.copy(alpha = alpha)
 }
 
 val LocalInputAreaAppearance = compositionLocalOf { InputAreaAppearance() }
+
+@Composable
+fun Modifier.inputAreaFooterSurface(): Modifier = fadingBarSurface(
+    color = MaterialTheme.colorScheme.background.copy(alpha = LocalInputAreaAppearance.current.alpha * 0.6f),
+    footer = true,
+    depth = Dp.Unspecified,
+)
 
 /** Records only the content behind the composer; never records the composer itself. */
 class InputAreaBackdrop internal constructor(internal val layer: GraphicsLayer) {
@@ -54,7 +64,7 @@ fun InputAreaBackdropLayer(
     modifier: Modifier = Modifier,
     appearance: InputAreaAppearance = LocalInputAreaAppearance.current
 ) {
-    if (backdrop == null || appearance.blurRadius <= 0f || Build.VERSION.SDK_INT < 31) return
+    if (backdrop == null || !appearance.hasBackdropBlur) return
     var origin by remember { mutableStateOf(Offset.Zero) }
     Box(modifier.onGloballyPositioned { origin = it.positionInRoot() }
         .graphicsLayer {

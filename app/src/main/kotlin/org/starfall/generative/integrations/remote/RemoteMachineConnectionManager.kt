@@ -55,7 +55,7 @@ internal class RemoteMachineConnectionManager(
      * is created if the machine is already connected. This never starts port forwards or a PTY.
      */
     suspend fun openExecStream(
-        machine: RemoteMachine, command: String, disconnectWhenIdle: Boolean
+        machine: RemoteMachine, command: String, disconnectWhenIdle: Boolean = true
     ): RemoteExecStream {
         require(command.isNotBlank())
         val shared = acquireShared(

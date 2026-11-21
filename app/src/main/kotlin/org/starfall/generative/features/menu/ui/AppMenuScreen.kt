@@ -195,7 +195,7 @@ fun AppMenuScreen(
                     FeatureButton(stringResource(R.string.remote_ssh), FluentUi.Regular.Desktop,
                         onNavigateToRemoteMachines, modifier, shape, "remote")
                 }, ComponentGroupSlot("server-connection") { modifier, shape ->
-                    FeatureButton(stringResource(R.string.server_connection), FluentUi.Regular.NetworkCheck,
+                    FeatureButton(stringResource(R.string.server_connection), FluentUi.Regular.PlugConnected,
                         onNavigateToServerConnections, modifier, shape, "server-connection")
                 })
             )

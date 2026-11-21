@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer as ComposeSelectionContainer
+import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -92,7 +93,7 @@ internal fun GatedSelectionContainer(content: @Composable () -> Unit) {
     when {
         LocalSelectionBlocked.current -> DisableSelection(content = content)
         LocalSelectionContainerActive.current -> content()
-        else -> ComposeSelectionContainer {
+        else -> SelectionContainer {
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalSelectionContainerActive provides true,
                 content = content
@@ -104,7 +105,17 @@ internal fun GatedSelectionContainer(content: @Composable () -> Unit) {
 /** A deliberate selection island, used for reasoning text that is separate from answer content. */
 @Composable
 internal fun SelectionContainer(content: @Composable () -> Unit) {
-    ComposeSelectionContainer(content = content)
+    val selections = LocalReadOnlySelectionStates.current
+    if (selections == null) {
+        ComposeSelectionContainer(content = content)
+        return
+    }
+    val state = remember { SelectionState() }
+    DisposableEffect(selections, state) {
+        selections.add(state)
+        onDispose { selections.remove(state) }
+    }
+    ComposeSelectionContainer(state = state, content = content)
 }
 
 /**

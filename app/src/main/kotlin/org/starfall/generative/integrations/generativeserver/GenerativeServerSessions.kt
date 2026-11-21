@@ -44,6 +44,9 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
 
     fun close() = client.close()
 
+    /** Reuse the same wire for one user action, including its follow-up reads. */
+    internal suspend fun <T> withConnection(block: suspend () -> T): T = client.withConnection(block)
+
     suspend fun verifyCapabilities(): ServerChatCapabilities {
         val capabilities = request("capabilities.get").jsonObject
         val operations = capabilities["operations"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty()
@@ -178,10 +181,20 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
         request("session.delete", id, buildJsonObject { put("expected_revision", revision); put("idempotency_key", operationId) })
     }
     suspend fun supportsCatalogImport(providers: Boolean): Boolean {
-        val operations = request("capabilities.get").jsonObject["operations"]?.jsonArray.orEmpty()
         val operation = if (providers) "provider.import" else "mcp.import"
-        return operations.any { it.jsonPrimitive.content == operation }
+        return operation in catalogOperations()
     }
+
+    internal suspend fun catalogImportKinds(): List<Boolean> {
+        val operations = catalogOperations()
+        return buildList {
+            if ("provider.import" in operations) add(true)
+            if ("mcp.import" in operations) add(false)
+        }
+    }
+
+    private suspend fun catalogOperations(): List<String> =
+        request("capabilities.get").jsonObject["operations"]?.jsonArray.orEmpty().map { it.jsonPrimitive.content }
 
     suspend fun importProvider(provider: org.starfall.generative.shared.model.provider.ModelProvider) {
         val payload = GenerativeServerCodec.json.encodeToJsonElement(
