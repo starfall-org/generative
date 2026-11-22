@@ -65,7 +65,7 @@ class ChatAppBarTransparencyTest {
         // Sample outside the controls. A second mask on the list would erase this red backdrop.
         for (fraction in listOf(0.1f, 0.5f, 0.9f)) {
             val pixel = pixels[1, (barHeight * fraction).toInt()]
-            assertEquals("Backdrop at height $fraction", 1f - 0.6f * (1f - fraction), pixel.red, 0.035f)
+            assertEquals("Backdrop at height $fraction", 1f - 0.8f * (1f - fraction), pixel.red, 0.035f)
             assertEquals(0f, pixel.green, 0.01f)
             assertEquals(0f, pixel.blue, 0.01f)
         }

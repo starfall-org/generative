@@ -6,15 +6,15 @@ import org.starfall.generative.features.home.chat.ui.chatAppBarOverlayAlpha
 
 class ChatAppBarOpacityTest {
     @Test
-    fun themedScrimFadesFromClearBottomToSixtyPercentAtStatusBar() {
-        assertEquals(0.60f, chatAppBarOverlayAlpha(0f), 0.0001f)
-        assertEquals(0.30f, chatAppBarOverlayAlpha(0.5f), 0.0001f)
+    fun themedScrimFadesFromClearBottomToEightyPercentAtStatusBar() {
+        assertEquals(0.80f, chatAppBarOverlayAlpha(0f), 0.0001f)
+        assertEquals(0.40f, chatAppBarOverlayAlpha(0.5f), 0.0001f)
         assertEquals(0f, chatAppBarOverlayAlpha(1f), 0.0001f)
     }
 
     @Test
     fun scrimGradientClampsPositionsOutsideTheAppBar() {
-        assertEquals(0.60f, chatAppBarOverlayAlpha(-1f), 0.0001f)
+        assertEquals(0.80f, chatAppBarOverlayAlpha(-1f), 0.0001f)
         assertEquals(0f, chatAppBarOverlayAlpha(2f), 0.0001f)
     }
 }

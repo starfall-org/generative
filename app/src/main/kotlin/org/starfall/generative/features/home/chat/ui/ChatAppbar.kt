@@ -44,9 +44,9 @@ import org.starfall.generative.shared.ui.icons.TemporaryChatIcon
 import org.starfall.generative.shared.ui.FeaturesLogo
 import org.starfall.generative.shared.ui.LinearWavyProgressIndicator
 import org.starfall.generative.features.home.chat.model.ContextWindowStatus
-/** Themed scrim over scrolling content: 60% at the status bar, fully clear at the bottom. */
+/** Themed scrim over scrolling content: 80% at the status bar, fully clear at the bottom. */
 internal fun chatAppBarOverlayAlpha(fractionFromTop: Float): Float =
-    0.6f * (1f - fractionFromTop.coerceIn(0f, 1f))
+    0.8f * (1f - fractionFromTop.coerceIn(0f, 1f))
 
 @Composable
 fun ChatAppBar(
