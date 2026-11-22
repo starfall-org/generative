@@ -5,12 +5,14 @@ import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -39,7 +41,8 @@ fun Modifier.fadingBarSurface(
 /**
  * Reveal the actual background (including photos and modal decoration) at a clipped
  * scrolling edge. Keep the first/last item fully visible when settled at either end.
- * The isolated layer is only needed while at least one edge can scroll.
+ * Only the clipped edges need offscreen buffers. The rest draws directly.
+ * The inner graphics layer reuses the content's drawing commands across clips.
  */
 fun Modifier.fadingScrollEdges(
     state: ScrollableState,
@@ -53,7 +56,8 @@ fun Modifier.fadingScrollEdges(
     val bottomMask = Brush.verticalGradient(
         colors = listOf(Color.Black, Color.Transparent), startY = size.height - edge, endY = size.height
     )
-    val bounds = Rect(Offset.Zero, size)
+    val topBounds = Rect(0f, 0f, size.width, edge)
+    val bottomBounds = Rect(0f, size.height - edge, size.width, size.height)
     val paint = Paint()
     onDrawWithContent {
         val top = if (reverseLayout) state.canScrollForward else state.canScrollBackward
@@ -61,15 +65,26 @@ fun Modifier.fadingScrollEdges(
         if ((!top && !bottom) || edge <= 0f || size.width <= 0f) {
             drawContent()
         } else {
-            val canvas = drawContext.canvas
-            canvas.saveLayer(bounds, paint)
-            try {
-                drawContent()
-                if (top) drawRect(topMask, blendMode = BlendMode.DstIn)
-                if (bottom) drawRect(bottomMask, blendMode = BlendMode.DstIn)
-            } finally {
-                canvas.restore()
+            if (top) drawFadedEdge(topBounds, topMask, paint)
+            if (bottom) drawFadedEdge(bottomBounds, bottomMask, paint)
+            val centerTop = if (top) topBounds.bottom else 0f
+            val centerBottom = if (bottom) bottomBounds.top else size.height
+            clipRect(top = centerTop, bottom = centerBottom) {
+                this@onDrawWithContent.drawContent()
             }
+        }
+    }
+}.graphicsLayer()
+
+private fun ContentDrawScope.drawFadedEdge(bounds: Rect, mask: Brush, paint: Paint) {
+    clipRect(bounds.left, bounds.top, bounds.right, bounds.bottom) {
+        val canvas = drawContext.canvas
+        canvas.saveLayer(bounds, paint)
+        try {
+            this@drawFadedEdge.drawContent()
+            drawRect(mask, topLeft = bounds.topLeft, size = bounds.size, blendMode = BlendMode.DstIn)
+        } finally {
+            canvas.restore()
         }
     }
 }

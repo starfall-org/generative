@@ -27,10 +27,12 @@ internal fun Modifier.screenSlide(offset: () -> Float, scale: () -> Float = { 1f
     scaleY = scale()
 }
 
-/** Hidden content stays composed but is not placed, drawn, or touchable. */
+/** Keep a full-screen destination composed and skip its layout while it is hidden. */
 fun Modifier.retainWhen(visible: Boolean): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    layout(placeable.width, placeable.height) {
-        if (visible) placeable.place(0, 0)
+    if (visible) {
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    } else {
+        layout(constraints.minWidth, constraints.minHeight) {}
     }
 }

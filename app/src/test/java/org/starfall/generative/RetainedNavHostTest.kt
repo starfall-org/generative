@@ -4,12 +4,16 @@ import androidx.compose.animation.core.TargetBasedAnimation
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.junit.Assert.assertEquals
@@ -76,6 +80,40 @@ class RetainedNavHostTest {
             assertEquals(1, mounts["chat"])
             assertEquals(null, disposals["chat"])
         }
+    }
+
+    @Test fun coveredScreenSkipsMeasurementUntilItReturns() {
+        lateinit var nav: NavHostController
+        val hostWidth = mutableStateOf(160.dp)
+        val measuredWidths = mutableListOf<Int>()
+        compose.setContent {
+            nav = rememberNavController()
+            RetainedNavHost(nav, startDestination = "providers", modifier = Modifier.size(hostWidth.value, 120.dp)) {
+                composable("providers") {
+                    Box(Modifier.fillMaxSize().layout { measurable, constraints ->
+                        measuredWidths += constraints.maxWidth
+                        val child = measurable.measure(constraints)
+                        layout(child.width, child.height) { child.place(0, 0) }
+                    }.testTag("providers"))
+                }
+                composable("editor") { Box(Modifier.fillMaxSize().testTag("editor")) }
+            }
+        }
+
+        compose.onNodeWithTag("providers").assertIsDisplayed()
+        compose.runOnIdle { nav.navigate("editor") }
+        compose.onNodeWithTag("editor").assertIsDisplayed()
+        val originalWidth = compose.runOnIdle { measuredWidths.last() }
+        compose.runOnIdle {
+            measuredWidths.clear()
+            hostWidth.value = 200.dp
+        }
+        compose.runOnIdle {
+            assertTrue(measuredWidths.isEmpty())
+            nav.popBackStack()
+        }
+        compose.onNodeWithTag("providers").assertIsDisplayed()
+        compose.runOnIdle { assertTrue(measuredWidths.last() > originalWidth) }
     }
 
     @Test fun onlyHomeAndAppMenuMoveTheSharedPhoto() {

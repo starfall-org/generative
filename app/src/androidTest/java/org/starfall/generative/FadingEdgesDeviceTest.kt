@@ -19,6 +19,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.junit.Assert.assertTrue
@@ -54,6 +55,12 @@ class FadingEdgesDeviceTest {
             assertTrue(middle.red > 0.95f)
             assertTrue(if (topFades) top.blue > 0.7f else top.red > 0.95f)
             assertTrue(if (bottomFades) bottom.blue > 0.7f else bottom.red > 0.95f)
+            val fadeDepth = (pixels.height * (16f / 120f)).roundToInt()
+            for (boundary in listOf(fadeDepth, pixels.height - fadeDepth)) {
+                // Both sides of the join should still show the content, including at full scroll.
+                assertTrue(pixels[x, boundary - 1].red > 0.8f)
+                assertTrue(pixels[x, boundary].red > 0.8f)
+            }
         }
 
         assertEdges(topFades = false, bottomFades = true)

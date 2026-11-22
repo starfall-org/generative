@@ -227,10 +227,6 @@ fun ProviderEditor(
             snapshot.mapValues { (_, discovered) -> memory.configurationFor(discovered) }
         }
     }
-    // Probes belong to this screen rather than the dialog, so the top-bar action can keep showing
-    // running state while the dialog is closed and testing still stops when the editor is left.
-    val testScope = order.filter { models[it]?.modelType == ModelType.TEXT_GENERATION }
-    val testingConnection = tests.batchRunning.value || testScope.any { tests.running[it] == true }
     val activeHeaders = headerRows.map { it.key to it.value }
         .filterNot { (key, value) -> key.isBlank() && value.isBlank() }
     val headersValid = activeHeaders.all { (key, value) -> key.isNotBlank() && key.none { it <= ' ' || it == ':' || it.code >= 127 } && value.none { it == '\r' || it == '\n' } } &&
@@ -430,6 +426,9 @@ fun ProviderEditor(
                             Text(stringResource(R.string.common_save))
                         }
                     } else {
+                        val testingConnection = tests.batchRunning.value || tests.running.any { (id, running) ->
+                            running && models[id]?.modelType == ModelType.TEXT_GENERATION && id in order
+                        }
                         IconButton(onClick = { editingModel = "" }) {
                             SharedIcon(Icons.Default.Add, stringResource(R.string.common_add))
                         }
