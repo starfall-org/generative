@@ -1,97 +1,122 @@
 package org.starfall.generative.integrations.speech
 
-import org.starfall.generative.shared.helpers.audio.audioMime
-import org.starfall.generative.shared.helpers.audio.MediaPlayers
-
 import android.content.Context
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
+import org.starfall.generative.shared.helpers.audio.MediaPlayers
+import org.starfall.generative.shared.helpers.audio.audioMime
 import java.io.File
 
-class SpeechAudioPlayer(private val context: Context) {
-    private var player: ExoPlayer? = null
-    private var currentFile: File? = null
+class SpeechAudioPlayer internal constructor(
+    private val context: Context,
+    private val createPlayer: () -> Player
+) {
+    constructor(context: Context) : this(context, { MediaPlayers.create(context, speech = true) })
 
-    suspend fun play(
-        audio: ByteArray,
-        onFinished: () -> Unit = {},
-        onError: () -> Unit = {},
+    private var session: PlaybackSession? = null
+
+    internal suspend fun playSession(
         onStarted: () -> Unit = {},
-        speed: Float = 1f
-    ) =
-        withContext(Dispatchers.Main.immediate) {
-            stop()
+        speed: Float = 1f,
+        playChunks: suspend (playChunk: suspend (ByteArray) -> Unit) -> Unit
+    ) = withContext(Dispatchers.Main) {
+        // Resume on the main queue after Media3 returns from its listener callbacks.
+        stop()
+        val playback = PlaybackSession(currentCoroutineContext().job, onStarted, speed)
+        session = playback
+        try {
+            playChunks(playback::playChunk)
+        } finally {
+            if (session === playback) session = null
+            playback.release()
+        }
+    }
+
+    private inner class PlaybackSession(
+        val job: Job,
+        private val onStarted: () -> Unit,
+        private val speed: Float
+    ) {
+        private var player: Player? = null
+        private var started = false
+
+        suspend fun playChunk(audio: ByteArray) {
             var file: File? = null
-            var ownedPlayer: ExoPlayer? = null
             try {
-                withContext(Dispatchers.IO) {
+                val preparedFile = withContext(Dispatchers.IO) {
                     val extension = when (audioMime(audio)) {
-                        "audio/wav" -> ".wav"; "audio/aac" -> ".aac"; "audio/ogg" -> ".ogg"; "audio/flac" -> ".flac"; else -> ".mp3"
+                        "audio/wav" -> ".wav"
+                        "audio/aac" -> ".aac"
+                        "audio/ogg" -> ".ogg"
+                        "audio/flac" -> ".flac"
+                        else -> ".mp3"
                     }
-                    file = File.createTempFile("generative_tts_", extension, context.cacheDir)
-                    file!!.writeBytes(audio)
+                    File.createTempFile("generative_tts_", extension, context.cacheDir).also {
+                        file = it
+                        it.writeBytes(audio)
+                    }
                 }
-                val preparedFile = file!!
-                val next = MediaPlayers.create(context, speech = true)
-                ownedPlayer = next
-                currentFile = preparedFile
-                player = next
-                fun finish(error: Boolean) {
-                    if (player !== next) return
-                    stop()
-                    if (error) onError()
-                    onFinished()
+                val playback = player ?: createPlayer().also {
+                    player = it
+                    // Standalone providers apply their configured speed locally.
+                    it.setPlaybackSpeed(speed.takeIf { it.isFinite() }?.coerceIn(0.25f, 4f) ?: 1f)
                 }
-                var started = false
-                next.addListener(object : Player.Listener {
+                val completion = CompletableDeferred<Unit>()
+                val listener = object : Player.Listener {
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        if (isPlaying && !started && player === next) { started = true; onStarted() }
+                        if (isPlaying && !started && player === playback) {
+                            started = true
+                            onStarted()
+                        }
                     }
+
                     override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_ENDED) finish(false)
+                        if (state == Player.STATE_ENDED) completion.complete(Unit)
                     }
-                    override fun onPlayerError(error: PlaybackException) = finish(true)
-                })
-                next.setMediaItem(MediaPlayers.item(preparedFile.path))
-                // Standalone speech providers do not share a common API speed parameter.
-                // Apply their configured speed at playback without affecting pitch.
-                next.setPlaybackSpeed(speed.takeIf { it.isFinite() }?.coerceIn(0.25f, 4f) ?: 1f)
-                next.prepare()
-                next.play()
-            } catch (error: Throwable) {
-                // A cancelled file write must not stop a newer speech request.
-                if (ownedPlayer != null && player === ownedPlayer) stop()
-                file?.delete()
+                    override fun onPlayerError(error: PlaybackException) {
+                        completion.completeExceptionally(error)
+                    }
+                }
+                playback.addListener(listener)
+                try {
+                    playback.setMediaItem(MediaPlayers.item(preparedFile.path))
+                    playback.prepare()
+                    playback.play()
+                    completion.await()
+                } finally {
+                    if (player === playback) playback.removeListener(listener)
+                }
+            } catch (error: CancellationException) {
                 throw error
+            } catch (error: Exception) {
+                throw SpeechPlaybackException(error)
+            } finally {
+                file?.delete()
             }
         }
 
-    /** Wait for this clip before synthesizing the next one; cancellation only stops its own player. */
-    suspend fun playAndAwait(audio: ByteArray, onStarted: () -> Unit = {}, speed: Float = 1f) = withContext(Dispatchers.Main.immediate) {
-        val completion = CompletableDeferred<Unit>()
-        play(audio,
-            onFinished = { completion.complete(Unit) },
-            onError = { completion.completeExceptionally(SpeechPlaybackException()) },
-            onStarted = onStarted,
-            speed = speed)
-        val ownedPlayer = player
-        try { completion.await() }
-        finally { if (ownedPlayer != null && player === ownedPlayer) stop() }
+        fun release() {
+            val playback = player
+            player = null
+            playback?.release()
+        }
     }
 
     fun stop() {
-        val previous = player
-        player = null
-        previous?.release()
-        currentFile?.delete()
-        currentFile = null
+        val playback = session ?: return
+        session = null
+        playback.job.cancel()
+        playback.release()
     }
 
     fun shutdown() = stop()
 }
 
-internal class SpeechPlaybackException : IllegalStateException("Speech playback failed.")
+internal class SpeechPlaybackException(cause: Throwable) : IllegalStateException("Speech playback failed.", cause)

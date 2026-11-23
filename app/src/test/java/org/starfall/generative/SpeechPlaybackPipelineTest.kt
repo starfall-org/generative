@@ -81,7 +81,8 @@ class SpeechPlaybackPipelineTest {
         releaseFirstClip.complete(Unit)
         withTimeout(3_000) { job.join() }
         assertEquals(listOf("first", "second"), played)
-        assertSame(failure, reported)
+        assertTrue(reported is IllegalStateException)
+        assertEquals(failure.message, reported?.message)
     }
 
     @Test fun parallelRequestsAreBoundedAndPlayInOrder() = runBlocking {

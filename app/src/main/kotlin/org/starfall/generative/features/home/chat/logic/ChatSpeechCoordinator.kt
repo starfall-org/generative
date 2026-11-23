@@ -86,22 +86,23 @@ internal class ChatSpeechCoordinator(
                 val standalone = if (service.engine.standalone) StandaloneSpeechClient() else null
                 val chunks = speechChunks(plainText, maxWordsPerChunk = service.maxWordsPerChunk.coerceAtLeast(1),
                     maxCharacters = if (service.engine == SpeechEngine.SPEECHIFY) 1_900 else 4_000)
-                synthesizeAndPlaySpeechChunks(
-                    chunks = chunks,
-                    parallelRequests = service.parallelRequests,
-                    requestSpacingMillis = (service.requestSpacingSeconds.coerceAtLeast(0f) * 1_000).toLong(),
-                    maxConcurrentRequests = service.maxConcurrentRequests.coerceAtLeast(1),
-                    synthesize = { chunk ->
-                        if (standalone != null) standalone.synthesize(service, chunk)
-                        else synthesis.synthesize(requireNotNull(provider), service, chunk)
-                    },
-                    play = { audio ->
-                        ensureActive()
-                        if (request != requestNumber) throw CancellationException("Speech request was replaced")
-                        player.playAndAwait(audio, onStarted,
-                            speed = if (standalone != null) service.speed else 1f)
-                    }
-                )
+                player.playSession(onStarted = onStarted, speed = if (standalone != null) service.speed else 1f) { playChunk ->
+                    synthesizeAndPlaySpeechChunks(
+                        chunks = chunks,
+                        parallelRequests = service.parallelRequests,
+                        requestSpacingMillis = (service.requestSpacingSeconds.coerceAtLeast(0f) * 1_000).toLong(),
+                        maxConcurrentRequests = service.maxConcurrentRequests.coerceAtLeast(1),
+                        synthesize = { chunk ->
+                            if (standalone != null) standalone.synthesize(service, chunk)
+                            else synthesis.synthesize(requireNotNull(provider), service, chunk)
+                        },
+                        play = { audio ->
+                            ensureActive()
+                            if (request != requestNumber) throw CancellationException("Speech request was replaced")
+                            playChunk(audio)
+                        }
+                    )
+                }
             } catch (e: CancellationException) { throw e
             } catch (e: SpeechPlaybackException) {
                 reportFailure(R.string.speech_playback_failed)
