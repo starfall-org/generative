@@ -16,11 +16,14 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
+import org.starfall.generative.R
 import org.starfall.generative.integrations.modelapis.account.*
 import org.starfall.generative.shared.subfeatures.auth.logic.OAuthBrowser
 import org.starfall.generative.shared.subfeatures.auth.logic.OAuthCallbackService
@@ -53,7 +56,8 @@ internal class DevinAdapter(
     context: Context,
     private val attachments: AttachmentResolver,
     private val loginApiBaseUrl: String = "https://api.devin.ai",
-    private val openAuthorizationBrowser: suspend (Context, String) -> Unit = OAuthBrowser::open
+    private val openAuthorizationBrowser: suspend (Context, String) -> Unit = OAuthBrowser::open,
+    private val serverBaseUrl: String = ModelApiType.DEVIN.defaultBaseUrl
 ) : AccountProviderAdapter {
     override val providerType = ModelApiType.DEVIN
     private val appContext = context.applicationContext
@@ -63,16 +67,6 @@ internal class DevinAdapter(
     private val sessionIndex = ConcurrentHashMap<String, AtomicInteger>()
     private val sessionsLock = Mutex()
     private val marker = "account:devin:v1"
-    private val modelCatalog: List<DiscoveredModel> by lazy {
-        val source = appContext.assets.open("devin_models_catalog.json").bufferedReader().use { it.readText() }
-        (json.parseToJsonElement(source).jsonObject["devin"] as? JsonArray).orEmpty()
-            .mapNotNull { it as? JsonObject }
-            .mapNotNull { item -> item.text("id").takeIf(String::isNotBlank)?.let { id ->
-                DiscoveredModel(id, (item["context_length"] as? JsonPrimitive)?.intOrNull,
-                    item.text("display_name"), item)
-            } }
-    }
-
     override suspend fun authorize(provider: ModelProvider): Result<ModelProvider> = try {
         require(provider.type == providerType)
         Result.success(OAuthCallbackService.keepAlive(appContext) {
@@ -126,9 +120,37 @@ internal class DevinAdapter(
     override suspend fun fetchModels(provider: ModelProvider): List<String> = fetchModelCatalog(provider).map { it.id }
 
     override suspend fun fetchModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
-        credential(provider)
-        // Static catalog is a discoverability aid, not a guarantee of account entitlements.
-        return withContext(Dispatchers.IO) { modelCatalog }
+        val token = credential(provider).accessToken
+        return checkNotNull(withTimeoutOrNull(10_000) {
+            withContext(Dispatchers.IO) { fetchAccountCatalog(token) }
+        }) {
+            appContext.getString(R.string.unable_to_load_models)
+        }
+    }
+
+    private suspend fun fetchAccountCatalog(token: String): List<DiscoveredModel> {
+        val contentType = "application/proto".toMediaType()
+        val request = http.request("${serverBaseUrl.trimEnd('/')}${DevinWire.MODELS_PATH}", extraHeaders = mapOf(
+            "Authorization" to "Basic $token-$token",
+            "Connect-Protocol-Version" to "1",
+            "Accept" to contentType.toString()
+        )).post(DevinWire.modelConfigsRequest(token).toRequestBody(contentType)).build()
+        return http.withResponse(request) { response ->
+            check(response.isSuccessful) { "Devin model catalog HTTP ${response.code}" }
+            val source = response.body.source()
+            check(!source.request(2L * 1024 * 1024 + 1)) { "Devin model catalog exceeds size limit" }
+            DevinWire.decodeModelConfigs(source.readByteArray()).filterNot { it.disabled }.distinctBy { it.uid }
+                .map { model ->
+                    DiscoveredModel(model.uid, model.contextWindow, model.label,
+                        buildJsonObject {
+                            put("model_uid", model.uid)
+                            model.supportsImages?.let { images -> put("supportedInputModalities", buildJsonArray {
+                                add("text")
+                                if (images) add("image")
+                            }) }
+                        })
+                }
+        }
     }
 
     override fun clearCredentials(providerId: String) = store.delete(providerId)
@@ -233,10 +255,11 @@ internal class DevinAdapter(
             if (sessionIndex.size >= 400 && !sessionIndex.containsKey(sessionID)) sessionIndex.clear()
             sessionIndex.computeIfAbsent(sessionID) { AtomicInteger() }.getAndIncrement()
         }
-        val available = modelCatalog.firstOrNull { it.id == model.removePrefix("devin/") }
-        val levels = ((available?.metadata?.get("thinking") as? JsonObject)?.get("levels") as? JsonArray)
+        val modelId = model.trim().removePrefix("devin/")
+        val levels = ((config.modelJson["thinking"] as? JsonObject)?.get("levels") as? JsonArray)
             .orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
-        val uid = devinModelUID(model, config.wireReasoningEffort, levels)
+        val uid = config.modelJson.text("model_uid").takeIf { it == modelId && it.isNotBlank() }
+            ?: devinModelUID(model, config.wireReasoningEffort, levels)
         val payload = object : RequestBody() {
             private fun encode(output: java.io.OutputStream) = DevinWire.writeChat(output, token, uid, systemPrompt,
                 turns, tools, config.temperature, maxOutput, sessionID, ordinal)
@@ -262,7 +285,7 @@ internal class DevinAdapter(
             }
             append("-1")
         }
-        val request = http.request("${ModelApiType.DEVIN.defaultBaseUrl}${DevinWire.CHAT_PATH}",
+        val request = http.request("${serverBaseUrl.trimEnd('/')}${DevinWire.CHAT_PATH}",
             extraHeaders = mapOf(
                 "Authorization" to "Basic $token-$token",
                 "Content-Type" to "application/connect+proto",

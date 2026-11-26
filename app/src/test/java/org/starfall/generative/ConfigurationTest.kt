@@ -53,8 +53,8 @@ class ConfigurationTest {
     }
 
     @Test fun codexClientVersionDefaultsAndRejectsUnsafeHeaderValues() {
-        assertEquals("0.159.0", ProviderConfiguration().effectiveCodexClientVersion())
-        assertEquals("0.159.0", ProviderConfiguration(codexClientVersion = "  ").effectiveCodexClientVersion())
+        assertEquals("0.172.0", ProviderConfiguration().effectiveCodexClientVersion())
+        assertEquals("0.172.0", ProviderConfiguration(codexClientVersion = "  ").effectiveCodexClientVersion())
         assertEquals("0.160.0-beta.1", ProviderConfiguration(
             codexClientVersion = " 0.160.0-beta.1 ").effectiveCodexClientVersion())
         assertTrue(isValidClientVersion("0.160.0+build.2"))
@@ -66,8 +66,9 @@ class ConfigurationTest {
 
     @Test fun antigravityVersionAndChangelistDefaultAndValidateIndependently() {
         val defaults = ProviderConfiguration()
-        assertEquals("2.24.0", defaults.effectiveAntigravityVersion())
-        assertEquals("1000335682", defaults.effectiveAntigravityChangelist())
+        assertEquals("2.35.2", defaults.effectiveAntigravityVersion())
+        assertEquals("1029311855", defaults.effectiveAntigravityChangelist())
+        assertEquals("1000335682", ProviderConfiguration(antigravityVersion = "2.24.0").effectiveAntigravityChangelist())
         assertNull(ProviderConfiguration(antigravityVersion = "2.25.0").effectiveAntigravityChangelist())
         assertEquals("2.25.0", ProviderConfiguration(
             antigravityVersion = " 2.25.0 ").effectiveAntigravityVersion())

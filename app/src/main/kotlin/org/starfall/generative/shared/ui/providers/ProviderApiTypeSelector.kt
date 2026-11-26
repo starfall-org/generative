@@ -17,10 +17,11 @@ internal fun ProviderApiTypeSelector(
 ) {
     SelectionDropdown(
         label = stringResource(R.string.provider_api_type),
-        options = types.map { it to it.displayName },
+        options = types.filterNot { it == ModelApiType.GEMINI_CLI }.map { it to it.displayName },
         selected = selected,
         onSelect = onSelected,
         modifier = Modifier.fillMaxWidth(),
+        displayValue = selected.takeIf { it == ModelApiType.GEMINI_CLI }?.displayName,
         fieldModifier = Modifier.testTag("provider-type-selector")
     )
 }

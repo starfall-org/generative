@@ -17,7 +17,6 @@ import org.junit.Assert.fail
 import org.junit.Test
 import org.starfall.generative.integrations.modelapis.devin.DevinWire
 import org.starfall.generative.integrations.modelapis.devin.devinModelUID
-import org.starfall.generative.integrations.modelapis.geminicli.GeminiCliAdapter
 import org.starfall.generative.integrations.modelapis.geminicli.geminiCliEnvelope
 import org.starfall.generative.shared.model.ToolDefinition
 import org.starfall.generative.shared.model.api.ModelApiType
@@ -32,7 +31,6 @@ class GeminiCliDevinContractTest {
         }
         assertEquals("https://cloudcode-pa.googleapis.com/v1internal", ModelApiType.GEMINI_CLI.defaultBaseUrl)
         assertEquals("https://server.codeium.com", ModelApiType.DEVIN.defaultBaseUrl)
-        assertTrue(GeminiCliAdapter.MODEL_IDS.contains("gemini-2.5-flash"))
     }
 
     @Test fun geminiCliEnvelopeWrapsModelAndProjectWithoutLosingTools() {

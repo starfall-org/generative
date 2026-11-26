@@ -46,7 +46,7 @@ fun DropdownMenu(
         shape = RoundedCornerShape(14.dp),
         containerColor = menuColor,
         tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,
-        shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
+        shadowElevation = 0.dp,
         border = prominentContainerBorder(),
         content = {
             // A Popup can have a separate window configuration. Preserve the in-app locale.
@@ -80,7 +80,7 @@ fun ExposedDropdownMenuBoxScope.ExposedDropdownMenu(
         shape = RoundedCornerShape(14.dp),
         containerColor = menuColor,
         tonalElevation = if (LocalAmoledMode.current) 0.dp else 6.dp,
-        shadowElevation = if (LocalAmoledMode.current) 0.dp else 8.dp,
+        shadowElevation = 0.dp,
         border = prominentContainerBorder(),
         content = {
             // A Popup can have a separate window configuration. Preserve the in-app locale.

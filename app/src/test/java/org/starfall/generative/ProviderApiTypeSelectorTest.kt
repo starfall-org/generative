@@ -35,9 +35,26 @@ class ProviderApiTypeSelectorTest {
         compose.onNodeWithText("API Type").assertIsDisplayed()
         compose.onNodeWithTag("provider-type-selector").assertTextContains("OpenAI Responses")
         compose.onNodeWithTag("provider-type-selector").assertHasClickAction().performClick()
+        compose.onNodeWithText(ModelApiType.GEMINI_CLI.displayName).assertDoesNotExist()
+        compose.onNodeWithText(ModelApiType.DEVIN.displayName).assertExists()
         compose.onNodeWithText("Anthropic Messages").performClick()
         compose.onNodeWithTag("provider-type-selector").assertTextContains("Anthropic Messages")
         compose.runOnIdle { assertEquals(listOf(ModelApiType.ANTHROPIC), selections) }
+    }
+
+    @Test fun existingGeminiCliProviderShowsItsTypeAndCanSwitchAway() {
+        var selected by mutableStateOf(ModelApiType.GEMINI_CLI)
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                ProviderApiTypeSelector(selected) { selected = it }
+            }
+        }
+
+        val selector = compose.onNodeWithTag("provider-type-selector")
+        selector.assertTextContains(ModelApiType.GEMINI_CLI.displayName).performClick()
+        compose.onNodeWithText(ModelApiType.ANTHROPIC.displayName).performClick()
+        selector.assertTextContains(ModelApiType.ANTHROPIC.displayName)
+        compose.runOnIdle { assertEquals(ModelApiType.ANTHROPIC, selected) }
     }
 
     @Test fun choosingCurrentApiTypeClosesDropdownWithoutChangingTheType() {

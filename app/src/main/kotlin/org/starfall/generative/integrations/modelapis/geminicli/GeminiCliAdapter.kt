@@ -178,10 +178,9 @@ internal class GeminiCliAdapter(context: Context, attachments: AttachmentResolve
 
     override suspend fun fetchModels(provider: ModelProvider): List<String> = fetchModelCatalog(provider).map { it.id }
     override suspend fun fetchModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
-        // CLIProxyAPI ModelsForAuth is static, independent of Code Assist project onboarding.
-        // Validate that this is an authenticated account without forcing network onboarding.
-        ensureToken(provider)
-        return GeminiCliModelCatalog.models()
+        val (token, projectId) = project(provider)
+        val quota = cloudPost("retrieveUserQuota", token.accessToken, obj("project" to str(projectId)))
+        return geminiCliQuotaModels(quota)
     }
 
     override suspend fun testConnection(provider: ModelProvider): Result<String> = result {
@@ -196,9 +195,16 @@ internal class GeminiCliAdapter(context: Context, attachments: AttachmentResolve
     companion object {
         private const val CLOUD_ROOT = "https://cloudcode-pa.googleapis.com"
         private const val API_CLIENT = "google-genai-sdk/1.41.0 gl-node/v22.19.0"
-        val MODEL_IDS = GeminiCliModelCatalog.modelIds
     }
 }
+
+/** Code Assist reports model IDs in the quota buckets it exposes to the active project. */
+internal fun geminiCliQuotaModels(quota: JsonObject): List<DiscoveredModel> =
+    (quota["buckets"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+        .map { it.text("modelId").trim().removePrefix("models/") }
+        .filter(String::isNotBlank)
+        .distinct()
+        .map { DiscoveredModel(it) }
 
 /** Cloud Code requires project/model at the outer level; the model request lives under request. */
 internal fun geminiCliEnvelope(project: String, body: JsonObject): JsonObject {

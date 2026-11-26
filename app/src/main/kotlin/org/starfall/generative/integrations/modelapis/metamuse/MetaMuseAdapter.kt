@@ -30,8 +30,7 @@ import org.starfall.generative.shared.helpers.networking.text
 
 /** Muse Code Device Client Access -> minted API key -> Meta Responses API. */
 internal class MetaMuseAdapter(context: Context, attachments: AttachmentResolver) : DeviceCodeAccountAdapter(
-    context, attachments, ModelApiType.META_MUSE, CLIENT_ID,
-    listOf("muse-spark-1.3", "muse-wonder", "muse-wonder-full")
+    context, attachments, ModelApiType.META_MUSE, CLIENT_ID
 ) {
     override fun authHeaders(): Map<String, String> = mapOf("User-Agent" to "muse-code/1.0.2")
 

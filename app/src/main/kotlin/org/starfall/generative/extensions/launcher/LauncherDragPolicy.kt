@@ -20,7 +20,7 @@ data class LauncherDragStyle(
     val pickupScale: Float = LauncherDragDefaults.PickupScale,
     val pickupDurationMillis: Int = LauncherDragDefaults.PickupDurationMillis,
     val landingDurationMillis: Int = LauncherDragDefaults.LandingDurationMillis,
-    val elevation: Dp = 8.dp
+    val elevation: Dp = 0.dp
 ) {
     init {
         require(pickupScale.isFinite() && pickupScale > 0f)

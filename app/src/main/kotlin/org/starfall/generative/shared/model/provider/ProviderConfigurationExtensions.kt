@@ -1,8 +1,8 @@
 package org.starfall.generative.shared.model.provider
 
-const val DEFAULT_CODEX_CLIENT_VERSION = "0.159.0"
-const val DEFAULT_ANTIGRAVITY_VERSION = "2.24.0"
-const val DEFAULT_ANTIGRAVITY_CHANGELIST = "1000335682"
+const val DEFAULT_CODEX_CLIENT_VERSION = "0.172.0"
+const val DEFAULT_ANTIGRAVITY_VERSION = "2.35.2"
+const val DEFAULT_ANTIGRAVITY_CHANGELIST = "1029311855"
 
 private val clientVersionPattern = Regex("""\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?""")
 
@@ -15,20 +15,22 @@ fun isValidAntigravityChangelist(value: String): Boolean =
 
 fun ProviderConfiguration.effectiveCodexClientVersion(): String {
     val version = codexClientVersion?.trim()?.ifEmpty { null } ?: DEFAULT_CODEX_CLIENT_VERSION
-    require(isValidClientVersion(version)) { "Codex client version must use the form 0.159.0." }
+    require(isValidClientVersion(version)) { "Codex client version must use the form $DEFAULT_CODEX_CLIENT_VERSION." }
     return version
 }
 
 fun ProviderConfiguration.effectiveAntigravityVersion(): String {
     val version = antigravityVersion?.trim()?.ifEmpty { null } ?: DEFAULT_ANTIGRAVITY_VERSION
-    require(isValidClientVersion(version)) { "Antigravity version must use the form 2.24.0." }
+    require(isValidClientVersion(version)) { "Antigravity version must use the form $DEFAULT_ANTIGRAVITY_VERSION." }
     return version
 }
 
 fun ProviderConfiguration.effectiveAntigravityChangelist(): String? {
     val changelist = antigravityChangelist?.trim()?.ifEmpty { null }
-    if (changelist == null) return DEFAULT_ANTIGRAVITY_CHANGELIST.takeIf {
-        effectiveAntigravityVersion() == DEFAULT_ANTIGRAVITY_VERSION
+    if (changelist == null) return when (effectiveAntigravityVersion()) {
+        DEFAULT_ANTIGRAVITY_VERSION -> DEFAULT_ANTIGRAVITY_CHANGELIST
+        "2.24.0" -> "1000335682" // Previous default, which the editor could save as an explicit version.
+        else -> null
     }
     require(isValidAntigravityChangelist(changelist)) { "Antigravity changelist must contain digits only." }
     return changelist

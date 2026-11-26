@@ -278,12 +278,13 @@ fun ConversationSideDrawer(
                     }
                 }
             }
+            val folderShape = RoundedCornerShape(12.dp)
             with(Launcher) {
                 Host(folderDrag, modifier = Modifier.weight(1f).fillMaxWidth(), preview = { drag ->
                     folderOrder.firstOrNull { it.id == drag.item.data }?.let { folder ->
-                        Surface(shape = RoundedCornerShape(12.dp), color = prominentContainerColor(),
+                        Surface(modifier = Modifier.fillMaxSize(), shape = folderShape, color = prominentContainerColor(),
                             border = prominentContainerBorder()) {
-                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 SharedIcon(Icons.Outlined.Folder, null, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(folder.name, maxLines = 1)
@@ -365,7 +366,7 @@ fun ConversationSideDrawer(
                                         priority = 5,
                                         accepts = { it.key == folder.id },
                                         onDrop = { folderDragStart != folderOrder }),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = folderShape,
                                 color = prominentContainerColor(),
                                 border = prominentContainerBorder()
                             ) {

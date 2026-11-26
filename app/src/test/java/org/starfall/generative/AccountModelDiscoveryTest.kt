@@ -21,6 +21,7 @@ import org.starfall.generative.shared.subfeatures.auth.logic.*
 import org.starfall.generative.integrations.modelapis.githubcopilot.GitHubCopilotAdapter
 import org.starfall.generative.integrations.modelapis.githubcopilot.copilotDiscoveredModel
 import org.starfall.generative.integrations.modelapis.githubcopilot.copilotProtocol
+import org.starfall.generative.integrations.modelapis.metamuse.MetaMuseAdapter
 import org.starfall.generative.integrations.modelapis.openaicodex.parseCodexModelCatalog
 import org.starfall.generative.shared.model.*
 import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
@@ -50,6 +51,23 @@ class AccountModelDiscoveryTest {
         "provider", type.displayName, type, baseUrl = server.url("/").toString().trimEnd('/'),
         auth = Authorization(AuthMethod.OAUTH, value = "account:${type.name.lowercase()}:v1", oauthAccountId = slot))
     private fun json(value: String) = MockResponse().setHeader("Content-Type", "application/json").setBody(value)
+
+    @Test fun deviceCodeCatalogUsesServerModelsAndSurfacesMissingEndpoint() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(json("""{"data":[{"id":"model-from-server"}]}"""))
+            server.enqueue(json("""{"error":{"message":"Catalog unavailable"}}""").setResponseCode(404))
+            val slot = "meta-catalog"
+            AccountTokenStore(context, "meta_muse").save(slot, AccountTokenState("access", "",
+                apiBaseUrl = server.url("/").toString()))
+            val adapter = MetaMuseAdapter(context, AttachmentResolver(context))
+            val provider = provider(ModelApiType.META_MUSE, server, slot)
+
+            assertEquals(listOf("model-from-server"), adapter.fetchModels(provider))
+            val error = runCatching { adapter.fetchModels(provider) }.exceptionOrNull()
+            assertEquals("HTTP 404: Catalog unavailable", error?.message)
+            repeat(2) { assertEquals("/models", server.takeRequest(5, TimeUnit.SECONDS)?.path) }
+        }
+    }
 
     @Test fun antigravityUsesMinimalLoadMetadataAndLiveProjectCatalogPerAccountWithQuotaAndOpaqueIds() = runBlocking {
         MockWebServer().use { server ->
@@ -82,7 +100,7 @@ class AccountModelDiscoveryTest {
                 assertEquals(setOf("ideType"), metadata.keys)
                 assertEquals("ANTIGRAVITY", metadata.text("ideType"))
                 val userAgent = load.getHeader("User-Agent")!!
-                assertEquals("antigravity/hub/2.24.0 (aidev_client; os_type=darwin; arch=arm64; cl=1000335682)",
+                assertEquals("antigravity/hub/2.35.2 (aidev_client; os_type=darwin; arch=arm64; cl=1029311855)",
                     userAgent)
             }
             listOf(1 to "project-a", 3 to "project-b", 4 to "project-a").forEach { (index, project) ->
@@ -252,9 +270,9 @@ class AccountModelDiscoveryTest {
             val metadata = body.getValue("metadata").jsonObject
             assertEquals(setOf("ide_type", "ide_version", "ide_name"), metadata.keys)
             assertEquals("ANTIGRAVITY", metadata.text("ide_type"))
-            assertEquals("2.24.0", metadata.text("ide_version"))
+            assertEquals("2.35.2", metadata.text("ide_version"))
             assertEquals("antigravity", metadata.text("ide_name"))
-            assertTrue(onboard.getHeader("User-Agent")!!.startsWith("antigravity/hub/2.24.0"))
+            assertTrue(onboard.getHeader("User-Agent")!!.startsWith("antigravity/hub/2.35.2"))
             assertTrue(onboard.getHeader("User-Agent")!!.contains("google-api-nodejs-client/10.3.0"))
             assertEquals("gl-node/22.21.1", onboard.getHeader("X-Goog-Api-Client"))
             assertEquals("*/*", onboard.getHeader("Accept"))

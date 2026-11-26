@@ -15,7 +15,9 @@ import org.starfall.generative.shared.model.ToolDefinition
 /** The small Connect/Protobuf contract actually used by the Devin CLI. No Go runtime needed. */
 internal object DevinWire {
     const val CHAT_PATH = "/exa.api_server_pb.ApiServerService/GetChatMessage"
+    const val MODELS_PATH = "/exa.api_server_pb.ApiServerService/GetCliModelConfigs"
     const val CLIENT_VERSION = "3000.10.21"
+    private const val MIN_TEMPERATURE = 0.0001
     private const val MAX_FRAME = 16 * 1024 * 1024
     private const val MAX_EXPANDED = 64 * 1024 * 1024
 
@@ -112,6 +114,25 @@ internal object DevinWire {
         val usage: Usage?, val signature: ByteArray = byteArrayOf(), val signatureType: String = ""
     )
 
+    internal data class CatalogModel(
+        val uid: String, val label: String, val disabled: Boolean,
+        val supportsImages: Boolean?, val contextWindow: Int?
+    )
+
+    internal fun modelConfigsRequest(token: String): ByteArray = ProtoWriter().apply {
+        clientMetadata(token)
+    }.build()
+
+    internal fun decodeModelConfigs(payload: ByteArray): List<CatalogModel> = fields(payload).mapNotNull { field ->
+        if (field.number != 1 || field.wireType != 2) return@mapNotNull null
+        val model = fields(field.data)
+        fun text(number: Int) = model.firstOrNull { it.number == number && it.wireType == 2 }?.text().orEmpty()
+        fun number(number: Int) = model.firstOrNull { it.number == number && it.wireType == 0 }?.numberValue
+        val uid = text(22).takeIf(String::isNotBlank) ?: return@mapNotNull null
+        CatalogModel(uid, text(1).ifBlank { uid }, number(4) == 1L,
+            number(5)?.let { it == 1L }, number(18)?.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt())
+    }
+
     /** Stable 732-character device identity (the client metadata field #31). */
     internal fun fingerprint(seed: String): String = buildString {
         var index = 0
@@ -121,6 +142,12 @@ internal object DevinWire {
             hash.forEach { append("%02x".format(it.toInt() and 0xff)) }
         }
     }.take(732)
+
+    private fun ProtoWriter.clientMetadata(token: String) = nested(1) {
+        string(1, "chisel"); string(2, CLIENT_VERSION); string(3, token)
+        string(4, "en"); string(5, "linux"); string(7, CLIENT_VERSION)
+        string(12, "chisel"); string(31, fingerprint(token))
+    }
 
     internal fun buildChat(
         token: String, modelUID: String, systemPrompt: String, turns: List<Turn>,
@@ -137,11 +164,7 @@ internal object DevinWire {
         sessionId: String, turnIndex: Int
     ) {
         ProtoWriter(output).apply {
-        nested(1) {
-            string(1, "chisel"); string(2, CLIENT_VERSION); string(3, token)
-            string(4, "en"); string(5, "linux"); string(7, CLIENT_VERSION)
-            string(12, "chisel"); string(31, fingerprint(token))
-        }
+        clientMetadata(token)
         if (systemPrompt.isNotBlank()) string(2, systemPrompt)
         turns.forEach { turn -> nested(3) {
             string(1, turn.id); number(2, turn.source.toLong()); string(3, turn.content)
@@ -157,7 +180,9 @@ internal object DevinWire {
         number(7, 5)
         nested(8) {
             number(1, 1); number(2, maxTokens.coerceAtLeast(1).toLong()); number(3, 400)
-            fixed64(5, temperature ?: 1.0); number(7, 40); fixed64(8, 0.95f.toDouble())
+            // Cognition rejects a zero temperature in CompletionConfiguration.
+            fixed64(5, temperature?.coerceAtLeast(MIN_TEMPERATURE) ?: 1.0)
+            number(7, 40); fixed64(8, 0.95f.toDouble())
         }
         tools.forEach { tool -> nested(10) {
             string(1, tool.name); string(2, tool.description)

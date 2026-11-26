@@ -32,7 +32,7 @@ import org.starfall.generative.shared.helpers.networking.text
 
 /** Grok CLI OAuth login and the CLI chat-proxy Responses transport. */
 internal class GrokBuildAdapter(context: Context, attachments: AttachmentResolver) : DeviceCodeAccountAdapter(
-    context, attachments, ModelApiType.GROK_BUILD, CLIENT_ID, listOf("grok-4.7", "grok-4.7-fast")
+    context, attachments, ModelApiType.GROK_BUILD, CLIENT_ID
 ) {
     private suspend fun discovery(): JsonObject =
         http.json(http.request("https://auth.x.ai/.well-known/openid-configuration").get().build())

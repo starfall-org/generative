@@ -374,8 +374,8 @@ class AccountAdapterTest {
 
             assertEquals(listOf("gpt-test"), adapter.fetchModels(provider))
             val defaultRequest = server.takeRequest()
-            assertEquals("/models?client_version=0.159.0", defaultRequest.path)
-            assertEquals("codex-tui/0.159.0 (Android; arm64) Generative", defaultRequest.getHeader("User-Agent"))
+            assertEquals("/models?client_version=0.172.0", defaultRequest.path)
+            assertEquals("codex-tui/0.172.0 (Android; arm64) Generative", defaultRequest.getHeader("User-Agent"))
 
             val custom = provider.copy(config = ProviderConfiguration(codexClientVersion = "0.160.0"))
             assertEquals(listOf("gpt-test"), adapter.fetchModels(custom))

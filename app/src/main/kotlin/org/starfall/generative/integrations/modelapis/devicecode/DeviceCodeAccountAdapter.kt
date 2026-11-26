@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -50,8 +49,7 @@ internal abstract class DeviceCodeAccountAdapter(
     context: Context,
     attachments: AttachmentResolver,
     providerType: ModelApiType,
-    clientId: String,
-    private val defaultModels: List<String>
+    clientId: String
 ) : OAuthAccountAdapter(context, attachments, providerType, clientId, "", "", "", 0, "") {
     protected val parser = Json { ignoreUnknownKeys = true }
 
@@ -133,21 +131,13 @@ internal abstract class DeviceCodeAccountAdapter(
 
     override suspend fun fetchModelCatalog(provider: ModelProvider): List<DiscoveredModel> {
         val wire = prepareAuthenticatedProvider(provider)
-        return try {
-            val response = http.json(http.request(wire.baseUrl.trimEnd('/') + "/models", wire).get().build())
-            val entries = (response["data"] ?: response["models"]) as? JsonArray
-                ?: error("${providerType.displayName} model catalog returned an unsupported response.")
-            entries.mapNotNull { (it as? JsonObject)?.let { model ->
-                val id = model.text("id").ifBlank { model.text("name") }
-                id.takeIf(String::isNotBlank)?.let { discoveredModel(it, model) }
-            } }.distinctBy { it.id }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // CLI accounts may support /responses without exposing an HTTP /models endpoint.
-            if (e.message?.contains("HTTP 404") != true) throw e
-            defaultModels.map { DiscoveredModel(it) }
-        }
+        val response = http.json(http.request(wire.baseUrl.trimEnd('/') + "/models", wire).get().build())
+        val entries = (response["data"] ?: response["models"]) as? JsonArray
+            ?: error("${providerType.displayName} model catalog returned an unsupported response.")
+        return entries.filterIsInstance<JsonObject>().mapNotNull { model ->
+            val id = model.text("id").ifBlank { model.text("name") }
+            id.takeIf(String::isNotBlank)?.let { discoveredModel(it, model) }
+        }.distinctBy { it.id }
     }
 
     override fun shouldStreamUpstream(

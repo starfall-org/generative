@@ -3,8 +3,6 @@ package org.starfall.generative
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.starfall.generative.integrations.security.oauthRecordStorage
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +16,7 @@ import org.starfall.generative.shared.model.auth.defaultAuthorization
 import org.starfall.generative.shared.model.provider.ModelProvider
 import java.util.UUID
 
-/** Device-only AndroidKeystore, account isolation and bundled Devin model catalog tests. */
+/** Device-only AndroidKeystore and account isolation tests. */
 @RunWith(AndroidJUnit4::class)
 class GeminiCliDevinCredentialDeviceTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
@@ -68,14 +66,5 @@ class GeminiCliDevinCredentialDeviceTest {
                 assertTrue(e.message.orEmpty().contains("not authorized", ignoreCase = true))
             }
         }
-    }
-
-    @Test fun devinModelCatalogIsBundledAndAvailableWithoutExternalServicesAfterAuthentication() {
-        val asset = context.assets.open("devin_models_catalog.json").bufferedReader().use { it.readText() }
-        val parsed = kotlinx.serialization.json.Json.parseToJsonElement(asset).jsonObject
-        val array = parsed["devin"] as? kotlinx.serialization.json.JsonArray
-        assertNotNull(array)
-        assertTrue("Bundled catalog should be populated", array!!.size >= 40)
-        assertEquals("swe-2", array.first().jsonObject["id"]!!.jsonPrimitive.content)
     }
 }
