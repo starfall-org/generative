@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import kotlinx.coroutines.CompletableDeferred
@@ -35,15 +36,33 @@ class GenerativeServerSshTransportTest {
     @Test fun sshStdioPairingParsesTheExistingServerContract() = runBlocking {
         var released = 0
         val payload = """{"protocol":5,"client_id":"owner","secret":"secret","fingerprint":"server","endpoint":"tcp://server","transport":"tcp"}"""
+        val commands = mutableListOf<String>()
         val paired = GenerativeServerSshTransport.pairUsing { command ->
-            assertEquals(
-                "generative service start </dev/null >/dev/null 2>&1 || :; exec generative pair --stdio --transport tcp",
-                command
-            )
-            RemoteExecStream(ByteArrayInputStream(payload.toByteArray()), ByteArrayOutputStream()) { released++ }
+            commands += command
+            val output = if (commands.size == 1) "generative-cli-ready\n" else payload
+            RemoteExecStream(ByteArrayInputStream(output.toByteArray()), ByteArrayOutputStream()) { released++ }
         }
+        assertEquals(2, commands.size)
+        assertTrue(commands[0].contains("serverside-generative/main/install.sh"))
+        assertTrue(commands[1].contains("exec \"\$cli\" pair --stdio --transport tcp"))
         assertEquals("owner", paired.identity.clientId)
         assertEquals("server", paired.identity.serverId)
+        assertEquals(2, released)
+    }
+
+    @Test fun failedCliSetupStopsBeforePairing() = runBlocking {
+        var opened = 0
+        var released = 0
+        try {
+            GenerativeServerSshTransport.pairUsing {
+                opened++
+                RemoteExecStream(ByteArrayInputStream(byteArrayOf()), ByteArrayOutputStream()) { released++ }
+            }
+            fail("Pairing continued after failed CLI setup")
+        } catch (failure: IOException) {
+            assertEquals("Generative CLI setup failed", failure.message)
+        }
+        assertEquals(1, opened)
         assertEquals(1, released)
     }
 
@@ -72,10 +91,8 @@ class GenerativeServerSshTransportTest {
         }
         val identity = PairedIdentity("owner", "secret", "server")
         val client = GenerativeServerClient(GenerativeServerSshTransport({ command ->
-            assertEquals(
-                "generative service start </dev/null >/dev/null 2>&1 || :; exec generative stream --stdio",
-                command
-            )
+            assertTrue(command.contains("exec \"\$cli\" stream --stdio"))
+            assertFalse(command.contains("install.sh"))
             stream
         }, identity), identity)
         withTimeout(5000) {

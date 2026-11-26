@@ -18,6 +18,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ internal fun ServerConnectionEditor(
     onBack: () -> Unit,
     onSave: (ServerConnectionDraft) -> Unit,
     error: Int?,
+    settingUpSsh: Boolean,
     catalogContent: (@Composable () -> Unit)? = null,
 ) {
     val savedOpenCode = profile?.takeIf { it.transport == "opencode" }
@@ -77,16 +79,18 @@ internal fun ServerConnectionEditor(
     var username by remember(profile?.id) { mutableStateOf(savedOpenCode?.clientId ?: "opencode") }
     var password by remember(profile?.id) { mutableStateOf("") }
     var authUrl by remember(profile?.id) { mutableStateOf("") }
-    var authMethod by remember(profile?.id) { mutableStateOf("basic") }
+    var manualAuth by remember(profile?.id) { mutableStateOf(false) }
     var sshMachineId by remember(profile?.id) { mutableStateOf(profile?.sshMachineId.orEmpty()) }
     val draft = ServerConnectionDraft(
-        name, selectedTransport, invitation, sshMachineId, endpoint, username, password, authUrl, allowLocalProviders,
+        name, selectedTransport, invitation, sshMachineId, endpoint,
+        if (manualAuth) username else savedOpenCode?.clientId ?: "opencode",
+        if (manualAuth) password else "", if (manualAuth) "" else authUrl, allowLocalProviders,
     )
     val needsPairing = draft.needsServerCredentials(profile, repairing)
     val valid = name.isNotBlank() && (!needsPairing || when (selectedTransport) {
         "http" -> invitation.isNotBlank()
         "ssh" -> machines.any { it.id == sshMachineId }
-        "opencode" -> if (authMethod == "link") authUrl.isNotBlank() else endpoint.isNotBlank() && password.isNotEmpty()
+        "opencode" -> if (manualAuth) endpoint.isNotBlank() && password.isNotEmpty() else authUrl.isNotBlank()
         else -> false
     })
 
@@ -200,22 +204,7 @@ internal fun ServerConnectionEditor(
                     )
                     "opencode" -> {
                         ConnectionHint(stringResource(R.string.server_connection_opencode_hint))
-                        SelectionDropdown(
-                            label = stringResource(R.string.server_connection_auth_method),
-                            options = listOf(
-                                "basic" to stringResource(R.string.server_connection_auth_password),
-                                "link" to stringResource(R.string.server_connection_auth_link),
-                            ),
-                            selected = authMethod,
-                            onSelect = {
-                                authMethod = it
-                                password = ""
-                                authUrl = ""
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !busy,
-                        )
-                        if (authMethod == "basic") {
+                        if (manualAuth) {
                             if (savedOpenCode == null) {
                                 ServerLiteralField(endpoint, { endpoint = it }, R.string.server_url, !busy)
                             }
@@ -223,6 +212,14 @@ internal fun ServerConnectionEditor(
                             ServerLiteralField(password, { password = it }, R.string.server_connection_opencode_password, !busy, secret = true)
                         } else {
                             ServerLiteralField(authUrl, { authUrl = it }, R.string.server_connection_opencode_auth_url, !busy, secret = true)
+                        }
+                        TextButton(enabled = !busy, onClick = {
+                            manualAuth = !manualAuth
+                            password = ""
+                            authUrl = ""
+                        }) {
+                            Text(stringResource(if (manualAuth) R.string.server_connection_auth_link
+                                else R.string.server_connection_auth_password))
                         }
                     }
                     "ssh" -> {
@@ -236,6 +233,9 @@ internal fun ServerConnectionEditor(
                         )
                         ConnectionHint(stringResource(if (machines.isEmpty()) R.string.server_connection_no_ssh_machine
                             else R.string.server_connection_ssh_hint))
+                        if (settingUpSsh) {
+                            ConnectionHint(stringResource(R.string.server_connection_ssh_setup))
+                        }
                         if (profile?.transport == "ssh" && machines.isNotEmpty()) {
                             ConnectionHint(stringResource(if (repairing) R.string.server_connection_ssh_repair_hint
                                 else R.string.server_connection_ssh_rename_hint))

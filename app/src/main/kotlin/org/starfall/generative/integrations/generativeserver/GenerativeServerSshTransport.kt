@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -42,7 +43,7 @@ private suspend fun <T> cancellableSshIO(connection: RemoteExecStream, operation
                     if (continuation.isActive) continuation.resumeWithException(failure)
                 }
             }
-            continuation.invokeOnCancellation { connection.close(); worker.cancel() }
+            continuation.invokeOnCancellation { connection.cancel(); worker.cancel() }
         }
 
 /** SSH identities are scoped to v5 TCP/stdio and cannot be reused for HTTPS. */
@@ -108,7 +109,7 @@ class GenerativeServerSshTransport internal constructor(
     private suspend fun exchange(request: RpcRequest): RpcReply {
         if (closed) throw IOException("SSH connection closed")
         val existing = channel
-        val connection = existing ?: openStream(STREAM_COMMAND)
+        val connection = existing ?: openStream(cliCommand(STREAM_COMMAND))
         return try {
             if (existing == null) synchronized(lifecycle) {
                 if (closed) throw IOException("SSH connection closed")
@@ -162,12 +163,46 @@ class GenerativeServerSshTransport internal constructor(
     }
 
     companion object {
-        // Start the installed service with its existing configuration. Still try
-        // the command when a manually started daemon or an older CLI is in use.
-        // Service output must never enter the JSON or binary stdout stream.
-        private const val START_SERVICE = "generative service start </dev/null >/dev/null 2>&1 || :"
-        private const val STREAM_COMMAND = "$START_SERVICE; exec generative stream --stdio"
-        private const val PAIR_COMMAND = "$START_SERVICE; exec generative pair --stdio --transport tcp"
+        // SSH exec shells often omit user-local and Homebrew directories from PATH.
+        private val findCli = """
+            cli=
+            if generative version >/dev/null 2>&1; then
+                cli=generative
+            else
+                for candidate in "${'$'}HOME/.local/bin/generative" "${'$'}HOME/bin/generative" /usr/local/bin/generative /opt/homebrew/bin/generative; do
+                    if [ -x "${'$'}candidate" ] && "${'$'}candidate" version >/dev/null 2>&1; then
+                        cli=${'$'}candidate
+                        break
+                    fi
+                done
+            fi
+        """.trimIndent()
+
+        private val setupCli = """
+            $findCli
+            if [ -z "${'$'}cli" ]; then
+                script=${'$'}(mktemp) || exit 1
+                trap 'rm -f "${'$'}script"' EXIT
+                trap 'exit 1' HUP INT TERM
+                curl -fsSL --proto '=https' --proto-redir '=https' \
+                    https://raw.githubusercontent.com/starfall-org/serverside-generative/main/install.sh \
+                    -o "${'$'}script" || exit 1
+                INSTALL_DIR="${'$'}HOME/.local/bin" sh "${'$'}script" >&2 || exit 1
+                "${'$'}HOME/.local/bin/generative" version >/dev/null 2>&1 || exit 1
+            fi
+            printf 'generative-cli-ready\n'
+        """.trimIndent()
+
+        // Keep command diagnostics out of the JSON and binary stdout streams.
+        private const val START_SERVICE = "\"\$cli\" service start </dev/null >/dev/null 2>&1 || :"
+        private const val STREAM_COMMAND = "$START_SERVICE; exec \"\$cli\" stream --stdio"
+        private const val PAIR_COMMAND = "$START_SERVICE; exec \"\$cli\" pair --stdio --transport tcp"
+
+        private fun shellCommand(script: String) = "sh -c '${script.replace("'", "'\"'\"'")}'"
+
+        private fun cliCommand(command: String) =
+            shellCommand("$findCli\n[ -n \"\$cli\" ] || exit 127\n$command")
+
         private const val MAX_FRAME_BYTES = 4 * 1024 * 1024
         private const val MAX_UNSOLICITED_FRAMES = 4096
 
@@ -175,15 +210,23 @@ class GenerativeServerSshTransport internal constructor(
             pairUsing { command -> remote.openExecStream(machineId.also { require(it.isNotBlank()) }, command) }
 
         internal suspend fun pairUsing(openStream: suspend (String) -> RemoteExecStream): SshPairing {
-            return openStream(PAIR_COMMAND).use { command ->
-                    val bytes = cancellableSshIO(command) { readLimited(command.input, 16 * 1024) }
-                    val response = try { GenerativeServerCodec.json.decodeFromString<FramedPairing>(bytes.toString(Charsets.UTF_8)) }
-                        catch (_: Exception) { throw GenerativeServerProtocolException("Invalid SSH pairing response") }
-                    if (response.protocol != 5 || response.transport != "tcp" || response.clientId.isBlank() ||
-                        response.secret.isBlank() || response.fingerprint.isBlank()) {
-                        throw GenerativeServerProtocolException("Incompatible SSH pairing response")
+            val ready = withTimeoutOrNull(180_000) {
+                openStream(shellCommand(setupCli)).use { command ->
+                    cancellableSshIO(command) {
+                        readLimited(command.input, 1024).toString(Charsets.UTF_8).trim() == "generative-cli-ready"
                     }
-                    SshPairing(PairedIdentity(response.clientId, response.secret, response.fingerprint), response.endpoint)
+                }
+            }
+            if (ready != true) throw GenerativeCliSetupException()
+            return openStream(cliCommand(PAIR_COMMAND)).use { command ->
+                val bytes = cancellableSshIO(command) { readLimited(command.input, 16 * 1024) }
+                val response = try { GenerativeServerCodec.json.decodeFromString<FramedPairing>(bytes.toString(Charsets.UTF_8)) }
+                    catch (_: Exception) { throw GenerativeServerProtocolException("Invalid SSH pairing response") }
+                if (response.protocol != 5 || response.transport != "tcp" || response.clientId.isBlank() ||
+                    response.secret.isBlank() || response.fingerprint.isBlank()) {
+                    throw GenerativeServerProtocolException("Incompatible SSH pairing response")
+                }
+                SshPairing(PairedIdentity(response.clientId, response.secret, response.fingerprint), response.endpoint)
             }
         }
 
@@ -211,6 +254,8 @@ class GenerativeServerSshTransport internal constructor(
         }
     }
 }
+
+internal class GenerativeCliSetupException : IOException("Generative CLI setup failed")
 
 class SshPairing(val identity: PairedIdentity, val endpoint: String)
 

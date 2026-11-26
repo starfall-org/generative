@@ -12,6 +12,7 @@ import org.junit.Test
 import org.starfall.generative.integrations.generativeserver.GenerativeServerSshTransport
 import org.starfall.generative.integrations.remote.ActivePortForwards
 import org.starfall.generative.integrations.remote.RemoteMachineConnectionManager
+import org.starfall.generative.integrations.remote.RemoteExecStream
 import org.starfall.generative.shared.model.RemoteMachine
 
 class RuntimeSshLeaseTest {
@@ -22,7 +23,13 @@ class RuntimeSshLeaseTest {
         val machine = RemoteMachine("pairing", "Pairing")
 
         val paired = GenerativeServerSshTransport.pairUsing { command ->
-            manager.openExecStream(machine, command)
+            if (command.contains("install.sh")) {
+                RemoteExecStream(
+                    ByteArrayInputStream("generative-cli-ready\n".toByteArray()), ByteArrayOutputStream()
+                ) {}
+            } else {
+                manager.openExecStream(machine, command)
+            }
         }
 
         assertEquals("owner", paired.identity.clientId)

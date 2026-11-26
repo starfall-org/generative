@@ -14,10 +14,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
+import org.starfall.generative.features.serverconnection.logic.needsServerCredentials
+import org.starfall.generative.integrations.generativeserver.GenerativeCliSetupException
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.lists.ItemCard
@@ -44,34 +47,51 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
     var testing by remember { mutableStateOf<ServerConnectionProfile?>(null) }
     var result by remember { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var sshSetup by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+    val closeEditor = {
+        sshSetup?.cancel()
+        sshSetup = null
+        editorPage = null
+    }
     fun launchOperation(
         failureMessage: Int = R.string.server_connection_failed,
         successMessage: Int = R.string.server_connection_success,
         block: suspend () -> Unit,
-    ) {
-        if (busy) return
+    ): Job? {
+        if (busy) return null
         busy = true
-        scope.launch {
+        return scope.launch {
             result = null
             try { block(); result = successMessage }
             catch (e: CancellationException) { throw e }
+            catch (_: GenerativeCliSetupException) { result = R.string.server_connection_ssh_setup_failed }
             catch (_: Exception) { result = failureMessage }
-            finally { busy = false }
+            finally {
+                busy = false
+                sshSetup = null
+            }
         }
     }
-    ScreenDestination(page = editorPage, onClosed = { editorPage = null }) { page ->
+    ScreenDestination(page = editorPage, onClosed = closeEditor) { page ->
         if (page == null) return@ScreenDestination
-        ServerConnectionEditor(page.profile, sshMachines, busy, page.repairing, onBack = { editorPage = null },
+        ServerConnectionEditor(page.profile, sshMachines, busy, page.repairing, onBack = closeEditor,
+            settingUpSsh = busy && sshSetup != null,
             onSave = { draft ->
                 val failure = if (draft.transport == "opencode") R.string.server_connection_opencode_failed
                     else R.string.server_connection_failed
-                launchOperation(failure) {
+                val job = launchOperation(failure) {
                     service.saveConnection(draft, page.profile, page.repairing)
                     if (editorPage === page) editorPage = null
                 }
+                if (job != null && draft.transport == "ssh" && draft.needsServerCredentials(page.profile, page.repairing)) {
+                    sshSetup = job
+                }
             },
-            error = result?.takeIf { it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed },
+            error = result?.takeIf {
+                it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed ||
+                    it == R.string.server_connection_ssh_setup_failed
+            },
             catalogContent = {
                 page.profile?.let { profile ->
                     ServerCatalogLink(

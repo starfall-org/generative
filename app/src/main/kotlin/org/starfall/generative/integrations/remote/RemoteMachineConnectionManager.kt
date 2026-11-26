@@ -74,7 +74,7 @@ internal class RemoteMachineConnectionManager(
                 val output = exec.getOutputStream()
                 exec.connect(machine.connectTimeoutSeconds * 1_000)
                 currentCoroutineContext().ensureActive()
-                RemoteExecStream(input, output) {
+                RemoteExecStream(input, output, onCancelled = { exec.sendSignal("TERM") }) {
                     try { exec.disconnect() }
                     finally { shared.release(disconnectWhenIdle) }
                 }
@@ -568,9 +568,16 @@ internal class RemoteMachineConnectionManager(
 class RemoteExecStream internal constructor(
     val input: InputStream,
     val output: OutputStream,
-    private val onClosed: () -> Unit
+    private val onCancelled: () -> Unit = {},
+    private val onClosed: () -> Unit,
 ) : Closeable {
     private val closed = AtomicBoolean(false)
+    internal fun cancel() {
+        if (closed.compareAndSet(false, true)) {
+            try { runCatching(onCancelled) } finally { onClosed() }
+        }
+    }
+
     override fun close() {
         if (closed.compareAndSet(false, true)) onClosed()
     }

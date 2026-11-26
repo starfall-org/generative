@@ -1073,7 +1073,9 @@
     <string name="server_connection_transport">Giao thức kết nối</string>
     <string name="server_connection_ssh_machine">Máy chủ Remote SSH</string>
     <string name="server_connection_no_ssh_machine">Trước tiên hãy thêm máy chủ SSH trong Remote SSH.</string>
-    <string name="server_connection_ssh_hint">Dùng máy Remote SSH đã chọn cùng cấu hình kết nối hiện có. Máy đó cần cài và chạy dịch vụ Generative Server.</string>
+    <string name="server_connection_ssh_hint">Dùng máy Remote SSH đã chọn và cài đặt Generative CLI nếu cần.</string>
+    <string name="server_connection_ssh_setup">Đang thiết lập Generative CLI qua SSH…</string>
+    <string name="server_connection_ssh_setup_failed">Không thể thiết lập Generative CLI. Hãy kiểm tra máy từ xa chạy Linux hoặc macOS trên x86-64 hoặc ARM64, có curl, python3 và công cụ SHA-256, và có thể truy cập GitHub.</string>
     <string name="server_connection_ssh_repair_hint">Lưu sẽ ghép nối một danh tính SSH mới. Lịch sử trò chuyện của danh tính cũ trên Generative Server sẽ không được chuyển sang.</string>
     <string name="server_connection_ssh_rename_hint">Giữ nguyên máy SSH đã chọn để đổi tên mà không cần ghép nối lại.</string>
     <string name="server_connection_empty">Chưa có kết nối máy chủ</string>
@@ -1121,8 +1123,8 @@
     <string name="server_remote_conversation_load_failed">Không mở được cuộc trò chuyện này. Bạn vẫn có thể mở cuộc trò chuyện khác hoặc bắt đầu cuộc trò chuyện mới.</string>
     <string name="server_connection_opencode_hint">Kết nối với máy chủ OpenCode 2.x đang chạy bằng opencode serve.</string>
     <string name="server_connection_auth_method">Xác thực</string>
-    <string name="server_connection_auth_password">Tên người dùng và mật khẩu</string>
-    <string name="server_connection_auth_link">URL ghép nối</string>
+    <string name="server_connection_auth_password">Dùng tên người dùng và mật khẩu</string>
+    <string name="server_connection_auth_link">Dùng URL ghép nối</string>
     <string name="server_connection_opencode_username">Tên người dùng</string>
     <string name="server_connection_opencode_password">Mật khẩu</string>
     <string name="server_connection_opencode_auth_url">URL ghép nối OpenCode</string>
