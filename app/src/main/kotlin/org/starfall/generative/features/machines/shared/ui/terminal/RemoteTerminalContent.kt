@@ -14,16 +14,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -37,9 +42,11 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.starfall.generative.R
@@ -83,10 +90,12 @@ internal fun RemoteTerminalContent(
     onClose: (TerminalSlot) -> Unit,
     onNew: () -> Unit
 ) {
+    val systemInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+    val keyboardInsets = WindowInsets.ime.exclude(systemInsets)
     Column(
         Modifier.fillMaxSize()
             .background(terminalBackground)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .windowInsetsPadding(systemInsets)
     ) {
         TerminalAppBar(
             bridge = activeBridge,
@@ -97,8 +106,13 @@ internal fun RemoteTerminalContent(
             onToggleIme = onToggleIme,
             onToggleForceMouse = onToggleForceMouse
         )
-        Row(Modifier.weight(1f).fillMaxWidth().imePadding()) {
-            Column(Modifier.weight(1f).fillMaxHeight()) {
+        Row(Modifier.weight(1f).fillMaxWidth()) {
+            // Keep the terminal grid at its full size so opening the IME never resizes the PTY.
+            Column(
+                Modifier.weight(1f).fillMaxHeight()
+                    .clipToBounds()
+                    .offset { IntOffset(0, -keyboardInsets.getBottom(this)) }
+            ) {
                 Box(Modifier.weight(1f).fillMaxWidth().background(terminalBackground)) {
                     terminalSlots.forEach { slot ->
                         key(slot.terminal.id) {
@@ -152,9 +166,10 @@ internal fun RemoteTerminalContent(
                 }
                 if (activeBridge != null) TerminalExtraKeys(activeBridge)
             }
-            if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight())
+            if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight().imePadding())
             AnimatedVisibility(
                 visible = sessionsDrawerOpen,
+                modifier = Modifier.imePadding(),
                 enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
                 exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
             ) {
