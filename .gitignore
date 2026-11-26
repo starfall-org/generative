@@ -16,3 +16,6 @@ generative-release.jks
 # Python bytecode of the offline scripts
 __pycache__/
 *.pyc
+
+# Local Codex attachments
+/.codex*/
