@@ -89,10 +89,7 @@ internal object RemoteTerminalSessions {
         }
     }
 
-    /**
-     * Closes one session. Closing the last registered terminal disconnects the machine (see the
-     * connection manager), so no separate disconnect call is needed.
-     */
+    /** Closes one terminal channel. The connection manager handles idle SSH connections. */
     fun close(machineId: String, slot: TerminalSlot) {
         slot.readerJob?.cancel()
         slot.bridge.close()

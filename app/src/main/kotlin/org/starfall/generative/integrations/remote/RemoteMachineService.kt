@@ -606,8 +606,8 @@ class RemoteMachineService(
         private const val LOCAL_FORWARD_BIND = "127.0.0.1"
         private const val KEEPALIVE_MAX_MISSES = 3
         const val CLOUD_ENDPOINT_CACHE_TTL_MILLIS = 15 * 60 * 1_000L
-        /** A persistent SSH connection with no command or terminal using it is closed after this. */
-        const val IDLE_DISCONNECT_MILLIS = 5 * 60 * 1_000L
+        /** A shared SSH connection can be reused for this long after its last use. */
+        const val IDLE_DISCONNECT_MILLIS = 60_000L
         const val CONNECTION_POLL_MILLIS = 5_000L
         const val GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
         const val GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"

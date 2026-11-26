@@ -104,22 +104,16 @@ internal class RemoteMachineConnectionManager(
                 output = output,
                 ownsSession = false,
                 onClosed = {
-                    val remaining = terminals[machine.id]
-                    remaining?.remove(id)
-                    if (remaining.isNullOrEmpty()) {
-                        if (remaining != null) terminals.remove(machine.id, remaining)
-                        // The last terminal of this machine is gone, so the shared SSH
-                        // connection has nothing left to serve: close it as soon as this
-                        // terminal releases it instead of waiting for the idle timeout.
-                        // requestClose() must run before release() so the release starts
-                        // the immediate (zero-delay) shutdown rather than the idle one.
-                        // A pinned connection (port forwarding) outlives its terminals.
-                        if (!shared.pinned) shared.requestClose()
+                    terminals.computeIfPresent(machine.id) { _, openTerminals ->
+                        openTerminals.remove(id)
+                        openTerminals.takeUnless { it.isEmpty() }
                     }
                     shared.release()
                 }
             )
-            terminals.computeIfAbsent(machine.id) { ConcurrentHashMap() }[id] = terminal
+            terminals.compute(machine.id) { _, openTerminals ->
+                (openTerminals ?: ConcurrentHashMap()).apply { put(id, terminal) }
+            }
             terminal
         } catch (error: Throwable) {
             withContext(NonCancellable + Dispatchers.IO) {
@@ -243,7 +237,7 @@ internal class RemoteMachineConnectionManager(
             forwards.close()
             shared.forwards = null
             publishConnected()
-            if (terminals[machineId].isNullOrEmpty() && shared.requestClose()) closeConnection(shared)
+            shared.scheduleIdleDisconnect()
             true
         }
     }
@@ -273,8 +267,6 @@ internal class RemoteMachineConnectionManager(
         private var idleJob: Job? = null
         private var monitorJob: Job? = null
 
-        val inUse: Boolean @Synchronized get() = users > 0
-
         @Synchronized
         fun acquire() {
             users++
@@ -302,18 +294,25 @@ internal class RemoteMachineConnectionManager(
         /** Every acquire() needs exactly one release(); the idle countdown starts at the last one. */
         @Synchronized
         fun release(disconnectWhenIdle: Boolean = false) {
+            if (users == 0) return
             runtimeClosePending = runtimeClosePending || disconnectWhenIdle
-            if (users > 0) users--
-            if (users == 0) {
-                if (pinned) return
-                val wait = if (closeOnRelease || runtimeClosePending) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
-                idleJob?.cancel()
-                idleJob = ioScope.launch {
-                    delay(wait)
-                    disconnectIfIdle(this@SharedConnection)
-                }
+            users--
+            scheduleIdleDisconnect()
+        }
+
+        @Synchronized
+        fun scheduleIdleDisconnect() {
+            if (users > 0 || pinned) return
+            val wait = if (closeOnRelease || runtimeClosePending) 0L else RemoteMachineService.IDLE_DISCONNECT_MILLIS
+            idleJob?.cancel()
+            idleJob = ioScope.launch {
+                delay(wait)
+                disconnectIfIdle(this@SharedConnection)
             }
         }
+
+        @Synchronized
+        fun isIdleFor(job: Job): Boolean = users == 0 && !pinned && idleJob === job
 
         /** Drops the entry when the server or network closed the session, so the UI stays truthful. */
         fun startMonitor() {
@@ -346,9 +345,11 @@ internal class RemoteMachineConnectionManager(
     }
 
     private suspend fun disconnectIfIdle(connection: SharedConnection) {
+        val job = currentCoroutineContext().job
         machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock {
-            if (connection.inUse || connection.pinned || connections[connection.machineId] !== connection) return
-            closeConnection(connection)
+            if (connections[connection.machineId] === connection && connection.isIdleFor(job)) {
+                closeConnection(connection)
+            }
         }
     }
 
