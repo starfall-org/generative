@@ -2,6 +2,8 @@ package org.starfall.generative
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -98,6 +100,35 @@ class RemoteConversationCacheTest {
                 else -> error("Unexpected RPC ${request.op}")
             }
             return RpcReply(request.id, true, Json.parseToJsonElement(data))
+        }
+    }
+
+    @Test fun cachedSelectionDuringHandshakeSurvivesServerRefresh() = runBlocking {
+        val cache = cache()
+        cache.saveList(owner, listOf(item("previous"), item("chat")))
+        cache.save(owner, snapshot("previous"))
+        cache.save(owner, snapshot("chat"))
+        val connect = CompletableDeferred<Unit>()
+        val workspace = RemoteWorkspace({
+            connect.await()
+            GenerativeServerSessions(GenerativeServerClient(Wire(), PairedIdentity("device-a", "secret", "server")))
+        }, this, loadLastSession = { "previous" }, cache = cache, cacheScope = { owner })
+        try {
+            workspace.enable("profile")
+            withTimeout(5_000) { workspace.state.first { it.conversation?.id == "previous" } }
+            workspace.select("chat")
+            val cached = withTimeout(5_000) { workspace.state.first { it.conversation?.id == "chat" } }
+            assertTrue(cached.connecting)
+            assertFalse(cached.canSubmit)
+            connect.complete(Unit)
+            val ready = withTimeout(5_000) { workspace.state.first { !it.busy } }
+            assertEquals("chat", ready.conversation?.id)
+            assertNull(ready.loadingConversationId)
+            assertFalse(ready.connecting)
+            assertFalse(ready.error)
+        } finally {
+            connect.complete(Unit)
+            workspace.disable()
         }
     }
 

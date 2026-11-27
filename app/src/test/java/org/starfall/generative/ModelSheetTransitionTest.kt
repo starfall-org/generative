@@ -2,6 +2,7 @@ package org.starfall.generative
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
@@ -27,6 +28,8 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.features.home.BottomSheetsLink
 import org.starfall.generative.features.home.BottomSheetsLinkState
 import org.starfall.generative.features.home.ModelSheetPage
+import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
+import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.robolectric.shadows.ShadowDialog
 import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.ConversationSummaryRequest
@@ -83,6 +86,20 @@ class ModelSheetTransitionTest {
                 onStartSummary = onStartSummary
             )
         }
+    }
+
+    @Test
+    fun remoteModelOptionsHideDeviceToolSettings() {
+        val sheets = BottomSheetsLinkState().apply { openModelOptions() }
+        val model = ModelConfiguration(modelTools = listOf("web_search"), enabledModelTools = listOf("web_search"))
+        val deviceProvider = provider.copy(config = provider.config.copy(modelConfigs = mapOf("m1" to model)))
+        compose.setContent {
+            CompositionLocalProvider(LocalRemoteQuickActions provides RemoteQuickActions()) {
+                Host(sheets, listOf(deviceProvider))
+            }
+        }
+        compose.onNodeWithTag("selected-model-options-sheet").assertIsDisplayed()
+        compose.onNodeWithTag("model-tool-switch-web_search").assertDoesNotExist()
     }
 
     @Test

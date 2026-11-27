@@ -14,6 +14,7 @@ import org.starfall.generative.features.settings.logic.SettingsViewModel
 import java.util.UUID
 import android.os.ParcelFileDescriptor
 import kotlinx.serialization.json.*
+import org.starfall.generative.appwiring.ChatSessionHandle
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 
 /** Explicit ADB-only smoke test; uses the provider already entered on the device, never embeds a credential. */
@@ -28,7 +29,7 @@ class HelixLiveTest {
         compose.runOnUiThread {
             val factory = (compose.activity.application as GenerativeApplication).container.viewModelFactory
             val owner = ViewModelProvider(compose.activity, factory)
-            chat = owner[ChatViewModel::class.java]
+            chat = owner[ChatSessionHandle::class.java].chat
             config = owner[ConfigurationViewModel::class.java]
             settings = owner[SettingsViewModel::class.java]
         }

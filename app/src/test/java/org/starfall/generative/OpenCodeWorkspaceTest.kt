@@ -1,5 +1,8 @@
 package org.starfall.generative
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -16,6 +19,88 @@ import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 
 class OpenCodeWorkspaceTest {
+    @Test fun aLateOpenCodeRestoreCannotPublishIntoAnotherRuntime() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("""{"directory":"/old"}"""))
+            server.enqueue(MockResponse().setBody("""{"data":[]}"""))
+            server.enqueue(MockResponse().setBody("""{"data":[]}"""))
+            server.enqueue(MockResponse().setBody("""{"data":[],"cursor":{}}"""))
+            val restoring = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val finished = CompletableDeferred<Unit>()
+            val workspace = RemoteWorkspace(
+                sessionFactory = { error("Unexpected protocol") },
+                scope = this,
+                loadLastSession = {
+                    restoring.complete(Unit)
+                    withContext(NonCancellable) { release.await() }
+                    finished.complete(Unit)
+                    null
+                },
+                openCodeFactory = { OpenCodeApi(server.url("/").toString(), OpenCodeCredentials("opencode", "secret")) }
+            )
+            try {
+                workspace.enable("old")
+                withTimeout(5_000) { restoring.await() }
+                assertTrue(workspace.state.value.connecting)
+                workspace.disable()
+                release.complete(Unit)
+                withTimeout(5_000) { finished.await() }
+                assertFalse(workspace.state.value.enabled)
+                assertEquals(null, workspace.state.value.openCodeDirectory)
+            } finally {
+                release.complete(Unit)
+                workspace.disable()
+            }
+        }
+    }
+
+    @Test fun selectingAnotherOpenCodeChatSupersedesAPendingOpen() = runBlocking {
+        MockWebServer().use { server ->
+            fun session(id: String) = """{"id":"$id","title":"$id","time":{"created":1,"updated":2}}"""
+            fun enqueue(body: String) = server.enqueue(MockResponse().setBody(body))
+            enqueue("""{"directory":"/work"}""")
+            enqueue("""{"data":[]}""")
+            enqueue("""{"data":[]}""")
+            enqueue("""{"data":[${session("a")},${session("b")}],"cursor":{}}""")
+            for (id in listOf("a", "b")) {
+                enqueue("""{"data":${session(id)}}""")
+                enqueue("""{"data":[],"cursor":{}}""")
+            }
+            val openingA = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            var remembered: String? = null
+            val workspace = RemoteWorkspace(
+                sessionFactory = { error("Unexpected protocol") },
+                scope = this,
+                saveLastSession = { _, sessionId ->
+                    if (sessionId == "a") {
+                        openingA.complete(Unit)
+                        release.await()
+                    }
+                    remembered = sessionId
+                },
+                openCodeFactory = { OpenCodeApi(server.url("/").toString(), OpenCodeCredentials("opencode", "secret")) }
+            )
+            try {
+                workspace.enable("server")
+                withTimeout(5_000) { workspace.state.first { !it.busy } }
+                workspace.select("a")
+                withTimeout(5_000) { openingA.await() }
+                workspace.select("b")
+                assertEquals("b", workspace.state.value.loadingConversationId)
+                assertEquals(null, workspace.state.value.conversation)
+                val selected = withTimeout(5_000) { workspace.state.first { !it.busy } }
+                assertEquals("b", selected.conversation?.id)
+                assertEquals("b", remembered)
+                assertEquals(null, selected.loadingConversationId)
+            } finally {
+                release.complete(Unit)
+                workspace.disable()
+            }
+        }
+    }
+
     @Test fun sendsAndRestoresTextChatThroughTheSelectedOpenCodeConnection() = runBlocking {
         MockWebServer().use { server ->
             val session = """{"id":"ses_a","title":"Chat","time":{"created":1,"updated":2},"model":{"providerID":"p","id":"m"}}"""
@@ -119,7 +204,9 @@ class OpenCodeWorkspaceTest {
             assertEquals(Json.parseToJsonElement("""{"location":{"directory":"/work"},"model":{"providerID":"p","id":"m"}}"""),
                 Json.parseToJsonElement(create.body.readUtf8()))
             assertEquals("/api/event", server.takeRequest().path)
-            assertEquals("/api/session/ses_a/prompt", server.takeRequest().path)
+            val prompt = server.takeRequest()
+            assertEquals("/api/session/ses_a/prompt", prompt.path)
+            assertEquals(Json.parseToJsonElement("""{"text":"Hello"}"""), Json.parseToJsonElement(prompt.body.readUtf8()))
             workspace.disable()
         }
     }

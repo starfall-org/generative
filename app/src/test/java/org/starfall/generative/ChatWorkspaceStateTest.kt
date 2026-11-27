@@ -78,6 +78,24 @@ class ChatWorkspaceStateTest {
         compose.onNodeWithTag("draft-first").assertTextEquals("first draft")
     }
 
+    @Test fun openingRemoteHistoryPreservesTheNewChatDraft() {
+        var opening by mutableStateOf(false)
+        compose.setContent {
+            RetainedChatConversations(remember { RetainedChatPages() }, null, emptySet(), true,
+                restoreChatState = true, awaitingConversation = opening) { _, _ ->
+                if (!opening) {
+                    var draft by rememberSaveable { mutableStateOf("") }
+                    BasicTextField(draft, { draft = it }, Modifier.testTag("draft"))
+                }
+            }
+        }
+        compose.onNodeWithTag("draft").performTextInput("unsent")
+        compose.runOnIdle { opening = true }
+        compose.onNodeWithTag("draft").assertDoesNotExist()
+        compose.runOnIdle { opening = false }
+        compose.onNodeWithTag("draft").assertTextEquals("unsent")
+    }
+
     @Test fun replacingThePairedIdentityDoesNotRestoreThePreviousIdentityDraft() {
         var identity by mutableStateOf("client-old")
         val chat = Conversation(id = "same", title = "", createdAt = 1, updatedAt = 1)

@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.starfall.generative.features.home.chat.logic.ChatGeneration
@@ -34,6 +35,7 @@ internal class ConversationTitleGenerator(
         scope.launch { block() }
         true
     },
+    private val onRequestStarted: (Job) -> Unit = {},
 ) {
     private val jobsLock = Any()
     private val activeJobs = linkedMapOf<Job, String>()
@@ -81,6 +83,7 @@ internal class ConversationTitleGenerator(
         val (provider, config) = configured
         val conversationId = conversation.id
         val job = scope.launch(start = CoroutineStart.LAZY) {
+            onRequestStarted(coroutineContext.job)
             val title = try {
                 requestTitle(conversation, provider, config)
             } catch (cancelled: CancellationException) {

@@ -49,7 +49,7 @@ internal fun DrawerRemoteControls(
     serverProfiles: List<ServerConnectionProfile> = emptyList(),
     remoteEnabled: Boolean = false,
     remoteConnectionId: String? = null,
-    runtimeSelecting: Boolean = false,
+    connecting: Boolean = false,
     remoteError: Boolean = false,
     onReconnectServer: () -> Unit = {},
     onSelectRuntime: (String?) -> Unit = {},
@@ -60,7 +60,13 @@ internal fun DrawerRemoteControls(
 ) {
     val controls = LocalToolControls.current
     val machines = controls.machines
-    val selectedMachine = selectedRemoteMachine(controls.settings, machines)
+    // A terminal shortcut on a server workspace must not change Local's machine tools.
+    var terminalMachineId by rememberSaveable(remoteConnectionId) { mutableStateOf<String?>(null) }
+    val selectedMachine = if (remoteEnabled) machines.firstOrNull { it.id == terminalMachineId }
+        else selectedRemoteMachine(controls.settings, machines)
+    fun selectMachine(id: String?) {
+        if (remoteEnabled) terminalMachineId = id else controls.selectMachine(id)
+    }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     var serverPickerOpen by rememberSaveable { mutableStateOf(false) }
     val selectedServer = serverProfiles.firstOrNull { remoteEnabled && it.id == remoteConnectionId }
@@ -71,7 +77,7 @@ internal fun DrawerRemoteControls(
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
             .testTag("drawer_server_row"), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                .clickable(enabled = !runtimeSelecting) { serverPickerOpen = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                .clickable { serverPickerOpen = true }.padding(horizontal = 12.dp, vertical = 10.dp)
                 .testTag("drawer_server_picker_trigger"), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SharedIcon(Icons.Outlined.Computer, null, modifier = Modifier.size(21.dp))
@@ -82,13 +88,15 @@ internal fun DrawerRemoteControls(
                         else selectedServer?.name ?: stringResource(R.string.server_remote_select),
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
+                    if (connecting) Text(stringResource(R.string.server_remote_loading),
+                        style = MaterialTheme.typography.labelSmall)
                     if (remoteEnabled && remoteError) Text(stringResource(R.string.server_connection_offline),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 }
                 SharedIcon(FluentUi.Regular.ChevronRight, null, modifier = Modifier.size(16.dp))
             }
             if (remoteEnabled && remoteError && selectedServer != null) {
-                IconButton(onClick = onReconnectServer, enabled = !runtimeSelecting, modifier = Modifier.testTag("drawer_server_reconnect")) {
+                IconButton(onClick = onReconnectServer, modifier = Modifier.testTag("drawer_server_reconnect")) {
                     SharedIcon(FluentUi.Regular.ArrowClockwise, stringResource(R.string.server_connection_reconnect))
                 }
             }
@@ -144,7 +152,7 @@ internal fun DrawerRemoteControls(
                         )
                         ContextDropdownMenu(
                             expanded = true,
-                            actions = listOf(
+                            actions = listOfNotNull(
                                 ContextMenuAction(
                                     label = toggleLabel,
                                     onClick = { controls.setMachine(selectedMachine.id, !checked) },
@@ -157,7 +165,7 @@ internal fun DrawerRemoteControls(
                                                 .semantics { contentDescription = toggleLabel }
                                         )
                                     }
-                                ),
+                                ).takeUnless { remoteEnabled },
                                 ContextMenuAction(
                                     label = stringResource(R.string.remote_server_open_terminal),
                                     onClick = { onOpenTerminal(selectedMachine) },
@@ -172,10 +180,10 @@ internal fun DrawerRemoteControls(
                                     label = stringResource(R.string.common_tools),
                                     onClick = { toolsMachine = selectedMachine },
                                     icon = FluentUi.Regular.WrenchScrewdriver
-                                ),
+                                ).takeUnless { remoteEnabled },
                                 ContextMenuAction(
                                     label = stringResource(R.string.remote_server_unset_action),
-                                    onClick = { controls.selectMachine(null) },
+                                    onClick = { selectMachine(null) },
                                     icon = Icons.Outlined.LinkOff
                                 )
                             ),
@@ -197,7 +205,7 @@ internal fun DrawerRemoteControls(
                     key = machine.id,
                     value = machine,
                     onClick = {
-                        controls.selectMachine(machine.id)
+                        selectMachine(machine.id)
                         pickerOpen = false
                     },
                     selected = selected,
@@ -273,7 +281,7 @@ internal fun DrawerRemoteControls(
         )
     }
 
-    toolsMachine?.let { machine ->
+    toolsMachine?.takeUnless { remoteEnabled }?.let { machine ->
         MachineToolsDialog(
             machine = machine,
             onDismiss = { toolsMachine = null },

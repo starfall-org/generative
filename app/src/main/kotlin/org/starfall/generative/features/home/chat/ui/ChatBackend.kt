@@ -62,5 +62,7 @@ data class ChatBackend(
     val onResendUserMessage: (String) -> Boolean = { false },
     val activeStream: StateFlow<ActiveChatStreamState?>? = null,
     val onSendMessageWithSkill: (suspend (String, List<String>, Boolean, String?) -> Boolean)? = null,
+    val workspaceStatus: String? = null,
+    val sendEnabled: Boolean = true,
     val restoreRemoteViewport: Boolean = false,
 )

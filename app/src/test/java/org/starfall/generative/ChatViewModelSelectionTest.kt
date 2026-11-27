@@ -1,9 +1,14 @@
 package org.starfall.generative
 
+import android.app.Application
 import android.content.Context
 import android.os.Looper
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -12,6 +17,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
+import org.starfall.generative.appwiring.ChatSession
+import org.starfall.generative.features.home.chat.logic.ChatGeneration
+import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
 import org.starfall.generative.features.home.chat.logic.ChatViewModel
 import org.starfall.generative.features.home.chat.logic.tool.ToolChatViewModel
 import org.starfall.generative.integrations.mcp.McpService
@@ -120,6 +128,54 @@ class ChatViewModelSelectionTest {
             assertFalse(File(files.directory, "only-here.bin").exists())
             db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
         } finally {
+            db.close()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun removingTheTaskRetainsTheStreamAndStopsTheServiceAfterTheLastRequest() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java).build()
+        val root = Files.createTempDirectory("background-chat").toFile()
+        val session = ChatSession(app) {
+            createViewModel(app, db, ToolFiles(root), ConversationRepository(db), AppPreferencesRepository(app))
+        }
+        val chat = session.attach()
+        val chatScope = chat.viewModelScope
+        val main = shadowOf(Looper.getMainLooper())
+        val services = shadowOf(app)
+        val finishStream = CompletableDeferred<Unit>()
+        val overlapping = Job()
+        try {
+            val conversation = Conversation("active", "Active", 1, 1, messages = listOf(
+                StoredMessage("reply", ChatRole.MODEL, listOf(MessageVersion()))
+            ))
+            var latest = conversation
+            val generation = ChatGeneration(chatScope, {}, { latest = it }, onRequestStarted = session::trackRequest)
+            generation.start(conversation, "reply", flow {
+                emit("Before")
+                finishStream.await()
+                emit(" and after")
+            })
+            assertEquals(ChatBackgroundService::class.java.name, services.nextStartedService?.component?.className)
+            session.detach(chat)
+            assertSame(chat, session.attach())
+            session.trackRequest(overlapping)
+            session.detach(chat)
+            finishStream.complete(Unit)
+            awaitMain { !generation.busy.value }
+            assertEquals("Before and after", latest.messages.last().content)
+            main.idleFor(java.time.Duration.ofSeconds(6))
+            assertTrue(session.isWorking)
+            assertNull(services.nextStoppedService)
+            overlapping.cancel()
+            main.idleFor(java.time.Duration.ofSeconds(6))
+            assertFalse(session.isWorking)
+            assertEquals(ChatBackgroundService::class.java.name, services.nextStoppedService?.component?.className)
+            assertFalse(chatScope.coroutineContext[Job]!!.isActive)
+        } finally {
+            finishStream.complete(Unit)
+            overlapping.cancel()
             db.close()
             root.deleteRecursively()
         }

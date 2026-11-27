@@ -56,11 +56,9 @@ class ChatBackgroundService : Service() {
         super.onCreate()
         createNotificationChannel()
         serviceScope.launch {
-            summaryState.collect { progress ->
-                // Only a running summary needs updates; when it ends the notification is rebuilt by the
-                // next start command, or the service stops. Posting before startForeground would also
-                // create an ordinary notification instead of the foreground one.
-                if (progress != null && inForeground) {
+            summaryState.collect {
+                // Restore the generation label when a summary ends during another response.
+                if (inForeground) {
                     runCatching {
                         getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, createNotification())
                     }

@@ -195,35 +195,32 @@ internal fun AppNavigation(
     var serverProfiles by remember { mutableStateOf<List<org.starfall.generative.database.repositories.ServerConnectionProfile>>(emptyList()) }
     var profilesLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(serverConnections) { serverConnections.profiles.collect { serverProfiles = it; profilesLoaded = true } }
-    val selectedServer = serverProfiles.firstOrNull { it.selected }
-    var runtimeSelecting by remember { mutableStateOf(false) }
-    // Re-pairing a selected server replaces its device identity under the same profile ID.
-    // A live remote session must reconnect as that new identity, not keep the old bearer.
-    var boundRemoteIdentity by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    val selectedServer = serverProfiles.firstOrNull { it.id == remote.connectionId }
     val selectedIdentity = selectedServer?.let { it.id to it.credentialRevision }
-    LaunchedEffect(remote.enabled, selectedIdentity, profilesLoaded, runtimeSelecting) {
-        if (runtimeSelecting) return@LaunchedEffect
-        if (remote.enabled && profilesLoaded && !(remote.error && remote.connectionId == null)) {
-            if (selectedIdentity == null && remote.connectionId != null) {
-                remoteWorkspace.profileRemoved()
-                boundRemoteIdentity = null
-            } else if (selectedIdentity != null) {
-                if (remote.connectionId != selectedIdentity.first ||
-                    (boundRemoteIdentity != null && boundRemoteIdentity != selectedIdentity)) {
-                    remoteWorkspace.enable(selectedIdentity.first)
-                }
-                boundRemoteIdentity = selectedIdentity
+    var boundRemoteIdentity by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    LaunchedEffect(remote.connectionId, selectedIdentity, profilesLoaded) {
+        val id = remote.connectionId
+        if (id == null) {
+            boundRemoteIdentity = null
+            return@LaunchedEffect
+        }
+        if (!profilesLoaded || remoteWorkspace.state.value.connectionId != id) return@LaunchedEffect
+        if (selectedIdentity == null) {
+            remoteWorkspace.profileRemoved()
+        } else {
+            // Re-pairing a profile can change credentials without changing its ID.
+            if (boundRemoteIdentity?.first == id && boundRemoteIdentity != selectedIdentity) {
+                remoteWorkspace.enable(id)
             }
-        } else if (!remote.enabled) boundRemoteIdentity = null
+            boundRemoteIdentity = selectedIdentity
+        }
     }
-    // During re-pair, the existing server session is still bound to the previous
-    // device identity until enable() resets the session and loads new credentials.
-    // Do not expose old-owner chat state or accept old-owner actions meanwhile.
-    val remoteIdentityReady = !remote.enabled ||
-        (selectedIdentity != null && boundRemoteIdentity == selectedIdentity && remote.connectionId == selectedIdentity.first)
+    val remoteIdentityReady = selectedIdentity != null && boundRemoteIdentity == selectedIdentity
+    val connecting = remote.restoring || remote.connecting || (remote.enabled && !remote.error && !remoteIdentityReady)
     fun unsupportedRemote() { Toast.makeText(context, R.string.server_remote_unsupported, Toast.LENGTH_SHORT).show() }
-    suspend fun sendRemote(text: String, files: List<String>): Boolean {
+    suspend fun sendRemote(connectionId: String?, conversationId: String?, text: String, files: List<String>): Boolean {
         val current = remoteWorkspace.state.value
+        if (current.connectionId != connectionId || current.conversation?.id != conversationId) return false
         val permitted = current.providerId !in current.localProviderIds || selectedServer?.allowLocalProviders == true
         val sent = remoteIdentityReady && permitted && remoteWorkspace.send(text, files)
         val result = remoteWorkspace.state.value
@@ -657,7 +654,7 @@ internal fun AppNavigation(
                                     ConversationSideDrawer(
                                         conversations = if (remoteActive) remote.items.takeIf { remoteIdentityReady }.orEmpty() else conversations,
                                         providers = if (remoteActive) remote.providers.takeIf { remoteIdentityReady }.orEmpty() else providers,
-                                        currentConversationId = if (remoteActive) remote.conversation?.id.takeIf { remoteIdentityReady } else currentConvId,
+                                        currentConversationId = if (remoteActive) (remote.loadingConversationId ?: remote.conversation?.id).takeIf { remoteIdentityReady } else currentConvId,
                                         isOpen = visibleDrawer.isOpen,
                                         generatingConversationIds = if (remoteActive) emptySet() else generatingConversationIds,
                                         organization = if (remoteActive) org.starfall.generative.shared.model.SidebarOrganization() else appPrefs.chatRelations.sidebar,
@@ -672,19 +669,17 @@ internal fun AppNavigation(
                                         },
                                         onSelectConversation = { item ->
                                             navigate(AppDestination.CHAT)
-                                            // Switching chats composes the whole history. Doing that while the drawer is still
-                                            // sliding away makes the close animation drop frames, so the switch waits for the
-                                            // drawer to settle (bounded, in case it is reopened or never reports closed).
-                                            val wasRemote = remoteActive
-                                            val selectedConnection = remote.connectionId
-                                            coroutineScope.launch {
-                                                withTimeoutOrNull(DRAWER_CLOSE_WAIT_MS) {
-                                                    snapshotFlow { drawerState.isClosed }.first { it }
+                                            if (remoteActive) {
+                                                if (remoteIdentityReady) remoteWorkspace.select(item.id) else unsupportedRemote()
+                                            } else {
+                                                // Let the drawer settle before composing a local history.
+                                                coroutineScope.launch {
+                                                    withTimeoutOrNull(DRAWER_CLOSE_WAIT_MS) {
+                                                        snapshotFlow { drawerState.isClosed }.first { it }
+                                                    }
+                                                    val current = remoteWorkspace.state.value
+                                                    if (!current.enabled && !current.restoring) viewModel.selectConversation(item.id)
                                                 }
-                                                val currentRemote = remoteWorkspace.state.value
-                                                if (currentRemote.enabled != wasRemote || (wasRemote && currentRemote.connectionId != selectedConnection)) return@launch
-                                                if (wasRemote) { if (remoteIdentityReady) remoteWorkspace.select(item.id) else unsupportedRemote() }
-                                                else viewModel.selectConversation(item.id)
                                             }
                                         },
                                         onNewChat = {
@@ -718,27 +713,14 @@ internal fun AppNavigation(
                                             openConfiguration(AppDestination.REMOTE_MACHINES)
                                         },
                                         serverProfiles = serverProfiles, remoteEnabled = remoteActive, remoteError = remote.error,
-                                        remoteConnectionId = remote.connectionId ?: selectedServer?.id,
-                                        runtimeSelecting = runtimeSelecting,
+                                        remoteConnectionId = remote.connectionId,
+                                        connecting = connecting,
                                         onReconnectServer = { selectedServer?.let { remoteWorkspace.enable(it.id) } },
                                         onSelectRuntime = { id ->
-                                            if (!runtimeSelecting) {
-                                                if (id == null) {
-                                                    remoteWorkspace.disable()
-                                                } else if (!remoteWorkspace.state.value.enabled || remoteWorkspace.state.value.connectionId != id) {
-                                                    runtimeSelecting = true
-                                                    coroutineScope.launch {
-                                                        try {
-                                                            serverConnections.select(id)
-                                                            val current = remoteWorkspace.state.value
-                                                            // The existing selected-identity effect handles remote-to-remote swaps.
-                                                            // Starting from local (or a removed profile) needs explicit activation.
-                                                            if (!current.enabled || current.connectionId == null) remoteWorkspace.enable(id)
-                                                        } catch (e: CancellationException) { throw e }
-                                                        catch (_: Exception) { Toast.makeText(context, R.string.server_remote_offline, Toast.LENGTH_SHORT).show() }
-                                                        finally { runtimeSelecting = false }
-                                                    }
-                                                }
+                                            if (id == null) {
+                                                remoteWorkspace.disable()
+                                            } else if (remoteWorkspace.state.value.connectionId != id) {
+                                                remoteWorkspace.enable(id)
                                             }
                                         },
                                         onOpenServerConnections = { openConfiguration(AppDestination.SERVER_CONNECTIONS) },
@@ -768,6 +750,7 @@ internal fun AppNavigation(
                             availableIds = if (remotePage) remote.items.takeIf { remoteIdentityReady }?.mapTo(mutableSetOf()) { it.id }.orEmpty() else availableChatIds,
                             foreground = chatOnTop && visible,
                             keepOverlayState = navBackStackEntry?.destination?.route == BrowserRoutes.CODE_PREVIEW,
+                            awaitingConversation = remotePage && (connecting || remote.loadingConversationId != null),
                             restoreChatState = remotePage
                         ) { chatPage, pageActive ->
                     val active = pageActive && visible
@@ -778,8 +761,7 @@ internal fun AppNavigation(
                             org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.INCOMPATIBLE -> stringResource(R.string.server_remote_incompatible)
                             org.starfall.generative.features.home.chat.model.RemoteConnectionFailure.CHAT_LOAD_FAILED -> stringResource(R.string.server_remote_chat_load_failed)
                             else -> stringResource(R.string.server_remote_offline)
-                        } else if (!remoteIdentityReady || remote.restoring) stringResource(R.string.server_remote_loading)
-                        else when (remote.actionFailure) {
+                        } else when (remote.actionFailure) {
                             RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
                             RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
                             RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
@@ -803,6 +785,13 @@ internal fun AppNavigation(
                         )
                         ChatBackend(
                             restoreRemoteViewport = true,
+                            workspaceStatus = when {
+                                !active -> null
+                                connecting -> stringResource(R.string.server_remote_loading)
+                                remote.loadingConversationId != null -> stringResource(R.string.server_remote_opening_chat)
+                                else -> null
+                            },
+                            sendEnabled = active && remoteIdentityReady && remote.canSubmit,
                             isGenerating = remote.running && remoteIdentityReady && active,
                             generatingConversationId = remote.conversation?.id.takeIf { remoteIdentityReady },
                             chatError = remoteError,
@@ -814,10 +803,10 @@ internal fun AppNavigation(
                             modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
                             selectedProviderId = remote.providerId.takeIf { remoteIdentityReady }.orEmpty(),
                             selectedModelName = remote.modelId.takeIf { remoteIdentityReady }.orEmpty(),
-                            workspaceLabel = stringResource(R.string.server_remote_label) + " · " + (selectedServer?.name ?: ""),
+                            workspaceLabel = listOfNotNull(stringResource(R.string.server_remote_label), selectedServer?.name).joinToString(" · "),
                             onSendMessageWithSkill = { text, files, requested, skillName ->
                                 if (requested || skillName != null || !remoteIdentityReady) { unsupportedRemote(); false }
-                                else sendRemote(text, files)
+                                else sendRemote(selectedServer?.id, chatPage?.id, text, files)
                             },
                             onSendMedia = { unsupportedRemote(); false },
                             onMediaModeChange = { type, _, _ -> if (type != null) unsupportedRemote() },
@@ -911,13 +900,13 @@ internal fun AppNavigation(
                     }
                     val remoteQuickActions = if (remotePage) {
                         val server = selectedServer?.takeIf {
-                            remoteIdentityReady && !runtimeSelecting && it.id == remote.connectionId
+                            remoteIdentityReady && it.id == remote.connectionId
                         }
                         val directory = remote.openCodeDirectory
                         val mcpContent: (@Composable (() -> Unit, () -> Unit) -> Unit)? =
                             if (server != null && (server.transport != "opencode" || directory != null)) {
                                 { onBack, onDismiss ->
-                                    key(server.endpoint, server.transport, server.clientId, server.pin) {
+                                    key(server.id, server.credentialRevision) {
                                         RuntimeMcpConnectors(
                                             service = serverConnections,
                                             connectionId = server.id,

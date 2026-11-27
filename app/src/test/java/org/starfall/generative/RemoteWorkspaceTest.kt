@@ -37,6 +37,7 @@ class RemoteWorkspaceTest {
         val operations = java.util.concurrent.CopyOnWriteArrayList<String>()
         var runRequest = ""
         var configureSource = ""
+        var runFields = emptySet<String>()
         var gap = false
         @Volatile var holdRunEvents = false
         @Volatile var typedOutput = false
@@ -115,7 +116,9 @@ class RemoteWorkspaceTest {
                 "session.save" -> { saved = request.data.toString(); """{"session_id":"${request.sessionId}","revision":2,"conversation":${request.data!!.getValue("conversation")}}""" }
                 "session.configure" -> { configureSource = request.data!!.getValue("runtime").toString(); """{"session_id":"${request.sessionId}"}""" }
                 "session.run" -> {
-                    runRequest = request.data!!.getValue("request_id").toString().trim('"')
+                    val data = requireNotNull(request.data)
+                    runFields = data.keys
+                    runRequest = data.getValue("request_id").toString().trim('"')
                     runsPerSession[request.sessionId!!] = (runsPerSession[request.sessionId] ?: 0) + 1
                     """{"request_id":"$runRequest"}"""
                 }
@@ -191,6 +194,7 @@ class RemoteWorkspaceTest {
         assertTrue(workspace.send("hello", emptyList()))
         withTimeout(5000) { while (workspace.state.value.busy || workspace.state.value.running) yield() }
         assertTrue(wire.configureSource.contains("mobile_ephemeral"))
+        assertEquals(setOf("request_id", "content"), wire.runFields)
         assertEquals(1, wire.operations.count { it == "session.run" })
         workspace.setLocalProviders("server", emptyList())
         assertEquals(listOf("p"), workspace.state.value.providers.map { it.id })
@@ -272,7 +276,9 @@ class RemoteWorkspaceTest {
         workspace.enable("server"); withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertTrue(workspace.send("hello", emptyList()))
         withTimeout(5000) { while ("session.get" !in wire.operations || workspace.state.value.running) yield() }
-        assertTrue(wire.configureSource.contains("stored"))
+        assertEquals(Json.parseToJsonElement("""{"source":"stored","provider_id":"p","model_id":"m"}"""),
+            Json.parseToJsonElement(wire.configureSource))
+        assertEquals(setOf("request_id", "content"), wire.runFields)
         assertEquals(1, wire.operations.count { it == "session.run" })
         assertNotNull(workspace.state.value.conversation)
         assertFalse(workspace.state.value.error)
@@ -550,6 +556,9 @@ class RemoteWorkspaceTest {
         withTimeout(5000) { while (workspace.state.value.busy) yield() }
         assertFalse(workspace.state.value.error)
         assertEquals(RemoteActionFailure.CONVERSATION_LOAD_FAILED, workspace.state.value.actionFailure)
+        assertFalse(workspace.send("For the missing chat", emptyList()))
+        workspace.newChat()
+        assertTrue(workspace.state.value.canSubmit)
         workspace.disable()
     }
 

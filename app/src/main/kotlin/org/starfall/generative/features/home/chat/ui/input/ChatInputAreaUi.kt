@@ -167,6 +167,7 @@ internal fun UserInputArea(
     agentSkills: List<AgentSkill> = defaultAgentSkills(),
     onSendMessageWithSkill: suspend (String, List<String>, Boolean, String?) -> Boolean = { text, files, _, _ -> onSendMessage(text, files) },
     onOpenSkillsSettings: (() -> Unit)? = null,
+    sendEnabled: Boolean = true,
     onModelSheetOpen: () -> Unit = {}
 ) {
     val textFieldState = rememberTextFieldState()
@@ -345,8 +346,8 @@ internal fun UserInputArea(
     }
     var attachmentImporting by remember(clipboardSessionKey) { mutableStateOf(false) }
     var submitting by remember(clipboardSessionKey) { mutableStateOf(false) }
-    val canSend = !attachmentImporting && !submitting && canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
-    val showStop = isGenerating && editDraft == null && (mediaKind != null || !hasContent)
+    val canSend = sendEnabled && !attachmentImporting && !submitting && canSendChatInput(textState, attachments, mediaKind, isGenerating, mediaModel != null)
+    val showStop = isGenerating && editDraft == null && (remoteChat || mediaKind != null || !hasContent)
     val mediaHint = directMediaHint(textState, attachments, mediaKind, mediaModel, mediaModelId, mediaLabel)
 
     Box(

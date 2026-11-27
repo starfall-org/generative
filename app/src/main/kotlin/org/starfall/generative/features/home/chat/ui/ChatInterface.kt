@@ -40,6 +40,7 @@ import org.starfall.generative.shared.ui.layout.rememberInputAreaBackdrop
 import org.starfall.generative.shared.ui.layout.inputAreaBackdropSource
 import org.starfall.generative.shared.ui.layout.inputAreaFooterSurface
 import org.starfall.generative.shared.ui.layout.LocalInputAreaAppearance
+import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.shared.ui.ErrorContainer
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.icons.Icons
@@ -126,6 +127,8 @@ fun ChatInterface(
     isDrawerOpening: Boolean = false,
     restoreViewport: Boolean = false,
     workspaceNotice: String? = null,
+    workspaceStatus: String? = null,
+    sendEnabled: Boolean = true,
 ) {
     SideEffect { ChatRenderMetrics.recordChatScreenRecomposition() }
     var chatRootCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -320,6 +323,14 @@ fun ChatInterface(
                         .inputAreaFooterSurface()
                         .navigationBarsPadding()
                 ) {
+                    if (workspaceStatus != null && conversationId != null) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LoadingIndicator(Modifier.size(24.dp))
+                            Text(workspaceStatus, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                     (inlineChatError ?: workspaceNotice.takeUnless { noticeDismissed })?.let { error ->
                         ErrorContainer(
                             message = error,
@@ -356,8 +367,10 @@ fun ChatInterface(
                     }
                     // Composer state must not escape a disposable chat when switching sessions.
                     key(if (isTemporary) conversationKey else "regular_composer") {
+                    if (workspaceStatus != null && conversationId == null) return@key
                     UserInputArea(
                         backdrop = inputBackdrop,
+                        sendEnabled = sendEnabled,
                         temporaryChatId = conversationId.takeIf { isTemporary },
                         clipboardSessionKey = conversationKey,
                         attachments = inputAttachments,
@@ -429,6 +442,14 @@ fun ChatInterface(
                     .minimapEdgeSwipe(minimapState, enabled = foreground && messages.isNotEmpty() && !isDrawerOpening)
             ) {
                 org.starfall.generative.shared.ui.background.ProfileBackground(backgroundImage, transparency = backgroundTransparency)
+                if (workspaceStatus != null && conversationId == null) {
+                    Column(Modifier.align(Alignment.Center).padding(insets),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        LoadingIndicator()
+                        Text(workspaceStatus, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    return@BoxWithConstraints
+                }
                 val appBarHeight = insets.calculateTopPadding()
                 val bottomClearance = insets.calculateBottomPadding() + maxHeight * 0.015f
                 ChatTranscript(

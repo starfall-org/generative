@@ -1423,6 +1423,7 @@
     <string name="server_remote_select">Select remote chat server</string>
     <string name="server_remote_offline">Remote server unavailable. Reconnect before sending.</string>
     <string name="server_remote_unsupported">This action is not available in remote chat.</string>
+    <string name="server_remote_opening_chat">Opening conversation…</string>
     <string name="server_remote_loading">Connecting to remote server…</string>
     <string name="server_remote_select_key">Select a server credential</string>
     <string name="server_remote_key">Credential</string>

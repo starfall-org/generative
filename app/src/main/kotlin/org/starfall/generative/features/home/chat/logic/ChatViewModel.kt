@@ -93,6 +93,7 @@ class ChatViewModel(
     private val speechAudioPlayer: SpeechAudioPlayer,
     private val toolFiles: ToolFiles,
     private val speechNotification: org.starfall.generative.integrations.speech.SpeechPlaybackNotification? = null,
+    private val onRequestStarted: (Job) -> Unit = {},
 ) : ViewModel() {
 
     val toolSettings = toolStore.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ToolSettings())
@@ -203,6 +204,7 @@ class ChatViewModel(
         generations.getOrPut(conversationId) {
             ChatGeneration(
                 scope = viewModelScope,
+                onRequestStarted = onRequestStarted,
                 save = conversationRepo::saveConversation,
                 publish = { updated ->
                     if (!updated.isTemporary && !deletingAllConversations.value &&
@@ -356,6 +358,7 @@ class ChatViewModel(
         scope = viewModelScope,
         conversationRepo = conversationRepo,
         toolChat = toolChat,
+        onRequestStarted = onRequestStarted,
         currentConversation = _currentConversation,
         configuredTextModel = modelContext::configuredTextModel,
         existingGeneration = ::existingGeneration,
@@ -665,6 +668,7 @@ class ChatViewModel(
             val configured = modelContext.summaryTextModel() ?: return@withRestoreGuard false
             val (provider, config) = configured
             summaryJob = viewModelScope.launch {
+                onRequestStarted(coroutineContext.job)
                 try {
                     summaries.summarize(conversation, provider, config, request)
                 } finally {

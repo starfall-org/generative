@@ -101,6 +101,8 @@ fun ChatScreen(
         onOpenSkillsSettings = onOpenSkillsSettings,
         isDrawerOpening = isDrawerOpening,
         restoreRemoteViewport = backend.restoreRemoteViewport,
+        workspaceStatus = backend.workspaceStatus,
+        sendEnabled = backend.sendEnabled,
     )
 }
 
@@ -169,6 +171,8 @@ fun ChatScreen(
     onOpenSkillsSettings: (() -> Unit)? = null,
     isDrawerOpening: Boolean = false,
     restoreRemoteViewport: Boolean = false,
+    workspaceStatus: String? = null,
+    sendEnabled: Boolean = true,
 ) {
 
     val saveError = chatError?.takeIf { it.startsWith(SAVE_CONVERSATION_ERROR_PREFIX) }?.let {
@@ -188,6 +192,8 @@ fun ChatScreen(
             fallbackModelName = fallbackModelName,
             streamingHere = isGenerating && generatingConversationId == conversation?.id,
             saveError = saveError,
+            workspaceStatus = workspaceStatus,
+            sendEnabled = sendEnabled,
             workspaceNotice = chatError.takeIf { restoreRemoteViewport && saveError == null },
             restoreViewport = restoreRemoteViewport,
             isGenerating = isGenerating,

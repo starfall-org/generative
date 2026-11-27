@@ -21,6 +21,7 @@ data class RemoteWorkspaceState(
     val conversation: Conversation? = null, val providers: List<ModelProvider> = emptyList(),
     val providerId: String = "", val modelId: String = "", val keyId: String? = null,
     val pendingKeys: List<ServerProviderKey> = emptyList(), val busy: Boolean = false,
+    val connecting: Boolean = false, val loadingConversationId: String? = null,
     val running: Boolean = false, val error: Boolean = false,
     val actionFailure: RemoteActionFailure? = null,
     val connectionFailure: RemoteConnectionFailure? = null,
@@ -28,4 +29,7 @@ data class RemoteWorkspaceState(
     val localProviderIds: Set<String> = emptySet(),
     val openCode: Boolean = false,
     val openCodeDirectory: String? = null,
-)
+) {
+    val canSubmit: Boolean get() = enabled && !busy && !running && !error && modelId.isNotBlank() &&
+        (conversation != null || actionFailure != RemoteActionFailure.CONVERSATION_LOAD_FAILED)
+}

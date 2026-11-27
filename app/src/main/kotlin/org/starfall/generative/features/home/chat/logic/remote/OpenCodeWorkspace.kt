@@ -11,6 +11,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,19 +55,28 @@ internal class OpenCodeWorkspace(
         val providers = chat.providers()
         val items = chat.list()
         val remembered = loadLastSession(id)?.takeIf { previous -> items.any { it.id == previous } }
-        state.update { it.copy(items = items, providers = providers, openCodeDirectory = directory,
+        currentCoroutineContext().ensureActive()
+        state.update { it.copy(items = items, providers = providers, openCodeDirectory = directory, connecting = false,
             providerId = providers.firstOrNull()?.id.orEmpty(),
             modelId = providers.firstOrNull()?.config?.modelIds?.firstOrNull().orEmpty(),
             busy = remembered != null) }
-        if (remembered != null) select(remembered, restoring = true)
+        if (remembered != null) openConversation(remembered)
     }
 
-    fun select(sessionId: String, restoring: Boolean = false) {
-        if (!::chat.isInitialized || (state.value.busy && !restoring) || state.value.running ||
-            state.value.items.none { it.id == sessionId }) return
+    fun select(sessionId: String) {
+        val current = state.value
+        if (!::chat.isInitialized || current.running || (current.busy && current.loadingConversationId == null) ||
+            current.items.none { it.id == sessionId } || current.loadingConversationId == sessionId) return
+        if (current.loadingConversationId != null) operation?.cancel()
+        openConversation(sessionId)
+    }
+
+    private fun openConversation(sessionId: String) {
+        state.update { it.copy(busy = true, conversation = null, loadingConversationId = sessionId) }
         perform(RemoteActionFailure.CONVERSATION_LOAD_FAILED) {
             val conversation = chat.open(sessionId)
             saveLastSession(id, sessionId)
+            currentCoroutineContext().ensureActive()
             state.update { current ->
                 val hasModel = conversation.providerId.isNotBlank() && conversation.modelId.isNotBlank()
                 val available = current.providers.any {
@@ -78,11 +90,11 @@ internal class OpenCodeWorkspace(
     }
 
     fun newChat() {
-        if (!::chat.isInitialized || state.value.busy || state.value.running) return
-        perform {
-            saveLastSession(id, null)
-            state.update { it.copy(conversation = null) }
-        }
+        val current = state.value
+        if (!::chat.isInitialized || current.running || (current.busy && current.loadingConversationId == null)) return
+        if (current.loadingConversationId != null) operation?.cancel()
+        state.update { it.copy(conversation = null, loadingConversationId = null) }
+        perform { saveLastSession(id, null) }
     }
 
     fun selectModel(provider: String, model: String) {
@@ -96,9 +108,9 @@ internal class OpenCodeWorkspace(
 
     fun send(text: String, files: List<String>): Boolean {
         val current = state.value
-        if (!::chat.isInitialized || current.busy || current.running || current.error || files.isNotEmpty() ||
+        if (!::chat.isInitialized || !current.canSubmit || files.isNotEmpty() ||
             text.isBlank() || text.toByteArray(Charsets.UTF_8).size > current.capabilities.maxRunContentBytes ||
-            current.providerId.isBlank() || current.modelId.isBlank()) return false
+            current.providerId.isBlank()) return false
         perform(RemoteActionFailure.GENERATION_FAILED) {
             val providerId = current.providerId
             val modelId = current.modelId
@@ -301,8 +313,12 @@ internal class OpenCodeWorkspace(
         operation = scope.launch {
             try { action() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { state.update { it.copy(actionFailure = failure) } }
-            finally { if (!closed) state.update { it.copy(busy = false, running = false) } }
+            catch (_: Exception) {
+                currentCoroutineContext().ensureActive()
+                state.update { it.copy(actionFailure = failure) }
+            } finally {
+                if (isActive) state.update { it.copy(busy = false, running = false, loadingConversationId = null) }
+            }
         }
     }
 }

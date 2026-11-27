@@ -44,6 +44,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     private var generation = 0L
     private var sessions: GenerativeServerSessions? = null
     private var stream: Job? = null
+    private var loadingConversation: Job? = null
     private var openingConnection: Job? = null
     private var openCode: OpenCodeWorkspace? = null
     private var requestId: String? = null
@@ -103,29 +104,41 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             catch (_: Exception) { if (epoch == generation) { activationError = true; mutable.update { it.copy(error = true) } } }
     }
 
-    fun disable() {
+    private fun resetConnection() {
+        generation++
+        loadingConversation?.cancel()
+        loadingConversation = null
         openingConnection?.cancel()
+        openingConnection = null
         openCode?.close()
         openCode = null
-        generation++; stream?.cancel(); stream = null; sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
+        stream?.cancel()
+        stream = null
+        sessions?.close()
+        sessions = null
+        requestId = null
+        eventCursors.clear()
+        activeCacheScope = null
+        providerKeys = emptyMap()
+        pendingSelection = null
+        serverProviders = emptyList()
+        localProviders = emptyList()
+    }
+
+    fun disable() {
+        resetConnection()
         mutable.value = RemoteWorkspaceState()
         persistActivation(null, generation)
     }
     fun profileRemoved() {
-        openingConnection?.cancel()
-        openCode?.close()
-        openCode = null
-        generation++; stream?.cancel(); sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
+        resetConnection()
         mutable.value = RemoteWorkspaceState(enabled = true, error = true)
     }
     fun enable(id: String) {
-        openingConnection?.cancel()
-        openCode?.close()
-        openCode = null
-        generation++; val epoch = generation
-        stream?.cancel(); sessions?.close(); sessions = null; requestId = null; eventCursors.clear(); activeCacheScope = null; providerKeys = emptyMap(); pendingSelection = null; serverProviders = emptyList(); localProviders = emptyList()
+        resetConnection()
+        val epoch = generation
         activationError = false
-        mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, busy = true)
+        mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, busy = true, connecting = true)
         val activation = persistActivation(id, epoch)
         openingConnection = scope.launch {
             var opening: GenerativeServerSessions? = null
@@ -133,7 +146,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             try {
                 activation.join()
                 if (epoch != generation) return@launch
-                if (activationError) { mutable.update { it.copy(busy = false, error = true) }; return@launch }
+                if (activationError) { mutable.update { it.copy(busy = false, connecting = false, error = true) }; return@launch }
                 val openCodeApi = openCodeFactory(id)
                 if (epoch != generation) return@launch
                 if (openCodeApi != null) {
@@ -161,13 +174,16 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
 
                 val api = sessionFactory(id)
                 opening = api
+                if (epoch != generation) return@launch
                 api.withConnection {
                     val capabilities = api.verifyCapabilities()
                     verified = true
                     val catalog = api.catalog()
                     val providers = catalog.textProviders()
                     val list = api.list().filter { it.deletedAt == null }
-                    val prior = remembered?.takeIf { previous -> list.any { it.id == previous } }
+                    val prior = remembered?.takeIf { previous ->
+                        mutable.value.loadingConversationId == null && list.any { it.id == previous }
+                    }
                     val hint = prior?.let { previous ->
                         (initial?.takeIf { it.sessionId == previous } ?: cached(previous, owner))
                             ?.takeIf { item -> list.any { it.id == previous && it.revision == item.revision } }
@@ -191,21 +207,34 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                     serverProviders = providers
                     val (combined, localIds) = combinedProviders(serverProviders, localProviders, capabilities.mobileProviders)
                     val defaultProvider = providers.firstOrNull { it.id !in providerKeys }
-                    val selected = if (opened != null) selectionFor(opened, combined)
+                    // A tap on a cached drawer row takes precedence over automatic restoration.
+                    val requested = mutable.value.loadingConversationId
+                    val revisions = list.associate { it.id to it.revision }
+                    val next = requested?.takeIf { it != prior && it in revisions }
+                    val target = requested ?: prior
+                    val visible = opened?.takeIf { it.sessionId == target } ?: mutable.value.snapshot?.takeIf {
+                        next != null && it.sessionId == next && it.revision == revisions[next]
+                    }
+                    val selected = if (visible != null) selectionFor(visible, combined)
                         else defaultProvider?.id.orEmpty() to defaultProvider?.config?.modelIds?.firstOrNull().orEmpty()
-                    mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, items = list.map { it.ui() }, revisions = list.associate { it.id to it.revision }, providers = combined, localProviderIds = localIds,
-                        providerId = selected.first, modelId = selected.second, snapshot = opened,
-                        conversation = opened?.ui(), busy = false, capabilities = capabilities,
-                        actionFailure = if (prior != null && opened == null) RemoteActionFailure.CONVERSATION_LOAD_FAILED else null)
+                    val missing = target != null && visible == null && next == null
+                    mutable.value = RemoteWorkspaceState(enabled = true, connectionId = id, items = list.map { it.ui() }, revisions = revisions, providers = combined, localProviderIds = localIds,
+                        providerId = selected.first, modelId = selected.second, snapshot = visible,
+                        conversation = visible?.ui(), busy = next != null, capabilities = capabilities,
+                        actionFailure = RemoteActionFailure.CONVERSATION_LOAD_FAILED.takeIf { missing })
+                    if (next != null) select(next)
                 }
             } catch (e: CancellationException) { throw e }
             catch (failure: Exception) {
                 val reason = remoteConnectionFailure(failure)
-                if (epoch == generation) mutable.update { it.copy(busy = false, error = true,
+                if (epoch != generation) return@launch
+                val requested = mutable.value.loadingConversationId
+                mutable.update { it.copy(busy = false, connecting = false, loadingConversationId = null, error = true,
                     connectionFailure = if (verified && reason == RemoteConnectionFailure.UNAVAILABLE &&
                         failure !is IOException) {
                         RemoteConnectionFailure.CHAT_LOAD_FAILED
                     } else reason) }
+                if (requested != null) select(requested)
             }
             finally { if (sessions !== opening) opening?.close() }
         }
@@ -238,24 +267,35 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     fun dismissKeySelection() { pendingSelection = null; mutable.update { it.copy(pendingKeys = emptyList()) } }
     fun select(id: String) {
         openCode?.let { return it.select(id) }
-        if (sessions == null && mutable.value.busy) return
+        val connecting = mutable.value.connecting
         val connection = mutable.value.connectionId ?: return
         val owner = activeCacheScope
         val api = sessions
         if (api == null && owner == null) return
         val expected = mutable.value.revisions[id] ?: return
-        val epoch = ++generation
+        if (mutable.value.loadingConversationId == id) return
+        loadingConversation?.cancel()
+        // Browsing the cache during a handshake must keep the activation job alive.
+        val epoch = if (connecting) generation else ++generation
         stream?.cancel(); requestId = null
-        mutable.update { it.copy(snapshot = null, conversation = null, busy = true, running = false, error = api == null) }
-        scope.launch { try {
-            val hint = cached(id, owner)?.takeIf { it.revision == expected }
-            if (epoch != generation) return@launch
+        val current = mutable.value.snapshot?.takeIf { it.sessionId == id && it.revision == expected }
+        mutable.update { it.copy(snapshot = current, conversation = it.conversation.takeIf { current != null },
+            loadingConversationId = id, busy = true, running = false, error = !connecting && api == null) }
+        loadingConversation = scope.launch { try {
+            val hint = current ?: cached(id, owner)?.takeIf { it.revision == expected }
+            currentCoroutineContext().ensureActive()
+            if (epoch != generation || mutable.value.loadingConversationId != id) return@launch
+            if (connecting) {
+                // A malformed cache entry can still be recovered from the server.
+                if (hint != null) cacheOrNull { mutable.update { setSnapshot(it, hint) } }
+                return@launch
+            }
             if (hint != null) mutable.update { setSnapshot(it, hint) }
             if (api == null) {
                 // Offline browsing stays read-only, but remembers the last viewed chat.
                 lastSession[connection] = id
                 cacheOrNull { saveLastSession(connection, id) }
-                if (epoch == generation) mutable.update { it.copy(busy = false, error = true) }
+                if (epoch == generation) mutable.update { it.copy(loadingConversationId = null, busy = false, error = true) }
                 return@launch
             }
             val snap = api.withConnection { api.open(id, hint) }
@@ -264,11 +304,11 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             cacheOrNull { saveLastSession(connection, id) }
             if (epoch != generation) return@launch
             store(snap, owner)
-            if (epoch == generation) mutable.update { setSnapshot(it, snap).copy(busy = false, error = false, actionFailure = null, connectionFailure = null) }
+            if (epoch == generation) mutable.update { setSnapshot(it, snap).copy(loadingConversationId = null, busy = false, error = false, actionFailure = null, connectionFailure = null) }
         } catch (e: CancellationException) { throw e }
         catch (failure: Exception) {
             val conversationFailed = api != null && isConversationLoadFailure(failure)
-            if (epoch == generation) mutable.update { it.copy(busy = false, error = !conversationFailed,
+            if (epoch == generation) mutable.update { it.copy(loadingConversationId = null, busy = false, error = !conversationFailed,
                 connectionFailure = if (conversationFailed) null else remoteConnectionFailure(failure),
                 actionFailure = if (conversationFailed) RemoteActionFailure.CONVERSATION_LOAD_FAILED else null) }
         } }
@@ -276,6 +316,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     fun newChat() {
         openCode?.let { return it.newChat() }
         if (sessions == null && mutable.value.busy) return
+        loadingConversation?.cancel()
         generation++
         stream?.cancel(); requestId = null
         mutable.value.connectionId?.let { connection ->
@@ -287,12 +328,12 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 catch (_: Exception) { if (epoch == generation) mutable.update { it.copy(error = true) } }
             }
         }
-        mutable.update { it.copy(snapshot = null, conversation = null, running = false, busy = false, error = false, actionFailure = null) }
+        mutable.update { it.copy(snapshot = null, conversation = null, running = false, loadingConversationId = null, busy = false, error = sessions == null, actionFailure = null) }
     }
     suspend fun send(text: String, files: List<String>): Boolean {
         openCode?.let { return it.send(text, files) }
         val current = mutable.value; val api = sessions ?: return false
-        if (!current.enabled || current.busy || current.running || current.error || text.isBlank() || files.isNotEmpty() || current.modelId.isEmpty() ||
+        if (!current.canSubmit || text.isBlank() || files.isNotEmpty() ||
             current.providers.none { it.id == current.providerId && it.config.modelIds?.contains(current.modelId) == true }) return false
         if (providerKeys.containsKey(current.providerId) && current.keyId == null) {
             selectModel(current.providerId, current.modelId)
@@ -304,6 +345,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
         val size = current.snapshot?.conversation?.toString()?.toByteArray(Charsets.UTF_8)?.size ?: 0
         if (size.toLong() + text.toByteArray(Charsets.UTF_8).size + 16 * 1024 > current.capabilities.maxConversationBytes) return false
         val epoch = generation
+        val owner = activeCacheScope
         val runtime = if (current.providerId in current.localProviderIds) {
             val provider = localProviders.firstOrNull { "local:" + it.id == current.providerId } ?: return false
             fun selectionIsCurrent(): Boolean {
@@ -391,8 +433,8 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                                         actionFailure = RemoteActionFailure.GENERATION_FAILED.takeIf { event.kind == "error" }
                                     )
                                 }
-                                store(updated, activeCacheScope)
-                                if (list != null && list.any { it.id == id }) storeList(list, activeCacheScope)
+                                store(updated, owner)
+                                if (list != null && list.any { it.id == id }) storeList(list, owner)
                             }
                             throw FinishedStream()
                         }
@@ -408,7 +450,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                         val refreshed = if (recovered == null) it else publishRunSnapshot(it, recovered)
                         refreshed.copy(busy = false, running = false, error = true, actionFailure = RemoteActionFailure.GENERATION_FAILED)
                     }
-                    if (recovered != null) store(recovered, activeCacheScope)
+                    if (recovered != null) store(recovered, owner)
                 }
             } finally { if (epoch == generation) requestId = null }
         }

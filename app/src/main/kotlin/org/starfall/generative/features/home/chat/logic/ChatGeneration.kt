@@ -35,7 +35,8 @@ internal class ChatGeneration(
     private val charactersPerBatch: Int = STREAM_CHARS_PER_BATCH,
     private val streamCommitIntervalMs: Long = STREAM_COMMIT_INTERVAL_MS,
     private val monotonicTimeMillis: () -> Long = { System.nanoTime() / 1_000_000L },
-    private val waitForStreamInterval: suspend (Long) -> Unit = { delay(it) }
+    private val waitForStreamInterval: suspend (Long) -> Unit = { delay(it) },
+    private val onRequestStarted: (Job) -> Unit = {},
 ) {
     private val _busy = MutableStateFlow(false)
     val busy = _busy.asStateFlow()
@@ -95,6 +96,7 @@ internal class ChatGeneration(
             // Install finalization even if the owner is cancelled before the first dispatch.
             start = CoroutineStart.ATOMIC
         ) {
+            onRequestStarted(coroutineContext.job)
             fun persist(completedBlock: Conversation) {
                 // A completed block may be saved, but a broken database cannot suspend the
                 // stream collector or delay cancellation of a later response.

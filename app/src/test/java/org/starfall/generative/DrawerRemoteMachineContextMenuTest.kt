@@ -191,7 +191,7 @@ class DrawerRemoteMachineContextMenuTest {
             GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
                 DrawerRemoteControls(onOpenRemoteMachines = {}, onSaveMachineTools = {},
                     serverProfiles = listOf(profile, other, openCode),
-                    remoteEnabled = runtimeId != null, remoteConnectionId = runtimeId,
+                    remoteEnabled = runtimeId != null, remoteConnectionId = runtimeId, connecting = runtimeId != null,
                     onSelectRuntime = { selections += it; runtimeId = it })
             }
         }
@@ -210,6 +210,7 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithText("opencode").assertIsDisplayed()
         compose.onNodeWithTag("drawer_runtime_picker_server_server").performClick()
         compose.onNodeWithText("Chat server").assertIsDisplayed()
+        compose.onNodeWithText("Connecting to remote server…").assertIsDisplayed()
         compose.onNodeWithTag("drawer_server_picker_trigger").performClick()
         compose.onNodeWithTag("drawer_runtime_picker_server_other").performClick()
         compose.onNodeWithText("Other server").assertIsDisplayed()
@@ -220,6 +221,47 @@ class DrawerRemoteMachineContextMenuTest {
         compose.onNodeWithTag("drawer_runtime_picker_local").performClick()
         compose.onNodeWithText("Local").assertIsDisplayed()
         compose.runOnIdle { assertEquals(listOf("server", "other", "opencode", null), selections) }
+    }
+
+    @Test fun remoteTerminalShortcutDoesNotChangeLocalChatTools() {
+        val localMachine = RemoteMachine("local-machine", "Local chat machine")
+        val terminalMachine = RemoteMachine("terminal", "Terminal machine")
+        val machines = listOf(localMachine, terminalMachine)
+        var remoteEnabled by mutableStateOf(true)
+        var settings by mutableStateOf(ToolSettings(selectedMachineId = localMachine.id)
+            .withRemoteMachineEnabled(localMachine.id, true, machines.map { it.id }))
+        var terminal: RemoteMachine? = null
+        compose.setContent {
+            GenerativeTheme(themeMode = "LIGHT", amoledMode = false, dynamicColor = false) {
+                CompositionLocalProvider(LocalToolControls provides ToolControls(
+                    machines = machines,
+                    settings = settings,
+                    selectMachine = { id -> settings = settings.withSelectedRemoteMachine(id, machines.map { it.id }) }
+                )) {
+                    DrawerRemoteControls(
+                        onOpenRemoteMachines = {},
+                        remoteEnabled = remoteEnabled,
+                        remoteConnectionId = "server".takeIf { remoteEnabled },
+                        onOpenTerminal = { terminal = it },
+                        onSaveMachineTools = {}
+                    )
+                }
+            }
+        }
+        compose.onNodeWithTag("drawer_machine_picker_trigger").performClick()
+        compose.onNodeWithTag("drawer_machine_picker_item_terminal").performClick()
+        compose.onNodeWithTag("drawer_machine_options_terminal").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_terminal").assertDoesNotExist()
+        compose.onNodeWithText("Tools").assertDoesNotExist()
+        compose.onNodeWithText("Port Forward").assertIsDisplayed()
+        compose.onNodeWithText("Open terminal").performClick()
+        compose.runOnIdle {
+            assertEquals(terminalMachine.id, terminal?.id)
+            assertEquals(localMachine.id, settings.selectedMachineId)
+            remoteEnabled = false
+        }
+        compose.onNodeWithTag("drawer_machine_options_local-machine").performClick()
+        compose.onNodeWithTag("drawer_machine_switch_local-machine").assertIsOn()
     }
 
     @Test fun runtimePickerOffersLocalEvenWithoutServers() {

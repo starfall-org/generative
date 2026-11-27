@@ -8,10 +8,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import org.junit.Assert.*
 import org.junit.Test
-import org.starfall.generative.features.home.chat.logic.ChatViewModel
+import org.starfall.generative.appwiring.ChatSessionHandle
 
 class ChatBackgroundLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -35,29 +39,27 @@ class ChatBackgroundLifecycleTest {
             it.notification.flags and Notification.FLAG_ONGOING_EVENT != 0
     }
 
+    private fun startRequest(activity: MainActivity): Job {
+        val container = (activity.application as GenerativeApplication).container
+        val chat = ViewModelProvider(activity, container.viewModelFactory)[ChatSessionHandle::class.java].chat
+        return chat.viewModelScope.launch {
+            container.chatSession.trackRequest(coroutineContext.job)
+            awaitCancellation()
+        }
+    }
+
     @Test fun generationNotificationSurvivesBackgroundAndScreenOffAndStopsWhenIdle() {
         if (Build.VERSION.SDK_INT >= 33) shell("pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS")
         shell("input keyevent 224")
         shell("wm dismiss-keyguard")
-        var busy: MutableStateFlow<Boolean>? = null
+        var request: Job? = null
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             try {
-                scenario.onActivity { activity ->
-                    val model = ViewModelProvider(activity)[ChatViewModel::class.java]
-                    // Drive the real generation signal without calling a paid API or
-                    // modifying conversations on the connected device.
-                    val generation = ChatViewModel::class.java.getDeclaredField("generation")
-                        .apply { isAccessible = true }.get(model)
-                    @Suppress("UNCHECKED_CAST")
-                    val state = generation.javaClass.getDeclaredField("_busy")
-                        .apply { isAccessible = true }.get(generation) as MutableStateFlow<Boolean>
-                    busy = state
-                    state.value = true
-                }
+                scenario.onActivity { request = startRequest(it) }
                 shell("input keyevent 4")
                 waitFor { scenario.state == Lifecycle.State.CREATED }
                 waitFor { hasGenerationNotification() }
-                busy!!.value = false
+                request!!.cancel()
                 waitFor { !hasGenerationNotification() }
 
                 // Leaving an idle app must not create any service notification.
@@ -67,15 +69,18 @@ class ChatBackgroundLifecycleTest {
                 assertFalse(hasGenerationNotification())
 
                 scenario.moveToState(Lifecycle.State.RESUMED)
-                scenario.onActivity { busy!!.value = true }
+                scenario.onActivity { request = startRequest(it) }
                 waitFor { hasGenerationNotification() }
                 shell("input keyevent 223")
                 waitFor { scenario.state == Lifecycle.State.CREATED }
                 assertTrue(hasGenerationNotification())
-                busy!!.value = false
+                scenario.moveToState(Lifecycle.State.DESTROYED)
+                assertTrue(request!!.isActive)
+                assertTrue(hasGenerationNotification())
+                request!!.cancel()
                 waitFor { !hasGenerationNotification() }
             } finally {
-                busy?.value = false
+                request?.cancel()
                 shell("input keyevent 224")
                 shell("wm dismiss-keyguard")
             }

@@ -81,7 +81,10 @@ class AppContainer(context: Context) {
         { id -> org.starfall.generative.integrations.generativeserver.GenerativeServerSessions(serverClientFactory.create(id)) },
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         remoteWorkspacePreferences::lastSession, remoteWorkspacePreferences::setLastSession,
-        remoteWorkspacePreferences::activeConnection, remoteWorkspacePreferences::setActiveConnection, remoteChatCache,
+        remoteWorkspacePreferences::activeConnection, { id ->
+            if (id != null && serverConnections.profile(id)?.selected == false) serverConnectionService.select(id)
+            remoteWorkspacePreferences.setActiveConnection(id)
+        }, remoteChatCache,
         { id -> serverConnections.profile(id)?.let {
             org.starfall.generative.integrations.generativeserver.RemoteCacheScope(it.id, it.clientId, it.serverId, it.pin)
         } }, resolveLocalProvider = providers::resolveProvider,
@@ -116,8 +119,8 @@ class AppContainer(context: Context) {
 
     private val skillStore = AgentSkillsStore(appContext)
 
-    val viewModelFactory = viewModelFactory {
-        initializer {
+    internal val chatSession by lazy {
+        ChatSession(appContext) { trackRequest ->
             ChatViewModel(
                 conversations,
                 providers,
@@ -155,9 +158,14 @@ class AppContainer(context: Context) {
                 SpeechSynthesisService(providers::resolveProvider),
                 SpeechAudioPlayer(appContext),
                 toolFiles,
+                onRequestStarted = trackRequest,
                 speechNotification = org.starfall.generative.integrations.speech.SpeechPlaybackNotification(appContext)
             )
         }
+    }
+
+    val viewModelFactory = viewModelFactory {
+        initializer { ChatSessionHandle(chatSession) }
         initializer { ConfigurationViewModel(profiles, providers, mcp, speech, preferences) }
         initializer { CustomHttpToolsViewModel(httpTools) }
         initializer { SettingsViewModel(preferences) }

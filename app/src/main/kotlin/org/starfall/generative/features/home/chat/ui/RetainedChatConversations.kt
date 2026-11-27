@@ -98,6 +98,7 @@ internal fun RetainedChatConversations(
     foreground: Boolean,
     keepOverlayState: Boolean = false,
     restoreChatState: Boolean = false,
+    awaitingConversation: Boolean = false,
     content: @Composable (Conversation?, Boolean) -> Unit
 ) {
     DisposableEffect(state) {
@@ -107,7 +108,8 @@ internal fun RetainedChatConversations(
     SideEffect { state.record(conversation, availableIds) }
     // The remote workspace retains each chat's draft through eviction and Android process recreation.
     val pageState = if (restoreChatState) rememberSaveableStateHolder() else null
-    val activeKey = conversation?.id ?: EMPTY_CHAT_ID
+    // A pending restore has no composer of its own. Preserve any saved new-chat draft.
+    val activeKey = conversation?.id ?: if (awaitingConversation) "__opening_chat__" else EMPTY_CHAT_ID
     Box(Modifier.fillMaxSize()) {
         (state.ids.filter { it != activeKey } + activeKey).forEach { id ->
             val active = id == activeKey

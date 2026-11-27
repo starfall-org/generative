@@ -29,9 +29,10 @@ internal fun SelectedModelOptionsSheetContent(
     providerName: String?,
     onBack: () -> Unit,
     onSetThinkingPassback: ((ThinkingPassback) -> Unit)? = null,
+    modelTools: List<String> = config.supportedModelTools,
     onSetModelTools: ((List<String>) -> Unit)? = null
 ) {
-    val visibleTools = remember(config.supportedModelTools) { config.supportedModelTools.distinct() }
+    val visibleTools = remember(modelTools) { modelTools.distinct() }
     Column(Modifier.fillMaxWidth().testTag("selected-model-options-sheet")) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             .testTag("model-options-appbar")) {

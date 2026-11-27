@@ -78,7 +78,7 @@ fun ConversationSideDrawer(
     serverProfiles: List<org.starfall.generative.database.repositories.ServerConnectionProfile> = emptyList(),
     remoteEnabled: Boolean = false,
     remoteConnectionId: String? = null,
-    runtimeSelecting: Boolean = false,
+    connecting: Boolean = false,
     remoteError: Boolean = false,
     onReconnectServer: () -> Unit = {},
     onSelectRuntime: (String?) -> Unit = {},
@@ -236,7 +236,7 @@ fun ConversationSideDrawer(
                         remoteEnabled = remoteEnabled,
                         remoteError = remoteError,
                         remoteConnectionId = remoteConnectionId,
-                        runtimeSelecting = runtimeSelecting,
+                        connecting = connecting,
                         onReconnectServer = onReconnectServer,
                         onSelectRuntime = onSelectRuntime,
                         onOpenServerConnections = onOpenServerConnections,
@@ -427,7 +427,7 @@ fun ConversationSideDrawer(
                         onRename = { renaming = chat }, onDelete = { deleting = setOf(chat.id) },
                         onMove = { selecting = true; selected = setOf(chat.id); folderName = ""; grouping = true })
                 }
-                if (matches.isEmpty()) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
+                if (matches.isEmpty() && !connecting) item { Text(if (search.isBlank()) stringResource(R.string.no_conversations_yet) else stringResource(R.string.sidebar_no_matching_conversations), Modifier.padding(12.dp), color = MaterialTheme.colorScheme.outline) }
                     }
                 }
             }

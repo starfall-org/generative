@@ -6,7 +6,6 @@ import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import java.util.Locale
 import android.widget.Toast
 import android.os.Bundle
@@ -36,9 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.starfall.generative.shared.model.preferences.ScreenWakelockMode
 import org.starfall.generative.shared.state.LocalWriteErrors
@@ -60,16 +56,14 @@ import org.starfall.generative.navigation.ExternalShare
 import android.net.Uri
 import org.starfall.generative.navigation.parseExternalShare
 import org.starfall.generative.navigation.parseAppDeepLink
-import org.starfall.generative.features.home.chat.logic.ChatViewModel
-import org.starfall.generative.features.home.shared.logic.ChatBackgroundService
+import org.starfall.generative.appwiring.ChatSessionHandle
 import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalLaunch
-
-private const val SERVICE_STOP_GRACE_MS = 5_000L
 
 class MainActivity : ComponentActivity() {
 
     private val container get() = (application as GenerativeApplication).container
-    private val viewModel: ChatViewModel by viewModels { container.viewModelFactory }
+    private val chatSession: ChatSessionHandle by viewModels { container.viewModelFactory }
+    private val viewModel get() = chatSession.chat
     private val configurationViewModel: ConfigurationViewModel by viewModels { container.viewModelFactory }
     private val settingsViewModel: SettingsViewModel by viewModels { container.viewModelFactory }
     private val customHttpToolsViewModel: CustomHttpToolsViewModel by viewModels { container.viewModelFactory }
@@ -100,22 +94,9 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
         enableTransparentSystemBars()
 
-        lifecycleScope.launch {
-            // A running conversation summary keeps the process alive like a response does, and its
-            // progress is what the service notification shows meanwhile.
-            combine(viewModel.isAnyGenerating, viewModel.summaryProgress) { generating, summary ->
-                generating to summary
-            }.collect { (generating, summary) ->
-                ChatBackgroundService.showSummaryProgress(summary)
-                updateGenerationService(generating || summary != null)
-            }
-        }
-
-        // Register before Compose so dialogs, drawers and navigation handle Back
-        // first. At the root, retain the generation's ViewModel instead of finishing
-        // the activity (Android versions before 12 finish root activities on Back).
+        // Keep the current screen available when returning from the launcher during a response.
         onBackPressedDispatcher.addCallback(this) {
-            if (isGenerationOrSummaryActive()) {
+            if (chatSession.isWorking) {
                 moveTaskToBack(true)
             } else {
                 isEnabled = false
@@ -226,57 +207,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        chatSession.retryForegroundStart()
         // OAuth opens an external browser. A fatal exception can be recorded while this
         // Activity is stopped but retained by Android; onCreate will not run again then.
         // Refresh on each return so the crash dialog is not lost behind browser handoff.
         pendingCrash = crashReportStore.pending()
-    }
-
-    override fun onPause() {
-        // Flush the current generation state before leaving the visible activity.
-        // This includes Home, switching apps, and turning the screen off, even if
-        // the StateFlow collector has not yet processed a newly started response.
-        updateGenerationService(isGenerationOrSummaryActive())
-        super.onPause()
-    }
-
-    override fun onDestroy() {
-        // Finishing clears this activity's ViewModel and cancels its generation.
-        // Rotation retains the ViewModel, so its service must stay running.
-        if (isFinishing) updateGenerationService(false, immediate = true)
-        super.onDestroy()
-    }
-
-    private var stopServiceJob: Job? = null
-
-    private fun isGenerationOrSummaryActive() =
-        viewModel.isAnyGenerating.value || viewModel.summaryProgress.value != null
-
-    private fun updateGenerationService(busy: Boolean, immediate: Boolean = false) {
-        val serviceIntent = Intent(this, ChatBackgroundService::class.java)
-        stopServiceJob?.cancel()
-        stopServiceJob = null
-        if (!busy) {
-            if (immediate) {
-                stopService(serviceIntent)
-            } else {
-                // A queued message or auto-summary can start the next generation right after this
-                // one ends. Android 12+ refuses to start a foreground service from the background,
-                // so keep it alive briefly instead of stopping and re-starting it.
-                stopServiceJob = lifecycleScope.launch {
-                    delay(SERVICE_STOP_GRACE_MS)
-                    stopService(serviceIntent)
-                }
-            }
-            return
-        }
-        try {
-            ContextCompat.startForegroundService(this, serviceIntent)
-        } catch (e: IllegalStateException) {
-            Log.w("ChatBackgroundService", "System refused foreground service start", e)
-        } catch (e: SecurityException) {
-            Log.w("ChatBackgroundService", "Foreground service permission unavailable", e)
-        }
     }
 
     private fun requestBackgroundNotificationPermission() {

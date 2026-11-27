@@ -373,16 +373,10 @@ internal fun BottomSheetsLink(
             ?: selectedProvider?.config?.modelConfigs?.entries?.firstOrNull {
                 it.value.displayName.isNotBlank() && it.value.displayName == selectedModelName
             }
-        val rawSelectedConfig = selectedConfigEntry?.value
+        val selectedConfig = selectedConfigEntry?.value
             // Keep the same fallback as the model picker: discovered/custom models without
             // an explicit saved configuration still expose the reasoning control.
             ?: ModelConfiguration(displayName = selectedModelName.ifBlank { stringResource(R.string.select_model) })
-        // Some provider catalogs omit native-tool metadata even for models that support the
-        // provider's built-in tools. Keep explicit metadata authoritative, and use known native
-        // presets only when the model has no tool list at all.
-        val selectedConfig = if (rawSelectedConfig.supportedModelTools.isEmpty() && selectedProvider != null) {
-            rawSelectedConfig.copy(modelTools = defaultNativeModelTools(selectedProvider.type, selectedModelName))
-        } else rawSelectedConfig
         val selectedFolderName = selectedProvider?.groupId?.let { groupId ->
             providerGroups.firstOrNull { it.id == groupId }?.name
         }
@@ -460,6 +454,11 @@ internal fun BottomSheetsLink(
                     } else if (target == ModelSheetPage.MODEL_OPTIONS) {
                         val providerId = selectedProvider?.id
                         val configKey = selectedConfigEntry?.key ?: selectedModelName
+                        val modelTools = if (remoteQuickActions == null && selectedProvider != null) {
+                            selectedConfig.supportedModelTools.ifEmpty {
+                                defaultNativeModelTools(selectedProvider.type, selectedModelName)
+                            }
+                        } else emptyList()
                         SelectedModelOptionsSheetContent(
                             modelId = selectedModelName.ifBlank { selectedConfig.displayName },
                             config = selectedConfig,
@@ -468,8 +467,8 @@ internal fun BottomSheetsLink(
                             onSetThinkingPassback = if (providerId != null && configKey.isNotBlank()) {
                                 { mode -> onSetThinkingPassback(providerId, configKey, mode) }
                             } else null,
-                            onSetModelTools = if (providerId != null && configKey.isNotBlank() &&
-                                selectedConfig.supportedModelTools.isNotEmpty()) {
+                            modelTools = modelTools,
+                            onSetModelTools = if (providerId != null && configKey.isNotBlank() && modelTools.isNotEmpty()) {
                                 { tools -> onSetModelTools(providerId, configKey, tools) }
                             } else null
                         )

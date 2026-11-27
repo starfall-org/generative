@@ -1103,6 +1103,7 @@
     <string name="server_remote_select">Chọn máy chủ trò chuyện từ xa</string>
     <string name="server_remote_offline">Không thể kết nối máy chủ từ xa. Hãy kết nối lại trước khi gửi.</string>
     <string name="server_remote_unsupported">Thao tác này chưa khả dụng trong cuộc trò chuyện từ xa.</string>
+    <string name="server_remote_opening_chat">Đang mở cuộc trò chuyện…</string>
     <string name="server_remote_loading">Đang kết nối máy chủ từ xa…</string>
     <string name="server_remote_select_key">Chọn thông tin xác thực trên máy chủ</string>
     <string name="server_remote_key">Thông tin xác thực</string>
