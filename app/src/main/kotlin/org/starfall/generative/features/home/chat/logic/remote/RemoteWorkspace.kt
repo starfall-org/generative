@@ -4,6 +4,7 @@ import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.JsonObject
@@ -38,12 +40,14 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     private val cache: RemoteConversationCache? = null,
     private val cacheScope: suspend (String) -> RemoteCacheScope? = { null },
     private val resolveLocalProvider: suspend (ModelProvider) -> ModelProvider = { it },
-    private val openCodeFactory: suspend (String) -> OpenCodeApi? = { null }) {
+    private val openCodeFactory: suspend (String) -> OpenCodeApi? = { null },
+    private val resolveAttachment: (String) -> ServerAttachmentSource? = { null }) {
     private val mutable = MutableStateFlow(RemoteWorkspaceState(restoring = loadActivation != null))
     val state: StateFlow<RemoteWorkspaceState> = mutable.asStateFlow()
     private var generation = 0L
     private var sessions: GenerativeServerSessions? = null
     private var stream: Job? = null
+    private var attachmentUpload: Job? = null
     private var loadingConversation: Job? = null
     private var openingConnection: Job? = null
     private var openCode: OpenCodeWorkspace? = null
@@ -106,6 +110,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
 
     private fun resetConnection() {
         generation++
+        attachmentUpload?.cancel()
         loadingConversation?.cancel()
         loadingConversation = null
         openingConnection?.cancel()
@@ -289,6 +294,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
         loadingConversation?.cancel()
         // Browsing the cache during a handshake must keep the activation job alive.
         val epoch = if (connecting) generation else ++generation
+        attachmentUpload?.cancel()
         stream?.cancel(); requestId = null
         val current = mutable.value.snapshot?.takeIf { it.sessionId == id && it.revision == expected }
         mutable.update { it.copy(snapshot = current, conversation = it.conversation.takeIf { current != null },
@@ -330,6 +336,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
         if (sessions == null && mutable.value.busy) return
         loadingConversation?.cancel()
         generation++
+        attachmentUpload?.cancel()
         stream?.cancel(); requestId = null
         mutable.value.connectionId?.let { connection ->
             lastSession[connection] = null
@@ -345,7 +352,8 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     suspend fun send(text: String, files: List<String>): Boolean {
         openCode?.let { return it.send(text, files) }
         val current = mutable.value; val api = sessions ?: return false
-        if (!current.canSubmit || text.isBlank() || files.isNotEmpty() ||
+        if (!current.canSubmit || (text.isBlank() && files.isEmpty()) ||
+            (files.isNotEmpty() && current.capabilities.attachmentUpload == null) ||
             current.providers.none { it.id == current.providerId && it.config.modelIds?.contains(current.modelId) == true }) return false
         if (providerKeys.containsKey(current.providerId) && current.keyId == null) {
             selectModel(current.providerId, current.modelId)
@@ -363,7 +371,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             fun selectionIsCurrent(): Boolean {
                 val latest = mutable.value
                 return epoch == generation && !latest.busy && !latest.running && !latest.error &&
-                    latest.providerId == current.providerId && latest.modelId == current.modelId &&
+                    latest.providerId == current.providerId && latest.modelId == current.modelId && latest.keyId == current.keyId &&
                     current.providerId in latest.localProviderIds && localProviders.any { it == provider }
             }
             try {
@@ -381,6 +389,13 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 return false
             }
         } else null
+        val attachmentIds = if (files.isEmpty()) emptyList()
+            else uploadAttachments(api, epoch, requireNotNull(current.capabilities.attachmentUpload), files) ?: return false
+        val latest = mutable.value
+        if (epoch != generation || !latest.canSubmit || latest.providerId != current.providerId ||
+            latest.modelId != current.modelId || latest.keyId != current.keyId ||
+            (runtime != null && current.providerId !in latest.localProviderIds)
+        ) return false
         val id = current.snapshot?.sessionId ?: UUID.randomUUID().toString()
         val request = UUID.randomUUID().toString()
         requestId = request
@@ -406,7 +421,7 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 if (epoch != generation) return@launchConnected
                 mutable.update { it.copy(running = true, busy = false) }
                 // A failed run acknowledgement is ambiguous and is never replayed.
-                api.run(id, request, text)
+                api.run(id, request, text, attachmentIds)
                 api.events(id, startingCursor).collect { event ->
                     if (epoch != generation) return@collect
                     // Advance on every event, including those from another request. The
@@ -476,6 +491,38 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
             } finally { if (epoch == generation) requestId = null }
         }
         return true
+    }
+
+    internal suspend fun listTools(connectionId: String): List<ServerTool>? {
+        val current = mutable.value
+        if (current.connectionId != connectionId || !current.capabilities.serverTools) return null
+        return sessions?.listTools()
+    }
+
+    private suspend fun uploadAttachments(
+        api: GenerativeServerSessions, epoch: Long, limits: ServerAttachmentUploadLimits, files: List<String>,
+    ): List<String>? {
+        val job = currentCoroutineContext()[Job]
+        attachmentUpload = job
+        mutable.update { it.copy(busy = true, actionFailure = null, providerDiagnostic = null) }
+        try {
+            val references = files.distinct()
+            require(references.size <= limits.maxFiles)
+            val sources = withContext(Dispatchers.IO) {
+                references.map { requireNotNull(resolveAttachment(it)) }
+            }
+            require(sources.all { it.sizeBytes in 0..limits.maxFileBytes } &&
+                sources.sumOf { it.sizeBytes } <= limits.maxTotalBytes)
+            return api.withConnection { sources.map { api.uploadAttachment(it) } }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            if (epoch == generation) mutable.update { it.copy(actionFailure = RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED) }
+            return null
+        } finally {
+            if (attachmentUpload === job) attachmentUpload = null
+            if (epoch == generation) mutable.update { it.copy(busy = false) }
+        }
     }
     fun stop() {
         openCode?.let { return it.stop() }

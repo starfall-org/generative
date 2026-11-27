@@ -11,3 +11,5 @@ internal class ServerConnectionDraft(
     val authUrl: String,
     val allowLocalProviders: Boolean,
 )
+
+internal enum class SshSetupStatus { RUNNING, INSTALL_FAILED, PAIRING_FAILED }

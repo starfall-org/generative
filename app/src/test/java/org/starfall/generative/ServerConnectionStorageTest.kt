@@ -15,12 +15,41 @@ import org.robolectric.annotation.Config
 import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.database.room.entities.ServerConnectionEntity
 import org.starfall.generative.database.repositories.ServerConnectionRepository
+import org.starfall.generative.integrations.generativeserver.PairedIdentity
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 import org.starfall.generative.integrations.security.SecretCipher
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = LibraryTestApplication::class)
 class ServerConnectionStorageTest {
+    @Test fun sshConfigurationSurvivesReloadBeforePairing() = runBlocking {
+        installTestAndroidKeyStore()
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
+        try {
+            val endpoint = "ssh://user@host:22"
+            val repository = ServerConnectionRepository(db)
+            repository.saveUnpairedSsh("ssh", "Runtime", endpoint, "machine", allowLocalProviders = true)
+
+            val reloaded = ServerConnectionRepository(db)
+            val pending = requireNotNull(reloaded.profile("ssh"))
+            assertFalse(pending.isPaired)
+            assertEquals("machine", pending.sshMachineId)
+            assertEquals("", db.serverConnectionDao().get("ssh")?.encryptedSecret)
+            assertTrue(runCatching { reloaded.connection("ssh") }.isFailure)
+
+            val identity = PairedIdentity("client", "secret", "server")
+            reloaded.completeSshSetup(pending, endpoint, "machine", identity)
+            val paired = reloaded.connection("ssh")
+            assertTrue(paired.profile.isPaired)
+            assertTrue(paired.profile.allowLocalProviders)
+            assertEquals("Runtime", paired.profile.name)
+            assertEquals(identity.clientId, paired.identity.clientId)
+            assertEquals(identity.serverId, paired.identity.serverId)
+            assertEquals(identity.secret, paired.identity.secret)
+            assertTrue(SecretCipher.isEncrypted(requireNotNull(db.serverConnectionDao().get("ssh")).encryptedSecret))
+        } finally { db.close() }
+    }
+
     @Test fun selectionDoesNotAlterOtherIdentityOrCiphertext() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java).build()
         try {

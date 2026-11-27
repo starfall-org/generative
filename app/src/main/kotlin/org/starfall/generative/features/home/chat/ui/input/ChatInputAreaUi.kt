@@ -743,6 +743,7 @@ internal fun UserInputArea(
         temporaryChatId = temporaryChatId,
         attachmentSessionKey = clipboardSessionKey,
         onAttachmentImportingChange = { attachmentImporting = it },
+        editingMessage = editDraft != null,
         mediaKind = mediaKind,
         onMediaKindChange = { mediaKind = it },
         onCancelEdit = onCancelEdit,

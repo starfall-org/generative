@@ -5,6 +5,7 @@ import org.starfall.generative.database.repositories.CustomHttpToolRepository
 
 
 import android.content.Context
+import android.net.Uri
 import androidx.datastore.preferences.core.stringPreferencesKey
 import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStore
 import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
@@ -25,6 +26,8 @@ import org.starfall.generative.features.appdata.logic.AppDataTransferService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
+import org.starfall.generative.integrations.generativeserver.ServerAttachmentSource
+import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.integrations.files.AgentSkillsStore
 import org.starfall.generative.shared.subfeatures.icons.logic.IconStore
@@ -94,7 +97,21 @@ class AppContainer(context: Context) {
                     it.profile.endpoint, it.credentials
                 )
             }
-        })
+        }, resolveAttachment = ::resolveServerAttachment)
+
+    private fun resolveServerAttachment(reference: String): ServerAttachmentSource? {
+        val uri = Uri.parse(reference)
+        val path = when (uri.scheme) {
+            null -> reference
+            "file" -> uri.path ?: return null
+            else -> return null
+        }
+        val file = File(path).takeIf { it.isAbsolute }?.canonicalFile ?: return null
+        if (file.parentFile != ToolFiles.uploadStorageDirectory(appContext).canonicalFile ||
+            toolFiles.nameOf(file.path) == null) return null
+        val metadata = AttachmentResolver(appContext).metadata(file.path) ?: return null
+        return ServerAttachmentSource(file, metadata.mimeType, metadata.sizeBytes)
+    }
     private val speech = SpeechRepository(database)
     val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)

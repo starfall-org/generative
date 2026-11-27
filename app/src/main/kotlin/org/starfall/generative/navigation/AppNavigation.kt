@@ -102,6 +102,7 @@ import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
 import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
+import org.starfall.generative.features.home.shared.ui.ServerToolsSheetContent
 import org.starfall.generative.features.home.shared.ui.RemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.LocalToolControls
 import org.starfall.generative.features.home.shared.ui.ToolControls
@@ -227,6 +228,7 @@ internal fun AppNavigation(
         if (!sent && result.pendingKeys.isEmpty() && result.actionFailure !in setOf(
                 RemoteActionFailure.LOCAL_PROVIDER_OAUTH, RemoteActionFailure.LOCAL_PROVIDER_CONNECTION_OPTIONS,
                 RemoteActionFailure.LOCAL_PROVIDER_MODEL_OPTIONS, RemoteActionFailure.LOCAL_PROVIDER_CREDENTIALS,
+                RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED,
             )
         ) unsupportedRemote()
         return sent
@@ -765,6 +767,7 @@ internal fun AppNavigation(
                             RemoteActionFailure.REVISION_CONFLICT -> stringResource(R.string.server_remote_conflict)
                             RemoteActionFailure.OPERATION_FAILED -> stringResource(R.string.server_remote_action_failed)
                             RemoteActionFailure.GENERATION_FAILED -> stringResource(R.string.server_remote_generation_failed)
+                            RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED -> stringResource(R.string.server_attachment_upload_failed)
                             RemoteActionFailure.CONVERSATION_CREATE_FAILED ->
                                 stringResource(R.string.server_remote_conversation_create_failed)
                             RemoteActionFailure.CONVERSATION_LOAD_FAILED -> stringResource(R.string.server_remote_conversation_load_failed)
@@ -927,6 +930,17 @@ internal fun AppNavigation(
                         RemoteQuickActions(
                             mcpContent = mcpContent,
                             unavailableMessage = if (remote.error) R.string.server_remote_offline else R.string.server_remote_loading,
+                            attachmentsAvailable = server != null && !remote.error && remote.capabilities.attachmentUpload != null,
+                            serverToolsContent = if (server != null && !remote.openCode && !remote.connecting) {
+                                { onBack ->
+                                    key(server.id, server.credentialRevision, remote.capabilities.serverTools, remote.error) {
+                                        ServerToolsSheetContent(
+                                            loadTools = { remoteWorkspace.listTools(server.id) },
+                                            onBack = onBack,
+                                        )
+                                    }
+                                }
+                            } else null,
                         )
                     } else null
                     CompositionLocalProvider(LocalRemoteQuickActions provides remoteQuickActions) {

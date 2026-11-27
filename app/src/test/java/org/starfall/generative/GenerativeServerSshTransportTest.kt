@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.starfall.generative.integrations.generativeserver.GenerativeServerClient
 import org.starfall.generative.integrations.generativeserver.GenerativeServerCodec
+import org.starfall.generative.integrations.generativeserver.GenerativeServerProtocolException
 import org.starfall.generative.integrations.generativeserver.PairedIdentity
 import org.starfall.generative.integrations.generativeserver.RpcRequest
 import org.junit.Assert.*
@@ -39,15 +40,17 @@ class GenerativeServerSshTransportTest {
         val commands = mutableListOf<String>()
         val paired = GenerativeServerSshTransport.pairUsing { command ->
             commands += command
-            val output = if (commands.size == 1) "generative-cli-ready\n" else payload
+            val output = "generative-cli-ready\n$payload"
             RemoteExecStream(ByteArrayInputStream(output.toByteArray()), ByteArrayOutputStream()) { released++ }
         }
-        assertEquals(2, commands.size)
-        assertTrue(commands[0].contains("serverside-generative/main/install.sh"))
-        assertTrue(commands[1].contains("exec \"\$cli\" pair --stdio --transport tcp"))
+        assertEquals(1, commands.size)
+        assertTrue(commands[0].contains("https://raw.githubusercontent.com/starfall-org/generative-server/main/install.sh"))
+        assertTrue(commands[0].contains("exec \"\$cli\" pair --stdio --transport tcp"))
+        assertTrue(commands[0].contains("SERVERSIDE_INSTALL_SERVICE=1"))
+        assertFalse(commands[0].contains(" version"))
         assertEquals("owner", paired.identity.clientId)
         assertEquals("server", paired.identity.serverId)
-        assertEquals(2, released)
+        assertEquals(1, released)
     }
 
     @Test fun failedCliSetupStopsBeforePairing() = runBlocking {
@@ -63,6 +66,19 @@ class GenerativeServerSshTransportTest {
             assertEquals("Generative CLI setup failed", failure.message)
         }
         assertEquals(1, opened)
+        assertEquals(1, released)
+    }
+
+    @Test fun failedPairingAfterCliSetupIsAProtocolError() = runBlocking {
+        var released = 0
+        try {
+            GenerativeServerSshTransport.pairUsing {
+                RemoteExecStream(ByteArrayInputStream("generative-cli-ready\n".toByteArray()), ByteArrayOutputStream()) { released++ }
+            }
+            fail("Pairing succeeded without a JSON response")
+        } catch (failure: GenerativeServerProtocolException) {
+            assertEquals("Invalid SSH pairing response", failure.message)
+        }
         assertEquals(1, released)
     }
 

@@ -65,6 +65,7 @@ internal enum class QuickActionsPage {
     FEATURE_TOOLS,
     MCP_CONNECTORS,
     CUSTOM_HTTP_TOOLS,
+    SERVER_TOOLS,
 }
 
 internal enum class ModelSheetPage {
@@ -107,6 +108,7 @@ internal class BottomSheetsLinkState {
         quickActionsPage = QuickActionsPage.MCP_CONNECTORS
     }
     fun openCustomHttpTools() { quickActionsPage = QuickActionsPage.CUSTOM_HTTP_TOOLS }
+    fun openServerTools() { quickActionsPage = QuickActionsPage.SERVER_TOOLS }
     fun backToQuickActions() { quickActionsPage = QuickActionsPage.ROOT }
     fun openFilesUnavailableDialog() { showFilesSheet = true }
     fun dismissAddMenu() { quickActionsPage = null }
@@ -153,7 +155,8 @@ internal fun BottomSheetsLink(
     onStartSummary: ((ConversationSummaryRequest) -> Boolean)? = null,
     temporaryChatId: String? = null,
     attachmentSessionKey: String? = null,
-    onAttachmentImportingChange: (Boolean) -> Unit = {}
+    onAttachmentImportingChange: (Boolean) -> Unit = {},
+    editingMessage: Boolean = false,
 ) {
     val customHttpControls = LocalToolControls.current
     val remoteQuickActions = LocalRemoteQuickActions.current
@@ -214,22 +217,27 @@ internal fun BottomSheetsLink(
     }
     // Keep the destination across activity recreation while the external camera is open.
     var pendingPhotoPath by rememberSaveable(temporaryChatId) { mutableStateOf<String?>(null) }
+    var pendingPhotoSessionKey by rememberSaveable { mutableStateOf<String?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { captured ->
         val photo = pendingPhotoPath?.let(::File)
+        val sameSession = pendingPhotoSessionKey == attachmentSessionKey
         pendingPhotoPath = null
-        if (captured && photo != null && photo.length() > 0L) {
+        pendingPhotoSessionKey = null
+        if (sameSession && captured && photo != null && photo.length() > 0L) {
             onAttachmentsChange((attachments + Uri.fromFile(photo).toString()).distinct())
         } else {
             photo?.delete()
-            if (captured) sheets.openFilesUnavailableDialog()
+            if (sameSession && captured) sheets.openFilesUnavailableDialog()
         }
     }
     val selectedModelScreenBurst = rememberThinkingColorBurst()
     val remoteMcpAvailable = remoteQuickActions?.mcpContent != null
-    LaunchedEffect(sheets.quickActionsPage, remoteQuickActions != null, remoteMcpAvailable) {
-        if (remoteQuickActions != null && when (sheets.quickActionsPage) {
-                QuickActionsPage.FEATURE_TOOLS, QuickActionsPage.CUSTOM_HTTP_TOOLS -> true
-                QuickActionsPage.MCP_CONNECTORS -> !remoteMcpAvailable
+    val serverToolsContent = remoteQuickActions?.serverToolsContent
+    LaunchedEffect(sheets.quickActionsPage, remoteQuickActions != null, remoteMcpAvailable, serverToolsContent != null) {
+        if (when (sheets.quickActionsPage) {
+                QuickActionsPage.FEATURE_TOOLS, QuickActionsPage.CUSTOM_HTTP_TOOLS -> remoteQuickActions != null
+                QuickActionsPage.MCP_CONNECTORS -> remoteQuickActions != null && !remoteMcpAvailable
+                QuickActionsPage.SERVER_TOOLS -> serverToolsContent == null
                 else -> false
             }
         ) sheets.backToQuickActions()
@@ -253,6 +261,10 @@ internal fun BottomSheetsLink(
                     null, QuickActionsPage.ROOT -> QuickActionsSheetContent(
                         showLocalActions = remoteQuickActions == null,
                         showMcpConnectors = remoteQuickActions == null || remoteMcpAvailable,
+                        showAttachments = remoteQuickActions == null || (remoteQuickActions.attachmentsAvailable && !editingMessage),
+                        onOpenServerTools = serverToolsContent?.let {
+                            { if (pageActive) sheets.openServerTools() }
+                        },
                         unavailableMessage = remoteQuickActions?.unavailableMessage ?: R.string.server_remote_unsupported,
                         onPickImage = {
                             if (!pageActive) return@QuickActionsSheetContent
@@ -284,6 +296,7 @@ internal fun BottomSheetsLink(
                                     } ?: ToolFiles.uploadStorageDirectory(context)
                                     val photo = File.createTempFile("capture_", ".jpg", directory)
                                     pendingPhotoPath = photo.absolutePath
+                                    pendingPhotoSessionKey = attachmentSessionKey
                                     cameraLauncher.launch(FileProvider.getUriForFile(
                                         context, "${context.packageName}.tool-files", photo
                                     ))
@@ -291,6 +304,7 @@ internal fun BottomSheetsLink(
                                     android.util.Log.w("QuickActions", "Unable to launch camera capture", error)
                                     pendingPhotoPath?.let { File(it).delete() }
                                     pendingPhotoPath = null
+                                    pendingPhotoSessionKey = null
                                     sheets.openFilesUnavailableDialog()
                                 }
                             }
@@ -344,6 +358,9 @@ internal fun BottomSheetsLink(
                             }
                         }
                     )
+                    QuickActionsPage.SERVER_TOOLS -> serverToolsContent?.invoke {
+                        if (pageActive) sheets.backToQuickActions()
+                    }
                     QuickActionsPage.MCP_CONNECTORS -> {
                         val onBack = { if (pageActive) sheets.backToQuickActions() }
                         val onDismiss = { if (pageActive) sheets.dismissAddMenu() }

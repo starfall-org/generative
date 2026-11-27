@@ -23,7 +23,9 @@ import org.starfall.generative.shared.state.upsert
 data class ServerConnectionProfile(val id: String, val name: String, val endpoint: String, val pin: String,
     val clientId: String, val serverId: String, val selected: Boolean,
     val transport: String = "http", val sshMachineId: String = "", val allowLocalProviders: Boolean = false,
-    val credentialRevision: Long = 0)
+    val credentialRevision: Long = 0) {
+    val isPaired: Boolean get() = transport != "ssh" || serverId.isNotEmpty()
+}
 
 data class StoredServerConnection(val profile: ServerConnectionProfile, val identity: PairedIdentity)
 internal class StoredOpenCodeConnection(val profile: ServerConnectionProfile, val credentials: OpenCodeCredentials)
@@ -58,6 +60,34 @@ class ServerConnectionRepository(db: AppDatabase) {
         }
         saveCredentials(ServerConnectionEntity(id, name.trim(), endpoint, pin, identity.clientId, identity.serverId,
             SecretCipher.encrypt(identity.secret), false, transport, sshMachineId, allowLocalProviders))
+    }
+
+    /** Save the SSH configuration before its first identity is available. */
+    internal suspend fun saveUnpairedSsh(id: String, name: String, endpoint: String, machineId: String,
+        allowLocalProviders: Boolean) {
+        require(id.isNotBlank() && name.isNotBlank() && machineId.isNotBlank())
+        val row = ServerConnectionEntity(id, name.trim(), endpoint, "", "", "", "", false, "ssh", machineId,
+            allowLocalProviders)
+        update({ records ->
+            require(records.none { it.id == id && it.profile().isPaired })
+            records.upsert(ConnectionRecord(row), ConnectionRecord::id)
+        }) { dao.put(row) }
+    }
+
+    internal suspend fun completeSshSetup(expected: ServerConnectionProfile, endpoint: String, machineId: String,
+        identity: PairedIdentity) {
+        require(identity.serverId.isNotBlank())
+        require(!expected.isPaired || identity.serverId == expected.serverId) {
+            "Different Generative Server; create a new connection"
+        }
+        val encryptedSecret = SecretCipher.encrypt(identity.secret)
+        update({ records ->
+            val previous = requireNotNull(records.find { it.id == expected.id })
+            require(previous.credentialRevision == expected.credentialRevision)
+            val row = previous.row.copy(endpoint = endpoint, pin = "", clientId = identity.clientId,
+                serverId = identity.serverId, encryptedSecret = encryptedSecret, transport = "ssh", sshMachineId = machineId)
+            records.upsert(ConnectionRecord(row, ++credentialRevision), ConnectionRecord::id)
+        }) { records -> dao.put(records.first { it.id == expected.id }.row) }
     }
     /** Store only the verified endpoint and encrypted credential, never a one-time pairing URL. */
     suspend fun saveOpenCode(id: String, name: String, endpoint: String, credentials: OpenCodeCredentials) {
@@ -97,7 +127,7 @@ class ServerConnectionRepository(db: AppDatabase) {
 
     suspend fun select(id: String) {
         update({ records ->
-            require(records.any { it.id == id })
+            require(records.any { it.id == id && it.profile().isPaired })
             records.map { it.copy(row = it.row.copy(selected = it.id == id)) }
         }) { dao.select(id) }
     }
@@ -108,6 +138,7 @@ class ServerConnectionRepository(db: AppDatabase) {
 
     suspend fun connection(id: String): StoredServerConnection {
         val record = requireNotNull(state.flow.first().find { it.id == id }) { "Connection not found" }
+        require(record.profile().isPaired) { "Connection has not been paired" }
         val row = record.row
         return StoredServerConnection(record.profile(),
             PairedIdentity(row.clientId, SecretCipher.decryptStrict(row.encryptedSecret), row.serverId))

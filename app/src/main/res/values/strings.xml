@@ -1394,6 +1394,7 @@
     <string name="server_connection_no_ssh_machine">Add an SSH server in Remote SSH first.</string>
     <string name="server_connection_ssh_hint">Uses the selected Remote SSH machine and installs the Generative CLI if needed.</string>
     <string name="server_connection_ssh_setup">Setting up Generative CLI over SSH…</string>
+    <string name="server_connection_ssh_pending">Setup incomplete. Open this connection and save to retry.</string>
     <string name="server_connection_ssh_setup_failed">Could not prepare the Generative CLI. Check that the remote machine runs Linux or macOS on x86-64 or ARM64, has curl, python3 and SHA-256 tools, and can reach GitHub.</string>
     <string name="server_connection_ssh_repair_hint">Saving will pair a new SSH identity. Its previous Generative Server chat history will not transfer.</string>
     <string name="server_connection_ssh_rename_hint">Keep the selected SSH machine unchanged to rename without pairing again.</string>
@@ -1423,6 +1424,12 @@
     <string name="server_remote_select">Select remote chat server</string>
     <string name="server_remote_offline">Remote server unavailable. Reconnect before sending.</string>
     <string name="server_remote_unsupported">This action is not available in remote chat.</string>
+    <string name="server_attachment_upload_failed">Couldn’t upload the attachments. Check the files and try again.</string>
+    <string name="server_tools_title">Server Tools</string>
+    <string name="server_tools_loading">Loading server tools…</string>
+    <string name="server_tools_empty">This server has no tools available.</string>
+    <string name="server_tools_unsupported">This server doesn’t provide a tool list.</string>
+    <string name="server_tools_load_failed">Couldn’t load server tools.</string>
     <string name="server_remote_opening_chat">Opening conversation…</string>
     <string name="server_remote_loading">Connecting to remote server…</string>
     <string name="server_remote_select_key">Select a server credential</string>

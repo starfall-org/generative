@@ -1075,6 +1075,7 @@
     <string name="server_connection_no_ssh_machine">Trước tiên hãy thêm máy chủ SSH trong Remote SSH.</string>
     <string name="server_connection_ssh_hint">Dùng máy Remote SSH đã chọn và cài đặt Generative CLI nếu cần.</string>
     <string name="server_connection_ssh_setup">Đang thiết lập Generative CLI qua SSH…</string>
+    <string name="server_connection_ssh_pending">Chưa thiết lập xong. Mở kết nối này rồi bấm Lưu để thử lại.</string>
     <string name="server_connection_ssh_setup_failed">Không thể thiết lập Generative CLI. Hãy kiểm tra máy từ xa chạy Linux hoặc macOS trên x86-64 hoặc ARM64, có curl, python3 và công cụ SHA-256, và có thể truy cập GitHub.</string>
     <string name="server_connection_ssh_repair_hint">Lưu sẽ ghép nối một danh tính SSH mới. Lịch sử trò chuyện của danh tính cũ trên Generative Server sẽ không được chuyển sang.</string>
     <string name="server_connection_ssh_rename_hint">Giữ nguyên máy SSH đã chọn để đổi tên mà không cần ghép nối lại.</string>
@@ -1103,6 +1104,12 @@
     <string name="server_remote_select">Chọn máy chủ trò chuyện từ xa</string>
     <string name="server_remote_offline">Không thể kết nối máy chủ từ xa. Hãy kết nối lại trước khi gửi.</string>
     <string name="server_remote_unsupported">Thao tác này chưa khả dụng trong cuộc trò chuyện từ xa.</string>
+    <string name="server_attachment_upload_failed">Không tải được tệp đính kèm lên máy chủ. Hãy kiểm tra tệp và thử lại.</string>
+    <string name="server_tools_title">Công cụ máy chủ</string>
+    <string name="server_tools_loading">Đang tải danh sách công cụ máy chủ…</string>
+    <string name="server_tools_empty">Máy chủ này chưa có công cụ nào khả dụng.</string>
+    <string name="server_tools_unsupported">Máy chủ này không cung cấp danh sách công cụ.</string>
+    <string name="server_tools_load_failed">Không tải được danh sách công cụ máy chủ.</string>
     <string name="server_remote_opening_chat">Đang mở cuộc trò chuyện…</string>
     <string name="server_remote_loading">Đang kết nối máy chủ từ xa…</string>
     <string name="server_remote_select_key">Chọn thông tin xác thực trên máy chủ</string>

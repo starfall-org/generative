@@ -14,13 +14,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
-import org.starfall.generative.features.serverconnection.logic.needsServerCredentials
-import org.starfall.generative.integrations.generativeserver.GenerativeCliSetupException
+import org.starfall.generative.features.serverconnection.model.SshSetupStatus
 import org.starfall.generative.shared.ui.icons.Icons
 import org.starfall.generative.shared.ui.icons.SharedIcon
 import org.starfall.generative.shared.ui.lists.ItemCard
@@ -38,7 +36,8 @@ private class ConnectionEditorPage(
 @Composable
 fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) -> Unit,
     onMcp: (String) -> Unit, onBack: () -> Unit) {
-    val profiles by service.profiles.collectAsState(initial = emptyList())
+    val profiles by service.runtimeProfiles.collectAsState(initial = emptyList())
+    val sshSetups by service.sshSetups.collectAsState()
     val machineState = service.sshMachines?.collectAsState()
     val sshMachines = machineState?.value?.machines.orEmpty().filter { it.type == RemoteMachineType.SSH }
     var editorPage by remember { mutableStateOf<ConnectionEditorPage?>(null) }
@@ -47,50 +46,36 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
     var testing by remember { mutableStateOf<ServerConnectionProfile?>(null) }
     var result by remember { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var sshSetup by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
-    val closeEditor = {
-        sshSetup?.cancel()
-        sshSetup = null
-        editorPage = null
-    }
+    val closeEditor = { editorPage = null }
     fun launchOperation(
         failureMessage: Int = R.string.server_connection_failed,
         successMessage: Int = R.string.server_connection_success,
         block: suspend () -> Unit,
-    ): Job? {
-        if (busy) return null
+    ) {
+        if (busy) return
         busy = true
-        return scope.launch {
+        scope.launch {
             result = null
             try { block(); result = successMessage }
             catch (e: CancellationException) { throw e }
-            catch (_: GenerativeCliSetupException) { result = R.string.server_connection_ssh_setup_failed }
             catch (_: Exception) { result = failureMessage }
-            finally {
-                busy = false
-                sshSetup = null
-            }
+            finally { busy = false }
         }
     }
     ScreenDestination(page = editorPage, onClosed = closeEditor) { page ->
         if (page == null) return@ScreenDestination
         ServerConnectionEditor(page.profile, sshMachines, busy, page.repairing, onBack = closeEditor,
-            settingUpSsh = busy && sshSetup != null,
             onSave = { draft ->
                 val failure = if (draft.transport == "opencode") R.string.server_connection_opencode_failed
                     else R.string.server_connection_failed
-                val job = launchOperation(failure) {
+                launchOperation(failure) {
                     service.saveConnection(draft, page.profile, page.repairing)
                     if (editorPage === page) editorPage = null
                 }
-                if (job != null && draft.transport == "ssh" && draft.needsServerCredentials(page.profile, page.repairing)) {
-                    sshSetup = job
-                }
             },
             error = result?.takeIf {
-                it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed ||
-                    it == R.string.server_connection_ssh_setup_failed
+                it == R.string.server_connection_failed || it == R.string.server_connection_opencode_failed
             },
             catalogContent = {
                 page.profile?.let { profile ->
@@ -127,30 +112,47 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
                 FadingLazyVerticalGrid(columns = GridCells.Fixed(if (gridMode) 2 else 1),
                     verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(matching, key = { it.id }) { profile ->
-                        ItemCard(isGrid = gridMode, onClick = { result = null; editorPage = ConnectionEditorPage(profile) },
+                        val status = sshSetups[profile.id]
+                        val settingUp = status == SshSetupStatus.RUNNING
+                        val setupMessage = when (status) {
+                            SshSetupStatus.RUNNING -> R.string.server_connection_ssh_setup
+                            SshSetupStatus.INSTALL_FAILED -> R.string.server_connection_ssh_setup_failed
+                            SshSetupStatus.PAIRING_FAILED -> R.string.server_connection_failed
+                            null -> if (profile.isPaired) null else R.string.server_connection_ssh_pending
+                        }
+                        ItemCard(isGrid = gridMode, onClick = if (settingUp) null else {
+                            {
+                                result = null
+                                editorPage = ConnectionEditorPage(profile)
+                            }
+                        },
                             icon = { SharedIcon(Icons.Outlined.Computer, null) }, content = {
                                 Column { Text(profile.name); Text("${profile.transport.uppercase()} · ${profile.endpoint}", style = MaterialTheme.typography.bodySmall)
-                                    if (profile.selected) Text(stringResource(R.string.server_connection_selected), style = MaterialTheme.typography.labelSmall) }
+                                    if (profile.selected) Text(stringResource(R.string.server_connection_selected), style = MaterialTheme.typography.labelSmall)
+                                    if (setupMessage != null) Text(stringResource(setupMessage), style = MaterialTheme.typography.bodySmall)
+                                }
                             }, actions = {
                                 var menu by remember { mutableStateOf(false) }
-                                IconButton(onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options)) }
-                                org.starfall.generative.shared.ui.menus.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.model_providers)) }, onClick = { menu = false; onProviders(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Computer, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.mcp)) }, onClick = { menu = false; onMcp(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Mcp, null) })
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.server_connection_test)) },
-                                        enabled = !busy,
-                                        onClick = {
-                                            menu = false
-                                            testing = profile
-                                            launchOperation(R.string.server_connection_test_failed, R.string.server_connection_test_success) {
-                                                service.test(profile.id)
-                                            }
-                                        },
-                                        leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
-                                    )
-                                    org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; result = null; editorPage = ConnectionEditorPage(profile, repairing = true) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
-                                    if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
+                                IconButton(enabled = !settingUp, onClick = { menu = true }) { SharedIcon(Icons.Default.MoreVert, stringResource(R.string.common_more_options)) }
+                                org.starfall.generative.shared.ui.menus.DropdownMenu(expanded = menu && !settingUp, onDismissRequest = { menu = false }) {
+                                    if (profile.isPaired) {
+                                        org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.model_providers)) }, onClick = { menu = false; onProviders(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Computer, null) })
+                                        org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.mcp)) }, onClick = { menu = false; onMcp(profile.id) }, leadingIcon = { SharedIcon(Icons.Outlined.Mcp, null) })
+                                        org.starfall.generative.shared.ui.menus.DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.server_connection_test)) },
+                                            enabled = !busy,
+                                            onClick = {
+                                                menu = false
+                                                testing = profile
+                                                launchOperation(R.string.server_connection_test_failed, R.string.server_connection_test_success) {
+                                                    service.test(profile.id)
+                                                }
+                                            },
+                                            leadingIcon = { SharedIcon(Icons.Outlined.Refresh, null) },
+                                        )
+                                        org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_repair)) }, onClick = { menu = false; result = null; editorPage = ConnectionEditorPage(profile, repairing = true) }, leadingIcon = { SharedIcon(Icons.Outlined.Edit, null) })
+                                        if (profile.transport != "opencode") org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.server_connection_revoke)) }, onClick = { menu = false; revoking = profile }, leadingIcon = { SharedIcon(Icons.Outlined.LinkOff, null) })
+                                    }
                                     org.starfall.generative.shared.ui.menus.DropdownMenuItem(text = { Text(stringResource(R.string.common_delete)) }, onClick = { menu = false; deleting = profile }, leadingIcon = { SharedIcon(Icons.Outlined.Delete, null) })
                                 }
                             })

@@ -64,7 +64,6 @@ internal fun ServerConnectionEditor(
     onBack: () -> Unit,
     onSave: (ServerConnectionDraft) -> Unit,
     error: Int?,
-    settingUpSsh: Boolean,
     catalogContent: (@Composable () -> Unit)? = null,
 ) {
     val savedOpenCode = profile?.takeIf { it.transport == "opencode" }
@@ -233,10 +232,7 @@ internal fun ServerConnectionEditor(
                         )
                         ConnectionHint(stringResource(if (machines.isEmpty()) R.string.server_connection_no_ssh_machine
                             else R.string.server_connection_ssh_hint))
-                        if (settingUpSsh) {
-                            ConnectionHint(stringResource(R.string.server_connection_ssh_setup))
-                        }
-                        if (profile?.transport == "ssh" && machines.isNotEmpty()) {
+                        if (profile?.transport == "ssh" && profile.isPaired && machines.isNotEmpty()) {
                             ConnectionHint(stringResource(if (repairing) R.string.server_connection_ssh_repair_hint
                                 else R.string.server_connection_ssh_rename_hint))
                         }

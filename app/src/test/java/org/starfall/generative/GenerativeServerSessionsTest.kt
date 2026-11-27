@@ -1,16 +1,60 @@
 package org.starfall.generative
 
+import java.nio.file.Files
+import java.util.Base64
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.junit.Assert.*
 import org.junit.Test
 import org.starfall.generative.integrations.generativeserver.*
 
 class GenerativeServerSessionsTest {
+    @Test fun remoteFileChunksAndDiscoveredToolsUseTheVersionedContract() = runBlocking {
+        val calls = mutableListOf<RpcRequest>()
+        val wire = object : GenerativeServerWire {
+            override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)
+            override fun events(token: AccessToken, sessionId: String, after: Long) = emptyList<SessionEvent>()
+            override fun rpc(token: AccessToken, request: RpcRequest): RpcReply {
+                calls += request
+                val payload = when (request.op) {
+                    "attachment.upload_chunk" -> {
+                        val data = requireNotNull(request.data)
+                        val received = data.getValue("offset").jsonPrimitive.long +
+                            Base64.getDecoder().decode(data.getValue("data_base64").jsonPrimitive.content).size
+                        """{"upload_id":${data.getValue("upload_id")},"received_bytes":$received}"""
+                    }
+                    "tools.list" -> """{"version":1,"tools":[{"id":"dynamic-42","name":"Dynamic tool","description":"Provided by server"}]}"""
+                    else -> "{}"
+                }
+                return RpcReply(request.id, true, Json.parseToJsonElement(payload))
+            }
+        }
+        val api = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
+        val file = Files.createTempFile("server-attachment", ".txt").toFile()
+        try {
+            val original = ByteArray((256 shl 10) + 3) { (it % 251).toByte() }
+            file.writeBytes(original)
+            val id = api.uploadAttachment(ServerAttachmentSource(file, "text/plain", file.length()))
+            api.run("chat", "run", "", listOf(id))
+            assertEquals(listOf("attachment.upload_chunk", "attachment.upload_chunk", "session.run"), calls.map { it.op })
+            val chunks = calls.take(2).map { requireNotNull(it.data) }
+            assertEquals(listOf(0L, (256L shl 10)), chunks.map { it.getValue("offset").jsonPrimitive.long })
+            assertTrue(chunks.all { it.getValue("upload_id").jsonPrimitive.content == id })
+            assertTrue(chunks.all { it.getValue("name").jsonPrimitive.content == file.name })
+            assertArrayEquals(original, chunks.map { Base64.getDecoder().decode(it.getValue("data_base64").jsonPrimitive.content) }
+                .reduce { first, second -> first + second })
+            assertEquals(id, calls.last().data!!.getValue("attachment_ids").jsonArray.single().jsonPrimitive.content)
+            assertEquals(listOf(ServerTool("dynamic-42", "Dynamic tool", "Provided by server")), api.listTools())
+        } finally {
+            file.delete()
+        }
+    }
+
     private class Wire : GenerativeServerWire {
         val requests = mutableListOf<RpcRequest>()
         override fun authenticate(identity: PairedIdentity) = AccessToken("bearer", 900)

@@ -27,6 +27,8 @@ import org.starfall.generative.shared.ui.layout.prominentContainerColor
 internal class RemoteQuickActions(
     val mcpContent: (@Composable (onBack: () -> Unit, onDismiss: () -> Unit) -> Unit)? = null,
     val unavailableMessage: Int = R.string.server_remote_unsupported,
+    val attachmentsAvailable: Boolean = false,
+    val serverToolsContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
 )
 
 internal val LocalRemoteQuickActions = staticCompositionLocalOf<RemoteQuickActions?> { null }
@@ -77,6 +79,8 @@ internal fun QuickActionsSheetContent(
     onOpenCustomHttpTools: () -> Unit = {},
     showLocalActions: Boolean = true,
     showMcpConnectors: Boolean = true,
+    showAttachments: Boolean = true,
+    onOpenServerTools: (() -> Unit)? = null,
     unavailableMessage: Int = R.string.server_remote_unsupported,
 ) {
     val scrollState = rememberScrollState()
@@ -88,10 +92,10 @@ internal fun QuickActionsSheetContent(
             .padding(horizontal = 16.dp)
             .padding(bottom = 28.dp)
     ) {
-        if (!showLocalActions && !showMcpConnectors) {
+        if (!showAttachments && !showLocalActions && !showMcpConnectors && onOpenServerTools == null) {
             Text(stringResource(unavailableMessage), Modifier.padding(vertical = 16.dp))
         }
-        if (showLocalActions) {
+        if (showAttachments) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -126,7 +130,8 @@ internal fun QuickActionsSheetContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
+        }
+        if (showLocalActions) {
             Row(
                 modifier = Modifier.fillMaxWidth().testTag("quick-actions-generation-row"),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -154,6 +159,13 @@ internal fun QuickActionsSheetContent(
                 icon = Icons.Outlined.Build,
                 title = stringResource(R.string.common_feature_tools),
                 onClick = onOpenFeatureTools
+            )
+        }
+        if (onOpenServerTools != null) {
+            AddActionRow(
+                icon = Icons.Outlined.Build,
+                title = stringResource(R.string.server_tools_title),
+                onClick = onOpenServerTools
             )
         }
         if (showMcpConnectors) {

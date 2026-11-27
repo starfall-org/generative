@@ -122,7 +122,7 @@ class QuickActionsSheetTransitionTest {
         }
     }
 
-    private fun capturePhoto(success: Boolean, temporary: Boolean = false) {
+    private fun capturePhoto(success: Boolean, temporary: Boolean = false, remote: Boolean = false) {
         val registry = CameraRegistry()
         var attachments = listOf("content://existing/image")
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -133,7 +133,10 @@ class QuickActionsSheetTransitionTest {
             java.io.File(context.cacheDir, "temporary_chat_media/$temporaryChatId")
         } else ToolFiles.uploadStorageDirectory(context)
         compose.setContent {
-            CompositionLocalProvider(LocalActivityResultRegistryOwner provides registry) {
+            CompositionLocalProvider(
+                LocalActivityResultRegistryOwner provides registry,
+                LocalRemoteQuickActions provides if (remote) RemoteQuickActions(attachmentsAvailable = true) else null,
+            ) {
                 LinkedQuickActionsHost(ToolControls(settings = ToolSettings()), attachments, temporaryChatId) { attachments = it }
             }
         }
@@ -170,6 +173,9 @@ class QuickActionsSheetTransitionTest {
 
     @Test
     fun cameraAttachesCapturedPhotoAlongsideExistingAttachments() = capturePhoto(success = true)
+
+    @Test
+    fun serverCameraUsesTheSameDraftAttachmentFlow() = capturePhoto(success = true, remote = true)
 
     @Test
     fun canceledCameraDeletesCaptureWithoutChangingAttachments() = capturePhoto(success = false)
@@ -278,6 +284,32 @@ class QuickActionsSheetTransitionTest {
         compose.onNodeWithText("MCP Connectors").performClick()
         compose.onNodeWithText("Runtime connector").assertIsDisplayed()
         compose.onNodeWithText("Local connector").assertDoesNotExist()
+    }
+
+    @Test
+    fun serverShowsTheThreeAttachmentActionsAndOpensItsOwnToolList() {
+        val runtime = RemoteQuickActions(
+            attachmentsAvailable = true,
+            serverToolsContent = { onBack ->
+                org.starfall.generative.features.home.shared.ui.ServerToolsSheetContent(
+                    loadTools = { listOf(org.starfall.generative.integrations.generativeserver.ServerTool(
+                        "server-tool", "Runtime tool", "A tool supplied by this server"
+                    )) },
+                    onBack = onBack,
+                )
+            }
+        )
+        compose.setContent {
+            CompositionLocalProvider(LocalRemoteQuickActions provides runtime) {
+                LinkedQuickActionsHost(ToolControls())
+            }
+        }
+        compose.onNodeWithText("Photos").assertIsDisplayed()
+        compose.onNodeWithText("Camera").assertIsDisplayed()
+        compose.onNodeWithText("Files").assertIsDisplayed()
+        compose.onNodeWithText("Server Tools").performScrollTo().performClick()
+        compose.onNodeWithText("Runtime tool").assertIsDisplayed()
+        compose.onNodeWithText("A tool supplied by this server").assertIsDisplayed()
     }
 
     @Test

@@ -3,6 +3,7 @@ package org.starfall.generative.integrations.generativeserver
 import java.util.UUID
 import java.util.Base64
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
@@ -21,6 +22,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.put
@@ -36,6 +38,8 @@ data class ServerChatCapabilities(
     val reasoningHistory: Boolean = false,
     val mobileProviders: Boolean = false,
     val providerOptions: ServerProviderOptions = ServerProviderOptions(),
+    val attachmentUpload: ServerAttachmentUploadLimits? = null,
+    val serverTools: Boolean = false,
 )
 
 /** Session RPCs preserve the complete server snapshot, including unrecognised fields. */
@@ -79,6 +83,12 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
             reasoningHistory = features["reasoning_history"]?.jsonPrimitive?.booleanOrNull == true,
             mobileProviders = features["runtime_sources"]?.jsonArray?.any { it.jsonPrimitive.content == "mobile_ephemeral" } == true,
             providerOptions = ServerProviderOptions.fromNegotiation(negotiation),
+            attachmentUpload = ServerAttachmentUploadLimits.negotiate(
+                features["attachments"]?.jsonPrimitive?.booleanOrNull == true,
+                operations,
+                negotiation?.get("attachment_upload"),
+            ),
+            serverTools = "tools.list" in operations,
         )
     }
 
@@ -153,9 +163,46 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
     internal suspend fun configureRuntime(id: String, runtime: JsonObject) {
         request("session.configure", id, buildJsonObject { put("runtime", runtime) })
     }
-    suspend fun run(id: String, requestId: String, content: String) {
-        require(requestId.isNotBlank() && content.isNotBlank())
-        request("session.run", id, buildJsonObject { put("request_id", requestId); put("content", content) })
+    suspend fun run(id: String, requestId: String, content: String, attachmentIds: List<String> = emptyList()) {
+        require(requestId.isNotBlank() && (content.isNotBlank() || attachmentIds.isNotEmpty()))
+        request("session.run", id, buildJsonObject {
+            put("request_id", requestId)
+            put("content", content)
+            if (attachmentIds.isNotEmpty()) put("attachment_ids", JsonArray(attachmentIds.map(::JsonPrimitive)))
+        })
+    }
+
+    internal suspend fun uploadAttachment(source: ServerAttachmentSource): String = withContext(Dispatchers.IO) {
+        val id = UUID.randomUUID().toString()
+        val file = source.file
+        val size = source.sizeBytes
+        val buffer = ByteArray(CHUNK_SIZE)
+        file.inputStream().buffered().use { input ->
+            var offset = 0L
+            do {
+                val count = minOf(buffer.size.toLong(), size - offset).toInt()
+                var read = 0
+                while (read < count) {
+                    val amount = input.read(buffer, read, count - read)
+                    if (amount < 0) throw IOException("Attachment changed during upload")
+                    read += amount
+                }
+                if (offset + count == size && input.read() != -1) throw IOException("Attachment changed during upload")
+                val reply = request("attachment.upload_chunk", data = buildJsonObject {
+                    put("upload_id", id)
+                    put("name", file.name)
+                    put("mime_type", source.mimeType)
+                    put("size_bytes", size)
+                    put("offset", offset)
+                    put("data_base64", Base64.getEncoder().encodeToString(buffer.copyOf(count)))
+                }) as? JsonObject
+                offset += count
+                if ((reply?.get("upload_id") as? JsonPrimitive)?.content != id ||
+                    (reply?.get("received_bytes") as? JsonPrimitive)?.longOrNull != offset
+                ) throw GenerativeServerProtocolException("Invalid attachment upload acknowledgement")
+            } while (offset < size)
+        }
+        id
     }
     suspend fun cancel(id: String, requestId: String) {
         request("session.cancel", id, buildJsonObject { put("request_id", requestId) })
@@ -233,6 +280,8 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
     } catch (e: GenerativeServerRpcException) {
         if (e.rpcError.code == "unsupported_feature") null else throw e
     }
+
+    internal suspend fun listTools(): List<ServerTool> = decodeServerTools(request("tools.list"))
 
     suspend fun catalog(): ProviderCatalog {
         val catalog = GenerativeServerCodec.json.decodeFromString<ProviderCatalog>(request("provider.catalog").toString())

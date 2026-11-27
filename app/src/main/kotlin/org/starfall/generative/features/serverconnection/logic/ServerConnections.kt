@@ -1,7 +1,17 @@
 package org.starfall.generative.features.serverconnection.logic
 
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.starfall.generative.database.repositories.ModelRepository
@@ -14,6 +24,8 @@ import org.starfall.generative.shared.model.McpAuthMethod
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.database.repositories.ServerConnectionRepository
 import org.starfall.generative.features.serverconnection.model.ServerConnectionDraft
+import org.starfall.generative.features.serverconnection.model.SshSetupStatus
+import org.starfall.generative.integrations.generativeserver.GenerativeCliSetupException
 import org.starfall.generative.integrations.generativeserver.RemoteConversationCache
 import org.starfall.generative.integrations.generativeserver.GenerativeServerClient
 import org.starfall.generative.integrations.generativeserver.GenerativeServerHttpTransport
@@ -37,6 +49,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.RemoteMachineType
+import org.starfall.generative.shared.model.RemoteMachine
 
 class ServerConnections(val repository: ServerConnectionRepository, private val clientFactory: suspend (String) -> GenerativeServerClient,
     private val cache: RemoteConversationCache? = null,
@@ -44,8 +57,13 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     private val localModels: ModelRepository? = null,
     private val localMcp: McpRepository? = null) {
     val sshMachines = remote?.state
-    val profiles = repository.profiles
+    internal val runtimeProfiles = repository.profiles
+    val profiles = runtimeProfiles.map { it.filter(ServerConnectionProfile::isPaired) }
     private val providerConfigWrites = Mutex()
+    private val sshSetupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val sshSetupLock = Mutex()
+    private val mutableSshSetups = MutableStateFlow<Map<String, SshSetupStatus>>(emptyMap())
+    internal val sshSetups = mutableSshSetups.asStateFlow()
 
     internal suspend fun openCode(id: String): OpenCodeApi {
         val connection = requireNotNull(repository.openCodeConnection(id))
@@ -219,28 +237,82 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
     }
 
     internal suspend fun saveConnection(draft: ServerConnectionDraft, profile: ServerConnectionProfile?, repairing: Boolean) {
+        require(profile == null || sshSetups.value[profile.id] != SshSetupStatus.RUNNING)
         val current = profile?.let { requireNotNull(repository.profile(it.id)) }
         val needsCredentials = draft.needsServerCredentials(current, repairing)
         when {
+            draft.transport == "ssh" && needsCredentials -> saveAndSetUpSsh(draft, current)
             draft.transport == "opencode" && needsCredentials ->
                 saveOpenCode(current, draft.name, draft.endpoint, draft.username, draft.password, draft.authUrl)
             current == null ->
                 pair(draft.name, draft.invitation, draft.transport, draft.sshMachineId, draft.allowLocalProviders)
-            needsCredentials ->
+            needsCredentials -> {
                 rePair(current, draft.name, draft.invitation, draft.transport, draft.sshMachineId, draft.allowLocalProviders)
+                mutableSshSetups.update { it - current.id }
+            }
             else -> rename(current, draft.name, draft.allowLocalProviders)
         }
     }
+
+    private suspend fun saveAndSetUpSsh(draft: ServerConnectionDraft, current: ServerConnectionProfile?) {
+        val id = current?.id ?: UUID.randomUUID().toString()
+        synchronized(mutableSshSetups) {
+            require(mutableSshSetups.value[id] != SshSetupStatus.RUNNING) { "SSH setup already running" }
+            mutableSshSetups.update { it + (id to SshSetupStatus.RUNNING) }
+        }
+        val saved = CompletableDeferred<Unit>()
+        sshSetupScope.launch {
+            try {
+                val remote = requireNotNull(remote)
+                val machine = sshMachine(remote, draft.sshMachineId)
+                if (current?.isPaired == true) {
+                    // Keep the active identity and route until the replacement has been verified.
+                    rename(current, draft.name, draft.allowLocalProviders)
+                } else {
+                    repository.saveUnpairedSsh(id, draft.name, machine.sshEndpoint(), machine.id,
+                        draft.allowLocalProviders)
+                }
+                val expected = requireNotNull(repository.profile(id))
+                saved.complete(Unit)
+
+                sshSetupLock.withLock {
+                    val paired = GenerativeServerSshTransport.pair(remote, machine.id)
+                    repository.completeSshSetup(expected, machine.sshEndpoint(), machine.id, paired.identity)
+                    if (current?.isPaired == true) clearCachedConversations(id)
+                }
+                mutableSshSetups.update { it - id }
+            } catch (cancelled: CancellationException) {
+                mutableSshSetups.update { it - id }
+                saved.cancel(cancelled)
+                throw cancelled
+            } catch (failure: Exception) {
+                if (saved.isCompleted) {
+                    val status = if (failure is GenerativeCliSetupException) SshSetupStatus.INSTALL_FAILED
+                        else SshSetupStatus.PAIRING_FAILED
+                    mutableSshSetups.update { it + (id to status) }
+                } else {
+                    mutableSshSetups.update { it - id }
+                    saved.completeExceptionally(failure)
+                }
+            }
+        }
+        saved.await()
+    }
+
+    private suspend fun sshMachine(remote: RemoteMachineService, id: String): RemoteMachine =
+        requireNotNull(remote.store.also { it.awaitInitialized() }.state.value.machines
+            .firstOrNull { it.id == id && it.type == RemoteMachineType.SSH }) { "Select a saved SSH machine" }
+
+    private fun RemoteMachine.sshEndpoint() = "ssh://${username}@${host}:${port}"
 
     suspend fun pair(name: String, url: String, transport: String = "http", sshMachineId: String = "", allowLocalProviders: Boolean = false) {
         require(name.isNotBlank())
         val id = UUID.randomUUID().toString()
         if (transport == "ssh") {
-            val machine = requireNotNull(remote).store.also { it.awaitInitialized() }.state.value.machines
-                .firstOrNull { it.id == sshMachineId && it.type == RemoteMachineType.SSH }
-                ?: error("Select a saved SSH machine")
+            val remote = requireNotNull(remote)
+            val machine = sshMachine(remote, sshMachineId)
             val identity = GenerativeServerSshTransport.pair(remote, machine.id)
-            repository.save(id, name, "ssh://${machine.username}@${machine.host}:${machine.port}",
+            repository.save(id, name, machine.sshEndpoint(),
                 "", identity.identity, "ssh", machine.id, allowLocalProviders)
         } else {
             require(transport == "http")
@@ -254,21 +326,24 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         transport: String = "http", sshMachineId: String = "", allowLocalProviders: Boolean = profile.allowLocalProviders) {
         require(name.isNotBlank())
         if (transport == "ssh") {
-            val machine = requireNotNull(remote).store.also { it.awaitInitialized() }.state.value.machines
-                .firstOrNull { it.id == sshMachineId && it.type == RemoteMachineType.SSH }
-                ?: error("Selected SSH machine is no longer available")
+            val remote = requireNotNull(remote)
+            val machine = sshMachine(remote, sshMachineId)
             val paired = GenerativeServerSshTransport.pair(remote, machine.id)
-            require(paired.identity.serverId == profile.serverId) { "Different Generative Server; create a new connection" }
-            repository.save(profile.id, name, "ssh://${machine.username}@${machine.host}:${machine.port}",
+            require(!profile.isPaired || paired.identity.serverId == profile.serverId) { "Different Generative Server; create a new connection" }
+            repository.save(profile.id, name, machine.sshEndpoint(),
                 "", paired.identity, "ssh", machine.id, allowLocalProviders)
         } else {
             require(transport == "http")
             val invitation = GenerativeServerInvitation.parse(url)
             val identity = GenerativeServerHttpTransport(invitation).pairAsync()
-            require(identity.serverId == profile.serverId) { "Invitation belongs to another server; add a separate connection" }
+            require(!profile.isPaired || identity.serverId == profile.serverId) { "Invitation belongs to another server; add a separate connection" }
             repository.save(profile.id, name, invitation.endpoint.toString(), invitation.pin, identity, allowLocalProviders = allowLocalProviders)
         }
-        try { cache?.removeProfile(profile.id) } catch (_: Exception) { /* A cache miss cannot undo pairing. */ }
+        clearCachedConversations(profile.id)
+    }
+
+    private suspend fun clearCachedConversations(id: String) {
+        try { cache?.removeProfile(id) } catch (_: Exception) { /* A cache miss cannot undo pairing. */ }
     }
     /** OpenCode uses its own HTTP API; no Generative Server command is invoked. */
     suspend fun saveOpenCode(profile: ServerConnectionProfile?, name: String, endpoint: String,
@@ -297,7 +372,9 @@ class ServerConnections(val repository: ServerConnectionRepository, private val 
         delete(id)
     }
     suspend fun delete(id: String) {
+        require(sshSetups.value[id] != SshSetupStatus.RUNNING)
         repository.delete(id)
+        mutableSshSetups.update { it - id }
         try { cache?.removeProfile(id) } catch (_: Exception) { /* A cache miss cannot undo deletion. */ }
     }
     suspend fun test(id: String) {
@@ -328,7 +405,7 @@ internal fun ServerConnectionDraft.needsServerCredentials(profile: ServerConnect
     if (profile == null || transport != profile.transport) return true
     return when (transport) {
         "http" -> invitation.isNotBlank()
-        "ssh" -> repairing || sshMachineId != profile.sshMachineId
+        "ssh" -> !profile.isPaired || repairing || sshMachineId != profile.sshMachineId
         "opencode" -> repairing || password.isNotEmpty() || authUrl.isNotBlank() ||
             username != profile.clientId || endpoint != profile.endpoint
         else -> false
