@@ -13,6 +13,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import org.starfall.generative.R
+import org.starfall.generative.integrations.generativeserver.GenerativeServerRpcException
 import org.starfall.generative.shared.model.McpInfo
 import org.starfall.generative.shared.model.ToolSettings
 import org.starfall.generative.shared.model.provider.ModelProvider
@@ -25,7 +26,7 @@ internal class ServerCatalog(
     val openCode: Boolean,
     val insecure: Boolean,
     private val scope: CoroutineScope,
-    private val showMessage: (Int) -> Unit,
+    private val showMessage: (Int, String?) -> Unit,
 ) {
     private val operations = ServerCatalogOperations(service, connectionId, openCode, directory)
     private var items by mutableStateOf(emptyList<ServerInventoryItem>())
@@ -59,8 +60,8 @@ internal class ServerCatalog(
             items = if (providers) service.providers(connectionId) else service.mcpServers(connectionId, directory).orEmpty()
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            showMessage(R.string.server_inventory_failed)
+        } catch (failure: Exception) {
+            showMessage(R.string.server_inventory_failed, (failure as? GenerativeServerRpcException)?.rpcError?.diagnostic)
         }
     }
 
@@ -90,7 +91,7 @@ internal class ServerCatalog(
     ) {
         mutate(R.string.server_provider_config_failed) {
             val saved = operations.saveProvider(page, draft, keyAnswers())
-            if (!saved.reloaded) showMessage(R.string.server_provider_reload_failed)
+            if (!saved.reloaded) showMessage(R.string.server_provider_reload_failed, null)
             if (saved.updateDraft) rememberProviderDraft(draft)
             if (saved.closeEditor && providerPage === page) closeProvider()
         }
@@ -109,7 +110,7 @@ internal class ServerCatalog(
         val page = providerPage
         mutate(R.string.server_provider_config_failed, refresh = false) {
             val reloaded = operations.deleteProvider(id, page) ?: return@mutate
-            if (!reloaded) showMessage(R.string.server_provider_reload_failed)
+            if (!reloaded) showMessage(R.string.server_provider_reload_failed, null)
             reload++
             providerDrafts.remove(id)
             if (providerPage?.provider?.id == id) closeProvider()
@@ -154,7 +155,7 @@ internal class ServerCatalog(
     fun saveMcp(page: ServerCatalogOperations.McpEdit, draft: McpInfo) {
         mutate(R.string.server_mcp_operation_failed) {
             val saved = operations.saveMcp(page, draft)
-            if (!saved.reloaded) showMessage(R.string.server_mcp_reload_failed)
+            if (!saved.reloaded) showMessage(R.string.server_mcp_reload_failed, null)
             if (saved.draft != null) mcpDrafts[saved.draft.id] = saved.draft
             else mcpDrafts.remove(page.server.id)
             if (mcpPage === page) closeMcp()
@@ -180,8 +181,8 @@ internal class ServerCatalog(
                 operation()
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                showMessage(error)
+            } catch (failure: Exception) {
+                showMessage(error, (failure as? GenerativeServerRpcException)?.rpcError?.diagnostic)
             } finally {
                 busy = false
                 if (refresh) reload++

@@ -191,14 +191,7 @@ internal class OpenCodeWorkspace(
                     if (turn.messages.any { it.id == prompt }) {
                         state.update { current ->
                             val active = current.conversation?.takeIf { it.id == session.id } ?: return@update current
-                            val visibleById = active.messages.associateBy { it.id }
-                            val seen = turn.messages.mapTo(hashSetOf()) { it.id }
-                            val messages = turn.messages.map { stored ->
-                                val visible = visibleById[stored.id]
-                                if (stored.role == ChatRole.MODEL && visible != null) {
-                                    mergeStreamingReply(stored, visible)
-                                } else stored
-                            } + active.messages.filter { it.id !in seen }
+                            val messages = mergeHistory(turn.messages, active.messages)
                             current.copy(conversation = active.copy(
                                 messages = messages,
                                 structuralRevision = active.structuralRevision +
@@ -213,15 +206,32 @@ internal class OpenCodeWorkspace(
             }
             events.cancelAndJoin()
             if (completed != null) {
-                // The terminal history already contains this turn. Read metadata separately
-                // so a lagging second history response cannot erase the completed reply.
-                val active = state.value.conversation ?: session
-                publish(active.copy(messages = completed.messages, structuralRevision = active.structuralRevision + 1))
+                // An idle record confirms execution ended, not that history includes every SSE reply.
+                val active = state.value.conversation?.takeIf { it.id == session.id } ?: return@coroutineScope
+                var messages = mergeHistory(completed.messages, active.messages)
+                val revision = active.structuralRevision + 1
+                publish(active.copy(messages = messages, structuralRevision = revision))
+                if (messages != completed.messages) {
+                    // Give a lagging history one bounded chance to catch up. Keep known content
+                    // if the read fails or the server still has not caught up.
+                    val refreshed = try {
+                        withTimeoutOrNull(3_000) {
+                            delay(1_000)
+                            chat.readTurn(session.id, prompt)
+                        }
+                    } catch (e: CancellationException) { throw e }
+                    catch (_: Exception) { null }
+                    if (refreshed?.outcome != null) {
+                        messages = mergeHistory(refreshed.messages, messages)
+                        publish(active.copy(messages = messages, structuralRevision = revision + 1))
+                    }
+                }
                 val metadata = try { chat.session(session.id) }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null }
                 if (metadata != null) {
-                    publish(metadata.copy(messages = completed.messages, structuralRevision = active.structuralRevision + 1))
+                    val current = state.value.conversation?.takeIf { it.id == session.id } ?: return@coroutineScope
+                    publish(metadata.copy(messages = messages, structuralRevision = current.structuralRevision))
                 }
             }
             if (completed == null || completed.outcome == "failed") {
@@ -232,6 +242,16 @@ internal class OpenCodeWorkspace(
             runningId = null
             interrupt?.cancel()
         }
+    }
+
+    private fun mergeHistory(history: List<StoredMessage>, visible: List<StoredMessage>): List<StoredMessage> {
+        val visibleById = visible.associateBy { it.id }
+        val seen = history.mapTo(hashSetOf()) { it.id }
+        return history.map { stored ->
+            val live = visibleById[stored.id]
+            if (stored.role == ChatRole.MODEL && live != null) mergeStreamingReply(stored, live)
+            else stored
+        } + visible.filter { it.id !in seen }
     }
 
     private fun mergeStreamingReply(stored: StoredMessage, visible: StoredMessage): StoredMessage {

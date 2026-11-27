@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.starfall.generative.R
+import org.starfall.generative.integrations.generativeserver.GenerativeServerRpcException
 import org.starfall.generative.database.repositories.ServerConnectionProfile
 import org.starfall.generative.features.serverconnection.logic.ServerConnections
 import org.starfall.generative.features.serverconnection.logic.LocalImportItem
@@ -54,6 +55,7 @@ internal fun ServerConnectionCatalogImport(
             var items by remember { mutableStateOf(emptyList<LocalImportItem>()) }
             var loading by remember { mutableStateOf(true) }
             var error by remember { mutableStateOf<Int?>(null) }
+            var errorDetail by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(service, providers) {
                 try { items = service.localImportItems(providers) }
                 catch (e: CancellationException) { throw e }
@@ -62,19 +64,23 @@ internal fun ServerConnectionCatalogImport(
             }
             LocalCatalogImportSheet(
                 providers = providers, items = items, loading = loading, busy = busy,
-                error = error, runtimeOnly = profile.transport == "opencode",
+                error = error, errorDetail = errorDetail, runtimeOnly = profile.transport == "opencode",
                 onDismiss = { importing = null },
                 onImport = { localId ->
                     if (!busy && !sending) {
                         sending = true
                         onBusyChange(true)
                         error = null
+                        errorDetail = null
                         scope.launch {
                             try {
                                 service.importLocal(profile.id, localId, providers, directory = null)
                                 importing = null
                             } catch (e: CancellationException) { throw e }
-                            catch (_: Exception) { error = R.string.server_import_failed }
+                            catch (failure: Exception) {
+                                error = R.string.server_import_failed
+                                errorDetail = (failure as? GenerativeServerRpcException)?.rpcError?.diagnostic
+                            }
                             finally {
                                 sending = false
                                 onBusyChange(false)
@@ -95,6 +101,7 @@ internal fun LocalCatalogImportSheet(
     loading: Boolean,
     busy: Boolean,
     error: Int?,
+    errorDetail: String? = null,
     runtimeOnly: Boolean,
     onDismiss: () -> Unit,
     onImport: (String) -> Unit
@@ -122,7 +129,8 @@ internal fun LocalCatalogImportSheet(
             )
         },
         loading = loading || busy,
-        error = error?.let { stringResource(it) },
+        error = listOfNotNull(error?.let { stringResource(it) }, errorDetail?.takeIf { it.isNotBlank() })
+            .joinToString("\n").ifBlank { null },
         emptyMessage = stringResource(R.string.shared_no_items),
         footer = {
             if (!loading) Text(

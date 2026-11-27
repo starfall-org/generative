@@ -101,7 +101,21 @@ class OpenCodeWorkspaceTest {
         }
     }
 
-    @Test fun sendsAndRestoresTextChatThroughTheSelectedOpenCodeConnection() = runBlocking {
+    @Test fun sendsAndRestoresTextChatThroughTheSelectedOpenCodeConnection() =
+        sendsAndRestoresTextChat(TerminalHistory.COMPLETE)
+
+    @Test fun retainsStreamedReplyWhenTerminalHistoryOmitsIt() =
+        sendsAndRestoresTextChat(TerminalHistory.MISSING)
+
+    @Test fun retainsStreamedReplyWhenTerminalHistoryIsTruncated() =
+        sendsAndRestoresTextChat(TerminalHistory.PARTIAL)
+
+    @Test fun reconcilesLaggingTerminalHistoryWhenItCatchesUp() =
+        sendsAndRestoresTextChat(TerminalHistory.PARTIAL, catchUp = true)
+
+    private enum class TerminalHistory { COMPLETE, MISSING, PARTIAL }
+
+    private fun sendsAndRestoresTextChat(terminal: TerminalHistory, catchUp: Boolean = false) = runBlocking {
         MockWebServer().use { server ->
             val session = """{"id":"ses_a","title":"Chat","time":{"created":1,"updated":2},"model":{"providerID":"p","id":"m"}}"""
             val history = """{"data":[
@@ -114,6 +128,17 @@ class OpenCodeWorkspaceTest {
                 ]},
                 {"id":"idle","type":"idle","outcome":"succeeded"}
             ],"cursor":{}}"""
+            val liveText = if (terminal == TerminalHistory.COMPLETE) "H" else "Hi"
+            val terminalHistory = when (terminal) {
+                TerminalHistory.COMPLETE -> history
+                TerminalHistory.MISSING -> """{"data":[
+                    {"id":"msg_a","type":"user","text":"Hello"},
+                    {"id":"idle","type":"idle","outcome":"succeeded"}
+                ],"cursor":{}}"""
+                TerminalHistory.PARTIAL -> history.replace(""""text":"Hi"""", """"text":"H"""")
+            }
+            val restoredHistory = if (catchUp) history.replace(""""text":"Hi"""", """"text":"Hi there"""") else history
+            val finalText = if (catchUp) "Hi there" else "Hi"
             fun enqueue(body: String) = server.enqueue(MockResponse().setBody(body))
             fun catalog(sessions: String) {
                 enqueue("""{"directory":"/work"}""")
@@ -132,16 +157,19 @@ class OpenCodeWorkspaceTest {
                 """{"type":"session.tool.input.started","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","id":"tool_a","name":"lookup"}}""",
                 """{"type":"session.tool.called","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","id":"tool_a","input":{"key":"a"}}}""",
                 """{"type":"session.tool.success","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","id":"tool_a","content":[{"type":"text","text":"found"}]}}""",
-                """{"type":"session.text.delta","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","ordinal":0,"delta":"H"}}"""
+                """{"type":"session.text.delta","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","ordinal":0,"delta":"$liveText"}}"""
             ).joinToString("") { "data: $it\n\n" }))
             enqueue("""{"data":{"id":"msg_a"}}""")
             server.enqueue(MockResponse().setBody("""{"data":[],"cursor":{}}""")
                 .setBodyDelay(200, java.util.concurrent.TimeUnit.MILLISECONDS))
-            enqueue(history)
+            enqueue(terminalHistory)
+            if (terminal != TerminalHistory.COMPLETE) {
+                enqueue(if (catchUp) restoredHistory else terminalHistory)
+            }
             enqueue("""{"data":$session}""")
             catalog("[$session]")
             enqueue("""{"data":$session}""")
-            enqueue(history)
+            enqueue(restoredHistory)
 
             var lastSession: String? = null
             val workspace = RemoteWorkspace(
@@ -166,7 +194,7 @@ class OpenCodeWorkspaceTest {
             assertTrue(submitted.items.single().hasMessages)
             assertEquals("Hello", submitted.conversation?.messages?.first()?.content)
             val streaming = withTimeout(5_000) {
-                workspace.state.first { it.running && it.conversation?.messages?.lastOrNull()?.content == "H" }
+                workspace.state.first { it.running && it.conversation?.messages?.lastOrNull()?.content == liveText }
             }
             assertEquals(listOf("msg_a", "msg_b"), streaming.conversation?.messages?.map { it.id })
             val live = requireNotNull(streaming.conversation).messages.last().activeVersion
@@ -176,7 +204,9 @@ class OpenCodeWorkspaceTest {
             assertEquals("found", live.toolActivity.single().response.textBlocking())
             assertEquals("Check the input".length, live.toolActivity.single().reasoningOffset)
             val finished = withTimeout(5_000) { workspace.state.first { !it.busy } }
-            assertEquals(listOf("Hello", "Hi"), finished.conversation?.messages?.map { it.content })
+            assertFalse(finished.running)
+            assertEquals(listOf("msg_a", "msg_b"), finished.conversation?.messages?.map { it.id })
+            assertEquals(listOf("Hello", finalText), finished.conversation?.messages?.map { it.content })
             val stored = requireNotNull(finished.conversation).messages.last().activeVersion
             assertEquals(live.reasoningContent, stored.reasoningContent)
             assertEquals(live.toolActivity, stored.toolActivity)

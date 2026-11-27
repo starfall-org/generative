@@ -794,7 +794,9 @@ internal fun AppNavigation(
                             sendEnabled = active && remoteIdentityReady && remote.canSubmit,
                             isGenerating = remote.running && remoteIdentityReady && active,
                             generatingConversationId = remote.conversation?.id.takeIf { remoteIdentityReady },
-                            chatError = remoteError,
+                            chatError = listOfNotNull(remoteError,
+                                remote.providerDiagnostic?.takeIf { it.isNotBlank() },
+                                remote.selectedCatalogDiagnostic).distinct().joinToString("\n").ifBlank { null },
                             providers = if (sourceGroups.isEmpty()) visible else visible.map { it.copy(
                                 groupId = if (it.id in localIds) localGroup else serverGroup) },
                             providerGroups = sourceGroups,

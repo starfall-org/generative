@@ -18,7 +18,11 @@ data class RpcRequest(
 )
 
 @Serializable
-data class RpcError(val code: String, val message: String, val retryable: Boolean = false)
+data class RpcError(val code: String, val message: String, val retryable: Boolean = false, val field: String? = null) {
+    // The server contract uses static identifiers. Never expose arbitrary upstream messages or values.
+    val diagnostic: String get() = listOfNotNull(code.takeIf { it.matches(Regex("[a-z0-9_]{1,100}")) },
+        this.field?.takeIf { it.matches(Regex("[a-zA-Z0-9_.]{1,160}")) }).joinToString(": ")
+}
 
 @Serializable
 data class RpcReply(val id: String, val ok: Boolean, val data: JsonElement? = null, val error: RpcError? = null)
@@ -60,6 +64,8 @@ data class ServerModel(
     @SerialName("text_generation") val textGeneration: Boolean,
     @SerialName("context_limit") val contextLimit: Int? = null,
     @SerialName("output_limit") val outputLimit: Int? = null,
+    @SerialName("error_code") val errorCode: String? = null,
+    @SerialName("error_field") val errorField: String? = null,
 )
 
 @Serializable

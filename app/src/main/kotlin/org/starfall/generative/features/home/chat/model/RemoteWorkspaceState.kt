@@ -29,7 +29,10 @@ data class RemoteWorkspaceState(
     val localProviderIds: Set<String> = emptySet(),
     val openCode: Boolean = false,
     val openCodeDirectory: String? = null,
+    val catalogDiagnostics: Map<Pair<String, String>, String> = emptyMap(),
+    val providerDiagnostic: String? = null,
 ) {
-    val canSubmit: Boolean get() = enabled && !busy && !running && !error && modelId.isNotBlank() &&
+    val selectedCatalogDiagnostic: String? get() = catalogDiagnostics[providerId to modelId]
+    val canSubmit: Boolean get() = enabled && !busy && !running && !error && modelId.isNotBlank() && selectedCatalogDiagnostic == null &&
         (conversation != null || actionFailure != RemoteActionFailure.CONVERSATION_LOAD_FAILED)
 }

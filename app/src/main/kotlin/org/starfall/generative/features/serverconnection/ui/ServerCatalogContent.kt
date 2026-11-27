@@ -26,8 +26,9 @@ internal fun ServerCatalogContent(
     val profile = profiles.firstOrNull { it.id == connectionId }
     val context = LocalContext.current
     val resources = LocalResources.current
-    val showMessage by rememberUpdatedState<(Int) -> Unit> { id ->
-        Toast.makeText(context, resources.getString(id), Toast.LENGTH_LONG).show()
+    val showMessage by rememberUpdatedState<(Int, String?) -> Unit> { id, detail ->
+        val message = listOfNotNull(resources.getString(id), detail?.takeIf { it.isNotBlank() }).joinToString("\n")
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
     key(connectionId, providers, directory, profile?.credentialRevision) {
         val scope = rememberCoroutineScope()
@@ -40,7 +41,7 @@ internal fun ServerCatalogContent(
                 openCode = profile?.transport == "opencode",
                 insecure = profile?.endpoint?.startsWith("http://", ignoreCase = true) == true,
                 scope = scope,
-                showMessage = { showMessage(it) },
+                showMessage = { id, detail -> showMessage(id, detail) },
             )
         }
         LaunchedEffect(catalog, catalog.reload) {

@@ -2,6 +2,8 @@ package org.starfall.generative
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
@@ -27,7 +29,7 @@ class GenerativeServerSessionsTest {
         val wire = Wire()
         val sessions = GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("c", "secret", "s")))
         val provider = Json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(
-            """{"id":"provider","name":"Provider","type":"openai","baseUrl":"https://example.invalid/v1","auth":{"method":"bearer_token","value":"dummy-key"},"config":{"modelIds":["a","b"],"maxTokens":8192}}"""
+            """{"id":"provider","name":"Provider","type":"openai","baseUrl":"https://example.invalid/v1","auth":{"method":"bearer_token","value":"dummy-key"},"config":{"modelIds":["a","b"],"maxTokens":8192,"headers":{"X-Extra":"test-value"},"customEndpoints":{"chat":"https://example.invalid/custom"},"multipleApiKeys":true,"apiKeys":[{"id":"k1","value":"dummy-key"},{"id":"k2","label":"Backup","value":"backup-key"}],"modelConfigs":{"a":{"reasoning_effort":"high","model_json":{"family":"fixture"}}}}}"""
         )
         val mcp = Json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(
             """{"id":"mcp","name":"Tools","url":"https://example.invalid/mcp","auth":{"method":"CUSTOM_HEADER","key":"X-Token","value":"dummy-mcp-key"}}"""
@@ -35,8 +37,22 @@ class GenerativeServerSessionsTest {
         sessions.importProvider(provider)
         sessions.importMcp(mcp)
         assertEquals(listOf("provider.import", "mcp.import"), wire.requests.map { it.op })
+        val keys = wire.requests[0].data!!.getValue("config").jsonObject.getValue("apiKeys").jsonArray
+        assertEquals("", keys[0].jsonObject.getValue("label").jsonPrimitive.content)
         assertEquals(provider, GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(wire.requests[0].data.toString()))
         assertEquals(mcp, GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.McpInfo>(wire.requests[1].data.toString()))
+    }
+
+    @Test fun providerSerializerAcceptsOmittedAndExplicitDefaults() {
+        val minimal = """{"id":"p","name":"P","type":"anthropic","baseUrl":"https://example.invalid","config":{"apiKeys":[{"id":"key","value":"secret"}]}}"""
+        val explicit = """{"id":"p","name":"P","type":"anthropic","baseUrl":"https://example.invalid","auth":{"method":"platform_default"},"config":{"supportStream":true,"maxTokens":4000,"apiKeys":[{"id":"key","label":"","value":"secret"}],"anthropicPromptCache":{"enabled":true,"ttl":"FIVE_MINUTES","cacheSystem":true,"cacheTools":true,"cacheConversation":true}}}"""
+        val first = GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(minimal)
+        val second = GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(explicit)
+        assertEquals(first, second)
+        assertFalse(GenerativeServerCodec.json.encodeToString(first).contains("\"label\""))
+        val full = Json { encodeDefaults = true; explicitNulls = false }.encodeToString(first)
+        assertEquals(first, GenerativeServerCodec.json.decodeFromString<org.starfall.generative.shared.model.provider.ModelProvider>(full))
+        assertTrue(full.contains("\"label\":\"\""))
     }
 
     @Test fun configureAndCasPreserveUnknownFields() = runBlocking {

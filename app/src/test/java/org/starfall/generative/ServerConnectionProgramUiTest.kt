@@ -28,7 +28,7 @@ class ServerConnectionProgramUiTest {
         compose.setContent {
             MaterialTheme {
                 ServerConnectionEditor(
-                    profile = null, machines = emptyList(), busy = false, repairing = false,
+                    profile = null, machines = emptyList(), busy = false, repairing = false, settingUpSsh = false,
                     onBack = {}, onSave = {}, error = null,
                 )
             }
@@ -55,7 +55,7 @@ class ServerConnectionProgramUiTest {
         compose.setContent {
             MaterialTheme {
                 ServerConnectionEditor(
-                    profile = profile, machines = emptyList(), busy = false, repairing = false,
+                    profile = profile, machines = emptyList(), busy = false, repairing = false, settingUpSsh = false,
                     onBack = {},
                     onSave = { savedEndpoint = it.endpoint },
                     error = null,

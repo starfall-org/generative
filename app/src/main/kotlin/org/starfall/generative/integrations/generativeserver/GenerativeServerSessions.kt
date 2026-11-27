@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -33,6 +35,7 @@ data class ServerChatCapabilities(
     val toolLoop: Boolean = false,
     val reasoningHistory: Boolean = false,
     val mobileProviders: Boolean = false,
+    val providerOptions: ServerProviderOptions = ServerProviderOptions(),
 )
 
 /** Session RPCs preserve the complete server snapshot, including unrecognised fields. */
@@ -64,7 +67,8 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
             if (parsed !in 1..maximum) throw GenerativeServerProtocolException("Invalid server capability limit")
             return parsed
         }
-        val generation = features["negotiation"]?.jsonObject?.get("generation")?.jsonObject
+        val negotiation = features["negotiation"]?.jsonObject
+        val generation = negotiation?.get("generation")?.jsonObject
         return ServerChatCapabilities(
             maxConversationBytes = bounded(features["conversation_max_bytes"], 3 shl 20, 8 shl 20),
             maxRunContentBytes = bounded(generation?.get("max_run_content_bytes"), 64 shl 10, 512 shl 10),
@@ -74,6 +78,7 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
             toolLoop = features["generation_tool_loop"]?.jsonPrimitive?.booleanOrNull == true,
             reasoningHistory = features["reasoning_history"]?.jsonPrimitive?.booleanOrNull == true,
             mobileProviders = features["runtime_sources"]?.jsonArray?.any { it.jsonPrimitive.content == "mobile_ephemeral" } == true,
+            providerOptions = ServerProviderOptions.fromNegotiation(negotiation),
         )
     }
 
@@ -199,7 +204,16 @@ class GenerativeServerSessions(private val client: GenerativeServerClient) {
     suspend fun importProvider(provider: org.starfall.generative.shared.model.provider.ModelProvider) {
         val payload = GenerativeServerCodec.json.encodeToJsonElement(
             org.starfall.generative.shared.model.provider.ModelProvider.serializer(), provider).jsonObject
-        confirmImport("provider.import", payload)
+        // Older servers require an explicit label even when Android's serializer omits the default.
+        val config = payload["config"] as? JsonObject
+        val keys = config?.get("apiKeys") as? JsonArray
+        val compatible = if (config != null && keys != null) JsonObject(payload + ("config" to JsonObject(
+            config + ("apiKeys" to JsonArray(keys.map { item ->
+                val key = item.jsonObject
+                if ("label" in key) key else JsonObject(key + ("label" to JsonPrimitive("")))
+            }))
+        ))) else payload
+        confirmImport("provider.import", compatible)
     }
 
     suspend fun importMcp(server: org.starfall.generative.shared.model.McpInfo) {

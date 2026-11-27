@@ -37,6 +37,9 @@ class RemoteWorkspaceTest {
         val operations = java.util.concurrent.CopyOnWriteArrayList<String>()
         var runRequest = ""
         var configureSource = ""
+        var providerNegotiation = ""
+        var catalogPayload: String? = null
+        var configureError: RpcError? = null
         var runFields = emptySet<String>()
         var gap = false
         @Volatile var holdRunEvents = false
@@ -102,9 +105,10 @@ class RemoteWorkspaceTest {
                 return RpcReply(request.id, false, error = RpcError("not_found", "conversation unavailable"))
             if (request.op == "provider.catalog" && unavailableCatalog)
                 return RpcReply(request.id, false, error = RpcError("internal_error", "catalog unavailable"))
+            if (request.op == "session.configure") configureError?.let { return RpcReply(request.id, false, error = it) }
             val body = when (request.op) {
-                "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"runtime_sources":["stored","mobile_ephemeral"]}}"""
-                "provider.catalog" -> """{"version":1,"revision":1,"providers":[{"id":"p","name":"Provider","type":"openai","custom_model_id":false,"key_selection_required":false,"keys":[],"models":[{"id":"m","name":"Model","availability":"available","text_generation":true}]}]}"""
+                "capabilities.get" -> """{"protocol":5,"operations":["session.list","session.open","session.get","session.configure","session.run","session.cancel","session.events","session.save","session.delete","provider.catalog"],"chat_features":{"version":1,"text_generation":true,"streaming":true,"runtime_sources":["stored","mobile_ephemeral"]$providerNegotiation}}"""
+                "provider.catalog" -> catalogPayload ?: """{"version":1,"revision":1,"providers":[{"id":"p","name":"Provider","type":"openai","custom_model_id":false,"key_selection_required":false,"keys":[],"models":[{"id":"m","name":"Model","availability":"available","text_generation":true}]}]}"""
                 "session.list" -> """{"version":1,"items":[{"id":"$owner-chat","title":"$owner","created_at":1,"updated_at":2,"revision":1}],"next_cursor":""}"""
                 "session.open", "session.get" -> if (request.op == "session.get" && typedOutput) {
                     """{"session_id":"${request.sessionId}","revision":3,"conversation":${typedFinal(requireNotNull(request.sessionId))}}"""
@@ -200,6 +204,85 @@ class RemoteWorkspaceTest {
         assertEquals(listOf("p"), workspace.state.value.providers.map { it.id })
         workspace.selectModel("local:p", "m")
         assertNotEquals("local:p", workspace.state.value.providerId)
+        workspace.disable()
+    }
+
+    @Test fun negotiatedLocalProviderOptionsReachConfigureAndRun() = runBlocking {
+        val wire = Wire("remote").apply {
+            providerNegotiation = ""","negotiation":{"version":2,"parameters":{"max_tokens":{"max":2147483647}},
+                "adapters":{"openai":{"parameters":["max_tokens","reasoning_effort"],"custom_headers":true,
+                "custom_endpoints":true,"model_json":"metadata","non_streaming":true,"thinking_passback":true}}}"""
+        }
+        val provider = ModelProvider(id = "p", name = "Local", type = ModelApiType.OPENAI,
+            baseUrl = "https://example.com/v1", auth = Authorization(AuthMethod.NONE),
+            config = ProviderConfiguration(modelIds = listOf("m"), maxTokens = 200000,
+                headers = mapOf("X-Test" to "extra"),
+                modelConfigs = mapOf("m" to ModelConfiguration(reasoningEffort = "high", supportStream = false))))
+        val workspace = RemoteWorkspace(
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) },
+            this, resolveLocalProvider = { provider })
+        workspace.enable("server")
+        withTimeout(5000) { workspace.state.first { !it.busy } }
+        assertEquals(2, workspace.state.value.capabilities.providerOptions.version)
+        workspace.setLocalProviders("server", listOf(provider))
+        workspace.selectModel("local:p", "m")
+        assertTrue(workspace.send("hello", emptyList()))
+        withTimeout(5000) { workspace.state.first { !it.busy && !it.running } }
+        assertTrue(wire.configureSource.contains("X-Test"))
+        assertTrue(wire.configureSource.contains("reasoning_effort"))
+        assertTrue(wire.configureSource.contains("200000"))
+        assertEquals(1, wire.operations.count { it == "session.run" })
+        workspace.disable()
+    }
+
+    @Test fun catalogDiagnosticsRemainVisibleAndStoredKeySelectionIsSent() = runBlocking {
+        val wire = Wire("remote").apply {
+            catalogPayload = """{"version":1,"revision":1,"providers":[{"id":"p","name":"P","type":"openai",
+                "custom_model_id":false,"key_selection_required":true,
+                "keys":[{"id":"a","label":"","availability":"available"},{"id":"b","label":"Backup","availability":"available"},
+                {"id":"expired","label":"Expired","availability":"credential_unavailable"}],
+                "models":[{"id":"bad","name":"Bad","availability":"unsupported","text_generation":true,
+                "error_code":"unsupported_provider_configuration","error_field":"provider.modelConfig.top_k"},
+                {"id":"m","name":"Model","availability":"key_selection_required","text_generation":true}]}]}"""
+        }
+        val workspace = RemoteWorkspace(
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        workspace.enable("server")
+        withTimeout(5000) { workspace.state.first { !it.busy } }
+        assertEquals(listOf("bad", "m"), workspace.state.value.providers.single().config.modelIds)
+        workspace.selectModel("p", "bad")
+        assertEquals("unsupported_provider_configuration: provider.modelConfig.top_k", workspace.state.value.selectedCatalogDiagnostic)
+        assertFalse(workspace.state.value.canSubmit)
+        assertFalse(workspace.send("draft", emptyList()))
+        assertFalse(wire.operations.contains("session.run"))
+        workspace.selectModel("p", "m")
+        assertEquals(listOf("a", "b"), workspace.state.value.pendingKeys.map { it.id })
+        workspace.selectKey("expired")
+        assertEquals(2, workspace.state.value.pendingKeys.size)
+        workspace.selectKey("b")
+        assertNull(workspace.state.value.selectedCatalogDiagnostic)
+        assertTrue(workspace.send("hello", emptyList()))
+        withTimeout(5000) { workspace.state.first { !it.busy && !it.running } }
+        assertEquals(Json.parseToJsonElement("""{"source":"stored","provider_id":"p","model_id":"m","key_id":"b"}"""),
+            Json.parseToJsonElement(wire.configureSource))
+        assertEquals(1, wire.operations.count { it == "session.run" })
+        workspace.disable()
+    }
+
+    @Test fun serverConfigurationErrorPreservesCodeAndFieldWithoutDisablingWorkspace() = runBlocking {
+        val wire = Wire("remote").apply {
+            configureError = RpcError("invalid_provider_configuration", "unused upstream text",
+                field = "provider.config.customEndpoints")
+        }
+        val workspace = RemoteWorkspace(
+            { GenerativeServerSessions(GenerativeServerClient(wire, PairedIdentity("device", "secret", "server"))) }, this)
+        workspace.enable("server")
+        withTimeout(5000) { workspace.state.first { !it.busy } }
+        assertTrue(workspace.send("hello", emptyList()))
+        val state = withTimeout(5000) { workspace.state.first { !it.busy && !it.running } }
+        assertFalse(state.error)
+        assertEquals("invalid_provider_configuration: provider.config.customEndpoints", state.providerDiagnostic)
+        assertFalse(wire.operations.contains("session.run"))
         workspace.disable()
     }
 
