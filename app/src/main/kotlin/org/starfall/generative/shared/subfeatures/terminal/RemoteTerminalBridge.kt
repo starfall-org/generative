@@ -8,6 +8,7 @@ import android.view.View
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.graphics.ColorUtils
@@ -36,6 +37,10 @@ internal class RemoteTerminalBridge(
     var session: TerminalSession? = null
     var view: TerminalView? = null
     var inputView: RemoteTerminalView? = null
+    var cursorBottomPx by mutableIntStateOf(0)
+        private set
+    var inputGeneration by mutableIntStateOf(0)
+        private set
     private val input = RemoteTerminalInput(
         initialInputMode = initialInputMode,
         sendRemote = ::sendRemote,
@@ -171,6 +176,7 @@ internal class RemoteTerminalBridge(
         view = null
         inputView = null
         emulatorReady = false
+        updateCursorPosition()
     }
 
     fun attachRemote(terminal: RemoteTerminalSession) {
@@ -222,6 +228,11 @@ internal class RemoteTerminalBridge(
         } else {
             terminalView?.onScreenUpdated()
         }
+        updateCursorPosition()
+    }
+
+    fun updateCursorPosition() {
+        cursorBottomPx = inputView?.liveCursorBottom ?: 0
     }
 
     private fun record(bytes: ByteArray) {
@@ -232,6 +243,7 @@ internal class RemoteTerminalBridge(
 
     /** Jumps back to the live screen when the user types, like any terminal does. */
     private fun snapToBottom() {
+        inputGeneration++
         val terminalView = view ?: return
         if (terminalView.topRow != 0) {
             terminalView.topRow = 0
@@ -338,7 +350,10 @@ internal class RemoteTerminalBridge(
     }
 
     // TerminalSessionClient
-    override fun onTextChanged(changedSession: TerminalSession) { view?.onScreenUpdated() }
+    override fun onTextChanged(changedSession: TerminalSession) {
+        view?.onScreenUpdated()
+        updateCursorPosition()
+    }
     override fun onTitleChanged(changedSession: TerminalSession) = Unit
     override fun onSessionFinished(finishedSession: TerminalSession) = Unit
     override fun onCopyTextToClipboard(session: TerminalSession, text: String) {
@@ -450,7 +465,7 @@ internal class RemoteTerminalBridge(
         input.clearModifiers()
         return true
     }
-    // TerminalView calls this on EVERY size change (e.g. when the keyboard shows or hides). Reset
+    // TerminalView calls this on emulator creation and grid size changes. Reset
     // the local renderer once, but don't focus the view or open the IME during terminal setup.
     override fun onEmulatorSet() {
         val first = !emulatorReady
@@ -468,6 +483,7 @@ internal class RemoteTerminalBridge(
                 terminalView.visibility = View.VISIBLE
             }
         }
+        updateCursorPosition()
         reportSize()
     }
 }

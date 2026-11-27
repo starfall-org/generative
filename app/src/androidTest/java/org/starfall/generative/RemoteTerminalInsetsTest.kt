@@ -7,7 +7,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -15,6 +20,7 @@ import androidx.test.filters.SdkSuppress
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.starfall.generative.features.machines.shared.ui.terminal.RemoteTerminalContent
@@ -30,7 +36,7 @@ class RemoteTerminalInsetsTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun keyboardMovesTerminalWithoutResizingItsGrid() {
+    fun keyboardFollowsCursorAndAllowsPanningWithoutResizingOrScrolling() {
         lateinit var composeView: View
         compose.activityRule.scenario.onActivity { it.enableTransparentSystemBars() }
         val bridge = RemoteTerminalBridge(compose.activity, TerminalInputMode.REMOTE)
@@ -94,6 +100,29 @@ class RemoteTerminalInsetsTest {
             dispatchKeyboard(0)
             val initial = snapshot(bridge)
             dispatchKeyboard(systemBottom + keyboardTravel)
+            assertEquals(initial, snapshot(bridge))
+
+            compose.runOnIdle { bridge.append("\u001b[999;1H".toByteArray()) }
+            val cursorAtBottom = snapshot(bridge)
+            val cursorBottom = compose.runOnIdle { bridge.cursorBottomPx }
+            assertTrue(cursorAtBottom.top < initial.top)
+            assertTrue(cursorAtBottom.top + cursorBottom <= initial.top + initial.height - keyboardTravel)
+            assertEquals(initial.copy(top = cursorAtBottom.top), cursorAtBottom)
+
+            val handle = compose.onNodeWithContentDescription(
+                compose.activity.getString(R.string.remote_terminal_pan_frame)
+            )
+            handle.performTouchInput { swipeDown() }
+            val dragged = snapshot(bridge)
+            assertTrue(dragged.top > cursorAtBottom.top)
+            assertEquals(initial.copy(top = dragged.top), dragged)
+
+            handle.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -initial.height.toFloat()) }
+            assertEquals(initial, snapshot(bridge))
+            compose.runOnIdle { bridge.sendChar('x') }
+            assertEquals(cursorAtBottom, snapshot(bridge))
+
+            handle.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, initial.height.toFloat()) }
             assertEquals(initial.copy(top = initial.top - keyboardTravel), snapshot(bridge))
             dispatchKeyboard(0)
             assertEquals(initial, snapshot(bridge))
@@ -107,7 +136,7 @@ class RemoteTerminalInsetsTest {
         val emulator = checkNotNull(bridge.session?.emulator)
         val location = IntArray(2)
         terminal.getLocationInWindow(location)
-        TerminalLayout(location[1], terminal.width, terminal.height, emulator.mColumns, emulator.mRows)
+        TerminalLayout(location[1], terminal.width, terminal.height, emulator.mColumns, emulator.mRows, terminal.topRow)
     }
 
     private data class TerminalLayout(
@@ -115,6 +144,7 @@ class RemoteTerminalInsetsTest {
         val width: Int,
         val height: Int,
         val columns: Int,
-        val rows: Int
+        val rows: Int,
+        val topRow: Int
     )
 }

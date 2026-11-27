@@ -3,6 +3,8 @@ package org.starfall.generative.shared.subfeatures.terminal
 import android.content.Context
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.net.Uri
 import android.text.InputType
 import android.view.KeyEvent
@@ -11,12 +13,23 @@ import android.widget.FrameLayout
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.termux.view.TerminalView
+import kotlin.math.ceil
 
 /** Keeps the remote terminal and the optional local editor independently focusable. */
 internal class RemoteTerminalView(context: Context, private val bridge: RemoteTerminalBridge) : FrameLayout(context) {
     val terminalView = TerminalView(context, null)
     val inputTarget: View get() = if (isFocused && onCheckIsTextEditor()) this else terminalView
     private var composingConnection: RemoteTerminalInputConnection? = null
+    private val terminalFont = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.MONOSPACE }
+    private var terminalFontAscent = 0
+
+    val liveCursorBottom: Int
+        get() {
+            val emulator = terminalView.mEmulator ?: return 0
+            val lineHeight = terminalView.mRenderer.fontLineSpacing
+            // Termux starts the grid one line plus the (negative) font ascent below the top.
+            return (emulator.cursorRow + 2) * lineHeight + terminalFontAscent
+        }
 
     init {
         isFocusable = true
@@ -55,6 +68,13 @@ internal class RemoteTerminalView(context: Context, private val bridge: RemoteTe
             }
         }
         updateInputMode()
+    }
+
+    fun setTerminalTextSize(sizePx: Int) {
+        terminalFont.textSize = sizePx.toFloat()
+        terminalFontAscent = ceil(terminalFont.ascent()).toInt()
+        terminalView.setTextSize(sizePx)
+        bridge.updateCursorPosition()
     }
 
     fun updateInputMode() {

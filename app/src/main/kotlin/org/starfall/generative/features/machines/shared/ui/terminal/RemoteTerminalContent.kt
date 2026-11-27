@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -42,11 +41,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.starfall.generative.R
@@ -107,55 +104,16 @@ internal fun RemoteTerminalContent(
             onToggleForceMouse = onToggleForceMouse
         )
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            // Keep the terminal grid at its full size so opening the IME never resizes the PTY.
-            Column(
-                Modifier.weight(1f).fillMaxHeight()
-                    .clipToBounds()
-                    .offset { IntOffset(0, -keyboardInsets.getBottom(this)) }
-            ) {
-                Box(Modifier.weight(1f).fillMaxWidth().background(terminalBackground)) {
-                    terminalSlots.forEach { slot ->
-                        key(slot.terminal.id) {
-                            AndroidView(
-                                factory = { viewContext ->
-                                    val slotBridge = slot.bridge
-                                    val host = RemoteTerminalView(viewContext, slotBridge)
-                                    host.setBackgroundColor(terminalBackgroundArgb)
-                                    val view = host.terminalView
-                                    view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
-                                    view.setBackgroundColor(terminalBackgroundArgb)
-                                    view.setTextSize(textSizePx)
-                                    host.tag = textSizePx
-                                    view.setTerminalViewClient(slotBridge)
-                                    slotBridge.view = view
-                                    slotBridge.inputView = host
-                                    view.attachSession(slotBridge.createSession(viewContext.filesDir))
-                                    slotBridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
-                                    host
-                                },
-                                modifier = if (slot.terminal.id == activeTerminalId) {
-                                    Modifier.fillMaxSize()
-                                } else {
-                                    Modifier.size(0.dp)
-                                },
-                                onRelease = { view -> slot.bridge.detachView(view) },
-                                update = { host ->
-                                    val view = host.terminalView
-                                    host.setBackgroundColor(terminalBackgroundArgb)
-                                    slot.bridge.view = view
-                                    slot.bridge.inputView = host
-                                    if (host.tag != textSizePx) {
-                                        host.tag = textSizePx
-                                        view.setTextSize(textSizePx)
-                                    }
-                                    view.setBackgroundColor(terminalBackgroundArgb)
-                                    slot.bridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
-                                }
-                            )
-                        }
-                    }
+            TerminalViewport(
+                bridge = activeBridge,
+                keyboardInsets = keyboardInsets,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                extraKeys = { if (activeBridge != null) TerminalExtraKeys(activeBridge) },
+                localInput = {
+                    if (activeBridge?.inputMode?.usesLocalInput == true) TerminalLocalInput(activeBridge)
+                },
+                overlay = {
                     TerminalOverlay(
-                        activeBridge = activeBridge,
                         terminalSlotsEmpty = terminalSlots.isEmpty(),
                         connecting = connecting,
                         error = error,
@@ -164,7 +122,47 @@ internal fun RemoteTerminalContent(
                         onOpenTerminal = onOpenTerminal
                     )
                 }
-                if (activeBridge != null) TerminalExtraKeys(activeBridge)
+            ) {
+                terminalSlots.forEach { slot ->
+                    key(slot.terminal.id) {
+                        AndroidView(
+                            factory = { viewContext ->
+                                val slotBridge = slot.bridge
+                                val host = RemoteTerminalView(viewContext, slotBridge)
+                                host.setBackgroundColor(terminalBackgroundArgb)
+                                val view = host.terminalView
+                                view.setOnTouchListener(RemoteMouseTouchListener(viewContext, view, slotBridge))
+                                view.setBackgroundColor(terminalBackgroundArgb)
+                                host.setTerminalTextSize(textSizePx)
+                                host.tag = textSizePx
+                                view.setTerminalViewClient(slotBridge)
+                                slotBridge.view = view
+                                slotBridge.inputView = host
+                                view.attachSession(slotBridge.createSession(viewContext.filesDir))
+                                slotBridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
+                                host
+                            },
+                            modifier = if (slot.terminal.id == activeTerminalId) {
+                                Modifier.fillMaxSize()
+                            } else {
+                                Modifier.size(0.dp)
+                            },
+                            onRelease = { view -> slot.bridge.detachView(view) },
+                            update = { host ->
+                                val view = host.terminalView
+                                host.setBackgroundColor(terminalBackgroundArgb)
+                                slot.bridge.view = view
+                                slot.bridge.inputView = host
+                                if (host.tag != textSizePx) {
+                                    host.tag = textSizePx
+                                    host.setTerminalTextSize(textSizePx)
+                                }
+                                view.setBackgroundColor(terminalBackgroundArgb)
+                                slot.bridge.setThemeColors(terminalBackgroundArgb, terminalForegroundArgb)
+                            }
+                        )
+                    }
+                }
             }
             if (sessionsDrawerOpen) VerticalDivider(Modifier.fillMaxHeight().imePadding())
             AnimatedVisibility(
@@ -189,7 +187,6 @@ internal fun RemoteTerminalContent(
 
 @Composable
 private fun BoxScope.TerminalOverlay(
-    activeBridge: RemoteTerminalBridge?,
     terminalSlotsEmpty: Boolean,
     connecting: Boolean,
     error: String?,
@@ -197,9 +194,6 @@ private fun BoxScope.TerminalOverlay(
     terminalForeground: Color,
     onOpenTerminal: () -> Unit
 ) {
-    if (activeBridge?.inputMode?.usesLocalInput == true) {
-        TerminalLocalInput(activeBridge, Modifier.align(Alignment.BottomStart))
-    }
     if (connecting && error == null && !secretRequestVisible) {
         Surface(
             Modifier.align(Alignment.Center),
