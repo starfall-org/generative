@@ -366,8 +366,7 @@ fun ChatInterface(
                         }
                     }
                     // Composer state must not escape a disposable chat when switching sessions.
-                    key(if (isTemporary) conversationKey else "regular_composer") {
-                    if (workspaceStatus != null && conversationId == null) return@key
+                    if (workspaceStatus == null || conversationId != null) key(if (isTemporary) conversationKey else "regular_composer") {
                     UserInputArea(
                         backdrop = inputBackdrop,
                         sendEnabled = sendEnabled,
