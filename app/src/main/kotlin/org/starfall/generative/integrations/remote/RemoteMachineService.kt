@@ -60,7 +60,8 @@ class RemoteMachineService(
     private val assets = RemoteMachineAssetsService(context, store)
     private val connectionManager = RemoteMachineConnectionManager(
         openSessionCallback = { machine, password, prompt -> openSession(machine, password, prompt) },
-        startForwards = ::applyPortForwarding
+        startForwards = ::applyPortForwarding,
+        onConnectionStarting = { RemoteConnectionService.start(appContext) }
     )
     private val cloudShell = RemoteMachineCloudShellService(context, store, assets)
     private val sftpSessions = RemoteSftpSessionPool { machine -> openSession(machine) }
@@ -75,11 +76,15 @@ class RemoteMachineService(
         identity.id to (privateKey to publicKey)
     }
 
-    /**
-     * Machines that currently hold a persistent SSH connection (opened by the connect tool or by
-     * execute). A terminal's private connection is not listed.
-     */
+    /** Machines with a shared SSH session for terminals, exec channels or port forwarding. */
     val connectedMachineIds: StateFlow<Set<String>> get() = connectionManager.connectedMachineIds
+    internal val pendingConnections: StateFlow<Int> get() = connectionManager.pendingConnections
+
+    fun retryForegroundStart() {
+        if (pendingConnections.value > 0 || connectedMachineIds.value.isNotEmpty()) {
+            RemoteConnectionService.start(appContext)
+        }
+    }
 
     /** Forwards explicitly started by the user (saved rules do not activate themselves). */
     val forwardedPorts: StateFlow<Map<String, List<String>>> get() = connectionManager.forwardedPorts

@@ -208,6 +208,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         chatSession.retryForegroundStart()
+        container.remoteMachineService.retryForegroundStart()
         // OAuth opens an external browser. A fatal exception can be recorded while this
         // Activity is stopped but retained by Android; onCreate will not run again then.
         // Refresh on each return so the crash dialog is not lost behind browser handoff.

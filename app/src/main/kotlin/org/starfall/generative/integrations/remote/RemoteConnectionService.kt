@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -38,13 +39,11 @@ import org.starfall.generative.shared.subfeatures.terminal.RemoteTerminalLaunch
 class RemoteConnectionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
-    private var foregroundMachineId: String? = null
+    private var foregroundNotificationId: Int? = null
     private var lastStartId = 0
+    private var wakeLock: PowerManager.WakeLock? = null
     /** Notification ids this service has posted, so removal never depends on the system's active list alone. */
     private val postedIds = mutableSetOf<Int>()
-
-    /** Only connection state belongs in the notification; forwarding status is managed separately. */
-    private class Connected(val machine: RemoteMachine)
 
     override fun onCreate() {
         super.onCreate()
@@ -60,20 +59,15 @@ class RemoteConnectionService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
-        // Every start request must reach startForeground() (even a repeated one, even when the last
-        // connection just closed), so the foreground notification is re-posted here, not only on changes.
-        foregroundMachineId = null
-        val connected = connectedMachines(machineService)
-        if (connected.isEmpty()) enterForeground(PLACEHOLDER_NOTIFICATION_ID, placeholderNotification())
-        render(connected)
+        // A start can arrive after a failed or cancelled connection attempt.
+        render(machineService, forceForeground = true)
         if (observeJob == null) {
             observeJob = scope.launch {
                 combine(
+                    machineService.pendingConnections,
                     machineService.connectedMachineIds,
                     machineService.state
-                ) { ids, state ->
-                    state.machines.filter { it.id in ids }.map(::Connected)
-                }.collect { render(it) }
+                ) { _, _, _ -> Unit }.collect { render(machineService) }
             }
         }
         // Connections belong to this process; after process death there is nothing to restore.
@@ -83,58 +77,57 @@ class RemoteConnectionService : Service() {
     override fun onDestroy() {
         observeJob?.cancel()
         scope.cancel()
-        cancelAllNotifications(NotificationManagerCompat.from(this))
         stopForeground(STOP_FOREGROUND_REMOVE)
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        val manager = NotificationManagerCompat.from(this)
+        (ownNotificationIds() + postedIds).toSet().forEach { manager.cancel(it) }
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun connectedMachines(service: RemoteMachineService): List<Connected> {
-        val ids = service.connectedMachineIds.value
-        return service.state.value.machines.filter { it.id in ids }.map(::Connected)
-    }
-
-    private fun cancelAllNotifications(manager: NotificationManagerCompat) {
-        (ownNotificationIds() + postedIds).toSet().forEach { manager.cancel(it) }
-        postedIds.clear()
-    }
-
     @SuppressLint("MissingPermission") // Without POST_NOTIFICATIONS the notification is simply not shown.
-    private fun render(connected: List<Connected>) {
-        val manager = NotificationManagerCompat.from(this)
-        if (connected.isEmpty()) {
-            cancelAllNotifications(manager)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            foregroundMachineId = null
-            // Only stops when no newer start request is pending, so a connection that opens right now keeps it alive.
+    private fun render(service: RemoteMachineService, forceForeground: Boolean = false) {
+        // Read pending first. The manager publishes a successful connection before clearing its pending count.
+        val opening = service.pendingConnections.value > 0
+        val ids = service.connectedMachineIds.value
+        if (!opening && ids.isEmpty()) {
+            if (forceForeground) enterForeground(PLACEHOLDER_NOTIFICATION_ID, placeholderNotification())
             stopSelf(lastStartId)
             return
         }
-        val wanted = connected.map { notificationId(it.machine.id) }.toSet()
-        foregroundMachineId?.takeIf { id -> connected.none { it.machine.id == id } }?.let { gone ->
-            // Detach first so cancelling the old anchor does not tear down the whole service.
-            stopForeground(STOP_FOREGROUND_DETACH)
-            manager.cancel(notificationId(gone))
-            postedIds.remove(notificationId(gone))
-            foregroundMachineId = null
+
+        val notifications = service.state.value.machines.filter { it.id in ids }
+            .associate { notificationId(it.id) to notificationFor(it) }
+            .ifEmpty { mapOf(PLACEHOLDER_NOTIFICATION_ID to placeholderNotification()) }
+        val anchor = foregroundNotificationId?.takeIf { it in notifications } ?: notifications.keys.first()
+        // Promote the new notification before removing the old one so the service stays in the foreground.
+        val promote = forceForeground || foregroundNotificationId != anchor
+        if (promote) {
+            if (!enterForeground(anchor, notifications.getValue(anchor))) return
+            foregroundNotificationId = anchor
+            acquireWakeLock()
         }
-        // Also removes notifications that a previous process left behind (the app was killed while connected).
-        (ownNotificationIds() + postedIds).toSet().filter { it !in wanted }.forEach {
+
+        val manager = NotificationManagerCompat.from(this)
+        (ownNotificationIds() + postedIds).toSet().filter { it !in notifications }.forEach {
             manager.cancel(it)
             postedIds.remove(it)
         }
-        val anchor = foregroundMachineId ?: connected.first().machine.id
-        connected.forEach { entry ->
-            val id = notificationId(entry.machine.id)
-            val notification = notificationFor(entry)
-            if (entry.machine.id == anchor && foregroundMachineId == null) {
-                if (enterForeground(id, notification)) foregroundMachineId = entry.machine.id
-            } else {
-                manager.notify(id, notification)
-            }
+        notifications.forEach { (id, notification) ->
+            if (!promote || id != anchor) manager.notify(id, notification)
             postedIds += id
         }
+    }
+
+    @SuppressLint("WakelockTimeout") // SSH sessions have user-controlled lifetimes; onDestroy releases the lock.
+    private fun acquireWakeLock() {
+        runCatching {
+            val lock = wakeLock ?: getSystemService(PowerManager::class.java)
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Generative:SSH")
+                ?.also { wakeLock = it }
+            if (lock?.isHeld == false) lock.acquire()
+        }.onFailure { Log.w(TAG, "Unable to acquire the SSH wake lock", it) }
     }
 
     /** Returns false when the device rejected the foreground start (the service then stops). */
@@ -145,12 +138,11 @@ class RemoteConnectionService : Service() {
     } catch (error: Exception) {
         // Background-start restrictions or a vendor rule. Never let this become an app crash.
         Log.e(TAG, "Unable to enter foreground", error)
-        stopSelf()
+        stopSelf(lastStartId)
         false
     }
 
-    private fun notificationFor(entry: Connected): Notification {
-        val machine = entry.machine
+    private fun notificationFor(machine: RemoteMachine): Notification {
         val name = machine.name.ifBlank { machine.displayHost }
         val text = getString(R.string.remote_connection_notification_text)
         val disconnect = PendingIntent.getBroadcast(
@@ -227,17 +219,13 @@ class RemoteConnectionService : Service() {
         internal fun notificationId(machineId: String): Int = NOTIFICATION_ID_BASE + (machineId.hashCode() and 0x7FFFFF)
 
         /**
-         * Starts the service, or re-delivers the start to the running one. It stops itself once nothing is
-         * connected. Calling it while it runs is cheap and avoids racing a service that is about to stop.
+         * Request foreground execution before opening SSH. The service stops when there are no
+         * connection attempts or sessions left.
          */
         fun start(context: Context) {
             runCatching {
                 ContextCompat.startForegroundService(context, Intent(context, RemoteConnectionService::class.java))
             }.onFailure { Log.w(TAG, "Unable to start the connection notification: ${it.message}") }
         }
-
-        /** Drops a machine's notification at once; the service also removes it when the session closes. */
-        fun cancelNotification(context: Context, machineId: String) =
-            NotificationManagerCompat.from(context).cancel(notificationId(machineId))
     }
 }

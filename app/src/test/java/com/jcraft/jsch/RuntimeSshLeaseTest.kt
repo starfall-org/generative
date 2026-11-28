@@ -3,6 +3,9 @@ package com.jcraft.jsch
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -16,6 +19,29 @@ import org.starfall.generative.integrations.remote.RemoteExecStream
 import org.starfall.generative.shared.model.RemoteMachine
 
 class RuntimeSshLeaseTest {
+    @Test fun foregroundStartPrecedesSshAndCancellationClearsPendingConnection() = runBlocking {
+        val opening = CompletableDeferred<Unit>()
+        var foregroundRequested = false
+        val manager = RemoteMachineConnectionManager(
+            openSessionCallback = { _, _, _ ->
+                assertTrue(foregroundRequested)
+                opening.complete(Unit)
+                awaitCancellation()
+            },
+            startForwards = { _, _ -> error("Unexpected port forwarding") },
+            onConnectionStarting = { foregroundRequested = true }
+        )
+        val request = launch { manager.openExecStream(RemoteMachine("pending", "Pending"), "runtime") }
+        try {
+            withTimeout(5000) { opening.await() }
+            assertEquals(1, manager.pendingConnections.value)
+            assertTrue(manager.connectedMachineIds.value.isEmpty())
+        } finally {
+            request.cancelAndJoin()
+        }
+        assertEquals(0, manager.pendingConnections.value)
+    }
+
     @Test fun pairingClosesTheSshSessionAfterReadingTheResponse() = runBlocking {
         val response = """{"protocol":5,"client_id":"owner","secret":"test","fingerprint":"server","transport":"tcp"}"""
         val session = TestSession(response.toByteArray())

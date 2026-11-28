@@ -14,6 +14,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -27,7 +28,8 @@ import org.starfall.generative.shared.model.remote.RemoteSecretPrompt
 internal class RemoteMachineConnectionManager(
     private val openSessionCallback: suspend (RemoteMachine, String?, RemoteSecretPrompt?) -> Session,
     /** Forwarding is opt-in, never part of opening a plain SSH session. */
-    private val startForwards: (Session, RemoteMachine) -> ActivePortForwards
+    private val startForwards: (Session, RemoteMachine) -> ActivePortForwards,
+    private val onConnectionStarting: () -> Unit = {}
 ) {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connections = ConcurrentHashMap<String, SharedConnection>()
@@ -35,6 +37,8 @@ internal class RemoteMachineConnectionManager(
     private val machineLocks = ConcurrentHashMap<String, Mutex>()
     private val _connectedMachineIds = MutableStateFlow<Set<String>>(emptySet())
     val connectedMachineIds: StateFlow<Set<String>> = _connectedMachineIds.asStateFlow()
+    private val _pendingConnections = MutableStateFlow(0)
+    val pendingConnections: StateFlow<Int> = _pendingConnections.asStateFlow()
     private val _forwardedPorts = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     /** Applied forward labels per connected machine; machines without any forward are absent. */
     val forwardedPorts: StateFlow<Map<String, List<String>>> = _forwardedPorts.asStateFlow()
@@ -365,6 +369,7 @@ internal class RemoteMachineConnectionManager(
             machineLocks.getOrPut(connection.machineId) { Mutex() }.withLock { closeConnection(connection) }
         }
 
+    @Synchronized
     private fun publishConnected() {
         _forwardedPorts.value = connections.values
             .mapNotNull { shared -> shared.forwards?.labels?.takeIf { it.isNotEmpty() }?.let { shared.machineId to it } }
@@ -387,7 +392,10 @@ internal class RemoteMachineConnectionManager(
         disconnectOnCancelledAcquisition: Boolean = false
     ): SharedConnection? {
         var acquired: SharedConnection? = null
+        val mayOpenConnection = create != null
+        if (mayOpenConnection) _pendingConnections.update { it + 1 }
         try {
+            if (mayOpenConnection) onConnectionStarting()
             return withContext(Dispatchers.IO) {
                 machineLocks.getOrPut(machineId) { Mutex() }.withLock {
                     var connection = connections[machineId]
@@ -412,6 +420,8 @@ internal class RemoteMachineConnectionManager(
             // Dispatch back to the caller can be cancelled after the lease was acquired.
             acquired?.release(disconnectOnCancelledAcquisition)
             throw error
+        } finally {
+            if (mayOpenConnection) _pendingConnections.update { it - 1 }
         }
     }
 

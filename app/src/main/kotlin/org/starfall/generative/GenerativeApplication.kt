@@ -15,7 +15,6 @@ import org.starfall.generative.database.room.AppDatabase
 import org.starfall.generative.database.repositories.RoomOAuthRecordStorage
 import org.starfall.generative.integrations.security.OAuthRecordStorage
 import org.starfall.generative.integrations.security.OAuthRecordStorageOwner
-import org.starfall.generative.integrations.remote.RemoteConnectionService
 import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.integrations.remote.RemoteMachineServiceOwner
 import org.starfall.generative.shared.subfeatures.crashreports.logic.CrashReportStore
@@ -73,12 +72,5 @@ class GenerativeApplication : Application(), ApplicationPreferencesOwner, Remote
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
         })
         applicationScope.launch { container.defaultDataInitializer.initialize() }
-        // Off the main thread: the first access builds the machine store. One notification per
-        // connected machine (with a Disconnect button) is owned by RemoteConnectionService.
-        applicationScope.launch(Dispatchers.Default) {
-            remoteMachineService.connectedMachineIds.collect { ids ->
-                if (ids.isNotEmpty()) RemoteConnectionService.start(this@GenerativeApplication)
-            }
-        }
     }
 }
