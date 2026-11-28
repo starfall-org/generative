@@ -1091,7 +1091,6 @@
     <string name="server_connection_repair">Ghép nối lại</string>
     <string name="server_connection_reconnect">Kết nối lại</string>
     <string name="server_connection_offline">Ngoại tuyến</string>
-    <string name="server_connection_selected">Đã chọn</string>
     <string name="server_connection_select">Chọn</string>
     <string name="server_connection_test">Kiểm tra kết nối</string>
     <string name="server_connection_testing">Đang kiểm tra kết nối đến %1$s…</string>

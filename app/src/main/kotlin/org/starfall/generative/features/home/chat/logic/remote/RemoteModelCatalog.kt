@@ -12,6 +12,7 @@ import org.starfall.generative.shared.model.api.ModelApiType
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
+import org.starfall.generative.shared.model.provider.ProviderGroup
 
 internal fun ProviderCatalog.textProviders(): List<ModelProvider> = providers.mapNotNull { provider ->
     val type = when (provider.type) {
@@ -59,12 +60,34 @@ internal fun combinedProviders(
     val local = if (mobileProviders) localProviders.mapNotNull { provider ->
         provider.remoteTextCatalog(options)?.let { item ->
             val id = "local:" + item.id
-            item.copy(id = id, groupId = null).takeIf { id !in serverIds }
+            item.copy(id = id).takeIf { id !in serverIds }
         }
     } else emptyList()
     val ordered = if (local.isEmpty()) serverProviders else
         (serverProviders + local).mapIndexed { index, provider -> provider.copy(sortOrder = index) }
     return ordered to local.mapTo(hashSetOf()) { it.id }
+}
+
+internal fun remoteModelPickerCatalog(
+    providers: List<ModelProvider>,
+    localProviderIds: Set<String>,
+    localGroups: List<ProviderGroup>,
+    serverLabel: String,
+): Pair<List<ModelProvider>, List<ProviderGroup>> {
+    if (providers.none { it.id in localProviderIds }) return providers to emptyList()
+
+    val localGroupIds = providers.filter { it.id in localProviderIds }.mapNotNullTo(hashSetOf()) { it.groupId }
+    val pickerLocalGroups = localGroups.filter { it.id in localGroupIds }.associate { group ->
+        group.id to group.copy(id = "serverside:local:${group.id}")
+    }
+    val serverGroup = ProviderGroup(id = "serverside:server", name = serverLabel, sortOrder = Int.MIN_VALUE)
+    val pickerProviders = providers.map { provider ->
+        val groupId = if (provider.id in localProviderIds) {
+            provider.groupId?.let(pickerLocalGroups::get)?.id
+        } else serverGroup.id
+        provider.copy(groupId = groupId)
+    }
+    return pickerProviders to (listOf(serverGroup) + pickerLocalGroups.values)
 }
 
 internal fun localProviderFailure(failure: Exception): RemoteActionFailure =

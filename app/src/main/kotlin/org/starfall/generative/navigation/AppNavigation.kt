@@ -100,6 +100,7 @@ import org.starfall.generative.shared.ui.theme.modalScrimColor
 import org.starfall.generative.features.home.shared.ui.InstructionControls
 import org.starfall.generative.shared.ui.LoadingIndicator
 import org.starfall.generative.features.home.shared.ui.LocalInstructionControls
+import org.starfall.generative.features.home.chat.logic.remote.remoteModelPickerCatalog
 import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.shared.ui.LocalRemoteQuickActions
 import org.starfall.generative.features.home.shared.ui.ServerToolsSheetContent
@@ -777,14 +778,12 @@ internal fun AppNavigation(
                             RemoteActionFailure.LOCAL_PROVIDER_CREDENTIALS -> stringResource(R.string.server_remote_local_provider_credentials)
                             null -> null
                         }
-                        val serverGroup = "serverside:server"
-                        val localGroup = "serverside:local"
                         val combined = remote.providers.takeIf { remoteIdentityReady }.orEmpty()
                         val localIds = remote.localProviderIds.takeIf { selectedServer?.allowLocalProviders == true }.orEmpty()
                         val visible = combined.filter { it.id !in remote.localProviderIds || it.id in localIds }
-                        val sourceGroups = if (localIds.isEmpty()) emptyList() else listOf(
-                            ProviderGroup(id = serverGroup, name = stringResource(R.string.server_remote_label), sortOrder = 0),
-                            ProviderGroup(id = localGroup, name = stringResource(R.string.server_connection_providers_local), sortOrder = 1),
+                        val serverLabel = stringResource(R.string.server_remote_label)
+                        val (pickerProviders, pickerGroups) = remoteModelPickerCatalog(
+                            visible, localIds, providerGroups, serverLabel,
                         )
                         ChatBackend(
                             restoreRemoteViewport = true,
@@ -800,15 +799,14 @@ internal fun AppNavigation(
                             chatError = listOfNotNull(remoteError,
                                 remote.providerDiagnostic?.takeIf { it.isNotBlank() },
                                 remote.selectedCatalogDiagnostic).distinct().joinToString("\n").ifBlank { null },
-                            providers = if (sourceGroups.isEmpty()) visible else visible.map { it.copy(
-                                groupId = if (it.id in localIds) localGroup else serverGroup) },
-                            providerGroups = sourceGroups,
+                            providers = pickerProviders,
+                            providerGroups = pickerGroups,
                             mediaProviders = supportedDirectMediaProviders(visible),
                             modelPickerCollapsedGroups = appPrefs.modelPickerCollapsedGroups,
                             modelPickerCollapsedProviders = appPrefs.modelPickerCollapsedProviders,
                             selectedProviderId = remote.providerId.takeIf { remoteIdentityReady }.orEmpty(),
                             selectedModelName = remote.modelId.takeIf { remoteIdentityReady }.orEmpty(),
-                            workspaceLabel = listOfNotNull(stringResource(R.string.server_remote_label), selectedServer?.name).joinToString(" · "),
+                            workspaceLabel = listOfNotNull(serverLabel, selectedServer?.name).joinToString(" · "),
                             onSendMessageWithSkill = { text, files, requested, skillName ->
                                 if (requested || skillName != null || !remoteIdentityReady) { unsupportedRemote(); false }
                                 else sendRemote(selectedServer?.id, chatPage?.id, text, files)

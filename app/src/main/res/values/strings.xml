@@ -1410,7 +1410,6 @@
     <string name="server_connection_repair">Re-pair</string>
     <string name="server_connection_reconnect">Reconnect</string>
     <string name="server_connection_offline">Offline</string>
-    <string name="server_connection_selected">Selected</string>
     <string name="server_connection_select">Select</string>
     <string name="server_connection_test">Test connection</string>
     <string name="server_connection_testing">Testing connection to %1$s…</string>

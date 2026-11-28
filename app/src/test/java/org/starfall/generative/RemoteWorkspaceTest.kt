@@ -25,10 +25,15 @@ import org.starfall.generative.shared.model.auth.Authorization
 import org.starfall.generative.shared.model.language.ModelConfiguration
 import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
+import org.starfall.generative.shared.model.provider.ProviderGroup
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.ModelPickerItem
+import org.starfall.generative.shared.subfeatures.modelpicker.logic.computeModelPickerItems
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
+import org.starfall.generative.features.home.chat.logic.remote.combinedProviders
 import org.starfall.generative.features.home.chat.model.RemoteConnectionFailure
 import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.chat.logic.remote.remoteConnectionFailure
+import org.starfall.generative.features.home.chat.logic.remote.remoteModelPickerCatalog
 import org.starfall.generative.integrations.generativeserver.*
 import org.starfall.generative.integrations.remote.RemoteExecStream
 
@@ -174,6 +179,33 @@ class RemoteWorkspaceTest {
         assertFalse(completed.error)
         assertEquals(live, completed.conversation?.messages?.single()?.activeVersion)
         workspace.disable()
+    }
+
+    @Test fun remoteModelPickerKeepsLocalProviderFolders() {
+        val server = ModelProvider("server", "Server", ModelApiType.OPENAI, baseUrl = "https://example.com/v1",
+            config = ProviderConfiguration(modelIds = listOf("model")))
+        val local = listOf(
+            server.copy(id = "work-provider", groupId = "work"),
+            server.copy(id = "personal-provider", groupId = "personal"),
+            server.copy(id = "ungrouped-provider"),
+        )
+        val groups = listOf(ProviderGroup("work", "Work", 1), ProviderGroup("personal", "Personal", 0))
+        val (combined, localIds) = combinedProviders(listOf(server), local, mobileProviders = true)
+        val (providers, pickerGroups) = remoteModelPickerCatalog(combined, localIds, groups, "Remote Server")
+        val rows = computeModelPickerItems(providers, pickerGroups, emptyMap(), "", "")
+
+        assertEquals(
+            listOf("Remote Server", "server", "Personal", "local:personal-provider",
+                "Work", "local:work-provider", "Ungrouped", "local:ungrouped-provider"),
+            rows.mapNotNull { row ->
+                when (row) {
+                    is ModelPickerItem.Group -> row.group.name
+                    is ModelPickerItem.Provider -> row.provider.id
+                    ModelPickerItem.Ungrouped -> "Ungrouped"
+                    is ModelPickerItem.Model -> null
+                }
+            },
+        )
     }
 
     @Test fun localProviderIsAppendedAndRunsOnRemoteOnlyWhileAllowed() = runBlocking {

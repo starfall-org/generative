@@ -128,7 +128,6 @@ fun ServerConnectionsScreen(service: ServerConnections, onProviders: (String) ->
                         },
                             icon = { SharedIcon(Icons.Outlined.Computer, null) }, content = {
                                 Column { Text(profile.name); Text("${profile.transport.uppercase()} · ${profile.endpoint}", style = MaterialTheme.typography.bodySmall)
-                                    if (profile.selected) Text(stringResource(R.string.server_connection_selected), style = MaterialTheme.typography.labelSmall)
                                     if (setupMessage != null) Text(stringResource(setupMessage), style = MaterialTheme.typography.bodySmall)
                                 }
                             }, actions = {
