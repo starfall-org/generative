@@ -1,5 +1,6 @@
 package org.starfall.generative
 
+import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -15,6 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.starfall.generative.features.home.chat.model.RemoteActionFailure
 import org.starfall.generative.features.home.chat.logic.remote.RemoteWorkspace
+import org.starfall.generative.integrations.generativeserver.ServerAttachmentSource
 import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeCredentials
 
@@ -98,6 +100,84 @@ class OpenCodeWorkspaceTest {
                 release.complete(Unit)
                 workspace.disable()
             }
+        }
+    }
+
+    @Test fun sendsAnAttachmentOnlyPromptAndRestoresItsFileFromHistory() = runBlocking {
+        val file = File.createTempFile("opencode-", ".txt").apply { writeText("hello") }
+        try {
+            MockWebServer().use { server ->
+                val session = """{"id":"ses_a","title":"Chat","time":{"created":1,"updated":2},"model":{"providerID":"p","id":"m"}}"""
+                val history = """{"data":[
+                    {"id":"msg_a","type":"user","text":"","files":[{"data":"aGVsbG8=","mime":"text/plain"}]},
+                    {"id":"idle","type":"idle","outcome":"succeeded"}
+                ],"cursor":{}}"""
+                fun enqueue(body: String) = server.enqueue(MockResponse().setBody(body))
+                fun catalog(sessions: String) {
+                    enqueue("""{"directory":"/work"}""")
+                    enqueue("""{"data":[{"id":"p","name":"Provider"}]}""")
+                    enqueue("""{"data":[{"id":"m","providerID":"p","name":"Model","enabled":true}]}""")
+                    enqueue("""{"data":$sessions,"cursor":{}}""")
+                }
+                fun events() = server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
+                    .setBody("""data: {"type":"server.connected","data":{}}""" + "\n\n"))
+
+                catalog("[]")
+                enqueue("""{"data":$session}""")
+                events()
+                enqueue("""{"data":{"id":"msg_a"}}""")
+                enqueue(history)
+                enqueue("""{"data":$session}""")
+                events()
+                server.enqueue(MockResponse().setResponseCode(400))
+                catalog("[$session]")
+                enqueue("""{"data":$session}""")
+                enqueue(history)
+
+                var lastSession: String? = null
+                val workspace = RemoteWorkspace(
+                    sessionFactory = { error("Unexpected protocol") },
+                    scope = this,
+                    loadLastSession = { lastSession },
+                    saveLastSession = { _, sessionId -> lastSession = sessionId },
+                    openCodeFactory = { OpenCodeApi(server.url("/").toString(), OpenCodeCredentials("opencode", "secret")) },
+                    resolveAttachment = { reference ->
+                        if (reference == file.path) ServerAttachmentSource(file, "text/plain", file.length()) else null
+                    },
+                    restoreOpenCodeAttachment = { data, mime ->
+                        assertEquals("aGVsbG8=", data)
+                        assertEquals("text/plain", mime)
+                        "/cache/restored.txt"
+                    }
+                )
+                try {
+                    workspace.enable("server")
+                    withTimeout(5_000) { workspace.state.first { !it.busy } }
+                    assertFalse(withTimeout(5_000) { workspace.send("", listOf("missing")) })
+                    assertEquals(RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED, workspace.state.value.actionFailure)
+                    assertTrue(withTimeout(5_000) { workspace.send("", listOf(file.path)) })
+                    val finished = withTimeout(5_000) { workspace.state.first { !it.busy } }
+                    assertEquals(listOf("/cache/restored.txt"), finished.conversation?.messages?.single()?.files)
+                    assertFalse(withTimeout(5_000) { workspace.send("Rejected", listOf(file.path)) })
+                    assertEquals(listOf("msg_a"), workspace.state.value.conversation?.messages?.map { it.id })
+
+                    workspace.disable()
+                    workspace.enable("server")
+                    val reopened = withTimeout(5_000) { workspace.state.first { !it.busy } }
+                    assertEquals(listOf("/cache/restored.txt"), reopened.conversation?.messages?.single()?.files)
+                    repeat(6) { server.takeRequest() }
+                    val prompt = server.takeRequest()
+                    assertEquals("/api/session/ses_a/prompt", prompt.path)
+                    assertEquals(
+                        Json.parseToJsonElement("""{"text":"","files":[{"uri":"data:text/plain;base64,aGVsbG8=","name":"${file.name}"}]}"""),
+                        Json.parseToJsonElement(prompt.body.readUtf8())
+                    )
+                } finally {
+                    workspace.disable()
+                }
+            }
+        } finally {
+            file.delete()
         }
     }
 

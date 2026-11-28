@@ -1,5 +1,6 @@
 package org.starfall.generative.integrations.opencode
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -17,7 +18,12 @@ import org.starfall.generative.shared.model.provider.ModelProvider
 import org.starfall.generative.shared.model.provider.ProviderConfiguration
 
 /** A chat connection scoped to the server's default location. */
-internal class OpenCodeChat(val api: OpenCodeApi, private val directory: String) {
+internal class OpenCodeChat(
+    val api: OpenCodeApi,
+    private val directory: String,
+    private val restoreAttachment: suspend (String, String) -> String?,
+) {
+    private val restoredFiles = LinkedHashMap<String, List<String>>(16, 0.75f, true)
     suspend fun providers(): List<ModelProvider> {
         val names = api.providers(directory).associate { it.requiredText("id") to it.requiredText("name") }
         return api.models(directory)
@@ -44,16 +50,41 @@ internal class OpenCodeChat(val api: OpenCodeApi, private val directory: String)
         api.createSession(directory, providerId, modelId).conversation()
 
     suspend fun open(id: String): Conversation =
-        session(id).copy(messages = api.messages(id).mapNotNull(::message))
+        session(id).copy(messages = api.messages(id, ::message).filterNotNull())
 
     suspend fun session(id: String): Conversation = api.session(id).conversation().also { require(it.id == id) }
 
     suspend fun readTurn(id: String, promptId: String): OpenCodeTurn {
-        val rows = api.messages(id)
-        val promptIndex = rows.indexOfFirst { it.text("type") == "user" && it.text("id") == promptId }
-        val idle = if (promptIndex < 0) null else rows.asSequence().drop(promptIndex + 1)
-            .firstOrNull { it.text("type") == "idle" }
-        return OpenCodeTurn(rows.mapNotNull(::message), idle?.requiredText("outcome"))
+        var promptSeen = false
+        var outcome: String? = null
+        val messages = api.messages(id) { row ->
+            val message = message(row)
+            if (message?.role == ChatRole.USER && message.id == promptId) promptSeen = true
+            if (promptSeen && outcome == null && row.text("type") == "idle") outcome = row.requiredText("outcome")
+            message
+        }
+        return OpenCodeTurn(messages.filterNotNull(), outcome)
+    }
+
+    private suspend fun message(row: JsonObject): StoredMessage? {
+        val message = decodeMessage(row) ?: return null
+        if (message.role != ChatRole.USER) return message
+        val files = (row["files"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+        if (files.isEmpty()) return message
+        val references = restoredFiles[message.id] ?: files.mapNotNull { attachment ->
+            val data = attachment.text("data") ?: return@mapNotNull null
+            val mime = attachment.text("mime") ?: return@mapNotNull null
+            if (data.length > (OPEN_CODE_MAX_ATTACHMENT_BYTES + 2) / 3 * 4) return@mapNotNull null
+            try { restoreAttachment(data, mime) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { null }
+        }.also { references ->
+            if (references.size == files.size) {
+                restoredFiles[message.id] = references
+                if (restoredFiles.size > 128) restoredFiles.remove(restoredFiles.keys.first())
+            }
+        }
+        return message.copy(versions = listOf(message.activeVersion.copy(files = references)))
     }
 }
 
@@ -72,7 +103,7 @@ private fun JsonObject.conversation(): Conversation {
         providerId = model?.text("providerID").orEmpty(), modelId = model?.text("id").orEmpty())
 }
 
-private fun message(row: JsonObject): StoredMessage? {
+private fun decodeMessage(row: JsonObject): StoredMessage? {
     val role = when (row.text("type")) {
         "user" -> ChatRole.USER
         "assistant" -> ChatRole.MODEL

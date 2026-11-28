@@ -82,7 +82,7 @@ class OpenCodeAuthentication(
         } catch (_: Exception) { throw OpenCodeProtocolException("Invalid OpenCode server response") }
     }
 
-    internal suspend fun request(request: Request): String = suspendCancellableCoroutine { continuation ->
+    internal suspend fun request(request: Request, maxBytes: Long = MAX_RESPONSE_BYTES): String = suspendCancellableCoroutine { continuation ->
         val call = client.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
@@ -94,8 +94,8 @@ class OpenCodeAuthentication(
                     val body = response.use {
                         if (it.code !in 200..299) throw OpenCodeHttpException(it.code)
                         val source = it.body.source()
-                        source.request(MAX_RESPONSE_BYTES + 1)
-                        if (source.buffer.size > MAX_RESPONSE_BYTES) throw OpenCodeProtocolException("Response too large")
+                        source.request(maxBytes + 1)
+                        if (source.buffer.size > maxBytes) throw OpenCodeResponseTooLarge()
                         source.readUtf8()
                     }
                     if (continuation.isActive) continuation.resume(body)
@@ -109,4 +109,5 @@ class OpenCodeAuthentication(
 
 class OpenCodeHttpException(val status: Int) : IOException("OpenCode HTTP error $status")
 class OpenCodeProtocolException(message: String) : IOException(message)
-private const val MAX_RESPONSE_BYTES = 8L shl 20
+internal class OpenCodeResponseTooLarge : IOException("OpenCode response too large")
+internal const val MAX_RESPONSE_BYTES = 8L shl 20

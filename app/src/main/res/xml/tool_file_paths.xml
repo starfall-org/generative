@@ -3,4 +3,5 @@
     <files-path name="tool_media" path="tool_media/" />
     <files-path name="upload_caches" path="UploadCaches/" />
     <cache-path name="temporary_chat_media" path="temporary_chat_media/" />
+    <cache-path name="opencode_attachments" path="opencode_attachments/" />
 </paths>

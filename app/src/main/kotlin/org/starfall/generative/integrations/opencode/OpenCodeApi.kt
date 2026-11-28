@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -169,8 +170,12 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     suspend fun sessions(directory: String): List<JsonObject> = pages(
         listOf("api", "session"), mapOf("directory" to directory, "order" to "desc"))
 
-    suspend fun messages(sessionId: String): List<JsonObject> = pages(
-        listOf("api", "session", validId(sessionId), "message"), mapOf("order" to "asc"))
+    suspend fun messages(sessionId: String): List<JsonObject> = messages(sessionId) { it }
+
+    internal suspend fun <T> messages(sessionId: String, transform: suspend (JsonObject) -> T): List<T> = pages(
+        listOf("api", "session", validId(sessionId), "message"), mapOf("order" to "asc"),
+        attachmentHistory = true, transform = transform
+    )
 
     suspend fun createSession(directory: String, providerId: String, modelId: String): JsonObject {
         require(directory.isNotBlank())
@@ -192,10 +197,22 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     }
 
     /** An accepted prompt is never automatically retried: the server may already have executed it. */
-    suspend fun prompt(sessionId: String, text: String): String {
-        require(text.isNotBlank())
+    suspend fun prompt(sessionId: String, text: String): String = prompt(sessionId, text, emptyList())
+
+    internal suspend fun prompt(sessionId: String, text: String, files: List<OpenCodePromptFile>): String {
+        require(text.isNotBlank() || files.isNotEmpty())
         val response = obj(request("POST", listOf("api", "session", validId(sessionId), "prompt"),
-            body = buildJsonObject { put("text", text) }))
+            body = buildJsonObject {
+                put("text", text)
+                if (files.isNotEmpty()) put("files", buildJsonArray {
+                    files.forEach { file ->
+                        add(buildJsonObject {
+                            put("uri", file.uri)
+                            put("name", file.name)
+                        })
+                    }
+                })
+            }))
         return validId(string(obj(response.required("data")), "id"))
     }
 
@@ -259,31 +276,48 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
     }
 
     private suspend fun pages(path: List<String>, query: Map<String, String>): List<JsonObject> {
-        val output = mutableListOf<JsonObject>()
+        return pages(path, query, attachmentHistory = false) { it }
+    }
+
+    private suspend fun <T> pages(
+        path: List<String>, query: Map<String, String>, attachmentHistory: Boolean,
+        transform: suspend (JsonObject) -> T,
+    ): List<T> {
+        val output = mutableListOf<T>()
         val cursors = mutableSetOf<String>()
         var cursor: String? = null
+        var limit = 100
         do {
-            val parameters = (cursor?.let { query - "order" + ("cursor" to it) } ?: query) + ("limit" to "100")
-            val page = obj(request("GET", path, parameters))
+            val parameters = (cursor?.let { query - "order" + ("cursor" to it) } ?: query) + ("limit" to limit.toString())
+            val page = try {
+                val maxBytes = if (attachmentHistory && limit == 1) 32L shl 20 else MAX_RESPONSE_BYTES
+                obj(request("GET", path, parameters, maxResponseBytes = maxBytes))
+            } catch (tooLarge: OpenCodeResponseTooLarge) {
+                if (!attachmentHistory || limit == 1) throw tooLarge
+                // History embeds Base64. Retry only this read with fewer messages per page.
+                limit = (limit / 2).coerceAtLeast(1)
+                continue
+            }
             val items = array(page.required("data")).map(::obj)
-            if (items.size > 100 || output.size + items.size > 100_000) throw OpenCodeProtocolException("Invalid page size")
-            output.addAll(items)
+            if (items.size > limit || output.size + items.size > 100_000) throw OpenCodeProtocolException("Invalid page size")
+            items.forEach { output.add(transform(it)) }
             val nextValue = obj(page.required("cursor"))["next"]
             cursor = if (nextValue == null || nextValue is JsonNull) null else stringValue(nextValue).takeIf { it.isNotEmpty() }
             if (cursor != null && (items.isEmpty() || !cursors.add(cursor))) throw OpenCodeProtocolException("Invalid page cursor")
-        } while (cursor != null)
-        return output
+            if (cursor == null) return output
+        } while (true)
     }
 
     private suspend fun request(method: String, path: List<String>, query: Map<String, String> = emptyMap(),
-        body: JsonObject? = null): JsonElement {
-        val response = rawRequest(method, path, query, body?.toString()?.toRequestBody("application/json".toMediaType()))
+        body: JsonObject? = null, maxResponseBytes: Long = MAX_RESPONSE_BYTES): JsonElement {
+        val response = rawRequest(method, path, query,
+            body?.toString()?.toRequestBody("application/json".toMediaType()), maxResponseBytes)
         if (response.isEmpty()) return JsonNull
         return try { Json.parseToJsonElement(response) } catch (_: Exception) { throw OpenCodeProtocolException("Invalid API response") }
     }
 
     private suspend fun rawRequest(method: String, path: List<String>, query: Map<String, String> = emptyMap(),
-        body: RequestBody? = null): String {
+        body: RequestBody? = null, maxResponseBytes: Long = MAX_RESPONSE_BYTES): String {
         val url = transport.base.newBuilder().apply {
             path.forEach { addPathSegment(it) }
             query.forEach { (key, value) -> addQueryParameter(key, value) }
@@ -298,7 +332,7 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
             "DELETE" -> builder.delete().build()
             else -> error("Unsupported method")
         }
-        return transport.request(request)
+        return transport.request(request, maxResponseBytes)
     }
 
     private fun validId(value: String): String = value.also { require(it.isNotBlank() && '/' !in it && it != "." && it != "..") }
@@ -314,3 +348,7 @@ class OpenCodeApi(endpoint: String, private val credentials: OpenCodeCredentials
 data class OpenCodeProject(val id: String, val name: String, val directory: String)
 
 private const val MAX_EVENT_BYTES = 1L shl 20
+
+internal data class OpenCodePromptFile(val uri: String, val name: String)
+
+internal const val OPEN_CODE_MAX_ATTACHMENT_BYTES = 20L shl 20

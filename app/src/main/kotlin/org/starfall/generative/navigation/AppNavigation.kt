@@ -230,6 +230,7 @@ internal fun AppNavigation(
                 RemoteActionFailure.LOCAL_PROVIDER_OAUTH, RemoteActionFailure.LOCAL_PROVIDER_CONNECTION_OPTIONS,
                 RemoteActionFailure.LOCAL_PROVIDER_MODEL_OPTIONS, RemoteActionFailure.LOCAL_PROVIDER_CREDENTIALS,
                 RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED,
+                RemoteActionFailure.GENERATION_FAILED, RemoteActionFailure.CONVERSATION_CREATE_FAILED,
             )
         ) unsupportedRemote()
         return sent
@@ -928,7 +929,8 @@ internal fun AppNavigation(
                         RemoteQuickActions(
                             mcpContent = mcpContent,
                             unavailableMessage = if (remote.error) R.string.server_remote_offline else R.string.server_remote_loading,
-                            attachmentsAvailable = server != null && !remote.error && remote.capabilities.attachmentUpload != null,
+                            attachmentsAvailable = server != null && !remote.error &&
+                                ((remote.openCode && remote.openCodeDirectory != null) || remote.capabilities.attachmentUpload != null),
                             serverToolsContent = if (server != null && !remote.openCode && !remote.connecting) {
                                 { onBack ->
                                     key(server.id, server.credentialRevision, remote.capabilities.serverTools, remote.error) {

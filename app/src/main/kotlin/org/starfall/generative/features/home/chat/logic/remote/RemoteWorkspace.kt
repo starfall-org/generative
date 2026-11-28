@@ -41,7 +41,9 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
     private val cacheScope: suspend (String) -> RemoteCacheScope? = { null },
     private val resolveLocalProvider: suspend (ModelProvider) -> ModelProvider = { it },
     private val openCodeFactory: suspend (String) -> OpenCodeApi? = { null },
-    private val resolveAttachment: (String) -> ServerAttachmentSource? = { null }) {
+    private val resolveAttachment: (String) -> ServerAttachmentSource? = { null },
+    private val resolveOpenCodeAttachment: (String) -> ServerAttachmentSource? = resolveAttachment,
+    private val restoreOpenCodeAttachment: suspend (String, String) -> String? = { _, _ -> null }) {
     private val mutable = MutableStateFlow(RemoteWorkspaceState(restoring = loadActivation != null))
     val state: StateFlow<RemoteWorkspaceState> = mutable.asStateFlow()
     private var generation = 0L
@@ -155,7 +157,9 @@ class RemoteWorkspace(private val sessionFactory: suspend (String) -> Generative
                 val openCodeApi = openCodeFactory(id)
                 if (epoch != generation) return@launch
                 if (openCodeApi != null) {
-                    val workspace = OpenCodeWorkspace(id, scope, mutable, loadLastSession, saveLastSession)
+                    val workspace = OpenCodeWorkspace(
+                        id, scope, mutable, loadLastSession, saveLastSession, resolveOpenCodeAttachment, restoreOpenCodeAttachment
+                    )
                     openCode = workspace
                     mutable.update { it.copy(openCode = true) }
                     workspace.connect(openCodeApi)

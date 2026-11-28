@@ -5,6 +5,7 @@ import org.starfall.generative.features.home.chat.model.RemoteWorkspaceState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -17,9 +18,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.DataInputStream
+import java.util.Base64
+import org.starfall.generative.integrations.generativeserver.ServerAttachmentSource
+import org.starfall.generative.integrations.opencode.OPEN_CODE_MAX_ATTACHMENT_BYTES
 import org.starfall.generative.integrations.opencode.OpenCodeApi
 import org.starfall.generative.integrations.opencode.OpenCodeChat
+import org.starfall.generative.integrations.opencode.OpenCodeHttpException
+import org.starfall.generative.integrations.opencode.OpenCodePromptFile
 import org.starfall.generative.integrations.opencode.OpenCodeReplyEvents
 import org.starfall.generative.integrations.opencode.eventType
 import org.starfall.generative.integrations.opencode.listItem
@@ -34,7 +42,9 @@ internal class OpenCodeWorkspace(
     parentScope: CoroutineScope,
     private val state: MutableStateFlow<RemoteWorkspaceState>,
     private val loadLastSession: suspend (String) -> String?,
-    private val saveLastSession: suspend (String, String?) -> Unit
+    private val saveLastSession: suspend (String, String?) -> Unit,
+    private val resolveAttachment: (String) -> ServerAttachmentSource?,
+    private val restoreAttachment: suspend (String, String) -> String?,
 ) {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private var closed = false
@@ -43,6 +53,7 @@ internal class OpenCodeWorkspace(
     private var interrupt: Job? = null
     private var pendingDeletes = 0
     private var runningId: String? = null
+    private var pendingNewSession: Conversation? = null
 
     fun close() {
         closed = true
@@ -51,7 +62,7 @@ internal class OpenCodeWorkspace(
 
     suspend fun connect(api: OpenCodeApi) {
         val directory = api.defaultDirectory()
-        chat = OpenCodeChat(api, directory)
+        chat = OpenCodeChat(api, directory, restoreAttachment)
         val providers = chat.providers()
         val items = chat.list()
         val remembered = loadLastSession(id)?.takeIf { previous -> items.any { it.id == previous } }
@@ -93,6 +104,7 @@ internal class OpenCodeWorkspace(
         val current = state.value
         if (!::chat.isInitialized || current.running || (current.busy && current.loadingConversationId == null)) return
         if (current.loadingConversationId != null) operation?.cancel()
+        pendingNewSession = null
         state.update { it.copy(conversation = null, loadingConversationId = null) }
         perform { saveLastSession(id, null) }
     }
@@ -106,15 +118,24 @@ internal class OpenCodeWorkspace(
         }
     }
 
-    fun send(text: String, files: List<String>): Boolean {
+    suspend fun send(text: String, files: List<String>): Boolean {
         val current = state.value
-        if (!::chat.isInitialized || !current.canSubmit || files.isNotEmpty() ||
-            text.isBlank() || text.toByteArray(Charsets.UTF_8).size > current.capabilities.maxRunContentBytes ||
+        if (!::chat.isInitialized || !current.canSubmit || (text.isBlank() && files.isEmpty()) ||
+            text.toByteArray(Charsets.UTF_8).size > current.capabilities.maxRunContentBytes ||
             current.providerId.isBlank()) return false
+        val accepted = if (files.isNotEmpty()) CompletableDeferred<Boolean>() else null
         perform(RemoteActionFailure.GENERATION_FAILED) {
+            val attachments = try {
+                if (files.isEmpty()) emptyList() else prepareAttachments(files)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                state.update { it.copy(actionFailure = RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED) }
+                return@perform
+            }
             val providerId = current.providerId
             val modelId = current.modelId
-            val existing = current.conversation
+            val existing = current.conversation ?: pendingNewSession
             val session = if (existing == null) {
                 val created = try {
                     chat.create(providerId, modelId)
@@ -124,12 +145,12 @@ internal class OpenCodeWorkspace(
                     state.update { it.copy(actionFailure = RemoteActionFailure.CONVERSATION_CREATE_FAILED) }
                     return@perform
                 }
-                publish(created)
-                // Remembering the selection is optional. A failed local preference write
-                // must not prevent the prompt from reaching an already created session.
-                try { saveLastSession(id, created.id) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { /* The server already owns the new session. */ }
+                if (accepted == null) {
+                    publish(created)
+                    rememberSession(created.id)
+                } else {
+                    pendingNewSession = created
+                }
                 created
             } else {
                 if (existing.providerId != providerId || existing.modelId != modelId) {
@@ -137,12 +158,43 @@ internal class OpenCodeWorkspace(
                 }
                 existing
             }
-            streamTurn(session, providerId, modelId, text)
+            streamTurn(session, providerId, modelId, text, files, attachments) {
+                accepted?.complete(true)
+            }
         }
-        return true
+        // A rejected attachment prompt leaves the current composer intact.
+        if (accepted != null) operation?.invokeOnCompletion { accepted.complete(false) }
+        return accepted?.await() ?: true
     }
 
-    private suspend fun streamTurn(session: Conversation, providerId: String, modelId: String, text: String) = coroutineScope {
+    private suspend fun rememberSession(sessionId: String) {
+        // The server already owns the session even if local preferences cannot be written.
+        try { saveLastSession(id, sessionId) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { }
+    }
+
+    private suspend fun prepareAttachments(files: List<String>): List<OpenCodePromptFile> = withContext(Dispatchers.IO) {
+        var remaining = OPEN_CODE_MAX_ATTACHMENT_BYTES
+        files.map { reference ->
+            currentCoroutineContext().ensureActive()
+            val source = requireNotNull(resolveAttachment(reference))
+            require(source.sizeBytes in 1..remaining)
+            remaining -= source.sizeBytes
+            val bytes = ByteArray(source.sizeBytes.toInt())
+            DataInputStream(source.file.inputStream()).use { input ->
+                input.readFully(bytes)
+                require(input.read() == -1)
+            }
+            val data = Base64.getEncoder().encodeToString(bytes)
+            OpenCodePromptFile("data:${source.mimeType};base64,$data", source.file.name)
+        }
+    }
+
+    private suspend fun streamTurn(
+        session: Conversation, providerId: String, modelId: String, text: String,
+        references: List<String>, attachments: List<OpenCodePromptFile>, onAccepted: () -> Unit,
+    ) = coroutineScope {
         val ready = CompletableDeferred<Unit>()
         val reply = CompletableDeferred<OpenCodeReplyEvents>()
         val events = launch {
@@ -174,8 +226,18 @@ internal class OpenCodeWorkspace(
         }
         try {
             withTimeoutOrNull(1_000) { ready.await() }
-            val prompt = chat.api.prompt(session.id, text)
-            val submitted = StoredMessage(prompt, ChatRole.USER, listOf(MessageVersion(content = text)))
+            val prompt = try {
+                if (attachments.isEmpty()) chat.api.prompt(session.id, text)
+                else withContext(Dispatchers.Default) { chat.api.prompt(session.id, text, attachments) }
+            } catch (failure: OpenCodeHttpException) {
+                if (attachments.isEmpty() || failure.status !in setOf(400, 413, 415, 422)) throw failure
+                state.update { it.copy(actionFailure = RemoteActionFailure.ATTACHMENT_UPLOAD_FAILED) }
+                return@coroutineScope
+            }
+            val submitted = StoredMessage(prompt, ChatRole.USER, listOf(MessageVersion(content = text, files = references)))
+            val newSession = state.value.conversation == null
+            pendingNewSession = null
+            onAccepted()
             runningId = session.id
             state.update { it.copy(running = true) }
             publish(session.copy(
@@ -183,6 +245,7 @@ internal class OpenCodeWorkspace(
                 structuralRevision = session.structuralRevision + 1
             ))
             reply.complete(OpenCodeReplyEvents(session.id, prompt, providerId, modelId))
+            if (newSession) rememberSession(session.id)
 
             val completed = withTimeoutOrNull(10 * 60 * 1000L) {
                 while (true) {
@@ -249,8 +312,13 @@ internal class OpenCodeWorkspace(
         val seen = history.mapTo(hashSetOf()) { it.id }
         return history.map { stored ->
             val live = visibleById[stored.id]
-            if (stored.role == ChatRole.MODEL && live != null) mergeStreamingReply(stored, live)
-            else stored
+            when {
+                live == null -> stored
+                stored.role == ChatRole.MODEL -> mergeStreamingReply(stored, live)
+                stored.files.isEmpty() && live.files.isNotEmpty() ->
+                    stored.copy(versions = listOf(stored.activeVersion.copy(files = live.files)))
+                else -> stored
+            }
         } + visible.filter { it.id !in seen }
     }
 

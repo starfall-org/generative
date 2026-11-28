@@ -11,10 +11,12 @@ import org.starfall.generative.database.preferences.RemoteTerminalPreferenceStor
 import org.starfall.generative.database.preferences.remoteTerminalInputModePreferenceKey
 import org.starfall.generative.BuildConfig
 import java.io.File
+import java.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -27,6 +29,7 @@ import org.starfall.generative.integrations.remote.RemoteMachineService
 import org.starfall.generative.features.settings.logic.SettingsViewModel
 import org.starfall.generative.integrations.modelapis.AiService
 import org.starfall.generative.integrations.generativeserver.ServerAttachmentSource
+import org.starfall.generative.integrations.opencode.OPEN_CODE_MAX_ATTACHMENT_BYTES
 import org.starfall.generative.shared.subfeatures.media.logic.AttachmentResolver
 import org.starfall.generative.shared.subfeatures.media.logic.ToolFiles
 import org.starfall.generative.integrations.files.AgentSkillsStore
@@ -76,6 +79,7 @@ class AppContainer(context: Context) {
         }
     })
     val serverConnections = org.starfall.generative.database.repositories.ServerConnectionRepository(database)
+    private val openCodeAttachmentCache by lazy { ToolFiles(File(appContext.cacheDir, "opencode_attachments")) }
     private val remoteChatCache = org.starfall.generative.integrations.generativeserver.RemoteConversationCache(File(appContext.cacheDir, "serverside-chats"))
     private val serverClientFactory = ServerConnectionClientFactory(serverConnections, remoteMachineService)
     val serverConnectionService = org.starfall.generative.features.serverconnection.logic.ServerConnections(serverConnections, serverClientFactory::create, remoteChatCache, remoteMachineService, providers, mcp)
@@ -97,9 +101,11 @@ class AppContainer(context: Context) {
                     it.profile.endpoint, it.credentials
                 )
             }
-        }, resolveAttachment = ::resolveServerAttachment)
+        }, resolveAttachment = { resolveServerAttachment(it) },
+        resolveOpenCodeAttachment = { resolveServerAttachment(it, includeOpenCodeFiles = true) },
+        restoreOpenCodeAttachment = ::restoreOpenCodeAttachment)
 
-    private fun resolveServerAttachment(reference: String): ServerAttachmentSource? {
+    private fun resolveServerAttachment(reference: String, includeOpenCodeFiles: Boolean = false): ServerAttachmentSource? {
         val uri = Uri.parse(reference)
         val path = when (uri.scheme) {
             null -> reference
@@ -107,11 +113,23 @@ class AppContainer(context: Context) {
             else -> return null
         }
         val file = File(path).takeIf { it.isAbsolute }?.canonicalFile ?: return null
-        if (file.parentFile != ToolFiles.uploadStorageDirectory(appContext).canonicalFile ||
-            toolFiles.nameOf(file.path) == null) return null
+        val name = toolFiles.nameOf(file.path)
+        val isUpload = name != null && file.parentFile == ToolFiles.uploadStorageDirectory(appContext).canonicalFile
+        val isOpenCodeFile = includeOpenCodeFiles && (
+            (name != null && file.parentFile == toolFiles.directory.canonicalFile && toolFiles.isGeneratedMedia(name)) ||
+                (file.parentFile == openCodeAttachmentCache.directory.canonicalFile &&
+                    openCodeAttachmentCache.nameOf(file.path) != null)
+        )
+        if (!isUpload && !isOpenCodeFile) return null
         val metadata = AttachmentResolver(appContext).metadata(file.path) ?: return null
         return ServerAttachmentSource(file, metadata.mimeType, metadata.sizeBytes)
     }
+    private suspend fun restoreOpenCodeAttachment(data: String, mime: String): String = withContext(Dispatchers.IO) {
+        val bytes = Base64.getDecoder().decode(data)
+        val name = openCodeAttachmentCache.save(bytes.inputStream(), mime, OPEN_CODE_MAX_ATTACHMENT_BYTES)
+        File(openCodeAttachmentCache.directory, name).absolutePath
+    }
+
     private val speech = SpeechRepository(database)
     val preferences = AppPreferencesRepository(appContext)
     private val toolSettings = ToolSettingsStore(appContext)
